@@ -12,6 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { usePeptides } from '@/hooks/use-peptides';
+import { useProtocolItems } from '@/hooks/use-protocols';
+import { Loader2 } from 'lucide-react';
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
@@ -25,8 +28,17 @@ export default function ContactDetails() {
     // Fetch Templates (Global)
     const { protocols: templates } = useProtocols(undefined);
 
+    // Fetch Peptides for "Add Peptide"
+    const { data: peptides } = usePeptides();
+
+    // Mutation helper for items (using 'undefined' ID is okay for mutation-only usage if we handle invalidation carefully)
+    const { addItem } = useProtocolItems(undefined);
+
     const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [isAddPeptideOpen, setIsAddPeptideOpen] = useState(false);
+
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+    const [selectedPeptideId, setSelectedPeptideId] = useState<string>('');
 
     const handleAssignTemplate = async () => {
         if (!selectedTemplateId) return;
@@ -34,20 +46,64 @@ export default function ContactDetails() {
         const template = templates?.find(t => t.id === selectedTemplateId);
         if (!template) return;
 
-        // Clone the protocol
-        // Note: Realistically we should also clone the items here server-side, 
-        // but for now we'll just create the container linked to the contact.
         try {
             await createProtocol.mutateAsync({
-                name: template.name, // Copy name
+                name: template.name,
                 description: template.description,
-                contact_id: id // Link to this contact
+                contact_id: id
             });
 
-            toast({ title: 'Protocol Assigned', description: 'Template copied to this contact.' });
+            toast({ title: 'Protocol Added', description: 'Template copied to this contact.' });
             setIsAssignOpen(false);
+            setSelectedTemplateId('');
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to assign protocol.' });
+        }
+    };
+
+    const handleAddPeptide = async () => {
+        if (!selectedPeptideId) return;
+        const peptide = peptides?.find(p => p.id === selectedPeptideId);
+        if (!peptide) return;
+
+        try {
+            // 1. Create a "Single Item" Protocol container
+            const newProtocol = await createProtocol.mutateAsync({
+                name: `Regimen: ${peptide.name}`,
+                description: 'Single peptide regimen',
+                contact_id: id
+            });
+
+            // 2. Add the item to it
+            await addItem.mutateAsync({
+                protocol_id: newProtocol.id,
+                peptide_id: peptide.id,
+                dosage_amount: 0, // Default placeholders
+                dosage_unit: 'mg',
+                frequency: 'Daily',
+                duration_weeks: 4,
+                price_tier: 'retail'
+            });
+
+            toast({ title: 'Peptide Added', description: 'Created new regimen for ' + peptide.name });
+            setIsAddPeptideOpen(false);
+            setSelectedPeptideId('');
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to add peptide regimen.' });
+        }
+    };
+
+    const handleCustomProtocol = async () => {
+        try {
+            await createProtocol.mutateAsync({
+                name: 'Custom Regimen',
+                description: `Created on ${new Date().toLocaleDateString()}`,
+                contact_id: id
+            });
+            toast({ title: 'Custom Protocol Created', description: 'You can now edit the details.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to create protocol.' });
         }
     };
 
@@ -103,16 +159,54 @@ export default function ContactDetails() {
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">Active Regimens</h2>
                         <div className="flex gap-2">
-                            <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+                            {/* Add Peptide Dialog */}
+                            <Dialog open={isAddPeptideOpen} onOpenChange={setIsAddPeptideOpen}>
                                 <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline">
-                                        <FileText className="mr-2 h-4 w-4" />
-                                        Assign Template
+                                    <Button size="sm" variant="secondary">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Peptide
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
-                                        <DialogTitle>Assign Protocol Template</DialogTitle>
+                                        <DialogTitle>Add Peptide Regimen</DialogTitle>
+                                        <DialogDescription>
+                                            Select a peptide to create a single-item regimen.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="py-4">
+                                        <Label>Select Peptide</Label>
+                                        <Select onValueChange={setSelectedPeptideId} value={selectedPeptideId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Choose a peptide..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {peptides?.filter(p => p.active)?.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button onClick={handleAddPeptide} disabled={!selectedPeptideId || createProtocol.isPending || addItem.isPending}>
+                                            {(createProtocol.isPending || addItem.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Add Regimen
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+
+                            {/* Add Protocol (Template) Dialog */}
+                            <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        Add Protocol
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Add Protocol from Template</DialogTitle>
                                         <DialogDescription>
                                             Choose a pre-set protocol to assign to {contact.name}.
                                         </DialogDescription>
@@ -131,15 +225,16 @@ export default function ContactDetails() {
                                         </Select>
                                     </div>
                                     <DialogFooter>
-                                        <Button onClick={handleAssignTemplate} disabled={!selectedTemplateId}>
-                                            Assign
+                                        <Button onClick={handleAssignTemplate} disabled={!selectedTemplateId || createProtocol.isPending}>
+                                            {createProtocol.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Add
                                         </Button>
                                     </DialogFooter>
                                 </DialogContent>
                             </Dialog>
 
-                            <Button size="sm">
-                                <Plus className="mr-2 h-4 w-4" />
+                            <Button size="sm" onClick={handleCustomProtocol} disabled={createProtocol.isPending}>
+                                {createProtocol.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                                 Custom Protocol
                             </Button>
                         </div>
