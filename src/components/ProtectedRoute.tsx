@@ -26,6 +26,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // if (user && profile && !profile.org_id && location.pathname !== '/onboarding') {
   //   return <Navigate to="/onboarding" replace />;
   // }
+  // Redirect disabled for emergency access
 
   return <>{children}</>;
 }

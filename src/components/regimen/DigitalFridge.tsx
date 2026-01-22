@@ -255,3 +255,93 @@ function LogDoseModal({ vial }: { vial: ClientInventoryItem }) {
         </Dialog>
     );
 }
+
+function ReconstituteModal({ vial }: { vial: ClientInventoryItem }) {
+    const [open, setOpen] = useState(false);
+    const [waterAmount, setWaterAmount] = useState('');
+    const { toast } = useToast();
+
+    const handleReconstitute = async () => {
+        if (!waterAmount) return;
+        const water = parseFloat(waterAmount);
+        if (water <= 0) return;
+
+        const concentration = vial.vial_size_mg / water;
+
+        try {
+            const { error } = await supabase
+                .from('client_inventory')
+                .update({
+                    water_added_ml: water,
+                    concentration_mg_ml: concentration,
+                    reconstituted_at: new Date().toISOString()
+                })
+                .eq('id', vial.id);
+
+            if (error) throw error;
+
+            toast({
+                title: "Reconstituted!",
+                description: `Vial mixed at ${concentration.toFixed(2)} mg/ml strength.`
+            });
+            window.location.reload();
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.message
+            });
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 h-5 border-emerald-500/50 text-emerald-600 hover:bg-emerald-50">
+                    <Droplets className="h-3 w-3 mr-1" /> Prep
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reconstitute Peptide</DialogTitle>
+                    <DialogDescription>
+                        Enter the amount of water you added to this {vial.vial_size_mg}mg vial.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Water Added (Bacteriostatic Water)</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="number"
+                                step="0.1"
+                                placeholder="e.g. 2.0"
+                                value={waterAmount}
+                                onChange={(e) => setWaterAmount(e.target.value)}
+                                autoFocus
+                            />
+                            <span className="text-sm font-medium">ml</span>
+                        </div>
+                    </div>
+
+                    {waterAmount && !isNaN(parseFloat(waterAmount)) && parseFloat(waterAmount) > 0 && (
+                        <div className="bg-muted p-4 rounded-lg space-y-2">
+                            <Label className="text-muted-foreground">Resulting Strength:</Label>
+                            <div className="text-2xl font-bold text-center text-primary">
+                                {(vial.vial_size_mg / parseFloat(waterAmount)).toFixed(2)} mg/ml
+                            </div>
+                            <p className="text-xs text-center text-muted-foreground">
+                                (Every 1ml contains {(vial.vial_size_mg / parseFloat(waterAmount)).toFixed(2)}mg of peptide)
+                            </p>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button onClick={handleReconstitute} disabled={!waterAmount}>
+                        Save & Mark Ready
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
