@@ -27,3 +27,4 @@ jobs:
       - run: supabase link --project-ref $PROJECT_ID --password $SUPABASE_DB_PASSWORD
 
       - run: supabase functions deploy invite-user --no-verify-jwt
+      - run: supabase functions deploy exchange-token --no-verify-jwt

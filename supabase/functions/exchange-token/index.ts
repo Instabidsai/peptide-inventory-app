@@ -39,8 +39,9 @@ serve(async (req) => {
         }
 
         // 2. Generate the REAL Magic Link (One-Time Use)
-        const baseUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://app.thepeptideai.com';
-        const redirectUrl = `${baseUrl}/update-password?welcome=true`;
+        const baseUrlRaw = Deno.env.get('PUBLIC_SITE_URL') || 'https://app.thepeptideai.com';
+        const baseUrl = baseUrlRaw.replace(/\/$/, ''); // Remove trailing slash if present
+        const redirectUrl = `${baseUrl}/update-password`;
 
         const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
             type: 'magiclink',
