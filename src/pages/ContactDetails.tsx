@@ -6,7 +6,7 @@ import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useCreateMovement } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient, useQuery } from '@tanstack/react-query'; // Add this import
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
 // ... rest imports
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
+import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
+import { Pill } from 'lucide-react';
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
@@ -46,7 +48,9 @@ export default function ContactDetails() {
         createProtocol,
         deleteProtocol,
         updateProtocolItem,
-        logProtocolUsage
+        logProtocolUsage,
+        addProtocolSupplement,
+        deleteProtocolSupplement
     } = useProtocols(id);
     const { protocols: templates } = useProtocols(undefined); // Fetch global templates
     const updateContact = useUpdateContact();
@@ -606,37 +610,46 @@ export default function ContactDetails() {
                         <Skeleton className="h-24 w-full" />
                     </div>
                 ) : assignedProtocols?.length === 0 ? (
-                    <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
                         <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
                         <p className="text-lg font-medium">No active regimens</p>
-                        <p className="text-sm">Assign a protocol or add a peptide to get started.</p>
+                        <p className="text-sm">Assign a protocol, or create a supplement stack.</p>
+                        <div className="flex justify-center gap-2 mt-4">
+                            <Button variant="outline" onClick={handleAddClick}>
+                                Add Peptide
+                            </Button>
+                            <Button variant="outline" onClick={() => createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
+                                Create Supplement Stack
+                            </Button>
+                        </div>
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        {assignedProtocols?.map(protocol => (
-                            <RegimenCard
-                                key={protocol.id}
-                                protocol={protocol}
-                                onDelete={deleteProtocol.mutate}
-                                onEdit={() => handleEditClick(protocol)}
-                                onLog={logProtocolUsage.mutate}
-                                peptides={peptides}
-                            />
-                        ))}
-                    </div>
-                )
+    ) : (
+        <div className="space-y-4">
+            {assignedProtocols?.map(protocol => (
+                <RegimenCard
+                    key={protocol.id}
+                    protocol={protocol}
+                    onDelete={deleteProtocol.mutate}
+                    onEdit={() => handleEditClick(protocol)}
+                    onLog={logProtocolUsage.mutate}
+                    onAddSupplement={addProtocolSupplement.mutateAsync}
+                    onDeleteSupplement={deleteProtocolSupplement.mutate}
+                    peptides={peptides}
+                />
+            ))}
+        </div>
+    )
 
-            }
+}
 
 
 
-            {/* Client Inventory (Digital Fridge) Inspection */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
-                <ClientInventoryList contactId={id!} />
-            </div>
+{/* Client Inventory (Digital Fridge) Inspection */ }
+<div className="space-y-4">
+    <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
+    <ClientInventoryList contactId={id!} />
+</div>
 
-            {/* Client Portal Access Card */}
+{/* Client Portal Access Card */ }
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -765,7 +778,7 @@ export default function ContactDetails() {
     );
 }
 
-function RegimenCard({ protocol, onDelete, onEdit, onLog, peptides }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, peptides: any[] | undefined }) {
+function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, peptides }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, peptides: any[] | undefined }) {
     // Calculate Total Cost for the Display
     const totalCost = useMemo(() => {
         if (!protocol.protocol_items || !peptides) return 0;
@@ -821,60 +834,116 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, peptides }: { protocol
 
     const isTakenToday = latestLog && differenceInDays(new Date(), new Date(latestLog.created_at)) === 0;
 
+    const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
+
     return (
         <Card className="hover:border-primary/50 transition-colors cursor-pointer group" onClick={onEdit}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                    <CardTitle className="text-base font-semibold group-hover:text-primary transition-colors flex items-center gap-2">
-                        {protocol.name}
-                        {isTakenToday && <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">Taken Today</Badge>}
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                        {/* Show first item detail if available as preview */}
-                        {protocol.protocol_items?.[0] ? (
-                            <span>
-                                {protocol.protocol_items[0].dosage_amount}{protocol.protocol_items[0].dosage_unit} {protocol.protocol_items[0].frequency} for {protocol.protocol_items[0].duration_days} days
-                            </span>
-                        ) : `Created on ${format(new Date(protocol.created_at), 'P')}`}
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    {totalCost > 0 && (
-                        <Badge variant="secondary" className="font-mono">
-                            ${totalCost.toFixed(2)}
-                        </Badge>
-                    )}
-
-                    <Button
-                        size="sm"
-                        variant={isTakenToday ? "outline" : "default"}
-                        className={isTakenToday ? "opacity-50" : ""}
-                        disabled={isTakenToday}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            const itemId = protocol.protocol_items?.[0]?.id;
-                            if (itemId) {
-                                onLog({ itemId });
-                            }
-                        }}
-                    >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        {isTakenToday ? 'Done' : 'Mark Taken'}
-                    </Button>
-
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(protocol.id);
-                        }}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+            <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="text-lg">{protocol.name}</CardTitle>
+                        <CardDescription>{protocol.description}</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="icon" onClick={onEdit}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => onDelete(protocol.id)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
+            <CardContent className="space-y-4">
+                {/* Peptide Items */}
+                <div className="space-y-2">
+                    {protocol.protocol_items?.map((item: any) => (
+                        <div key={item.id} className="flex justify-between items-center p-3 bg-muted rounded-lg md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 p-2 rounded-full">
+                                    <FlaskConical className="h-4 w-4 text-primary" />
+                                </div>
+                                <div>
+                                    <div className="font-semibold">{item.peptides?.name}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {item.dosage_amount}{item.dosage_unit} • {item.frequency} • {item.duration_days || (item.duration_weeks * 7)} days
+                                    </div>
+                                </div>
+                            </div>
+                            <Button size="sm" variant="secondary" className="w-full md:w-auto" onClick={(e) => { e.stopPropagation(); onLog({ itemId: item.id }); }}>
+                                <CheckCircle2 className="mr-2 h-3 w-3" /> Log Dose
+                            </Button>
+                        </div>
+                    ))}
+                    {(!protocol.protocol_items || protocol.protocol_items.length === 0) && (
+                        <p className="text-sm text-muted-foreground italic">No peptides in this regimen.</p>
+                    )}
+                </div>
+
+                {/* Supplement Items */}
+                <div className="pt-2" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider text-xs">
+                            <Pill className="h-3 w-3" /> Supplement Stack
+                        </h4>
+                        <Dialog open={isAddSuppOpen} onOpenChange={setIsAddSuppOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-6 text-xs">
+                                    <Plus className="h-3 w-3 mr-1" /> Add
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add Supplement</DialogTitle>
+                                    <DialogDescription>Add a supporting supplement to this stack.</DialogDescription>
+                                </DialogHeader>
+                                <AddSupplementForm
+                                    protocolId={protocol.id}
+                                    onAdd={onAddSupplement}
+                                    onCancel={() => setIsAddSuppOpen(false)}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        {protocol.protocol_supplements?.map((supp: any) => (
+                            <div key={supp.id} className="relative group border rounded-md p-3 hover:bg-muted/50 transition-colors">
+                                <div className="flex gap-3">
+                                    {supp.supplements?.image_url ? (
+                                        <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt="" />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                            <Pill className="h-5 w-5 opacity-20" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="font-medium text-sm">{supp.supplements?.name || 'Unknown'}</div>
+                                        <div className="text-xs text-muted-foreground">{supp.dosage} <span className="mx-1">•</span> {supp.frequency}</div>
+                                        {supp.notes && <div className="text-[10px] text-muted-foreground mt-1 italic">"{supp.notes}"</div>}
+                                    </div>
+                                </div>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                    onClick={(e) => { e.stopPropagation(); onDeleteSupplement(supp.id); }}
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                    {(!protocol.protocol_supplements || protocol.protocol_supplements.length === 0) && (
+                        <div className="text-xs text-muted-foreground italic border-t pt-2">No supplements assigned.</div>
+                    )}
+                </div>
+
+                <div className="pt-4 border-t flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Estimated Monthly Cost:</span>
+                    <span className="font-bold text-lg">${totalCost.toFixed(2)}</span>
+                </div>
+            </CardContent>
         </Card>
     );
 }
@@ -981,6 +1050,7 @@ function Skeleton({ className }: { className?: string }) {
 
 
 function ClientInventoryList({ contactId }: { contactId: string }) {
+    const queryClient = useQueryClient();
     const { data: inventory, isLoading } = useQuery({
         queryKey: ['client-inventory-admin', contactId],
         queryFn: async () => {
@@ -991,6 +1061,17 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data;
+        }
+    });
+
+    const deleteInventory = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('client_inventory').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
+            toast({ title: "Item removed from fridge" });
         }
     });
 
@@ -1010,20 +1091,38 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {inventory.map((item: any) => (
-                <Card key={item.id} className="relative overflow-hidden">
-                    <div className={`absolute top-0 left-0 w-1 h-full ${item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    <CardHeader className="pb-2 pl-6">
+                <Card key={item.id} className="relative overflow-hidden group">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                                if (confirm('Are you sure you want to remove this item?')) {
+                                    deleteInventory.mutate(item.id);
+                                }
+                            }}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+
+                    <CardHeader className="pb-2 pl-6 pr-8">
                         <div className="flex justify-between items-start">
-                            <CardTitle className="text-sm font-medium leading-tight">
+                            <CardTitle className="text-sm font-medium leading-tight truncate pr-2">
                                 {item.peptide?.name || 'Unknown Item'}
                             </CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
                             <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-[10px]">
                                 {item.current_quantity_mg > 0 ? 'In Stock' : 'Depleted'}
                             </Badge>
+                            <CardDescription className="text-[10px]">
+                                {format(new Date(item.created_at), 'P')}
+                            </CardDescription>
                         </div>
-                        <CardDescription className="text-xs">
-                            Added {format(new Date(item.created_at), 'P')}
-                        </CardDescription>
                     </CardHeader>
                     <CardContent className="pl-6 pb-3">
                         <div className="flex justify-between items-end text-sm">

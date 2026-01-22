@@ -8,6 +8,7 @@ import { DigitalFridge } from "@/components/regimen/DigitalFridge";
 import { DailyProtocol } from "@/components/regimen/DailyProtocol";
 import { HealthMetrics } from "@/components/regimen/HealthMetrics";
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
+import { SupplementStack, SupplementItem } from "@/components/regimen/SupplementStack";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -54,20 +55,29 @@ export default function ClientRegimen() {
 
                 // 3. Build Tasks from Protocols (Mocking/transforming for now)
                 if (protocols) {
-                    const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p =>
-                        p.protocol_items?.map(item => ({
+                    const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p => {
+                        const items = p.protocol_items?.map(item => ({
                             id: item.id,
-                            type: 'peptide',
+                            type: 'peptide' as const,
                             label: `${p.name} (${item.dosage_amount}${item.dosage_unit})`,
                             detail: item.frequency,
-                            is_completed: false // Logic to check if done today needs protocol_logs
-                        })) || []
-                    );
-                    // Add some mock supplements to show the feature
-                    protocolTasks.push(
-                        { id: 'supp-1', type: 'supplement', label: 'Vitamin D3 (5000 IU)', is_completed: false },
-                        { id: 'supp-2', type: 'supplement', label: 'Magnesium', is_completed: true },
-                    );
+                            is_completed: false
+                        })) || [];
+
+                        const supps = p.protocol_supplements?.map((s: any) => {
+                            if (!s.supplements) return null;
+                            return {
+                                id: s.id,
+                                type: 'supplement' as const,
+                                label: `${s.supplements.name || 'Supplement'} (${s.dosage})`,
+                                detail: s.frequency,
+                                is_completed: false
+                            };
+                        }).filter(Boolean) || [];
+
+                        return [...items, ...supps];
+                    });
+
                     setTasks(protocolTasks);
                 }
 
@@ -173,6 +183,33 @@ export default function ClientRegimen() {
 
             {/* Financial Overview (if outstanding balance exists) */}
             {contact && <FinancialOverview contactId={contact.id} />}
+
+            {/* Supplements Stack */}
+            {/* Supplements Stack */}
+            {(() => {
+                try {
+                    const supplementItems: SupplementItem[] = protocols?.flatMap(p =>
+                        p.protocol_supplements?.map((s: any) => {
+                            if (!s || !s.supplements) return null;
+                            return {
+                                id: s.id,
+                                name: s.supplements.name || 'Unknown',
+                                dosage: s.dosage || '',
+                                frequency: s.frequency || '',
+                                notes: s.notes,
+                                image_url: s.supplements.image_url,
+                                purchase_link: s.supplements.purchase_link,
+                                description: s.supplements.description
+                            };
+                        }).filter(Boolean) as SupplementItem[]
+                    ) || [];
+
+                    return <SupplementStack items={supplementItems} />;
+                } catch (err) {
+                    console.error("Failed to render supplement stack", err);
+                    return null;
+                }
+            })()}
 
             {/* Bento Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[600px]">

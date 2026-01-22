@@ -23,9 +23,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // If user has no org, redirect to onboarding
-  if (user && profile && !profile.org_id && location.pathname !== '/onboarding') {
-    return <Navigate to="/onboarding" replace />;
-  }
+  // if (user && profile && !profile.org_id && location.pathname !== '/onboarding') {
+  //   return <Navigate to="/onboarding" replace />;
+  // }
 
   return <>{children}</>;
 }

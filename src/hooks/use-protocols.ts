@@ -26,6 +26,15 @@ export function useProtocols(contactId?: string) {
                     ),
                     protocol_feedback (
                         *
+                    ),
+                    protocol_supplements (
+                        *,
+                        supplements (
+                            name,
+                            image_url,
+                            description,
+                            purchase_link
+                        )
                     )
                 `)
                 .order('created_at', { ascending: false });
@@ -154,14 +163,46 @@ export function useProtocols(contactId?: string) {
         },
     });
 
+    const addProtocolSupplement = useMutation({
+        mutationFn: async (data: { protocol_id: string, supplement_id: string, dosage?: string, frequency?: string, notes?: string }) => {
+            const { error } = await supabase.from('protocol_supplements').insert(data);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            toast({ title: 'Supplement added' });
+        },
+        onError: (err) => toast({ variant: 'destructive', title: 'Failed to add supplement', description: err.message })
+    });
+
+    const deleteProtocolSupplement = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('protocol_supplements').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            toast({ title: 'Supplement removed' });
+        },
+        onError: (err) => toast({ variant: 'destructive', title: 'Failed to remove supplement', description: err.message })
+    });
+
     return {
         protocols: query.data,
         isLoading: query.isLoading,
         createProtocol,
         deleteProtocol,
         updateProtocolItem,
-        logProtocolUsage
+        logProtocolUsage,
+        addProtocolSupplement,
+        deleteProtocolSupplement
     };
+}
+
+// ... (keep useProtocolItems as is) ...
+
+export function useProtocolSupplements() {
+    // Helper hook if needed, but managing via useProtocols is fine for now
 }
 
 export function useProtocolItems(protocolId: string) {

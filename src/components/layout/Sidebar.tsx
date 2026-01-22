@@ -21,7 +21,8 @@ const navigation = [
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package },
-  { name: 'Bottles', href: '/bottles', icon: Pill },
+  { name: 'Bottles', href: '/bottles', icon: Pill }, // Keep this if used, or replace icon if duplicate
+  { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical }, // Use FlaskConical or similar if Pill is taken. Or reuse Pill.
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Resources', href: '/admin-resources', icon: BookOpen },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare },
