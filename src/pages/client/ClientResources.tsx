@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { EmptyResourceState } from "@/components/resources/EmptyResourceState";
 
 type Resource = {
     id: string;
@@ -548,10 +549,8 @@ export default function ClientResources() {
                     {/* Resources Grid */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {topicResources.length === 0 ? (
-                            <div className="col-span-full text-center py-16 border border-gray-800 rounded-xl bg-gray-900/50">
-                                <BookOpen className="mx-auto h-12 w-12 text-gray-600 mb-4" />
-                                <p className="text-lg font-medium text-gray-300 mb-1">No resources found.</p>
-                                <p className="text-sm text-gray-500">Content is being added for this topic.</p>
+                            <div className="col-span-full">
+                                <EmptyResourceState searchTerm={selectedTheme.name} />
                             </div>
                         ) : (
                             topicResources.map(resource => (

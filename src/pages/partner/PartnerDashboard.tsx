@@ -15,29 +15,42 @@ import {
 import { useContacts } from '@/hooks/use-contacts';
 // import { useMyOrders } from '@/hooks/use-orders'; // We might need this later
 
+import { useSearchParams } from 'react-router-dom';
+
 export default function PartnerDashboard() {
     const { user, userRole } = useAuth();
+    const [searchParams] = useSearchParams();
+    const isPreview = searchParams.get('preview_role') === 'sales_rep';
 
     // Fetch "My Clients" - Filter by assigned_rep_id via RLS or client-side for now
     // Note: For now, we fetch all and filter client-side until RLS is strict
     const { data: allContacts } = useContacts();
 
     // Logic to filter my clients
-    // If we are previewing as a specific rep, we might need that ID.
-    // But usually this dashboard is for the logged-in user.
-    // For 'Preview Mode' (Admin viewing as Partner), userRole?.id is the Rep's profile ID if we mock it correctly?
-    // Actually, 'Preview Mode' passes a query param usually. 
-    // Let's assume for this specific component, we are rendering it because we detected the 'sales_rep' role (or preview).
-
     const myClients = allContacts?.filter(c =>
         (c as any).assigned_rep_id === userRole?.id
-        // OR if we are admin previewing, maybe we see all? 
-        // For simplicity, let's just show count of 'Partner' type contacts or something similar if strict filtering isn't ready.
-        // Actually, let's check if the contact has ME as the assigned rep.
     ) || [];
 
     return (
         <div className="space-y-6">
+            {isPreview && (
+                <div className="bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 p-4 mb-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <Activity className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-amber-700 dark:text-amber-200">
+                                <strong>Preview Mode Active</strong>
+                                <br />
+                                You are viewing the Partner Dashboard as an Administrator ({userRole?.full_name}).
+                                Data shown is linked to <u>your</u> account. To view a specific Partner's data, check their "My Clients" list or login as them.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>

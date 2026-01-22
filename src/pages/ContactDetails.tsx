@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -70,6 +71,9 @@ export default function ContactDetails() {
     const [frequency, setFrequency] = useState<string>('daily');
     const [durationValue, setDurationValue] = useState<string>('30');
     const [costMultiplier, setCostMultiplier] = useState<string>('1');
+    const [vialSize, setVialSize] = useState<string>('5'); // New State for Vial Size
+    const [autoAssignInventory, setAutoAssignInventory] = useState(false);
+    const [tempPeptideIdForAssign, setTempPeptideIdForAssign] = useState<string | undefined>(undefined);
 
     // Add Protocol (Template) State
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -122,6 +126,11 @@ export default function ContactDetails() {
                     frequency: frequency,
                     duration_days: parseInt(durationValue),
                     cost_multiplier: parseFloat(costMultiplier)
+                    // Note: Ideally we should save vialSize too if we want to persist it, 
+                    // but the schema doesn't have it yet. 
+                    // The request didn't explicitly ask for persistence of this field, 
+                    // just "calculate current cost". 
+                    // We will rely on default parsing or user re-entry for now unless schema changes.
                 });
             } else {
                 // Create new protocol
@@ -142,6 +151,11 @@ export default function ContactDetails() {
 
             setIsAddPeptideOpen(false);
             resetCalculator();
+
+            if (autoAssignInventory && selectedPeptideId) {
+                setTempPeptideIdForAssign(selectedPeptideId);
+                setTimeout(() => setIsAssignInventoryOpen(true), 300); // Small delay for UI transition
+            }
         } catch (error) {
             console.error("Failed to save regimen", error);
         }
@@ -155,11 +169,18 @@ export default function ContactDetails() {
         setEditingItemId(item.id);
 
         setSelectedPeptideId(item.peptide_id);
+        const peptide = peptides?.find(p => p.id === item.peptide_id);
+
         setDosageAmount(item.dosage_amount.toString());
         setDosageUnit(item.dosage_unit);
         setFrequency(item.frequency);
         setDurationValue(item.duration_days?.toString() || (item.duration_weeks * 7).toString());
         setCostMultiplier(item.cost_multiplier?.toString() || '1');
+
+        // Try to set vial size from name + parsing, creating a "smart default"
+        if (peptide) {
+            setVialSize(parseVialSize(peptide.name).toString());
+        }
 
         setIsAddPeptideOpen(true);
     };
@@ -252,6 +273,7 @@ export default function ContactDetails() {
         setFrequency('daily');
         setDurationValue('30');
         setCostMultiplier('1');
+        setVialSize('5'); // Reset Default
     };
 
     const handleAssignTemplate = async () => {
@@ -285,23 +307,30 @@ export default function ContactDetails() {
         const amount = parseFloat(dosageAmount) || 0;
         const duration = parseInt(durationValue) || 0;
         const multiplier = parseFloat(costMultiplier) || 1;
+        const userVialSize = parseFloat(vialSize) || 5;
         const peptide = peptides?.find(p => p.id === selectedPeptideId);
 
         let amountInMg = amount;
         if (dosageUnit === 'mcg') amountInMg = amount / 1000;
-        // Note: usage of 'mg' variable name here is loose; if IU, it just holds the IU amount.
 
-        let totalAmountNeededMg = amountInMg * duration;
+        // Calculate usage per day (avg)
+        let dailyUsageMg = amountInMg;
         if (frequency === 'weekly') {
-            totalAmountNeededMg = amountInMg * (duration / 7);
-        } else if (frequency === 'bid') {
-            totalAmountNeededMg = amountInMg * 2 * duration;
-        } else if (frequency === 'biweekly') {
-            totalAmountNeededMg = amountInMg * 2 * (duration / 7);
+            dailyUsageMg = amountInMg / 7;
+        } else if (frequency === 'bid') { // twice daily
+            dailyUsageMg = amountInMg * 2;
+        } else if (frequency === 'biweekly') { // 2x per week
+            dailyUsageMg = (amountInMg * 2) / 7;
+        } else if (frequency === 'monthly') {
+            dailyUsageMg = amountInMg / 30;
         }
 
-        const vialSizeMg = peptide ? parseVialSize(peptide.name) : 5;
-        const vialsNeeded = Math.ceil(totalAmountNeededMg / vialSizeMg);
+        const daysPerVial = dailyUsageMg > 0 ? (userVialSize / dailyUsageMg) : 0;
+
+        // Total needed over the duration
+        const totalAmountNeededMg = dailyUsageMg * duration;
+
+        const vialsNeeded = Math.ceil(totalAmountNeededMg / userVialSize);
 
         const unitCost = peptide?.avg_cost || 0;
         const totalCostEstimate = vialsNeeded * unitCost * multiplier;
@@ -310,9 +339,10 @@ export default function ContactDetails() {
             totalAmount: totalAmountNeededMg,
             displayUnit: dosageUnit === 'iu' ? 'IU' : 'mg',
             vialsNeeded,
-            estimatedCost: totalCostEstimate
+            estimatedCost: totalCostEstimate,
+            daysPerVial: daysPerVial
         };
-    }, [dosageAmount, dosageUnit, frequency, durationValue, selectedPeptideId, costMultiplier, peptides]);
+    }, [dosageAmount, dosageUnit, frequency, durationValue, selectedPeptideId, costMultiplier, peptides, vialSize]);
 
 
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -365,11 +395,13 @@ export default function ContactDetails() {
                                 </DialogHeader>
                                 <AssignInventoryForm
                                     contactId={id!}
+                                    defaultPeptideId={tempPeptideIdForAssign}
                                     onClose={() => {
                                         queryClient.invalidateQueries({ queryKey: ['contacts', id] });
                                         queryClient.invalidateQueries({ queryKey: ['movements'] });
                                         queryClient.invalidateQueries({ queryKey: ['bottles'] });
                                         setIsAssignInventoryOpen(false);
+                                        setTempPeptideIdForAssign(undefined);
                                     }}
                                 />
                             </DialogContent>
@@ -451,41 +483,71 @@ export default function ContactDetails() {
                                             />
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label>Cost Pricing</Label>
-                                            <Select value={costMultiplier} onValueChange={setCostMultiplier}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="1">At Cost (1x)</SelectItem>
-                                                    <SelectItem value="1.5">1.5x Cost</SelectItem>
-                                                    <SelectItem value="2">2x Cost</SelectItem>
-                                                    <SelectItem value="3">3x Cost</SelectItem>
-                                                    <SelectItem value="4">4x Cost</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <Label>Vial Size (mg)</Label>
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                value={vialSize}
+                                                onChange={(e) => setVialSize(e.target.value)}
+                                                placeholder="e.g 5"
+                                            />
                                         </div>
                                     </div>
 
+                                    <div className="grid gap-2">
+                                        <Label>Cost Pricing (Markup)</Label>
+                                        <Select value={costMultiplier} onValueChange={setCostMultiplier}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">At Cost (1x)</SelectItem>
+                                                <SelectItem value="1.5">1.5x Cost</SelectItem>
+                                                <SelectItem value="2">2x Cost</SelectItem>
+                                                <SelectItem value="3">3x Cost</SelectItem>
+                                                <SelectItem value="4">4x Cost</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     {/* Calc Summary */}
-                                    <div className="bg-muted p-3 rounded-md text-sm space-y-1">
-                                        <div className="flex items-center gap-2 font-semibold">
+                                    <div className="bg-muted p-3 rounded-md text-sm space-y-2">
+                                        <div className="flex items-center gap-2 font-semibold border-b border-border pb-2">
                                             <Calculator className="h-4 w-4" />
-                                            <span>Est. Requirements</span>
+                                            <span>Regimen Summary</span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-                                            <div>Daily Dose: {dosageAmount}{dosageUnit}</div>
-                                            <div>Duration: {durationValue} days</div>
-                                            <div className="col-span-2 pt-1 border-t border-border mt-1 space-y-1">
-                                                <div className="flex justify-between">
-                                                    <span>Total Needed:</span>
-                                                    <span>{calculations.totalAmount.toFixed(2)} {calculations.displayUnit}</span>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-muted-foreground">
+                                            <div>Daily Dose: <span className="text-foreground">{dosageAmount}{dosageUnit}</span></div>
+                                            <div>Freq: <span className="text-foreground capitalize">{frequency}</span></div>
+
+                                            <div>Vial Lasts: <span className="text-foreground">{Math.floor(calculations.daysPerVial)} days</span></div>
+                                            <div>Vials Needed: <span className="text-foreground font-semibold">{calculations.vialsNeeded}</span></div>
+
+                                            <div className="col-span-2 pt-2 border-t border-border mt-1">
+                                                <div className="flex justify-between items-center">
+                                                    <span>Total Cost Estimate:</span>
+                                                    <span className="text-lg font-bold text-primary">${calculations.estimatedCost.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex justify-between font-medium text-foreground">
-                                                    <span>Est. Cost ({calculations.vialsNeeded} vials):</span>
-                                                    <span>${calculations.estimatedCost.toFixed(2)}</span>
+                                                <div className="text-xs text-muted-foreground mt-1">
+                                                    ({calculations.vialsNeeded} vials @ ${((peptides?.find(p => p.id === selectedPeptideId)?.avg_cost || 0) * parseFloat(costMultiplier)).toFixed(2)} each)
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+
+                                    {!editingItemId && (
+                                        <div className="flex items-center space-x-2 pt-2">
+                                            <Checkbox
+                                                id="auto-assign"
+                                                checked={autoAssignInventory}
+                                                onCheckedChange={(checked) => setAutoAssignInventory(checked === true)}
+                                            />
+                                            <label
+                                                htmlFor="auto-assign"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                Assign inventory now?
+                                            </label>
+                                        </div>
+                                    )}
 
                                 </div>
                                 <DialogFooter>

@@ -30,9 +30,14 @@ import {
     SelectValue,
 } from "@/components/ui/select"; // Keeping Select for Payment Status
 
-export function AssignInventoryForm({ contactId, onClose }: { contactId: string, onClose: () => void }) {
-    const { data: bottles } = useBottles({ status: 'in_stock' });
+export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { contactId: string, onClose: () => void, defaultPeptideId?: string }) {
+    const { data: allBottles } = useBottles({ status: 'in_stock' });
     const createMovement = useCreateMovement();
+
+    // Filter bottles if a default peptide is provided
+    const bottles = defaultPeptideId
+        ? allBottles?.filter(b => b.lots?.peptide_id === defaultPeptideId)
+        : allBottles;
 
     const [open, setOpen] = useState(false);
     const [selectedBottleId, setSelectedBottleId] = useState<string>('');
