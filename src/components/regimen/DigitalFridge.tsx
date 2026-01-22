@@ -280,11 +280,31 @@ function LogDoseModal({ vial }: { vial: ClientInventoryItem }) {
                             </Select>
                         </div>
                     </div>
-                    <div className="bg-muted p-3 rounded text-sm">
-                        <p className="font-medium">After this dose:</p>
-                        <p className="text-muted-foreground">
-                            Remaining: {Math.max(0, vial.current_quantity_mg - (parseFloat(doseAmount || '0') * (doseUnit === 'mcg' ? 0.001 : 1))).toFixed(2)}mg
-                        </p>
+
+                    <div className="bg-muted p-3 rounded text-sm space-y-2">
+                        {vial.concentration_mg_ml && doseAmount && parseFloat(doseAmount) > 0 && (
+                            <div className="bg-background border rounded p-2 mb-2">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Syringe Prep Helper</Label>
+                                <div className="flex justify-between items-baseline mt-1">
+                                    <span className="text-sm">Pull to:</span>
+                                    <div className="text-right">
+                                        <span className="text-xl font-bold text-primary">
+                                            {/* Units = (Dose / Conc) * 100 */}
+                                            {((parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1)) / vial.concentration_mg_ml * 100).toFixed(1)}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground ml-1">units</span>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-right text-muted-foreground">
+                                    ({((parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1)) / vial.concentration_mg_ml).toFixed(2)} ml)
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Remaining after dose:</span>
+                            <span>{Math.max(0, vial.current_quantity_mg - (parseFloat(doseAmount || '0') * (doseUnit === 'mcg' ? 0.001 : 1))).toFixed(2)}mg</span>
+                        </div>
                     </div>
                 </div>
                 <DialogFooter>

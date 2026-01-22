@@ -33,33 +33,25 @@ const supplements = [
         name: 'Sports Research Alaskan Omega-3',
         description: 'Triple Strength Wild Alaskan Fish Oil (1250mg). Sustainably sourced, supports heart, brain & joint health.',
         image_url: 'https://placehold.co/600x600/0f172a/ffffff?text=Omega+3',
-        purchase_link: 'https://www.amazon.com/s?k=Sports+Research+Alaskan+Omega-3+Triple+Strength',
-        default_dosage: '1 Softgel',
-        default_frequency: 'Daily'
+        purchase_link: 'https://www.amazon.com/s?k=Sports+Research+Alaskan+Omega-3+Triple+Strength'
     },
     {
         name: 'Life Extension TMG 500mg',
         description: 'Trimethylglycine (Betaine). Supports healthy homocysteine levels and promotes liver health.',
         image_url: 'https://placehold.co/600x600/1e3a8a/ffffff?text=TMG',
-        purchase_link: 'https://www.amazon.com/s?k=Life+Extension+TMG+500mg',
-        default_dosage: '1-2 Capsules',
-        default_frequency: 'Morning'
+        purchase_link: 'https://www.amazon.com/s?k=Life+Extension+TMG+500mg'
     },
     {
         name: 'Thorne Zinc Picolinate 30mg',
         description: 'Highly absorbable Zinc Picolinate. Essential for immune function, reproductive health, and growth.',
         image_url: 'https://placehold.co/600x600/ffffff/000000?text=Zinc',
-        purchase_link: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg',
-        default_dosage: '1 Capsule',
-        default_frequency: 'Daily'
+        purchase_link: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg'
     },
     {
         name: 'BulkSupplements Creatine Monohydrate',
         description: 'Pure Micronized Creatine Monohydrate Powder. Enhances muscle mass, power, and cognitive support.',
         image_url: 'https://placehold.co/600x600/e2e8f0/000000?text=Creatine',
-        purchase_link: 'https://www.amazon.com/s?k=BulkSupplements+Creatine+Monohydrate+Micronized',
-        default_dosage: '5000 mg (5g)',
-        default_frequency: 'Daily'
+        purchase_link: 'https://www.amazon.com/s?k=BulkSupplements+Creatine+Monohydrate+Micronized'
     }
 ];
 
