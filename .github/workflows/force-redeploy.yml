@@ -1,0 +1,24 @@
+name: Force Vercel Redeploy
+
+on:
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  trigger-redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Webhook
+        run: |
+          # This creates an empty commit to trigger Vercel
+          echo "Triggering Vercel redeploy via commit"
+          
+      - uses: actions/checkout@v3
+        with:
+          ref: main
+          
+      - name: Create empty commit
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git commit --allow-empty -m "chore: force Vercel redeploy [skip ci]"
+          git push
