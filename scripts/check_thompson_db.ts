@@ -11,10 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 async function checkThompson() {
     const { data: roles, error } = await supabase
         .from('user_roles')
-        .select(`
-            *,
-            profiles:user_id (email, full_name)
-        `);
+        .select('*');
 
     if (error) {
         console.error('Error fetching roles:', error);

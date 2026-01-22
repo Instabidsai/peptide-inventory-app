@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'staff' | 'viewer';
+type AppRole = 'admin' | 'staff' | 'viewer' | 'sales_rep';
 
 interface Profile {
   id: string;
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
-    
+
     setProfile(profileData);
 
     if (profileData?.org_id) {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .eq('org_id', profileData.org_id)
         .maybeSingle();
-      
+
       setUserRole(roleData);
 
       // Fetch organization
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('id', profileData.org_id)
         .maybeSingle();
-      
+
       setOrganization(orgData);
     } else {
       setUserRole(null);
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        
+
         // Defer Supabase calls with setTimeout
         if (currentSession?.user) {
           setTimeout(() => {
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: email,
           full_name: fullName,
         });
-      
+
       if (profileError) {
         console.error('Error creating profile:', profileError);
       }
