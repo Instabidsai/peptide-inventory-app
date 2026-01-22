@@ -54,6 +54,7 @@ const App = () => (
             <Route path="/debug-invite" element={<DebugInvite />} />
             <Route path="/login" element={<Auth />} /> {/* Fail-safe for old links/redirects */}
             <Route path="/update-password" element={<UpdatePassword />} />
+            <Route path="/update-password/*" element={<UpdatePassword />} /> {/* Safety Net for Malformed Redirects */}
             <Route path="/debug-auth" element={<DebugAuth />} />
             <Route path="/onboarding" element={<Onboarding />} />
 

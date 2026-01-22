@@ -40,8 +40,12 @@ serve(async (req) => {
 
         // 2. Generate the REAL Magic Link (One-Time Use)
         const baseUrlRaw = Deno.env.get('PUBLIC_SITE_URL') || 'https://app.thepeptideai.com';
-        const baseUrl = baseUrlRaw.replace(/\/$/, ''); // Remove trailing slash if present
-        const redirectUrl = `${baseUrl}/update-password`;
+
+        // Use URL constructor for safety (Fixes the "concatenation" bug)
+        // If baseUrlRaw is "https://app...", this ensures we get "https://app.../update-password"
+        const siteUrl = new URL(baseUrlRaw);
+        const redirectUrlObj = new URL('/update-password', siteUrl);
+        const redirectUrl = redirectUrlObj.toString();
 
         const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
             type: 'magiclink',
@@ -53,11 +57,14 @@ serve(async (req) => {
 
         if (linkError) throw linkError
 
-        // 3. Return the Magic Link
+        // 3. Return the Magic Link with DEBUG info
         return new Response(
             JSON.stringify({
                 success: true,
-                url: linkData.properties.action_link
+                url: linkData.properties.action_link,
+                // Debug fields to show in the "Green Box"
+                debug_base_url: baseUrlRaw,
+                debug_computed_redirect: redirectUrl
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
