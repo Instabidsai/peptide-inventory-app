@@ -17,63 +17,54 @@ export default function UpdatePassword() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [searchParams] = useSearchParams();
-    const { session, loading: authLoading } = useAuth(); // START CHANGE: Use global auth state
+    const { session, loading: authLoading } = useAuth();
+
+    // DEBUG STATE
+    const [debugLog, setDebugLog] = useState<string[]>([]);
+    const addLog = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toISOString().split('T')[1]} - ${msg}`]);
 
     useEffect(() => {
-        let mounted = true;
+        addLog(`Mount. AuthLoading: ${authLoading}, Session: ${!!session}`);
 
-        // 1. If global auth is still loading, wait.
         if (authLoading) return;
 
-        // 2. If session exists, we are good!
         if (session) {
-            console.log("Session verified via AuthContext:", session.user.email);
+            addLog("Session found! User: " + session.user.email);
             setVerifying(false);
             return;
         }
 
-        // 3. Check for specific link errors in URL fragment or query
-        // Supabase often puts errors in the hash: #error=access_denied&error_description=...
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const errorDesc = hashParams.get('error_description') || searchParams.get('error_description');
+        const hash = window.location.hash;
+        addLog(`Hash present: ${hash ? 'Yes (' + hash.substring(0, 15) + '...)' : 'No'}`);
 
-        if (errorDesc) {
-            if (mounted) {
-                console.error("Link Verification Error:", errorDesc);
-                toast({
-                    variant: "destructive",
-                    title: "Link Verification Failed",
-                    description: decodeURIComponent(errorDesc.replace(/\+/g, ' '))
-                });
-                navigate("/auth");
-            }
+        if (hash.includes('access_token')) {
+            addLog("Access Token found in Hash. Waiting for Supabase...");
+            // Supabase should pick this up automatically.
+            // We set a long timeout just to show if it FAILS.
+            setTimeout(() => {
+                if (!session) addLog("TIMEOUT: Supabase did not create session after 5s.");
+            }, 5000);
             return;
         }
 
-        // 4. Fallback Timeout
-        // If auth loaded, no session, and no error... maybe latency?
-        const timeoutId = setTimeout(() => {
-            if (mounted && !session) {
-                // Double check directly one last time
-                supabase.auth.getSession().then(({ data }) => {
-                    if (!data.session && mounted) {
-                        console.error("Verification timeout - no session established.");
-                        toast({
-                            variant: "destructive",
-                            title: "Link Invalid",
-                            description: "We couldn't log you in. The link may have expired or was already used."
-                        });
-                        navigate("/auth?error=invalid_link");
-                    }
-                });
-            }
-        }, 2500); // 2.5s grace period
+        const errorDesc = customHashParam('error_description') || searchParams.get('error_description');
+        if (errorDesc) {
+            addLog(`Supabase Error Detected: ${errorDesc}`);
+        } else {
+            addLog("No session, no hash token. Why are we here?");
+        }
 
-        return () => {
-            mounted = false;
-            clearTimeout(timeoutId);
-        };
-    }, [session, authLoading, navigate, toast, searchParams]);
+        // DISABLE REDIRECTS FOR DEBUGGING
+        // navigate("/auth"); 
+
+    }, [session, authLoading, searchParams]);
+
+    // Helper to parse hash manually if URLSearchParams fails
+    const customHashParam = (key: string) => {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        return params.get(key);
+    }
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,27 +72,34 @@ export default function UpdatePassword() {
             toast({ variant: "destructive", title: "Passwords do not match" });
             return;
         }
-        if (password.length < 6) {
-            toast({ variant: "destructive", title: "Password too short", description: "Must be at least 6 characters." });
-            return;
-        }
-
         setLoading(true);
         const { error } = await supabase.auth.updateUser({ password: password });
-
         if (error) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
+            addLog(`Update Failed: ${error.message}`);
         } else {
-            toast({ title: "Password Set Successfully", description: "Welcome to the Family Hub!" });
+            toast({ title: "Success", description: "Password Set!" });
             navigate("/dashboard");
         }
         setLoading(false);
     };
 
-    if (verifying) {
+    if (verifying && !session) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-50">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex h-screen flex-col items-center justify-center bg-gray-50 p-4 space-y-4">
+                <Card className="w-full max-w-lg border-orange-500 border-2">
+                    <CardHeader><CardTitle className="text-orange-600">⚠️ DEBUG MODE: DIAGNOSING REDIRECT</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <p>We trapped the redirect! Taking a look at why Supabase isn't logging you in...</p>
+                        <div className="bg-slate-900 text-green-400 p-4 rounded text-xs font-mono h-64 overflow-auto">
+                            {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+                        </div>
+                        <p className="text-sm text-slate-500">
+                            If you see "Success" or "Session found" above, we are good.
+                            If it hangs on "Waiting...", Supabase is rejecting the token silently.
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -116,23 +114,11 @@ export default function UpdatePassword() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">New Password</label>
-                            <Input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                minLength={6}
-                            />
+                            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Confirm Password</label>
-                            <Input
-                                type="password"
-                                value={confirm}
-                                onChange={(e) => setConfirm(e.target.value)}
-                                required
-                                minLength={6}
-                            />
+                            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
                         </div>
                     </CardContent>
                     <CardFooter>

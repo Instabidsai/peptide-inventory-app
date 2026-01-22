@@ -30,7 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"; // Keeping Select for Payment Status
 
-export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { contactId: string, onClose: () => void, defaultPeptideId?: string }) {
+export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defaultQuantity = 1 }: { contactId: string, onClose: () => void, defaultPeptideId?: string, defaultQuantity?: number }) {
     const { data: allBottles } = useBottles({ status: 'in_stock' });
     const createMovement = useCreateMovement();
 
@@ -40,32 +40,67 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
         : allBottles;
 
     const [open, setOpen] = useState(false);
-    const [selectedBottleId, setSelectedBottleId] = useState<string>('');
+    // Multi-select state
+    const [selectedBottleIds, setSelectedBottleIds] = useState<string[]>([]);
+
+    // Auto-select defaults when bottles load
+    useEffect(() => {
+        if (bottles && bottles.length > 0 && selectedBottleIds.length === 0) {
+            // Sort by creation or lot? Usually FIFO (First In First Out) is best.
+            // Assuming bottles are returned sorted or we sort them.
+            // For now, take the first N available.
+            const autoSelect = bottles.slice(0, defaultQuantity).map(b => b.id);
+            setSelectedBottleIds(autoSelect);
+        }
+    }, [bottles, defaultQuantity]);
+
     const [price, setPrice] = useState<string>('');
     const [paymentStatus, setPaymentStatus] = useState<string>('unpaid');
     const [amountPaid, setAmountPaid] = useState<string>('0');
 
-    const selectedBottle = bottles?.find(b => b.id === selectedBottleId);
+    // Calculate total cost for all selected
+    const selectedBottles = bottles?.filter(b => selectedBottleIds.includes(b.id)) || [];
+    const totalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
 
-    // Auto-fill price with cost when bottle selected
+    // Auto-fill price with cost when selection changes (if empty or default)
     useEffect(() => {
-        if (selectedBottle && !price) {
-            setPrice(selectedBottle.lots?.cost_per_unit.toString() || '0');
+        if (selectedBottles.length > 0 && !price) {
+            setPrice(totalCost.toString());
+        } else if (selectedBottles.length > 0 && price === '0') {
+            setPrice(totalCost.toString());
         }
-    }, [selectedBottle]);
+    }, [selectedBottles.length, totalCost]); // Only update if selection count changes to avoid overriding user input
+    // Actually, simpler: Default price to totalCost.
+
+    const toggleBottle = (id: string) => {
+        setSelectedBottleIds(prev =>
+            prev.includes(id)
+                ? prev.filter(x => x !== id)
+                : [...prev, id]
+        );
+    };
 
     const handleSubmit = async () => {
-        if (!selectedBottleId) return;
+        if (selectedBottleIds.length === 0) return;
 
         try {
+            // Distribute price and payment across items? 
+            // Or just treat 'price' as total sale price.
+            // Data model expects price_at_sale per ITEM.
+            // We should split the total price evenly or per unit cost?
+            // User inputs TOTAL Price usually.
+            // Let's split it evenly for simplicity.
+            const pricePerItem = parseFloat(price) / selectedBottleIds.length;
+            const payPerItem = parseFloat(amountPaid) / selectedBottleIds.length;
+
             await createMovement.mutateAsync({
                 type: 'sale',
                 contact_id: contactId,
                 movement_date: new Date().toISOString(),
-                items: [{
-                    bottle_id: selectedBottleId,
-                    price_at_sale: parseFloat(price) || 0
-                }],
+                items: selectedBottleIds.map(id => ({
+                    bottle_id: id,
+                    price_at_sale: pricePerItem || 0
+                })),
                 payment_status: paymentStatus as any,
                 amount_paid: parseFloat(amountPaid) || 0,
                 payment_date: paymentStatus === 'paid' ? new Date().toISOString() : undefined
@@ -79,7 +114,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
     return (
         <div className="space-y-4 py-4">
             <div className="grid gap-2">
-                <Label>Select Bottle</Label>
+                <Label>Select Bottles ({selectedBottleIds.length} selected)</Label>
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -88,12 +123,9 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
                             aria-expanded={open}
                             className="w-full justify-between"
                         >
-                            {selectedBottleId
-                                ? (() => {
-                                    const b = bottles?.find((b) => b.id === selectedBottleId);
-                                    return b ? `${b.uid} - ${b.lots?.peptides?.name} (${b.lots?.lot_number})` : "Select bottle...";
-                                })()
-                                : "Search inventory..."}
+                            {selectedBottleIds.length > 0
+                                ? `${selectedBottleIds.length} bottles selected`
+                                : "Select bottles..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
@@ -108,14 +140,13 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
                                             key={b.id}
                                             value={`${b.uid} ${b.lots?.peptides?.name} ${b.lots?.lot_number}`}
                                             onSelect={() => {
-                                                setSelectedBottleId(b.id === selectedBottleId ? "" : b.id);
-                                                setOpen(false);
+                                                toggleBottle(b.id);
                                             }}
                                         >
                                             <Check
                                                 className={cn(
                                                     "mr-2 h-4 w-4",
-                                                    selectedBottleId === b.id ? "opacity-100" : "opacity-0"
+                                                    selectedBottleIds.includes(b.id) ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
                                             {b.uid} - {b.lots?.peptides?.name} ({b.lots?.lot_number})
@@ -128,10 +159,10 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
                 </Popover>
             </div>
 
-            {selectedBottle && (
+            {selectedBottles.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label>Sale Price ($)</Label>
+                        <Label>Total Sale Price ($)</Label>
                         <Input
                             type="number"
                             step="0.01"
@@ -139,7 +170,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
                             onChange={(e) => setPrice(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Cost: ${selectedBottle.lots?.cost_per_unit}
+                            Total Cost: ${totalCost.toFixed(2)} (${(totalCost / selectedBottles.length).toFixed(2)}/ea)
                         </p>
                     </div>
                 </div>
@@ -176,9 +207,9 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId }: { 
             </div>
 
             <DialogFooter className="mt-4">
-                <Button onClick={handleSubmit} disabled={!selectedBottleId || createMovement.isPending}>
+                <Button onClick={handleSubmit} disabled={selectedBottleIds.length === 0 || createMovement.isPending}>
                     {createMovement.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Assignment
+                    Confirm Assignment ({selectedBottleIds.length})
                 </Button>
             </DialogFooter>
         </div>

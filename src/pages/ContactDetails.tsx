@@ -6,7 +6,8 @@ import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useCreateMovement } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query'; // Add this import
+import { useQueryClient, useQuery } from '@tanstack/react-query'; // Add this import
+import { Skeleton } from '@/components/ui/skeleton';
 // ... rest imports
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -74,6 +75,7 @@ export default function ContactDetails() {
     const [vialSize, setVialSize] = useState<string>('5'); // New State for Vial Size
     const [autoAssignInventory, setAutoAssignInventory] = useState(false);
     const [tempPeptideIdForAssign, setTempPeptideIdForAssign] = useState<string | undefined>(undefined);
+    const [tempQuantityForAssign, setTempQuantityForAssign] = useState<number | undefined>(undefined);
 
     // Add Protocol (Template) State
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -154,6 +156,7 @@ export default function ContactDetails() {
 
             if (autoAssignInventory && selectedPeptideId) {
                 setTempPeptideIdForAssign(selectedPeptideId);
+                setTempQuantityForAssign(calculations.vialsNeeded);
                 setTimeout(() => setIsAssignInventoryOpen(true), 300); // Small delay for UI transition
             }
         } catch (error) {
@@ -396,12 +399,14 @@ export default function ContactDetails() {
                                 <AssignInventoryForm
                                     contactId={id!}
                                     defaultPeptideId={tempPeptideIdForAssign}
+                                    defaultQuantity={tempQuantityForAssign}
                                     onClose={() => {
                                         queryClient.invalidateQueries({ queryKey: ['contacts', id] });
                                         queryClient.invalidateQueries({ queryKey: ['movements'] });
                                         queryClient.invalidateQueries({ queryKey: ['bottles'] });
                                         setIsAssignInventoryOpen(false);
                                         setTempPeptideIdForAssign(undefined);
+                                        setTempQuantityForAssign(undefined);
                                     }}
                                 />
                             </DialogContent>
@@ -623,6 +628,14 @@ export default function ContactDetails() {
 
             }
 
+
+
+            {/* Client Inventory (Digital Fridge) Inspection */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
+                <ClientInventoryList contactId={id!} />
+            </div>
+
             {/* Client Portal Access Card */}
             <Card>
                 <CardHeader>
@@ -747,7 +760,7 @@ export default function ContactDetails() {
                 </div>
             </div>
 
-        </div>
+        </div >
 
     );
 }
@@ -966,3 +979,77 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 
+
+function ClientInventoryList({ contactId }: { contactId: string }) {
+    const { data: inventory, isLoading } = useQuery({
+        queryKey: ['client-inventory-admin', contactId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('client_inventory')
+                .select('*, peptide:peptides(name)')
+                .eq('contact_id', contactId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data;
+        }
+    });
+
+    if (isLoading) return <Skeleton className="h-32 w-full" />;
+
+    if (!inventory?.length) {
+        return (
+            <Card className="bg-muted/20 border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                    <FlaskConical className="h-8 w-8 mb-2 opacity-20" />
+                    <p className="text-sm">Fridge is empty.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {inventory.map((item: any) => (
+                <Card key={item.id} className="relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    <CardHeader className="pb-2 pl-6">
+                        <div className="flex justify-between items-start">
+                            <CardTitle className="text-sm font-medium leading-tight">
+                                {item.peptide?.name || 'Unknown Item'}
+                            </CardTitle>
+                            <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-[10px]">
+                                {item.current_quantity_mg > 0 ? 'In Stock' : 'Depleted'}
+                            </Badge>
+                        </div>
+                        <CardDescription className="text-xs">
+                            Added {format(new Date(item.created_at), 'P')}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pl-6 pb-3">
+                        <div className="flex justify-between items-end text-sm">
+                            <div className="text-muted-foreground">
+                                <div className="flex items-baseline gap-1">
+                                    <span className={item.current_quantity_mg < 2 ? "text-red-500 font-bold" : "text-foreground font-semibold"}>
+                                        {item.current_quantity_mg}mg
+                                    </span>
+                                    <span className="text-xs">remaining</span>
+                                </div>
+                                <div className="text-[10px] mt-1">
+                                    Last activity: {format(new Date(item.updated_at), 'MMM d, h:mm a')}
+                                </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground text-right">
+                                <div>/ {item.vial_size_mg}mg size</div>
+                                {item.current_quantity_mg < item.vial_size_mg && (
+                                    <div className="text-[10px] text-emerald-600 font-medium">
+                                        -{((1 - (item.current_quantity_mg / item.vial_size_mg)) * 100).toFixed(0)}% used
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
