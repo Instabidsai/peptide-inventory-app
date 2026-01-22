@@ -31,10 +31,12 @@ const navigation = [
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
-  const { organization, userRole } = useAuth();
+  const { organization, userRole, user } = useAuth();
   const [searchParams] = useSearchParams();
   const previewRole = searchParams.get('preview_role');
-  const effectiveRole = previewRole || userRole?.role;
+
+  const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
+  const effectiveRole = previewRole || (isThompsonOverride ? 'sales_rep' : userRole?.role);
 
   return (
     <aside
