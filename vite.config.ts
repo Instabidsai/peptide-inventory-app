@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import fs from 'fs';
 import path from "path"
 import { componentTagger } from "lovable-tagger"
 
@@ -9,7 +10,6 @@ function vercelSPAPlugin() {
     name: 'vercel-spa-plugin',
     closeBundle() {
       // This will run after build
-      const fs = require('fs');
       const distPath = path.resolve(__dirname, 'dist');
       const indexPath = path.join(distPath, 'index.html');
       const notFoundPath = path.join(distPath, '404.html');
