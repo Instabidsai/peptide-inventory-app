@@ -610,6 +610,8 @@ export default function ContactDetails() {
                         <Skeleton className="h-24 w-full" />
                     </div>
                 ) : assignedProtocols?.length === 0 ? (
+
+                    <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
                         <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
                         <p className="text-lg font-medium">No active regimens</p>
                         <p className="text-sm">Assign a protocol, or create a supplement stack.</p>
@@ -622,34 +624,34 @@ export default function ContactDetails() {
                             </Button>
                         </div>
                     </div>
-    ) : (
-        <div className="space-y-4">
-            {assignedProtocols?.map(protocol => (
-                <RegimenCard
-                    key={protocol.id}
-                    protocol={protocol}
-                    onDelete={deleteProtocol.mutate}
-                    onEdit={() => handleEditClick(protocol)}
-                    onLog={logProtocolUsage.mutate}
-                    onAddSupplement={addProtocolSupplement.mutateAsync}
-                    onDeleteSupplement={deleteProtocolSupplement.mutate}
-                    peptides={peptides}
-                />
-            ))}
-        </div>
-    )
+                ) : (
+                    <div className="space-y-4">
+                        {assignedProtocols?.map(protocol => (
+                            <RegimenCard
+                                key={protocol.id}
+                                protocol={protocol}
+                                onDelete={deleteProtocol.mutate}
+                                onEdit={() => handleEditClick(protocol)}
+                                onLog={logProtocolUsage.mutate}
+                                onAddSupplement={addProtocolSupplement.mutateAsync}
+                                onDeleteSupplement={deleteProtocolSupplement.mutate}
+                                peptides={peptides}
+                            />
+                        ))}
+                    </div>
+                )
 
-}
+            }
 
 
 
-{/* Client Inventory (Digital Fridge) Inspection */ }
-<div className="space-y-4">
-    <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
-    <ClientInventoryList contactId={id!} />
-</div>
+            {/* Client Inventory (Digital Fridge) Inspection */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
+                <ClientInventoryList contactId={id!} />
+            </div>
 
-{/* Client Portal Access Card */ }
+            {/* Client Portal Access Card */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -824,7 +826,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
     // Determine Status
     const lastLog = protocol.protocol_items?.[0]?.protocol_logs?.[0]; // Assuming logs are ordered desc in backend or we should sort
-    // The query used order('created_at', { ascending: false }) generally, but we need to check nested order if supported or sort here.
+    // The query used order('created_at', {ascending: false }) generally, but we need to check nested order if supported or sort here.
     // For now, let's just grab the most recent if available.
 
     // Sort logs just in case
