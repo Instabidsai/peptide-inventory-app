@@ -30,6 +30,7 @@ import Settings from "./pages/Settings";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminResources from "./pages/AdminResources";
 import Commissions from "./pages/admin/Commissions";
+import Finance from "./pages/admin/Finance";
 import AdminSupplements from "./pages/admin/AdminSupplements";
 import NotFound from "./pages/NotFound";
 

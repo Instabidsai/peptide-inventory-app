@@ -50,49 +50,48 @@ export default function AdminSupplements() {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {supplements?.map((item) => (
-                    { supplements?.map((item) => (
-                        <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
-                            <div className="h-48 bg-white relative p-4 border-b">
-                                {item.image_url ? (
-                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
-                                        <Pill className="h-12 w-12 opacity-20" />
-                                    </div>
-                                )}
-                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setEditingItem(item)}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <DeleteConfirm onConfirm={() => deleteSupplement.mutate(item.id)} />
+                    <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+                        <div className="h-48 bg-white relative p-4 border-b">
+                            {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
+                                    <Pill className="h-12 w-12 opacity-20" />
                                 </div>
+                            )}
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setEditingItem(item)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                <DeleteConfirm onConfirm={() => deleteSupplement.mutate(item.id)} />
                             </div>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="flex justify-between items-start text-lg">
-                                    {item.name}
-                                </CardTitle>
-                                <CardDescription className="line-clamp-2 min-h-[40px]">
-                                    {item.description || "No description."}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-1 text-sm space-y-2">
-                                <div className="flex justify-between py-1 border-b">
-                                    <span className="text-muted-foreground">Default Dosage:</span>
-                                    <span className="font-medium">{item.default_dosage || "N/A"}</span>
-                                </div>
-                                {item.purchase_link && (
-                                    <a
-                                        href={item.purchase_link}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex items-center gap-1 text-primary hover:underline pt-2 text-xs truncate"
-                                    >
-                                        <ExternalLink className="h-3 w-3" /> {item.purchase_link}
-                                    </a>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))}
+                        </div>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex justify-between items-start text-lg">
+                                {item.name}
+                            </CardTitle>
+                            <CardDescription className="line-clamp-2 min-h-[40px]">
+                                {item.description || "No description."}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 text-sm space-y-2">
+                            <div className="flex justify-between py-1 border-b">
+                                <span className="text-muted-foreground">Default Dosage:</span>
+                                <span className="font-medium">{item.default_dosage || "N/A"}</span>
+                            </div>
+                            {item.purchase_link && (
+                                <a
+                                    href={item.purchase_link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-1 text-primary hover:underline pt-2 text-xs truncate"
+                                >
+                                    <ExternalLink className="h-3 w-3" /> {item.purchase_link}
+                                </a>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
                 {supplements?.length === 0 && (
                     <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
                         <Pill className="mx-auto h-12 w-12 opacity-20 mb-2" />

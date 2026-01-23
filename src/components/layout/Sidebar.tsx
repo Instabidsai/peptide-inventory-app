@@ -8,7 +8,8 @@ import {
   ClipboardList,
   ShoppingBag,
   Briefcase,
-  DollarSign
+  DollarSign,
+  PieChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: ClipboardList },
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
+  { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package },
   { name: 'Bottles', href: '/bottles', icon: Pill }, // Keep this if used, or replace icon if duplicate

@@ -37,16 +37,35 @@ export default function Commissions() {
     });
 
     const updateStatus = useMutation({
-        mutationFn: async ({ id, status }: { id: string; status: string }) => {
+        mutationFn: async ({ id, status, amount, repName }: { id: string; status: string; amount: number; repName: string }) => {
+            // 1. Update Order Status
             const { error } = await supabase
                 .from('sales_orders')
                 .update({ commission_status: status })
                 .eq('id', id);
             if (error) throw error;
+
+            // 2. If Paying Cash, Record Expense
+            if (status === 'paid') {
+                const { error: expenseError } = await supabase
+                    .from('expenses')
+                    .insert({
+                        date: new Date().toISOString().split('T')[0],
+                        category: 'commission',
+                        amount: amount,
+                        description: `Commission Payout for Order #${id.slice(0, 8)}`,
+                        recipient: repName,
+                        payment_method: 'wire', // Default or prompt
+                        status: 'paid',
+                        related_sales_order_id: id
+                    });
+                if (expenseError) throw expenseError;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
-            toast({ title: 'Commission status updated' });
+            queryClient.invalidateQueries({ queryKey: ['expenses'] }); // Refresh financials
+            toast({ title: 'Commission paid & expense recorded' });
         },
         onError: (err) => {
             toast({ title: 'Error updating commission', description: err.message, variant: 'destructive' });
@@ -138,7 +157,12 @@ export default function Commissions() {
                                                     size="sm"
                                                     variant="outline"
                                                     className="h-8 gap-1"
-                                                    onClick={() => updateStatus.mutate({ id: item.id, status: 'paid' })}
+                                                    onClick={() => updateStatus.mutate({
+                                                        id: item.id,
+                                                        status: 'paid',
+                                                        amount: item.commission_amount,
+                                                        repName: (item.profiles as any)?.full_name || 'Unknown'
+                                                    })}
                                                 >
                                                     <DollarSign className="h-3.5 w-3.5" />
                                                     Pay Cash

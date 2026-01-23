@@ -99,7 +99,7 @@ export function useFinancialMetrics() {
                 }
 
 
-                // --- 3. Overhead/Expenses ---
+                // --- 3. Overhead/Expenses (Internal Movements) ---
                 const { data: overheadMoves, error: overheadError } = await supabase
                     .from('movements')
                     .select('id')
@@ -107,11 +107,10 @@ export function useFinancialMetrics() {
 
                 if (overheadError) throw overheadError;
 
-                let overhead = 0;
+                let internalOverhead = 0;
                 const overheadIds = overheadMoves?.map(m => m.id) || [];
 
                 if (overheadIds.length > 0) {
-                    // Fetch items
                     const { data: overItems } = await supabase
                         .from('movement_items')
                         .select('bottle_id')
@@ -126,7 +125,7 @@ export function useFinancialMetrics() {
                             .in('id', overBottleIds);
 
                         const overLotIds = [...new Set(overBottles?.map(b => b.lot_id).filter(Boolean) || [])];
-                        // Fetch lots
+
                         const { data: overLots } = await supabase
                             .from('lots')
                             .select('id, cost_per_unit')
@@ -135,19 +134,31 @@ export function useFinancialMetrics() {
                         const overLotMap = new Map(overLots?.map(l => [l.id, l.cost_per_unit]) || []);
                         const bottleLotMap = new Map(overBottles?.map(b => [b.id, b.lot_id]) || []);
 
-                        overhead = overItems?.reduce((sum, item) => {
+                        internalOverhead = overItems?.reduce((sum, item) => {
                             const lotId = bottleLotMap.get(item.bottle_id);
                             return sum + (overLotMap.get(lotId!) || 0);
                         }, 0) || 0;
                     }
                 }
 
+                // --- 4. Cash Expenses (from expenses table) ---
+                const { data: expenses, error: expenseError } = await supabase
+                    .from('expenses')
+                    .select('amount');
+
+                if (expenseError) throw expenseError;
+
+                const cashExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+
+                // Total Overhead = Internal Usage Cost + Cash Expenses
+                const totalOverhead = internalOverhead + cashExpenses;
+
                 return {
                     inventoryValue,
                     salesRevenue,
                     cogs,
-                    overhead,
-                    netProfit: salesRevenue - cogs - overhead
+                    overhead: totalOverhead,
+                    netProfit: salesRevenue - cogs - totalOverhead
                 };
             } catch (err) {
                 console.error("Error calculating financials:", err);
