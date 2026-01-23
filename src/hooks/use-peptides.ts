@@ -13,6 +13,7 @@ export interface Peptide {
   updated_at: string;
   stock_count?: number;
   avg_cost?: number;
+  retail_price: number | null;
 }
 
 export interface CreatePeptideInput {

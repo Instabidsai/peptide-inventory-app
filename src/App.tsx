@@ -29,6 +29,7 @@ import MovementWizard from "./pages/MovementWizard";
 import Settings from "./pages/Settings";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminResources from "./pages/AdminResources";
+import Commissions from "./pages/admin/Commissions";
 import AdminSupplements from "./pages/admin/AdminSupplements";
 import NotFound from "./pages/NotFound";
 
@@ -71,7 +72,9 @@ const App = () => (
               <Route path="/sales" element={<OrderList />} />
               <Route path="/sales/new" element={<NewOrder />} />
               <Route path="/sales/:id" element={<OrderDetails />} />
+              <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
+              <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
               <Route path="/admin/supplements" element={<AdminSupplements />} />
               <Route path="/bottles" element={<Bottles />} />
               <Route path="/contacts" element={<Contacts />} />

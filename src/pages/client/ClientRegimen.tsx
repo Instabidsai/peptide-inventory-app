@@ -210,11 +210,6 @@ export default function ClientRegimen() {
                     console.error("Failed to render supplement stack", err);
                     return null;
                 }
-                return <SupplementStack items={supplementItems} />;
-            } catch (err) {
-                console.error("Failed to render supplement stack", err);
-            return null;
-                }
             })()}
 
             {/* Suggested For You - New Section */}

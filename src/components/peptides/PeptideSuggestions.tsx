@@ -65,8 +65,8 @@ export function PeptideSuggestions({ peptideId }: { peptideId: string }) {
     });
 
     // Filter available supplements (exclude already added)
-    const existing specializedIds = new Set(suggestions?.map(s => s.supplement_id));
-    const availableSupplements = allSupplements?.filter(s => !specializedIds.has(s.id)) || [];
+    const existingSpecializedIds = new Set(suggestions?.map(s => s.supplement_id));
+    const availableSupplements = allSupplements?.filter(s => !existingSpecializedIds.has(s.id)) || [];
 
     return (
         <div className="space-y-6">

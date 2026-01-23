@@ -13,7 +13,11 @@ alter table peptide_suggested_supplements enable row level security;
 
 create policy "Admins can manage suggestions"
   on peptide_suggested_supplements for all
-  using (auth.uid() in (select id from admin_users));
+  using (exists (
+    select 1 from profiles
+    where profiles.user_id = auth.uid()
+    and profiles.role = 'admin'
+  ));
 
 create policy "Public/Authenticated Read Access"
   on peptide_suggested_supplements for select

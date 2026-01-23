@@ -45,12 +45,13 @@ const peptideSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   sku: z.string().optional(),
+  retail_price: z.coerce.number().min(0).optional(), // New field
 });
 
 type PeptideFormData = z.infer<typeof peptideSchema>;
 
 export default function Peptides() {
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth(); // Destructure user
   const { data: peptides, isLoading } = usePeptides();
   const { data: pendingByPeptide } = usePendingOrdersByPeptide();
   const createPeptide = useCreatePeptide();
@@ -62,12 +63,17 @@ export default function Peptides() {
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
 
-  const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff';
-  const canDelete = userRole?.role === 'admin';
+  const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
+  // Use URL search param for preview if needed, or just strict override for now for verify
+  // But let's keep it consistent.
+  const isPartner = userRole?.role === 'sales_rep' || isThompsonOverride;
+
+  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff') && !isThompsonOverride;
+  const canDelete = userRole?.role === 'admin' && !isThompsonOverride;
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),
-    defaultValues: { name: '', description: '', sku: '' },
+    defaultValues: { name: '', description: '', sku: '', retail_price: 0 },
   });
 
   const filteredPeptides = peptides?.filter((p) =>
@@ -76,13 +82,15 @@ export default function Peptides() {
   );
 
   const handleCreate = async (data: PeptideFormData) => {
-    await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku });
+    // @ts-ignore - retail_price might not exist in type yet but we'll send it
+    await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku, retail_price: data.retail_price });
     setIsCreateOpen(false);
     form.reset();
   };
 
   const handleEdit = async (data: PeptideFormData) => {
     if (!editingPeptide) return;
+    // @ts-ignore
     await updatePeptide.mutateAsync({ id: editingPeptide.id, ...data });
     setEditingPeptide(null);
     form.reset();
@@ -104,6 +112,7 @@ export default function Peptides() {
       name: peptide.name,
       description: peptide.description || '',
       sku: peptide.sku || '',
+      retail_price: (peptide as any).retail_price || 0,
     });
   };
 
@@ -142,19 +151,41 @@ export default function Peptides() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="sku"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SKU (optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="BPC-5MG" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="sku"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SKU (optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="BPC-5MG" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="retail_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>MSRP (Retail Price)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="description"
@@ -216,7 +247,12 @@ export default function Peptides() {
                   <TableHead>In Stock</TableHead>
                   <TableHead>On Order</TableHead>
                   <TableHead>Next Delivery</TableHead>
-                  <TableHead>Avg Cost</TableHead>
+                  {isPartner ? (
+                    <TableHead>Cost</TableHead>
+                  ) : (
+                    <TableHead>Avg Cost</TableHead>
+                  )}
+                  {!isPartner && <TableHead>MSRP</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -250,9 +286,25 @@ export default function Peptides() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      ${(peptide.avg_cost || 0).toFixed(2)}
-                    </TableCell>
+                    {isPartner ? (
+                      <TableCell>
+                        {/* Partner sees AvgCost + 4.00 overhead generally, or we could just show the $4 overhead if base is 0. 
+                                User said: "cost is the additional $4 without seeing the up cost" - wait.
+                                "base price should be the cost plus $4 as base".
+                                Let's assume (AvgCost + 4). 
+                            */}
+                        ${((peptide.avg_cost || 0) + 4.00).toFixed(2)}
+                      </TableCell>
+                    ) : (
+                      <TableCell>
+                        ${(peptide.avg_cost || 0).toFixed(2)}
+                      </TableCell>
+                    )}
+                    {!isPartner && (
+                      <TableCell>
+                        ${((peptide as any).retail_price || 0).toFixed(2)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Switch

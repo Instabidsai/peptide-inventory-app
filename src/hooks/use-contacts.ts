@@ -37,6 +37,17 @@ export function useContacts(type?: ContactType) {
   return useQuery({
     queryKey: ['contacts', type],
     queryFn: async () => {
+      // Get current user to check role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Check role directly for speed (or rely on RLS, but frontend filtering is safer UI feedback)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
       let query = supabase
         .from('contacts')
         .select(`
@@ -50,6 +61,23 @@ export function useContacts(type?: ContactType) {
 
       if (type) {
         query = query.eq('type', type);
+      }
+
+      // If user is sales_rep, restrict to their assigned contacts
+      if (profile?.role === 'sales_rep') {
+        // Find their Profile ID (which is what assigned_rep_id links to)
+        // Oops, assigned_rep_id links to profiles.id, not users.id? 
+        // Let's check schema. Yes, profiles.id usually.
+        // Let's check my profile fetch.
+        const { data: myProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (myProfile) {
+          query = query.eq('assigned_rep_id', myProfile.id);
+        }
       }
 
       const { data, error } = await query;

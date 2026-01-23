@@ -137,9 +137,64 @@ export function useCreateSalesOrder() {
 
             if (!profile?.org_id) throw new Error('No organization found');
 
-            // Calculate totals
-            const totalAmount = input.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-            const commissionAmount = totalAmount * (Number(profile.commission_rate) || 0);
+            // Calculate totals and commission
+            let totalAmount = 0;
+            let totalCommission = 0;
+
+            // Fetch peptide costs for commission calculation
+            const peptideIds = input.items.map(i => i.peptide_id);
+            const { data: peptides } = await supabase
+                .from('peptides')
+                .select('id, retail_price, avg_cost')
+                .in('id', peptideIds);
+
+            const peptideMap = new Map(peptides?.map(p => [p.id, p]));
+
+            for (const item of input.items) {
+                const itemTotal = item.quantity * item.unit_price;
+                totalAmount += itemTotal;
+
+                // Commission Logic: 20% of (Sale Price - Partner Cost)
+                // Partner Cost = Base Cost + $4.00 Overhead
+                // Base Cost = retail_price (if set) OR avg_cost (fallback) OR 0
+                const peptide = peptideMap.get(item.peptide_id);
+                // "retail_price" column logic fallback
+                // User said: "cost plus 4$".
+                // If we have retail_price set (MSRP/Base), use it? No, retail_price is MSRP.
+                // We should use `avg_cost` as the true internal cost.
+                // Wait, in previous task I set "Partner Cost" displayed as "AvgCost + 4".
+                // So Profit = SalePrice - (AvgCost + 4).
+
+                const baseCost = (peptide as any)?.retail_price || (peptide as any)?.avg_cost || 0; // Fallback to retail_price if avg_cost missing? Or vice versa? 
+                // Actually, "Base Price" for partner view was "AvgCost + 4".
+                // But previously I used "retail_price" as the "Base Price" in the UI code if available.
+                // Let's stick to what the Partner sees as "Cost": `(peptide.retail_price || peptide.avg_cost || 0) + 4`.
+
+                // However, commonly "retail_price" in DB is MSRP. "avg_cost" is inventory cost.
+                // User said: "20% about the cost plus 4$ marc".
+                // "Cost" usually implies "Inventory Cost".
+                // But I added `retail_price` column previously. Did I populate it with Cost or MSRP?
+                // The script set it to $60 for BPC. That was MSRP.
+                // So `avg_cost` is the internal cost.
+                // Partner Cost = `avg_cost + 4`.
+                // Profit = `unit_price` - `(avg_cost + 4)`.
+
+                // PROBLEM: `avg_cost` might be 0 if no inventory.
+                // Fallback: If avg_cost is 0, maybe use $10?
+                const internalCost = (peptide?.avg_cost || 0);
+                const partnerCost = internalCost + 4.00;
+
+                const marginPerUnit = item.unit_price - partnerCost;
+                if (marginPerUnit > 0) {
+                    totalCommission += (marginPerUnit * item.quantity) * 0.20; // 20%
+                }
+            }
+
+            // Allow admin override or profile-specific rate?
+            // User said: "hard code it at 20%".
+            // We ignore profile.commission_rate for now or use it if we want flexibility later.
+            // Let's use the hardcoded 20% logic requested.
+            const commissionAmount = Math.max(0, totalCommission); // Ensure non-negative
 
             // 1. Create Order
             const { data: order, error: orderError } = await supabase

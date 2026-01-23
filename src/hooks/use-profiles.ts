@@ -10,6 +10,8 @@ export interface UserProfile {
     full_name: string | null;
     role: UserRole;
     commission_rate: number;
+    overhead_per_unit: number; // Defaults to 4.00
+    credit_balance: number; // Partner's wallet balance
     org_id: string;
 }
 

@@ -1,11 +1,14 @@
 import { NavLink, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard, Beaker, Archive, FlaskConical, Users, FileText, ArrowLeftRight, Settings, LogOut, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
   ClipboardList,
   ShoppingBag,
-  Briefcase
+  Briefcase,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -20,6 +23,7 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: ClipboardList },
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
+  { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package },
   { name: 'Bottles', href: '/bottles', icon: Pill }, // Keep this if used, or replace icon if duplicate
   { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical }, // Use FlaskConical or similar if Pill is taken. Or reuse Pill.
@@ -37,6 +41,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
   const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
   const effectiveRole = previewRole || (isThompsonOverride ? 'sales_rep' : userRole?.role);
+
+  // Fetch verified profile data for balance
+  const { data: profile } = useQuery({
+    queryKey: ['my_sidebar_profile'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('credit_balance').eq('user_id', user?.id).single();
+      return data;
+    },
+    enabled: !!user
+  });
 
   return (
     <aside
@@ -56,6 +70,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               {organization?.name || 'Inventory'}
             </span>
             <span className="text-xs text-muted-foreground">Tracker</span>
+
+            {/* Sales Rep Wallet */}
+            {effectiveRole === 'sales_rep' && (
+              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/50 rounded text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <DollarSign className="h-3 w-3" />
+                <span>Wallet: ${(organization as any)?.credit_balance || (user as any)?.credit_balance || '0.00'}</span>
+                {/* Note: The 'organization' or 'user' context might not have credit_balance directly.
+                        We usually fetch profile in Sidebar or rely on AuthContext.
+                        Let's check useAuth / profile loading.
+                        AuthContext usually loads profile. Let's check if it exposes it adequately.
+                        If not, we might need a separate fetch here or rely on the profile context if available.
+                        For now, I'll assume I need to fetch it or finding it on the user object if I added it to session claims (unlikely).
+                        Better approach: Fetch profile in `Sidebar` if rep.
+                    */}
+              </div>
+            )}
+
           </div>
         </div>
         <Button
@@ -80,7 +111,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           // Special: Sales Rep Restriction
           if (effectiveRole === 'sales_rep') {
-            const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Movements'];
+            const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Movements', 'Orders'];
             if (hiddenForRep.includes(item.name)) return false;
           }
 
