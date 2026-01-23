@@ -9,16 +9,18 @@ const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function checkThompson() {
+    const userId = 'a2f08eb1-d7f5-4a99-a433-c49d3adb44c9';
+    console.log(`Checking roles for ${userId}...`);
+
     const { data: roles, error } = await supabase
         .from('user_roles')
-        .select('*');
+        .select('*')
+        .eq('user_id', userId);
 
     if (error) {
         console.error('Error fetching roles:', error);
-        return;
+    } else {
+        console.log('User Roles:', JSON.stringify(roles, null, 2));
     }
-
-    console.log('All Roles:', JSON.stringify(roles, null, 2));
 }
-
 checkThompson();

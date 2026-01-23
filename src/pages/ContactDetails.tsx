@@ -330,6 +330,8 @@ export default function ContactDetails() {
             dailyUsageMg = (amountInMg * 2) / 7;
         } else if (frequency === 'monthly') {
             dailyUsageMg = amountInMg / 30;
+        } else if (frequency === '5on2off') {
+            dailyUsageMg = (amountInMg * 5) / 7;
         }
 
         const daysPerVial = dailyUsageMg > 0 ? (userVialSize / dailyUsageMg) : 0;
@@ -476,6 +478,7 @@ export default function ContactDetails() {
                                                     <SelectItem value="bid">Twice Daily</SelectItem>
                                                     <SelectItem value="weekly">Weekly</SelectItem>
                                                     <SelectItem value="biweekly">2x / Week</SelectItem>
+                                                    <SelectItem value="5on2off">5 days on, 2 days off</SelectItem>
                                                     <SelectItem value="monthly">Monthly</SelectItem>
                                                 </SelectContent>
                                             </Select>

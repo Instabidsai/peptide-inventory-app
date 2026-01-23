@@ -30,7 +30,7 @@ type Resource = {
     theme_id: string | null;
     thumbnail_url?: string | null;
     view_count?: number;
-    duration_seconds?: number | null;
+    duration?: number | null;
     is_featured?: boolean;
 };
 
@@ -96,7 +96,7 @@ export default function ClientResources() {
                 query = query.is('contact_id', null);
             }
 
-            const { data, error } = await query.order('created_at', { ascending: sortOrder === 'oldest' });
+            const { data, error } = await query.order('is_featured', { ascending: false }).order('created_at', { ascending: sortOrder === 'oldest' });
             if (error) throw error;
             return data as Resource[];
         },
@@ -560,11 +560,16 @@ export default function ClientResources() {
                                     className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-all"
                                     style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}
                                 >
-                                    <div className="aspect-video bg-gray-800 flex items-center justify-center">
+                                    <div className="aspect-video bg-gray-800 flex items-center justify-center relative">
                                         {resource.thumbnail_url ? (
                                             <img src={resource.thumbnail_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
                                             <Play className="h-10 w-10 text-gray-600" />
+                                        )}
+                                        {resource.type === 'video' && resource.duration && (
+                                            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                                {Math.floor(resource.duration / 60)}:{String(resource.duration % 60).padStart(2, '0')}
+                                            </span>
                                         )}
                                     </div>
                                     <div className="p-3">
