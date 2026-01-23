@@ -63,11 +63,15 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
     const totalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
 
     // Auto-fill price with cost when selection changes (if empty or default)
+    // Auto-fill price with cost + $4 fee when selection changes (if empty or default)
     useEffect(() => {
+        const fee = selectedBottles.length * 4;
+        const totalWithFee = totalCost + fee;
+
         if (selectedBottles.length > 0 && !price) {
-            setPrice(totalCost.toString());
+            setPrice(totalWithFee.toString());
         } else if (selectedBottles.length > 0 && price === '0') {
-            setPrice(totalCost.toString());
+            setPrice(totalWithFee.toString());
         }
     }, [selectedBottles.length, totalCost]); // Only update if selection count changes to avoid overriding user input
     // Actually, simpler: Default price to totalCost.
@@ -170,7 +174,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                             onChange={(e) => setPrice(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Total Cost: ${totalCost.toFixed(2)} (${(totalCost / selectedBottles.length).toFixed(2)}/ea)
+                            Base Cost: ${(totalCost).toFixed(2)} + ${(selectedBottles.length * 4).toFixed(2)} Fee
                         </p>
                     </div>
                 </div>
