@@ -15,6 +15,8 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SupplementLinkedPeptides } from "@/components/supplements/SupplementLinkedPeptides";
 
 export default function AdminSupplements() {
     const { supplements, isLoading, createSupplement, updateSupplement, deleteSupplement } = useSupplements();
@@ -48,48 +50,49 @@ export default function AdminSupplements() {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {supplements?.map((item) => (
-                    <Card key={item.id} className="overflow-hidden flex flex-col">
-                        <div className="aspect-video bg-muted relative">
-                            {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                    <Pill className="h-12 w-12 opacity-20" />
+                    { supplements?.map((item) => (
+                        <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+                            <div className="h-48 bg-white relative p-4 border-b">
+                                {item.image_url ? (
+                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
+                                        <Pill className="h-12 w-12 opacity-20" />
+                                    </div>
+                                )}
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setEditingItem(item)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <DeleteConfirm onConfirm={() => deleteSupplement.mutate(item.id)} />
                                 </div>
-                            )}
-                            <div className="absolute top-2 right-2 flex gap-1">
-                                <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setEditingItem(item)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <DeleteConfirm onConfirm={() => deleteSupplement.mutate(item.id)} />
                             </div>
-                        </div>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex justify-between items-start text-lg">
-                                {item.name}
-                            </CardTitle>
-                            <CardDescription className="line-clamp-2 min-h-[40px]">
-                                {item.description || "No description."}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 text-sm space-y-2">
-                            <div className="flex justify-between py-1 border-b">
-                                <span className="text-muted-foreground">Default Dosage:</span>
-                                <span className="font-medium">{item.default_dosage || "N/A"}</span>
-                            </div>
-                            {item.purchase_link && (
-                                <a
-                                    href={item.purchase_link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-1 text-primary hover:underline pt-2 text-xs truncate"
-                                >
-                                    <ExternalLink className="h-3 w-3" /> {item.purchase_link}
-                                </a>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex justify-between items-start text-lg">
+                                    {item.name}
+                                </CardTitle>
+                                <CardDescription className="line-clamp-2 min-h-[40px]">
+                                    {item.description || "No description."}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex-1 text-sm space-y-2">
+                                <div className="flex justify-between py-1 border-b">
+                                    <span className="text-muted-foreground">Default Dosage:</span>
+                                    <span className="font-medium">{item.default_dosage || "N/A"}</span>
+                                </div>
+                                {item.purchase_link && (
+                                    <a
+                                        href={item.purchase_link}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1 text-primary hover:underline pt-2 text-xs truncate"
+                                    >
+                                        <ExternalLink className="h-3 w-3" /> {item.purchase_link}
+                                    </a>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))}
                 {supplements?.length === 0 && (
                     <div className="col-span-full text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
                         <Pill className="mx-auto h-12 w-12 opacity-20 mb-2" />
@@ -134,63 +137,83 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
                         Enter the details for this supplement.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label>Name</Label>
-                        <Input
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="e.g. Vitamin D3 + K2"
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Description</Label>
-                        <Textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Brief description of benefits..."
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Image URL</Label>
-                        <div className="flex gap-2">
-                            <Input
-                                value={formData.image_url}
-                                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                                placeholder="https://..."
-                            />
-                            {formData.image_url && <img src={formData.image_url} className="h-10 w-10 rounded object-cover border" onError={(e) => e.currentTarget.style.display = 'none'} />}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+
+                <Tabs defaultValue="details" className="mt-2">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Details</TabsTrigger>
+                        <TabsTrigger value="links" disabled={!initialData}>Linked Peptides</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="details" className="pt-4 space-y-4">
                         <div className="grid gap-2">
-                            <Label>Def. Dosage</Label>
+                            <Label>Name</Label>
                             <Input
-                                value={formData.default_dosage}
-                                onChange={(e) => setFormData({ ...formData, default_dosage: e.target.value })}
-                                placeholder="e.g. 1 cap"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="e.g. Vitamin D3 + K2"
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Purchase Link</Label>
-                            <Input
-                                value={formData.purchase_link}
-                                onChange={(e) => setFormData({ ...formData, purchase_link: e.target.value })}
-                                placeholder="https://store..."
+                            <Label>Description</Label>
+                            <Textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                placeholder="Brief description of benefits..."
                             />
                         </div>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button onClick={handleSubmit} disabled={!formData.name}>Save Supplement</Button>
-                </DialogFooter>
+                        <div className="grid gap-2">
+                            <Label>Image URL</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={formData.image_url}
+                                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                    placeholder="https://..."
+                                    className="flex-1"
+                                />
+                                {formData.image_url && <img src={formData.image_url} className="h-10 w-10 rounded object-cover border bg-white" onError={(e) => e.currentTarget.style.display = 'none'} />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Use Unsplash or direct image links for best results.</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Def. Dosage</Label>
+                                <Input
+                                    value={formData.default_dosage}
+                                    onChange={(e) => setFormData({ ...formData, default_dosage: e.target.value })}
+                                    placeholder="e.g. 1 cap"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Purchase Link</Label>
+                                <Input
+                                    value={formData.purchase_link}
+                                    onChange={(e) => setFormData({ ...formData, purchase_link: e.target.value })}
+                                    placeholder="https://store..."
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter className="mt-4">
+                            <Button onClick={handleSubmit} disabled={!formData.name}>Save Details</Button>
+                        </DialogFooter>
+                    </TabsContent>
+
+                    <TabsContent value="links" className="pt-4">
+                        {initialData ? (
+                            <SupplementLinkedPeptides supplementId={initialData.id} />
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                                Save the supplement first to add links.
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );
