@@ -435,7 +435,13 @@ export default function ContactDetails() {
                                 <div className="grid gap-4 py-4">
                                     <div className="grid gap-2">
                                         <Label>Peptide</Label>
-                                        <Select value={selectedPeptideId} onValueChange={setSelectedPeptideId} disabled={!!editingItemId}>
+                                        <Select value={selectedPeptideId} onValueChange={(val) => {
+                                            setSelectedPeptideId(val);
+                                            const p = peptides?.find(pep => pep.id === val);
+                                            if (p) {
+                                                setVialSize(parseVialSize(p.name).toString());
+                                            }
+                                        }} disabled={!!editingItemId}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select peptide..." />
                                             </SelectTrigger>
