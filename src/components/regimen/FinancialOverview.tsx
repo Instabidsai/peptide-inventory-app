@@ -20,7 +20,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 // Fetch movements where payment_status is 'unpaid' or 'partial'
                 const { data: movements, error } = await supabase
                     .from('movements')
-                    .select('id, payment_status, amount_paid, movement_items(price_at_sale)')
+                    .select('id, payment_status, amount_paid, created_at, movement_items(price_at_sale, bottle:bottles(lot:lots(peptide:peptides(name), lot_number)))')
                     .eq('contact_id', contactId)
                     .in('payment_status', ['unpaid', 'partial']);
 
@@ -69,15 +69,34 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
-                    <div className="flex items-baseline gap-2">
-                        <DollarSign className="h-6 w-6 text-amber-700" />
-                        <span className="text-3xl font-bold text-amber-900">
-                            {outstandingBalance.toFixed(2)}
-                        </span>
+                    <div className="space-y-4">
+                        <div className="flex items-baseline gap-2">
+                            <DollarSign className="h-6 w-6 text-amber-700" />
+                            <span className="text-3xl font-bold text-amber-900">
+                                {outstandingBalance.toFixed(2)}
+                            </span>
+                        </div>
+                        <p className="text-sm text-amber-700">
+                            You have pending payments for received inventory.
+                        </p>
+
+                        {/* Itemized List */}
+                        <div className="bg-amber-100/50 rounded-md p-3 text-sm space-y-2 max-h-[150px] overflow-y-auto border border-amber-200">
+                            {unpaidMovements.map(m => (
+                                <div key={m.id} className="space-y-1">
+                                    <div className="text-xs font-semibold text-amber-800 opacity-70">
+                                        Order from {new Date(m.created_at).toLocaleDateString()}
+                                    </div>
+                                    {m.movement_items?.map((item: any) => (
+                                        <div key={item.id || Math.random()} className="flex justify-between items-center text-amber-900">
+                                            <span>{item.bottle?.lot?.peptide?.name || 'Unknown Item'}</span>
+                                            <span className="font-mono">${item.price_at_sale}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <p className="text-sm text-amber-700">
-                        You have pending payments for received inventory.
-                    </p>
                     <Button
                         variant="default"
                         className="w-full bg-amber-600 hover:bg-amber-700"
