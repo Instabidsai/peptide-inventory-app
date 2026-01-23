@@ -11,9 +11,13 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Plus, Trash2, PieChart, TrendingDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useOrders } from '@/hooks/use-orders';
+import { Link } from 'react-router-dom';
+import { ArrowRight, AlertCircle, CreditCard } from 'lucide-react';
 
 export default function Finance() {
-    const { data: expenses, isLoading } = useExpenses();
+    const { data: expenses, isLoading: expensesLoading } = useExpenses();
+    const { data: orders, isLoading: ordersLoading } = useOrders(); // Fetch all orders to find unpaids
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -38,13 +42,22 @@ export default function Finance() {
         setFormData({ ...formData, amount: '', description: '', recipient: '' });
     };
 
-    if (isLoading) return <div className="p-8">Loading financials...</div>;
+    if (expensesLoading || ordersLoading) return <div className="p-8">Loading financials...</div>;
 
+    // Calc Expenses
     const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
     const categoryTotals = expenses?.reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
         return acc;
     }, {} as Record<string, number>);
+
+    // Calc Liabilities (Unpaid Orders)
+    const unpaidOrders = orders?.filter(o => o.status !== 'cancelled' && o.payment_status !== 'paid');
+    const totalLiabilities = unpaidOrders?.reduce((sum, o) => {
+        const cost = (o.quantity_ordered * (o.estimated_cost_per_unit || 0));
+        const paid = o.amount_paid || 0;
+        return sum + (cost - paid);
+    }, 0) || 0;
 
     return (
         <div className="space-y-6">
@@ -124,8 +137,21 @@ export default function Finance() {
                         <p className="text-xs text-muted-foreground">All time spending</p>
                     </CardContent>
                 </Card>
+
+                {/* Accounts Payable / Liabilities */}
+                <Card className="border-l-4 border-l-amber-500">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Accounts Payable</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">${totalLiabilities.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">Unpaid inventory orders</p>
+                    </CardContent>
+                </Card>
+
                 {/* Category Breakdowns */}
-                {Object.entries(categoryTotals || {}).slice(0, 3).map(([cat, amount]) => (
+                {Object.entries(categoryTotals || {}).slice(0, 2).map(([cat, amount]) => (
                     <Card key={cat}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium capitalise">{cat}</CardTitle>
@@ -137,6 +163,59 @@ export default function Finance() {
                     </Card>
                 ))}
             </div>
+
+            {/* Unpaid Invoices Section */}
+            {unpaidOrders && unpaidOrders.length > 0 && (
+                <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/10">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-amber-500" />
+                            Unpaid Invoices
+                        </CardTitle>
+                        <CardDescription>Pending payments for inventory orders.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Supplier</TableHead>
+                                    <TableHead>Items</TableHead>
+                                    <TableHead>Total Cost</TableHead>
+                                    <TableHead>Paid So Far</TableHead>
+                                    <TableHead>Balance Due</TableHead>
+                                    <TableHead className="text-right">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {unpaidOrders.map(order => {
+                                    const totalCost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+                                    const paid = order.amount_paid || 0;
+                                    const due = totalCost - paid;
+
+                                    return (
+                                        <TableRow key={order.id}>
+                                            <TableCell>{format(new Date(order.order_date), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="font-medium">{order.supplier || 'Unknown'}</TableCell>
+                                            <TableCell>{order.quantity_ordered}x {order.peptides?.name}</TableCell>
+                                            <TableCell>${totalCost.toFixed(2)}</TableCell>
+                                            <TableCell>${paid.toFixed(2)}</TableCell>
+                                            <TableCell className="font-bold text-amber-600">${due.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button size="sm" variant="outline" asChild>
+                                                    <Link to={`/orders?status=pending`}>
+                                                        Pay Now <ArrowRight className="ml-2 h-3 w-3" />
+                                                    </Link>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Expenses Table */}
             <Card>

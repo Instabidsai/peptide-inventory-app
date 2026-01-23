@@ -1,22 +1,31 @@
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 import path from 'path';
 
-// fast-check to ensure we can read .env
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Load .env explicitly from root
+const envPath = path.resolve(process.cwd(), '.env');
+config({ path: envPath });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY!; // use service role if possible? No, I only have anon usually. checking env.
-// Actually, I should check if I have service role.
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+console.log(`Loading env from ${envPath}`);
 
-const supabase = createClient(supabaseUrl, serviceRoleKey!);
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+// Try all likely service key names
+const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Missing Supabase URL or Service Role Key in .env");
+    console.log("Keys found:", Object.keys(process.env).filter(k => k.includes('SUPABASE')));
+    process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function main() {
     console.log("Starting inventory repair...");
 
     // 1. Get recent sale movements (last 24 hours)
+    // Using service role, we see all.
     const { data: movements, error: mvError } = await supabase
         .from('movements')
         .select(`
@@ -40,20 +49,19 @@ async function main() {
     console.log(`Found ${movements?.length} sale movements in last 24h.`);
 
     for (const movement of movements || []) {
-        if (!movement.contact_id) continue;
+        if (!movement.contact_id) {
+            console.log(`Skipping movement ${movement.id} (No contact)`);
+            continue;
+        }
 
         // Get bottle IDs
         const bottleIds = movement.movement_items.map((i: any) => i.bottle_id);
-        if (bottleIds.length === 0) continue;
+        if (bottleIds.length === 0) {
+            console.log(`Skipping movement ${movement.id} (No items)`);
+            continue;
+        }
 
-        // 2. Check if inventory exists for these bottles? 
-        // Client inventory doesn't link to bottle_id directly usually? 
-        // Wait, schema check. `client_inventory` has `peptide_id`.
-        // It doesn't allow tracking "which exact bottle".
-        // But we can check if *any* inventory was created for this contact & peptide around this time.
-
-        // Fetch bottle details to know what peptides they are
-        // We use service role so we should see them even if sold.
+        // 2. Fetch bottle details
         const { data: bottles, error: bError } = await supabase
             .from('bottles')
             .select('id, uid, lots(id, lot_number, peptide_id, peptides(id, name))')
@@ -67,16 +75,20 @@ async function main() {
         for (const bottle of bottles || []) {
             const peptideId = bottle.lots?.peptide_id;
             const peptideName = bottle.lots?.peptides?.name;
-            if (!peptideId) continue;
+            if (!peptideId) {
+                console.log(`Skipping bottle ${bottle.uid} (No peptide linked)`);
+                continue;
+            }
 
-            // Check if user has inventory for this peptide created recently
+            // Check if inventory exists for this peptide created recently
+            // Note: client_inventory has no unique constraint on (contact_id, peptide_id) usually, so we check for recent creation.
             const { data: existingInv, error: invError } = await supabase
                 .from('client_inventory')
-                .select('id')
+                .select('id, created_at')
                 .eq('contact_id', movement.contact_id)
                 .eq('peptide_id', peptideId)
-                .gt('created_at', new Date(new Date(movement.created_at).getTime() - 5000).toISOString()) // Created after movement start
-                .lt('created_at', new Date(new Date(movement.created_at).getTime() + 60000).toISOString()); // Created within 1 min
+                // Look for inventory created AFTER the movement started (approx)
+                .gt('created_at', new Date(new Date(movement.created_at).getTime() - 60000).toISOString());
 
             if (invError) {
                 console.error("Error checking inventory:", invError);
@@ -84,11 +96,12 @@ async function main() {
             }
 
             if (existingInv && existingInv.length > 0) {
-                console.log(`Inventory exists for ${peptideName} (Contact: ${movement.contact_id})`);
+                // Check timestamp proximity more closely if needed, but existence is usually enough proof
+                console.log(`- Inventory OK: ${peptideName} (Found ${existingInv.length})`);
                 continue;
             }
 
-            console.log(`MISSING inventory for ${peptideName} (Contact: ${movement.contact_id}). creating...`);
+            console.log(`[FIX] Creating missing inventory for ${peptideName} (Contact: ${movement.contact_id})...`);
 
             // Parse size
             const parseVialSize = (name: string): number => {
@@ -101,7 +114,7 @@ async function main() {
             };
             const vialSizeMg = parseVialSize(peptideName || '');
 
-            // Create it
+            // Create it using Service Role
             const { error: insertError } = await supabase
                 .from('client_inventory')
                 .insert({
@@ -118,11 +131,11 @@ async function main() {
             if (insertError) {
                 console.error("Failed to insert inventory:", insertError);
             } else {
-                console.log("-> Restored.");
+                console.log("-> SUCCESS: Restored Item.");
             }
         }
     }
-    console.log("Done.");
+    console.log("Repair complete.");
 }
 
 main();
