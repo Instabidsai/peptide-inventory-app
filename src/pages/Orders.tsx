@@ -33,7 +33,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, ClipboardList, Search, Filter, MoreHorizontal, Pencil, Trash2, PackageCheck, X } from 'lucide-react';
+import { Plus, ClipboardList, Search, Filter, MoreHorizontal, Pencil, Trash2, PackageCheck, X, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 
@@ -177,6 +177,49 @@ export default function Orders() {
     };
 
     const activePeptides = peptides?.filter((p) => p.active) || [];
+
+    const recordPayment = useRecordOrderPayment();
+    const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
+    const [paymentData, setPaymentData] = useState({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        method: 'credit_card',
+        note: ''
+    });
+
+    const handleOpenPayment = (order: Order) => {
+        setPaymentOrder(order);
+        const estimatedTotal = (order.quantity_ordered * (order.estimated_cost_per_unit || 0)).toFixed(2);
+        const remaining = (Number(estimatedTotal) - (order.amount_paid || 0)).toFixed(2);
+
+        setPaymentData({
+            amount: remaining,
+            date: new Date().toISOString().split('T')[0],
+            method: 'credit_card',
+            note: `Payment for ${order.peptides?.name}`
+        });
+    };
+
+    const handlePaymentSubmit = async () => {
+        if (!paymentOrder) return;
+        const amount = Number(paymentData.amount);
+
+        // Determine if full payment
+        // Heuristic: If amount >= remaining estimated cost
+        const estimatedTotal = paymentOrder.quantity_ordered * (paymentOrder.estimated_cost_per_unit || 0);
+        const currentPaid = paymentOrder.amount_paid || 0;
+        const isFull = (currentPaid + amount) >= (estimatedTotal - 0.01); // Float tolerance
+
+        await recordPayment.mutateAsync({
+            orderId: paymentOrder.id,
+            amount,
+            method: paymentData.method,
+            date: paymentData.date,
+            note: paymentData.note,
+            isFullPayment: isFull
+        });
+        setPaymentOrder(null);
+    };
 
     return (
         <div className="space-y-6">
@@ -384,6 +427,7 @@ export default function Orders() {
                                         <TableHead>Expected</TableHead>
                                         <TableHead>Supplier</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead>Payment</TableHead>
                                         {canEdit && <TableHead className="w-[70px]"></TableHead>}
                                     </TableRow>
                                 </TableHeader>
@@ -417,6 +461,11 @@ export default function Orders() {
                                                     {statusLabels[order.status]}
                                                 </Badge>
                                             </TableCell>
+                                            <TableCell>
+                                                <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'} className={order.payment_status === 'paid' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                                    {order.payment_status?.toUpperCase() || 'UNPAID'}
+                                                </Badge>
+                                            </TableCell>
                                             {canEdit && (
                                                 <TableCell>
                                                     <DropdownMenu>
@@ -428,6 +477,12 @@ export default function Orders() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            {order.payment_status !== 'paid' && (
+                                                                <DropdownMenuItem onClick={() => handleOpenPayment(order)}>
+                                                                    <DollarSign className="mr-2 h-4 w-4 text-green-600" />
+                                                                    Record Payment
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             {order.status === 'pending' && (
                                                                 <>
                                                                     <DropdownMenuItem onClick={() => handleOpenReceive(order)}>
@@ -469,6 +524,58 @@ export default function Orders() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Payment Dialog */}
+            <Dialog open={!!paymentOrder} onOpenChange={(open) => !open && setPaymentOrder(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Record Payment</DialogTitle>
+                        <DialogDescription>
+                            Record a payment for Order of {paymentOrder?.quantity_ordered}x {paymentOrder?.peptides?.name}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Amount ($)</label>
+                            <Input
+                                type="number"
+                                value={paymentData.amount}
+                                onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Payment Date</label>
+                            <Input
+                                type="date"
+                                value={paymentData.date}
+                                onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Method</label>
+                            <Select value={paymentData.method} onValueChange={(v) => setPaymentData({ ...paymentData, method: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                                    <SelectItem value="wire">Wire Transfer</SelectItem>
+                                    <SelectItem value="cash">Cash / Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Note</label>
+                            <Input
+                                value={paymentData.note}
+                                onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
+                                placeholder="Transaction ID, etc."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handlePaymentSubmit}>Record Payment</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Order Dialog */}
             <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
@@ -634,7 +741,7 @@ export default function Orders() {
             <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+                        <DialogTitle>Delete this order?</DialogTitle>
                         <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the order record.
                         </AlertDialogDescription>

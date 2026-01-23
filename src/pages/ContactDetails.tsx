@@ -4,7 +4,7 @@ import { useProtocols } from '@/hooks/use-protocols';
 import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
-import { useCreateMovement } from '@/hooks/use-movements';
+import { useCreateMovement, useMovements } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,6 +56,7 @@ export default function ContactDetails() {
     const updateContact = useUpdateContact();
     const { data: peptides } = usePeptides();
     const queryClient = useQueryClient(); // Add queryClient
+    const { data: movements } = useMovements(id);
 
     // Add/Edit Peptide State
     const [isAddPeptideOpen, setIsAddPeptideOpen] = useState(false);
@@ -733,6 +734,7 @@ export default function ContactDetails() {
                                 onAddSupplement={addProtocolSupplement.mutateAsync}
                                 onDeleteSupplement={deleteProtocolSupplement.mutate}
                                 peptides={peptides}
+                                movements={movements}
                             />
                         ))}
                     </div>
@@ -877,8 +879,33 @@ export default function ContactDetails() {
     );
 }
 
-function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, peptides }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, peptides: any[] | undefined }) {
+function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, peptides: any[] | undefined, movements?: any[] }) {
     // Calculate Total Cost for the Display
+    // ... (keep cost logic) ...
+
+    // Find latest movement status for this peptide
+    const { latestMovement, statusColor, statusLabel } = useMemo(() => {
+        if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'gray', statusLabel: 'No History' };
+
+        const peptideId = protocol.protocol_items[0].peptide_id;
+        // Find latest movement that contains this peptide
+        const relevantMovements = movements.filter(m =>
+            m.movement_items?.some((item: any) => item.bottles?.lots?.peptide_id === peptideId)
+        );
+
+        if (relevantMovements.length === 0) return { latestMovement: null, statusColor: 'gray', statusLabel: 'No Orders' };
+
+        // Assume sorted by date desc from hook
+        const latest = relevantMovements[0];
+
+        let color = 'bg-gray-100 text-gray-800 border-gray-200';
+        if (latest.payment_status === 'paid') color = 'bg-green-100 text-green-800 border-green-200';
+        if (latest.payment_status === 'unpaid') color = 'bg-amber-100 text-amber-800 border-amber-200';
+        if (latest.payment_status === 'partial') color = 'bg-blue-100 text-blue-800 border-blue-200';
+
+        return { latestMovement: latest, statusColor: color, statusLabel: latest.payment_status };
+
+    }, [movements, protocol]);
     const totalCost = useMemo(() => {
         if (!protocol.protocol_items || !peptides) return 0;
         return protocol.protocol_items.reduce((acc: number, item: any) => {
@@ -1044,7 +1071,17 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
                 <div className="pt-4 border-t flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Estimated Monthly Cost:</span>
-                    <span className="font-bold text-lg">${totalCost.toFixed(2)}</span>
+                    <div className="flex items-center gap-3">
+                        {/* Status Badge */}
+                        {latestMovement && (
+                            <Badge variant="outline" className={`${statusColor} capitalize font-normal`}>
+                                Last: {statusLabel}
+                                {latestMovement.amount_paid > 0 && ` ($${latestMovement.amount_paid})`}
+                                {latestMovement.payment_status === 'unpaid' && latestMovement.movement_items?.reduce((sum: number, i: any) => sum + (i.price_at_sale || 0), 0) > 0 && ` ($${latestMovement.movement_items?.reduce((sum: number, i: any) => sum + (i.price_at_sale || 0), 0)})`}
+                            </Badge>
+                        )}
+                        <span className="font-bold text-lg">${totalCost.toFixed(2)}</span>
+                    </div>
                 </div>
             </CardContent>
         </Card>

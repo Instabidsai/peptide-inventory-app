@@ -91,15 +91,21 @@ const movementTypeToBottleStatus: Record<MovementType, BottleStatus> = {
   return: 'returned',
 };
 
-export function useMovements() {
+export function useMovements(contactId?: string) {
   return useQuery({
-    queryKey: ['movements'],
+    queryKey: ['movements', contactId],
     queryFn: async () => {
       // 1. Fetch Movements
-      const { data: movements, error } = await supabase
+      let query = supabase
         .from('movements')
         .select('*, contacts(id, name), profiles(id, full_name)')
         .order('movement_date', { ascending: false });
+
+      if (contactId) {
+        query = query.eq('contact_id', contactId);
+      }
+
+      const { data: movements, error } = await query;
 
       if (error) throw error;
       if (!movements || movements.length === 0) return [];

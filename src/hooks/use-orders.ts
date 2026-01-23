@@ -16,6 +16,8 @@ export interface Order {
     tracking_number: string | null;
     notes: string | null;
     status: OrderStatus;
+    payment_status?: 'unpaid' | 'partial' | 'paid';
+    amount_paid?: number;
     created_at: string;
     updated_at: string;
     peptides?: {
