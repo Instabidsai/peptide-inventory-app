@@ -328,3 +328,52 @@ export function useDeleteOrder() {
         },
     });
 }
+
+// Record payment for an order
+export function useRecordOrderPayment() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async ({ orderId, amount, method, date, note, isFullPayment }: { orderId: string, amount: number, method: string, date: string, note?: string, isFullPayment: boolean }) => {
+            // 1. Create Expense Record
+            const { error: expenseError } = await supabase
+                .from('expenses')
+                .insert({
+                    date: date,
+                    category: 'inventory',
+                    amount: amount,
+                    description: note || `Payment for Order #${orderId.slice(0, 8)}`,
+                    recipient: 'Supplier',
+                    payment_method: method,
+                    status: 'paid',
+                    related_order_id: orderId
+                });
+
+            if (expenseError) throw expenseError;
+
+            // 2. Update Order Status
+            const { data: currentOrder } = await supabase.from('orders').select('amount_paid').eq('id', orderId).single();
+            const newTotal = (currentOrder?.amount_paid || 0) + amount;
+
+            const { error: updateError } = await supabase
+                .from('orders')
+                .update({
+                    amount_paid: newTotal,
+                    payment_status: isFullPayment ? 'paid' : 'partial'
+                })
+                .eq('id', orderId);
+
+            if (updateError) throw updateError;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            toast({ title: 'Payment recorded successfully' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to record payment', description: error.message });
+        },
+    });
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder, useMarkOrderReceived, useCancelOrder, type Order, type OrderStatus } from '@/hooks/use-orders';
+import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder, useMarkOrderReceived, useCancelOrder, useRecordOrderPayment, type Order, type OrderStatus } from '@/hooks/use-orders';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
