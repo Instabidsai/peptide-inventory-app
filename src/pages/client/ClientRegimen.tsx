@@ -246,6 +246,7 @@ export default function ClientRegimen() {
                 <div className="md:col-span-6 h-full">
                     <DigitalFridge
                         inventory={inventory}
+                        protocols={protocols}
                         onAddVial={handleAddVial}
                         onReconstitute={() => { }}
                     />

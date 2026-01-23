@@ -1,10 +1,10 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Droplets, AlertTriangle, Syringe, Trash2 } from "lucide-react";
-import { ClientInventoryItem } from "@/types/regimen";
+import { ClientInventoryItem, Protocol } from "@/types/regimen";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,10 +14,11 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DigitalFridgeProps {
     inventory: ClientInventoryItem[];
+    protocols?: Protocol[];
     onAddVial: (data: Partial<ClientInventoryItem>) => void;
     onReconstitute: (id: string, waterMl: number) => void;
 }
-export function DigitalFridge({ inventory, onAddVial, onReconstitute }: DigitalFridgeProps) {
+export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute }: DigitalFridgeProps) {
     const activeVials = useMemo(() => inventory.filter(i => i.status === 'active'), [inventory]);
     const { toast } = useToast();
 
@@ -113,7 +114,7 @@ export function DigitalFridge({ inventory, onAddVial, onReconstitute }: DigitalF
 
                                 {/* Log Dose Button */}
                                 <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <LogDoseModal vial={vial} />
+                                    <LogDoseModal vial={vial} protocols={protocols} />
                                     {vial.reconstituted_at && (
                                         <ReconstituteModal
                                             vial={vial}
@@ -204,11 +205,27 @@ function AddVialModal({ onAdd }: { onAdd: (data: any) => void }) {
     )
 }
 
-function LogDoseModal({ vial }: { vial: ClientInventoryItem }) {
+function LogDoseModal({ vial, protocols }: { vial: ClientInventoryItem, protocols?: Protocol[] }) {
     const [open, setOpen] = useState(false);
     const [doseAmount, setDoseAmount] = useState('');
     const [doseUnit, setDoseUnit] = useState('mg');
     const { toast } = useToast();
+
+    // Auto-fill dose from protocol if available
+    useEffect(() => {
+        if (open && protocols) {
+            // Find a protocol item that matches this peptide
+            // We search all protocols
+            for (const p of protocols) {
+                const item = p.protocol_items?.find(i => i.peptide_id === vial.peptide_id);
+                if (item) {
+                    setDoseAmount(item.dosage_amount.toString());
+                    setDoseUnit(item.dosage_unit);
+                    break;
+                }
+            }
+        }
+    }, [open, protocols, vial.peptide_id]);
 
     const handleLogDose = async () => {
         if (!doseAmount) return;

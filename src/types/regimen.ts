@@ -52,3 +52,22 @@ export interface DailyProtocolTask {
     is_completed: boolean;
     reference_id?: string; // ID of the item (protocol_item_id or supplement_id)
 }
+
+export interface ProtocolItem {
+    id: string;
+    protocol_id: string;
+    peptide_id: string;
+    dosage_amount: number;
+    dosage_unit: string;
+    frequency: string;
+    duration_days: number | null;
+    duration_weeks: number;
+}
+
+export interface Protocol {
+    id: string;
+    name: string;
+    description: string | null;
+    protocol_items: ProtocolItem[];
+    protocol_supplements?: any[];
+}
