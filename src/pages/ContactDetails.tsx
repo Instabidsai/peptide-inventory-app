@@ -733,6 +733,10 @@ export default function ContactDetails() {
                                 onLog={logProtocolUsage.mutate}
                                 onAddSupplement={addProtocolSupplement.mutateAsync}
                                 onDeleteSupplement={deleteProtocolSupplement.mutate}
+                                onAssignInventory={(peptideId) => {
+                                    setTempPeptideIdForAssign(peptideId);
+                                    setIsAssignInventoryOpen(true);
+                                }}
                                 peptides={peptides}
                                 movements={movements}
                             />
@@ -879,33 +883,47 @@ export default function ContactDetails() {
     );
 }
 
-function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, peptides: any[] | undefined, movements?: any[] }) {
+function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string) => void, peptides: any[] | undefined, movements?: any[] }) {
     // Calculate Total Cost for the Display
     // ... (keep cost logic) ...
 
     // Find latest movement status for this peptide
     const { latestMovement, statusColor, statusLabel } = useMemo(() => {
-        if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'gray', statusLabel: 'No History' };
+        if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No History' };
 
         const peptideId = protocol.protocol_items[0].peptide_id;
-        // Find latest movement that contains this peptide
-        const relevantMovements = movements.filter(m =>
-            m.movement_items?.some((item: any) => item.bottles?.lots?.peptide_id === peptideId)
+
+        const relevant = movements.filter(m =>
+            m.movement_items?.some((item: any) => {
+                const lot = item.bottles?.lots;
+                return lot?.peptide_id === peptideId || lot?.peptides?.id === peptideId;
+            })
         );
 
-        if (relevantMovements.length === 0) return { latestMovement: null, statusColor: 'gray', statusLabel: 'No Orders' };
+        if (relevant.length === 0) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No Orders' };
 
-        // Assume sorted by date desc from hook
-        const latest = relevantMovements[0];
-
+        const latest = relevant[0];
         let color = 'bg-gray-100 text-gray-800 border-gray-200';
         if (latest.payment_status === 'paid') color = 'bg-green-100 text-green-800 border-green-200';
         if (latest.payment_status === 'unpaid') color = 'bg-amber-100 text-amber-800 border-amber-200';
         if (latest.payment_status === 'partial') color = 'bg-blue-100 text-blue-800 border-blue-200';
 
         return { latestMovement: latest, statusColor: color, statusLabel: latest.payment_status };
-
     }, [movements, protocol]);
+
+    const lastSoldDetails = useMemo(() => {
+        if (!latestMovement || !protocol.protocol_items?.[0]) return null;
+        const peptideId = protocol.protocol_items[0].peptide_id;
+        const item = latestMovement.movement_items?.find((i: any) => {
+            const lot = i.bottles?.lots;
+            return lot?.peptide_id === peptideId || lot?.peptides?.id === peptideId;
+        });
+        return {
+            price: item?.price_at_sale || 0,
+            lot: item?.bottles?.lots?.lot_number,
+            date: latestMovement.movement_date
+        };
+    }, [latestMovement, protocol]);
     const totalCost = useMemo(() => {
         if (!protocol.protocol_items || !peptides) return 0;
         return protocol.protocol_items.reduce((acc: number, item: any) => {
@@ -963,7 +981,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
 
     return (
-        <Card className="hover:border-primary/50 transition-colors cursor-pointer group" onClick={onEdit}>
+        <Card className={`hover:border-primary/50 transition-colors cursor-pointer group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`} onClick={onEdit}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div>
@@ -1069,19 +1087,54 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     )}
                 </div>
 
-                <div className="pt-4 border-t flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Estimated Monthly Cost:</span>
-                    <div className="flex items-center gap-3">
-                        {/* Status Badge */}
-                        {latestMovement && (
-                            <Badge variant="outline" className={`${statusColor} capitalize font-normal`}>
-                                Last: {statusLabel}
-                                {latestMovement.amount_paid > 0 && ` ($${latestMovement.amount_paid})`}
-                                {latestMovement.payment_status === 'unpaid' && latestMovement.movement_items?.reduce((sum: number, i: any) => sum + (i.price_at_sale || 0), 0) > 0 && ` ($${latestMovement.movement_items?.reduce((sum: number, i: any) => sum + (i.price_at_sale || 0), 0)})`}
-                            </Badge>
-                        )}
-                        <span className="font-bold text-lg">${totalCost.toFixed(2)}</span>
+
+                {/* Detailed Inventory & Billing Status */}
+                <div className="pt-3 border-t grid gap-2">
+                    <div className="flex justify-between items-center">
+                        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">Inventory & Billing</span>
                     </div>
+
+                    {latestMovement ? (
+                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2">
+                            <div>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
+                                <Badge variant="outline" className={`${statusColor} capitalize font-normal border px-2 py-0 h-5`}>
+                                    {statusLabel}
+                                </Badge>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Sold At</span>
+                                <span className="font-mono font-medium">${lastSoldDetails?.price.toFixed(2)}</span>
+                            </div>
+                            <div className="col-span-2 flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
+                                <div className="text-xs flex items-center gap-1.5 text-muted-foreground">
+                                    <ShoppingBag className="h-3 w-3" />
+                                    <span>From Inventory</span>
+                                    {lastSoldDetails?.lot && <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-1 bg-slate-200 text-slate-700">Lot {lastSoldDetails.lot}</Badge>}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">{new Date(lastSoldDetails?.date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-amber-50 p-3 rounded border border-amber-200 text-sm flex justify-between items-center">
+                            <div className="text-amber-800">
+                                <p className="font-semibold text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" /> No Billing Record</p>
+                                <p className="text-[10px] opacity-80">Inventory not yet assigned.</p>
+                            </div>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 bg-white hover:bg-amber-50 text-amber-900" onClick={(e) => {
+                                e.stopPropagation();
+                                const peptideId = protocol.protocol_items?.[0]?.peptide_id;
+                                if (peptideId) onAssignInventory(peptideId);
+                            }}>
+                                Assign Now
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-muted-foreground mt-1 pt-2 border-t border-dashed">
+                    <span>Est. Monthly Usage Cost:</span>
+                    <span className="font-medium">${totalCost.toFixed(2)}</span>
                 </div>
             </CardContent>
         </Card>
