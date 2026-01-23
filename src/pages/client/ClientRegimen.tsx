@@ -9,6 +9,7 @@ import { DailyProtocol } from "@/components/regimen/DailyProtocol";
 import { HealthMetrics } from "@/components/regimen/HealthMetrics";
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { SupplementStack, SupplementItem } from "@/components/regimen/SupplementStack";
+import { SuggestedStack } from "@/components/regimen/SuggestedStack";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -209,6 +210,28 @@ export default function ClientRegimen() {
                     console.error("Failed to render supplement stack", err);
                     return null;
                 }
+                return <SupplementStack items={supplementItems} />;
+            } catch (err) {
+                console.error("Failed to render supplement stack", err);
+            return null;
+                }
+            })()}
+
+            {/* Suggested For You - New Section */}
+            {(() => {
+                // 1. Get active peptide IDs from inventory/protocols
+                const activePeptideIds = new Set([
+                    ...inventory.map(i => i.peptide_id),
+                    ...(protocols?.flatMap(p => p.protocol_items?.map(i => i.peptide_id)) || [])
+                ].filter(Boolean));
+
+                // 2. We need to fetch suggestions for these peptides. 
+                // Since we can't do complex hooks inside this conditional block easily, 
+                // we should move this logic up or use a separate component.
+                // I'll extract it to a component <Suggestedstack />
+                return <SuggestedStack activePeptideIds={Array.from(activePeptideIds) as string[]} existingSupplementIds={
+                    protocols?.flatMap(p => p.protocol_supplements?.map(s => s.supplement_id)) || []
+                } />;
             })()}
 
             {/* Bento Grid Layout */}

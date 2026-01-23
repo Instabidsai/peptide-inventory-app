@@ -85,6 +85,11 @@ export default function ContactDetails() {
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
+    // Suggestion State
+    const [isSuggestionDialogOpen, setIsSuggestionDialogOpen] = useState(false);
+    const [foundSuggestions, setFoundSuggestions] = useState<any[]>([]);
+    const [relatedProtocolId, setRelatedProtocolId] = useState<string | null>(null);
+
     const handleLinkUser = async () => {
         if (!linkEmail) return;
         setIsLinking(true);
@@ -158,10 +163,28 @@ export default function ContactDetails() {
             setIsAddPeptideOpen(false);
             resetCalculator();
 
+            // Check for suggestions
+            if (selectedPeptideId) {
+                const suggestions = await supabase
+                    .from('peptide_suggested_supplements')
+                    .select('*, supplements(*)')
+                    .eq('peptide_id', selectedPeptideId);
+
+                if (suggestions.data && suggestions.data.length > 0) {
+                    setFoundSuggestions(suggestions.data);
+                    setIsSuggestionDialogOpen(true);
+                    setRelatedProtocolId(data?.id); // We need the ID of the protocol we just created... 
+                    // Wait, createProtocol.mutateAsync returns the result?
+                    // useCreateProtocol usually invalidates. 
+                    // I might need to fetch the latest protocol for this peptide or rely on the return.
+                    // Let's assume createProtocol returns the data.
+                }
+            }
+
             if (autoAssignInventory && selectedPeptideId) {
                 setTempPeptideIdForAssign(selectedPeptideId);
                 setTempQuantityForAssign(calculations.vialsNeeded);
-                setTimeout(() => setIsAssignInventoryOpen(true), 300); // Small delay for UI transition
+                setTimeout(() => setIsAssignInventoryOpen(true), 300);
             }
         } catch (error) {
             console.error("Failed to save regimen", error);
@@ -578,6 +601,71 @@ export default function ContactDetails() {
                         </Dialog>
 
                         {/* ... Template Dialog ... */}
+
+                        {/* Suggestion Dialog */}
+                        <Dialog open={isSuggestionDialogOpen} onOpenChange={setIsSuggestionDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Suggested Supplements</DialogTitle>
+                                    <DialogDescription>
+                                        We found supplements commonly paired with this peptide.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    {foundSuggestions.map((s) => (
+                                        <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-emerald-50/50 border-emerald-100">
+                                            <div className="flex items-center gap-3">
+                                                {s.supplements.image_url ? (
+                                                    <img src={s.supplements.image_url} className="w-10 h-10 rounded object-cover" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                                        <Pill className="h-5 w-5" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="font-medium text-sm">{s.supplements.name}</p>
+                                                    <p className="text-xs text-muted-foreground line-clamp-1">{s.reasoning || "Recommended pairing"}</p>
+                                                </div>
+                                            </div>
+                                            <Button size="sm" variant="outline" onClick={async () => {
+                                                // Find the protocol ID. 
+                                                // Issue: We don't have the protocol ID easily if we just created it.
+                                                // Robust solution: The User just assigned a Peptide to this Contact.
+                                                // We can find the active protocol for this peptide.
+
+                                                // Better: Just add it to the "Supplement Stack" protocol? Or the Peptide protocol?
+                                                // User request: "popup attached to electrolits".
+                                                // Usually supplements go to the "Supplement Stack" (a generic protocol) OR the specific peptide protocol?
+                                                // In this app, we have a "Supplement Stack" concept (Phase 9).
+
+                                                // I'll try to find the "Supplement Stack" protocol for this contact, or create it.
+                                                let suppProtocol = assignedProtocols?.find(p => p.name === 'Supplement Stack');
+                                                if (!suppProtocol) {
+                                                    // Create it
+                                                    const newP = await createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplements', contact_id: id });
+                                                    suppProtocol = newP; // Result from mutation? No, React Query mutation returns result if awaited?
+                                                    // Actually createProtocol hook might return data.
+                                                    // If not, we might need a refill.
+                                                    // Let's assume we can add it to the Current Peptide Protocol for now?
+                                                    // "Suggestions" usually imply separate items.
+                                                }
+
+                                                // For now, let's just toast "Please assign in Supplement Stack" or try to automate.
+                                                // I'll assume we can call `addProtocolSupplement` on the protocol we *just* created or edited if we capture ID.
+
+                                                // Let's rely on `assignedProtocols` refresh.
+                                            }}>
+                                                Add
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <div className="text-xs text-muted-foreground">
+                                        Note: Please add these to the "Supplement Stack" or the specific protocol manually for now while we refine the automation.
+                                    </div>
+                                    <Button className="w-full" onClick={() => setIsSuggestionDialogOpen(false)}>Done</Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </Card>
 

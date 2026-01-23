@@ -81,9 +81,11 @@ export function DigitalFridge({ inventory, onAddVial, onReconstitute }: DigitalF
                                         <div className="text-xs text-muted-foreground flex items-center gap-1">
                                             {vial.vial_size_mg}mg Vial
                                             {vial.reconstituted_at ? (
-                                                <span className="text-emerald-400">• Active</span>
+                                                <span className="text-emerald-400 flex items-center gap-1">
+                                                    • {vial.water_added_ml}ml Mixed
+                                                </span>
                                             ) : (
-                                                <ReconstituteModal vial={vial} />
+                                                <ReconstituteModal vial={vial} triggerText="Prep Vial" />
                                             )}
                                         </div>
                                     </div>
@@ -110,7 +112,17 @@ export function DigitalFridge({ inventory, onAddVial, onReconstitute }: DigitalF
                                 </div>
 
                                 {/* Log Dose Button */}
-                                <LogDoseModal vial={vial} />
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <LogDoseModal vial={vial} />
+                                    {vial.reconstituted_at && (
+                                        <ReconstituteModal
+                                            vial={vial}
+                                            triggerText="Adjust Mix"
+                                            variant="outline"
+                                            className="w-full text-xs h-8 border-dashed"
+                                        />
+                                    )}
+                                </div>
                             </div>
                         )
                     })
@@ -317,9 +329,9 @@ function LogDoseModal({ vial }: { vial: ClientInventoryItem }) {
     );
 }
 
-function ReconstituteModal({ vial }: { vial: ClientInventoryItem }) {
+function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", className }: { vial: ClientInventoryItem, triggerText?: string, variant?: "outline" | "default" | "secondary" | "ghost", className?: string }) {
     const [open, setOpen] = useState(false);
-    const [waterAmount, setWaterAmount] = useState('');
+    const [waterAmount, setWaterAmount] = useState(vial.water_added_ml ? vial.water_added_ml.toString() : '');
     const { toast } = useToast();
 
     const handleReconstitute = async () => {
@@ -335,15 +347,15 @@ function ReconstituteModal({ vial }: { vial: ClientInventoryItem }) {
                 .update({
                     water_added_ml: water,
                     concentration_mg_ml: concentration,
-                    reconstituted_at: new Date().toISOString()
+                    reconstituted_at: vial.reconstituted_at || new Date().toISOString()
                 })
                 .eq('id', vial.id);
 
             if (error) throw error;
 
             toast({
-                title: "Reconstituted!",
-                description: `Vial mixed at ${concentration.toFixed(2)} mg/ml strength.`
+                title: "Vial Updated",
+                description: `Mix ratio updated: ${concentration.toFixed(2)} mg/ml strength.`
             });
             window.location.reload();
         } catch (error: any) {
@@ -358,15 +370,17 @@ function ReconstituteModal({ vial }: { vial: ClientInventoryItem }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 h-5 border-emerald-500/50 text-emerald-600 hover:bg-emerald-50">
-                    <Droplets className="h-3 w-3 mr-1" /> Prep
+                <Button size="sm" variant={variant} className={className || "h-6 text-[10px] px-2 h-5 border-emerald-500/50 text-emerald-600 hover:bg-emerald-50"}>
+                    <Droplets className="h-3 w-3 mr-1" /> {triggerText}
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Reconstitute Peptide</DialogTitle>
+                    <DialogTitle>{vial.reconstituted_at ? "Adjust Mix Ratio" : "Reconstitute Peptide"}</DialogTitle>
                     <DialogDescription>
-                        Enter the amount of water you added to this {vial.vial_size_mg}mg vial.
+                        {vial.reconstituted_at
+                            ? "Update the amount of water used if you made a mistake."
+                            : `Enter the amount of water you added to this ${vial.vial_size_mg}mg vial.`}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -399,7 +413,7 @@ function ReconstituteModal({ vial }: { vial: ClientInventoryItem }) {
                 </div>
                 <DialogFooter>
                     <Button onClick={handleReconstitute} disabled={!waterAmount}>
-                        Save & Mark Ready
+                        Save & Update
                     </Button>
                 </DialogFooter>
             </DialogContent>
