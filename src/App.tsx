@@ -76,6 +76,7 @@ const App = () => (
               <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
               <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
+              <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
               <Route path="/admin/supplements" element={<AdminSupplements />} />
               <Route path="/bottles" element={<Bottles />} />
               <Route path="/contacts" element={<Contacts />} />
