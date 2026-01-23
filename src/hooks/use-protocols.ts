@@ -147,6 +147,28 @@ export function useProtocols(contactId?: string) {
 
     const deleteProtocol = useMutation({
         mutationFn: async (id: string) => {
+            // Manual Cascade Delete
+            // 1. Delete Items (and their logs? No, logs reference items. Items ref protocol.)
+            // We must delete logs first if they reference items that will be deleted.
+            // But wait, logs reference `protocol_items`.
+
+            // Step 1: Get all Item IDs to delete logs
+            const { data: items } = await supabase.from('protocol_items').select('id').eq('protocol_id', id);
+            if (items && items.length > 0) {
+                const itemIds = items.map(i => i.id);
+                // Delete logs for these items
+                await supabase.from('protocol_logs').delete().in('protocol_item_id', itemIds);
+                // Delete items
+                await supabase.from('protocol_items').delete().eq('protocol_id', id);
+            }
+
+            // Step 2: Delete Supplements
+            await supabase.from('protocol_supplements').delete().eq('protocol_id', id);
+
+            // Step 3: Delete Feedback directly attached to protocol
+            await supabase.from('protocol_feedback').delete().eq('protocol_id', id);
+
+            // Step 4: Finally delete the protocol
             const { error } = await supabase
                 .from('protocols')
                 .delete()

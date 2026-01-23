@@ -77,7 +77,7 @@ export default function ContactDetails() {
     const [durationValue, setDurationValue] = useState<string>('30');
     const [costMultiplier, setCostMultiplier] = useState<string>('1');
     const [vialSize, setVialSize] = useState<string>('5'); // New State for Vial Size
-    const [autoAssignInventory, setAutoAssignInventory] = useState(false);
+    const [autoAssignInventory, setAutoAssignInventory] = useState(true);
     const [tempPeptideIdForAssign, setTempPeptideIdForAssign] = useState<string | undefined>(undefined);
     const [tempQuantityForAssign, setTempQuantityForAssign] = useState<number | undefined>(undefined);
 
@@ -947,7 +947,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                         <Button variant="outline" size="icon" onClick={onEdit}>
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => onDelete(protocol.id)}>
+                        <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this regimen? This will verify delete all logs and history.')) {
+                                onDelete(protocol.id);
+                            }
+                        }}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
