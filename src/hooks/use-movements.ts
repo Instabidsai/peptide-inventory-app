@@ -275,6 +275,25 @@ export function useCreateMovement() {
 
       if (!profile?.org_id) throw new Error('No organization found');
 
+      const bottleIds = input.items.map(i => i.bottle_id);
+
+      // PRE-FETCH: Get bottle details while they are still visible (in_stock)
+      // This is crucial because once marked 'sold', RLS might hide them from some queries
+      let bottleDetails: any[] = [];
+      if (bottleIds.length > 0) {
+        const { data, error } = await supabase
+          .from('bottles')
+          .select('id, uid, lots(id, lot_number, peptide_id, peptides(id, name))')
+          .in('id', bottleIds);
+
+        if (error) {
+          console.error('Error fetching bottle details for inventory:', error);
+          // We don't throw blocking error here, but inventory creation might fail/skip
+        } else {
+          bottleDetails = data || [];
+        }
+      }
+
       // 1. Create the movement
       const { data: movement, error: movementError } = await supabase
         .from('movements')
@@ -308,27 +327,9 @@ export function useCreateMovement() {
 
       if (itemsError) throw itemsError;
 
-      // 3. Update bottle statuses
-      const newStatus = movementTypeToBottleStatus[input.type];
-      const bottleIds = input.items.map(i => i.bottle_id);
-
-      const { error: bottleError } = await supabase
-        .from('bottles')
-        .update({ status: newStatus })
-        .in('id', bottleIds);
-
-      if (bottleError) throw bottleError;
-
-      // 4. For 'sale' movements, populate client_inventory with the bottles
-      if (input.type === 'sale' && input.contact_id) {
-        // Fetch full bottle details with lots and peptides
-        const { data: bottleDetails, error: bottleDetailsError } = await supabase
-          .from('bottles')
-          .select('id, uid, lots(id, lot_number, peptide_id, peptides(id, name))')
-          .in('id', bottleIds);
-
-        if (bottleDetailsError) throw bottleDetailsError;
-
+      // 3. For 'sale' movements, populate client_inventory with the bottles
+      // Use the pre-fetched bottleDetails
+      if (input.type === 'sale' && input.contact_id && bottleDetails.length > 0) {
         // Helper to extract vial size from peptide name
         const parseVialSize = (name: string): number => {
           const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
@@ -336,27 +337,29 @@ export function useCreateMovement() {
           const val = parseFloat(match[1]);
           const unit = match[2].toLowerCase();
           if (unit === 'mcg') return val / 1000;
-          return val; // mg or iu (treating iu as direct value)
+          return val; // mg or iu
         };
 
         // Create inventory entries
-        const inventoryEntries = bottleDetails?.map((bottle: any) => {
-          const vialSizeMg = bottle.lots?.peptides?.name
-            ? parseVialSize(bottle.lots.peptides.name)
-            : 5;
+        const inventoryEntries = bottleDetails.map((bottle: any) => {
+          const peptideName = bottle.lots?.peptides?.name;
+          const vialSizeMg = peptideName ? parseVialSize(peptideName) : 5;
           const waterAddedMl = 2; // Default reconstitution volume
+
+          // Skip if missing peptide link (shouldn't happen if db consistent)
+          if (!bottle.lots?.peptide_id) return null;
 
           return {
             contact_id: input.contact_id,
-            peptide_id: bottle.lots?.peptide_id || null,
-            batch_number: bottle.lots?.lot_number || null,
+            peptide_id: bottle.lots.peptide_id,
+            batch_number: bottle.lots.lot_number || null,
             vial_size_mg: vialSizeMg,
             water_added_ml: waterAddedMl,
             current_quantity_mg: vialSizeMg, // Starts full
             concentration_mg_ml: vialSizeMg / waterAddedMl,
             status: 'active'
           };
-        }) || [];
+        }).filter(Boolean); // Remove nulls
 
         if (inventoryEntries.length > 0) {
           const { error: inventoryError } = await supabase
@@ -369,6 +372,18 @@ export function useCreateMovement() {
           }
         }
       }
+
+      // 4. Update bottle statuses (LAST STEP)
+      const newStatus = movementTypeToBottleStatus[input.type];
+      const { error: bottleError } = await supabase
+        .from('bottles')
+        .update({ status: newStatus })
+        .in('id', bottleIds);
+
+      if (bottleError) throw bottleError; // Technically if this fails, we have inconsistency (movement but bottle in stock)
+      // But it's better than blocking the previous steps? 
+      // Ideally we'd use a transaction if Supabase JS supported it easily, or an RPC.
+      // For now, this order is safer for RLS visibility.
 
       return movement;
     },
