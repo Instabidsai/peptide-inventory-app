@@ -48,107 +48,79 @@ export default function Join() {
 
     // ... (rest of the file)
 
-    {
-        debugUrl ? (
-            <div className="space-y-4">
-                <div className="p-3 bg-slate-950 rounded border border-slate-700 space-y-2">
-                    <div>
-                        <label className="text-xs text-slate-400 block mb-1">Generated Magic Link:</label>
-                        <code className="text-[10px] break-all text-green-400 bg-black p-2 rounded block">
-                            {debugUrl}
-                        </code>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 border-t border-slate-800 pt-2 mt-2">
-                        <div>
-                            <label className="text-[10px] text-slate-500 block">Backend Base URL (Env):</label>
-                            <code className="text-[10px] text-blue-400">{debugInfo.base || 'N/A'}</code>
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-slate-500 block">Computed Redirect:</label>
-                            <code className="text-[10px] text-blue-400">{debugInfo.redirect || 'N/A'}</code>
-                        </div>
-                    </div>
-                </div>
-                <p className="text-xs text-yellow-500 text-center">
-                    🛑 STOP! Check the URL above. <br />Does it end in "/join"? If so, that's the bug.
-                </p>
-                <Button size="lg" className="w-full bg-green-600 hover:bg-green-700" onClick={() => window.location.href = debugUrl}>
-                    Proceed (Manually) <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-            </div>
-        ) : (
+
 
     if (!token) {
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                    <Card className="max-w-md w-full text-center">
-                        <CardHeader>
-                            <CardTitle className="text-red-500">Invalid Link</CardTitle>
-                            <CardDescription>This invite link is missing a valid token.</CardDescription>
-                        </CardHeader>
-                    </Card>
-                </div>
-            );
-        }
-
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-                <Card className="max-w-md w-full shadow-2xl border-slate-700 bg-slate-900/50 text-white backdrop-blur">
-                    <CardHeader className="text-center pb-2">
-                        <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-4">
-                            <ShieldCheck className="w-8 h-8 text-primary" />
-                        </div>
-                        <CardTitle className="text-2xl font-bold">Secure Access</CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Click the button below to access your tailored peptide regimen.
-                        </CardDescription>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                <Card className="max-w-md w-full text-center">
+                    <CardHeader>
+                        <CardTitle className="text-red-500">Invalid Link</CardTitle>
+                        <CardDescription>This invite link is missing a valid token.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-4">
-                        {error && (
-                            <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-md text-center">
-                                {error}
-                            </div>
-                        )}
-
-                        {debugUrl ? (
-                            <div className="space-y-4">
-                                <div className="p-3 bg-slate-950 rounded border border-slate-700">
-                                    <label className="text-xs text-slate-400 block mb-1">Generated Magic Link:</label>
-                                    <code className="text-[10px] break-all text-green-400 bg-black p-2 rounded block">
-                                        {debugUrl}
-                                    </code>
-                                </div>
-                                <p className="text-xs text-yellow-500 text-center">
-                                    🛑 STOP! Check the URL above. <br />Does it end in "/join"? If so, that's the bug.
-                                </p>
-                                <Button size="lg" className="w-full bg-green-600 hover:bg-green-700" onClick={() => window.location.href = debugUrl}>
-                                    Proceed (Manually) <ArrowRight className="ml-2 h-5 w-5" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <Button
-                                size="lg"
-                                className="w-full font-semibold text-lg h-12"
-                                onClick={handleAccess}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                        Verifying...
-                                    </>
-                                ) : (
-                                    <>
-                                        Access Portal <ArrowRight className="ml-2 h-5 w-5" />
-                                    </>
-                                )}
-                            </Button>
-                        )}
-                        <p className="text-xs text-center text-slate-500 mt-4">
-                            This extra step protects your one-time link from email scanners.
-                        </p>
-                    </CardContent>
                 </Card>
             </div>
         );
     }
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+            <Card className="max-w-md w-full shadow-2xl border-slate-700 bg-slate-900/50 text-white backdrop-blur">
+                <CardHeader className="text-center pb-2">
+                    <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-4">
+                        <ShieldCheck className="w-8 h-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-2xl font-bold">Secure Access</CardTitle>
+                    <CardDescription className="text-slate-400">
+                        Click the button below to access your tailored peptide regimen.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    {error && (
+                        <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-md text-center">
+                            {error}
+                        </div>
+                    )}
+
+                    {debugUrl ? (
+                        <div className="space-y-4">
+                            <div className="p-3 bg-slate-950 rounded border border-slate-700">
+                                <label className="text-xs text-slate-400 block mb-1">Generated Magic Link:</label>
+                                <code className="text-[10px] break-all text-green-400 bg-black p-2 rounded block">
+                                    {debugUrl}
+                                </code>
+                            </div>
+                            <p className="text-xs text-yellow-500 text-center">
+                                🛑 STOP! Check the URL above. <br />Does it end in "/join"? If so, that's the bug.
+                            </p>
+                            <Button size="lg" className="w-full bg-green-600 hover:bg-green-700" onClick={() => window.location.href = debugUrl}>
+                                Proceed (Manually) <ArrowRight className="ml-2 h-5 w-5" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            size="lg"
+                            className="w-full font-semibold text-lg h-12"
+                            onClick={handleAccess}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    Verifying...
+                                </>
+                            ) : (
+                                <>
+                                    Access Portal <ArrowRight className="ml-2 h-5 w-5" />
+                                </>
+                            )}
+                        </Button>
+                    )}
+                    <p className="text-xs text-center text-slate-500 mt-4">
+                        This extra step protects your one-time link from email scanners.
+                    </p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
