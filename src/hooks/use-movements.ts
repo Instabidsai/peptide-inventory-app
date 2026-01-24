@@ -77,6 +77,7 @@ export interface CreateMovementInput {
   items: {
     bottle_id: string;
     price_at_sale?: number;
+    protocol_item_id?: string; // NEW: Link bottle to specific protocol item
   }[];
   payment_status?: 'paid' | 'unpaid' | 'partial' | 'refunded';
   amount_paid?: number;
@@ -341,6 +342,11 @@ export function useCreateMovement() {
           return val; // mg or iu
         };
 
+        // Create a map of bottle_id to protocol_item_id from input
+        const bottleToProtocolMap = new Map(
+          input.items.map(item => [item.bottle_id, item.protocol_item_id])
+        );
+
         // Create inventory entries
         const inventoryEntries = bottleDetails.map((bottle: any) => {
           const peptideName = bottle.lots?.peptides?.name;
@@ -358,8 +364,10 @@ export function useCreateMovement() {
             vial_size_mg: vialSizeMg,
             water_added_ml: waterAddedMl,
             current_quantity_mg: vialSizeMg, // Starts full
+            initial_quantity_mg: vialSizeMg, // NEW: Track initial amount
             concentration_mg_ml: vialSizeMg / waterAddedMl,
-            status: 'active'
+            status: 'active',
+            protocol_item_id: bottleToProtocolMap.get(bottle.id) || null // NEW: Link to protocol item
           };
         }).filter(Boolean); // Remove nulls
 

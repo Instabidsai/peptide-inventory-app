@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/sb_client/client';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useContacts } from '@/hooks/use-contacts';
 import { useCreateMovement, type MovementType } from '@/hooks/use-movements';
@@ -42,6 +44,29 @@ export default function MovementWizard() {
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [selectedBottles, setSelectedBottles] = useState<SelectedBottle[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [bottleProtocolMap, setBottleProtocolMap] = useState<Record<string, string>>({});
+
+  // NEW: Fetch contact's protocols and protocol items
+  const { data: contactProtocols } = useQuery({
+    queryKey: ['contact-protocols', contactId],
+    queryFn: async () => {
+      if (!contactId) return [];
+      const { data, error } = await supabase
+        .from('protocols')
+        .select(`
+          id,
+          name,
+          protocol_items(
+            id,
+            peptides(id, name)
+          )
+        `)
+        .eq('contact_id', contactId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!contactId
+  });
 
   const filteredBottles = bottles?.filter((b) =>
     b.uid.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,6 +119,7 @@ export default function MovementWizard() {
       items: selectedBottles.map((sb) => ({
         bottle_id: sb.bottle.id,
         price_at_sale: sb.price,
+        protocol_item_id: bottleProtocolMap[sb.bottle.id] || undefined, // NEW: Include protocol link
       })),
       payment_status: paymentStatus as any,
       amount_paid: parseFloat(amountPaid) || 0,
@@ -140,8 +166,8 @@ export default function MovementWizard() {
                   key={type.value}
                   onClick={() => setMovementType(type.value)}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${movementType === type.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
                     }`}
                 >
                   <p className="font-medium">{type.label}</p>
@@ -280,36 +306,71 @@ export default function MovementWizard() {
                     <TableHead>Peptide</TableHead>
                     <TableHead>Cost</TableHead>
                     <TableHead>Sale Price</TableHead>
+                    <TableHead>Link to Regimen</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {selectedBottles.map((sb) => (
-                    <TableRow key={sb.bottle.id}>
-                      <TableCell className="font-mono text-sm">{sb.bottle.uid}</TableCell>
-                      <TableCell>{sb.bottle.lots?.peptides?.name}</TableCell>
-                      <TableCell>${Number(sb.bottle.lots?.cost_per_unit || 0).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={sb.price}
-                          onChange={(e) => updatePrice(sb.bottle.id, Number(e.target.value))}
-                          className="w-24"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeBottle(sb.bottle.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {selectedBottles.map((sb) => {
+                    const peptideId = sb.bottle.lots?.peptide_id;
+                    const matchingProtocols = contactProtocols?.flatMap(p =>
+                      (p.protocol_items || []).filter(item => item.peptides?.id === peptideId)
+                        .map(item => ({ protocolName: p.name, item }))
+                    ) || [];
+
+                    return (
+                      <TableRow key={sb.bottle.id}>
+                        <TableCell className="font-mono text-sm">{sb.bottle.uid}</TableCell>
+                        <TableCell>{sb.bottle.lots?.peptides?.name}</TableCell>
+                        <TableCell>${Number(sb.bottle.lots?.cost_per_unit || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={sb.price}
+                            onChange={(e) => updatePrice(sb.bottle.id, Number(e.target.value))}
+                            className="w-24"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {contactId && matchingProtocols.length > 0 ? (
+                            <Select
+                              value={bottleProtocolMap[sb.bottle.id] || ''}
+                              onValueChange={(val) => setBottleProtocolMap({
+                                ...bottleProtocolMap,
+                                [sb.bottle.id]: val
+                              })}
+                            >
+                              <SelectTrigger className="w-48">
+                                <SelectValue placeholder="Select regimen (optional)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {matchingProtocols.map(({ protocolName, item }) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {protocolName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                              {!contactId ? 'Select contact first' : 'No matching regimens'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeBottle(sb.bottle.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
