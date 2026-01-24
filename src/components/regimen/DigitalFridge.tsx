@@ -3,8 +3,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Droplets, AlertTriangle, Syringe, Trash2 } from "lucide-react";
+import { Plus, Droplets, AlertTriangle, Syringe, Trash2, Folder, ChevronDown } from "lucide-react";
 import { ClientInventoryItem, Protocol } from "@/types/regimen";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -19,20 +21,26 @@ interface DigitalFridgeProps {
     onReconstitute: (id: string, waterMl: number) => void;
 }
 export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute }: DigitalFridgeProps) {
-    const activeVials = useMemo(() => inventory.filter(i => i.status === 'active'), [inventory]);
-    const { toast } = useToast();
+    const groupedVials = useMemo(() => {
+        const groups: Record<string, ClientInventoryItem[]> = {};
+        activeVials.forEach(vial => {
+            // Check if movement property exists (it might not if types aren't updated, but runtime it will be there)
+            const key = (vial as any).movement_id || 'manual';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(vial);
+        });
+        return groups;
+    }, [activeVials]);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to remove this vial from your fridge?')) return;
-
-        const { error } = await supabase.from('client_inventory').delete().eq('id', id);
-        if (error) {
-            toast({ variant: "destructive", title: "Error", description: error.message });
-        } else {
-            toast({ title: "Vial Removed", description: "Item verified as finished/removed." });
-            window.location.reload();
-        }
-    };
+    const sortedGroupKeys = useMemo(() => {
+        return Object.keys(groupedVials).sort((a, b) => {
+            if (a === 'manual') return 1;
+            if (b === 'manual') return -1;
+            const dateA = (groupedVials[a][0] as any).movement?.movement_date || '';
+            const dateB = (groupedVials[b][0] as any).movement?.movement_date || '';
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+    }, [groupedVials]);
 
     return (
         <Card className="h-full flex flex-col border-emerald-500/20 bg-emerald-950/10">
@@ -41,7 +49,6 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute 
                     <CardTitle className="text-lg flex items-center gap-2">
                         <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400">
                             <img src="/icons/fridge.svg" className="w-5 h-5 text-emerald-400" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                            {/* Fallback icon if image fails */}
                             <Droplets className="w-5 h-5" />
                         </div>
                         Digital Fridge
@@ -59,74 +66,97 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute 
                         <p className="text-xs">Add a vial to start tracking dose.</p>
                     </div>
                 ) : (
-                    activeVials.map(vial => {
-                        const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
-                        const isLow = pct < 20;
+                    <Accordion type="multiple" className="w-full" defaultValue={sortedGroupKeys}>
+                        {sortedGroupKeys.map(key => {
+                            const vials = groupedVials[key];
+                            const isManual = key === 'manual';
+                            // Safely access movement date
+                            const date = !isManual ? (vials[0] as any).movement?.movement_date : null;
+                            const title = isManual ? 'manually added' : `Order from ${date ? format(new Date(date), 'MMM d, yyyy') : 'Unknown Date'}`;
 
-                        return (
-                            <div key={vial.id} className="group relative rounded-lg border bg-card p-3 transition-all hover:bg-accent/50">
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                        onClick={() => handleDelete(vial.id)}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-
-                                <div className="flex justify-between items-start mb-2 pr-6">
-                                    <div>
-                                        <h4 className="font-semibold text-sm">{vial.peptide?.name || 'Unknown Peptide'}</h4>
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                            {vial.vial_size_mg}mg Vial
-                                            {vial.reconstituted_at ? (
-                                                <span className="text-emerald-400 flex items-center gap-1">
-                                                    • {vial.water_added_ml}ml Mixed
-                                                </span>
-                                            ) : (
-                                                <ReconstituteModal vial={vial} triggerText="Prep Vial" />
-                                            )}
+                            return (
+                                <AccordionItem value={key} key={key} className="border-b-0 mb-2">
+                                    <AccordionTrigger className="hover:no-underline py-2 px-3 bg-emerald-900/20 rounded-t-lg data-[state=closed]:rounded-lg border border-emerald-500/10">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Folder className="h-4 w-4 text-emerald-500" />
+                                            <span className="font-medium text-emerald-100/80 capitalize">{title}</span>
+                                            <Badge variant="secondary" className="ml-2 text-[10px] h-5 px-1.5 bg-emerald-900/40 text-emerald-400 border-0">
+                                                {vials.length}
+                                            </Badge>
                                         </div>
-                                    </div>
-                                    <Badge variant={isLow ? "destructive" : "secondary"} className="text-[10px]">
-                                        {vial.current_quantity_mg.toFixed(1)}mg Left
-                                    </Badge>
-                                </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-2 px-1 pb-2 bg-black/20 rounded-b-lg border-x border-b border-emerald-500/10 space-y-2">
+                                        {vials.map(vial => {
+                                            const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
+                                            const isLow = pct < 20;
+                                            return (
+                                                <div key={vial.id} className="group relative rounded-lg border bg-card p-3 transition-all hover:bg-accent/50">
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => handleDelete(vial.id)}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
 
-                                {/* Visual Liquid Indicator */}
-                                <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden mb-2">
-                                    <div
-                                        className={`h-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                        style={{ width: `${pct}%` }}
-                                    />
-                                </div>
+                                                    <div className="flex justify-between items-start mb-2 pr-6">
+                                                        <div>
+                                                            <h4 className="font-semibold text-sm">{vial.peptide?.name || 'Unknown Peptide'}</h4>
+                                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                {vial.vial_size_mg}mg Vial
+                                                                {vial.reconstituted_at ? (
+                                                                    <span className="text-emerald-400 flex items-center gap-1">
+                                                                        • {vial.water_added_ml}ml Mixed
+                                                                    </span>
+                                                                ) : (
+                                                                    <ReconstituteModal vial={vial} triggerText="Prep Vial" />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <Badge variant={isLow ? "destructive" : "secondary"} className="text-[10px]">
+                                                            {vial.current_quantity_mg.toFixed(1)}mg Left
+                                                        </Badge>
+                                                    </div>
 
-                                <div className="text-xs flex justify-between items-center text-muted-foreground">
-                                    <span>
-                                        {vial.concentration_mg_ml
-                                            ? `${vial.concentration_mg_ml}mg/ml`
-                                            : "Not Mixed"}
-                                    </span>
-                                    {isLow && <span className="text-red-400 font-medium flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Low</span>}
-                                </div>
+                                                    {/* Visual Liquid Indicator */}
+                                                    <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden mb-2">
+                                                        <div
+                                                            className={`h-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                                            style={{ width: `${pct}%` }}
+                                                        />
+                                                    </div>
 
-                                {/* Log Dose Button */}
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <LogDoseModal vial={vial} protocols={protocols} />
-                                    {vial.reconstituted_at && (
-                                        <ReconstituteModal
-                                            vial={vial}
-                                            triggerText="Adjust Mix"
-                                            variant="outline"
-                                            className="w-full text-xs h-8 border-dashed"
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })
+                                                    <div className="text-xs flex justify-between items-center text-muted-foreground">
+                                                        <span>
+                                                            {vial.concentration_mg_ml
+                                                                ? `${vial.concentration_mg_ml.toFixed(1)}mg/ml`
+                                                                : "Not Mixed"}
+                                                        </span>
+                                                        {isLow && <span className="text-red-400 font-medium flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Low</span>}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <LogDoseModal vial={vial} protocols={protocols} />
+                                                        {vial.reconstituted_at && (
+                                                            <ReconstituteModal
+                                                                vial={vial}
+                                                                triggerText="Adjust Mix"
+                                                                variant="outline"
+                                                                className="w-full text-xs h-8 border-dashed"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            );
+                        })}
+                    </Accordion>
                 )}
             </CardContent>
         </Card>

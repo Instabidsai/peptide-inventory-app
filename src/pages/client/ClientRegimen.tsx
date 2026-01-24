@@ -38,7 +38,7 @@ export default function ClientRegimen() {
                 // 1. Fetch Inventory
                 const { data: invData } = await supabase
                     .from('client_inventory')
-                    .select('*, peptide:peptides(name)')
+                    .select('*, peptide:peptides(name), movement:movements(movement_date, id)')
                     .eq('contact_id', contact.id);
 
                 if (invData) setInventory(invData as any);
