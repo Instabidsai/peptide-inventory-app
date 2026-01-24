@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'; // Ensure this is imported
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WeeklyProgressChart } from '@/components/dashboards/WeeklyProgressChart';
+import { WeeklyCompliance } from '@/components/dashboards/WeeklyCompliance';
 
 import { aggregateDailyLogs } from '@/utils/nutrition-utils';
 
@@ -161,6 +162,9 @@ export default function ClientDashboard() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Weekly Compliance */}
+            <WeeklyCompliance />
 
             {/* Daily Macros Widget */}
             <Card className="shadow-sm">

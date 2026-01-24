@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -18,8 +19,6 @@ interface AnalysisResult {
     total_carbs: number;
     total_fat: number;
 }
-
-import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
 
 export default function MacroTracker() {
     const [image, setImage] = useState<string | null>(null);
@@ -147,8 +146,6 @@ export default function MacroTracker() {
             total_protein: totals.protein,
             total_carbs: totals.carbs,
             total_fat: totals.fat
-            total_carbs: totals.carbs,
-            total_fat: totals.fat
         });
     };
 
@@ -264,193 +261,185 @@ export default function MacroTracker() {
                         <Button className="w-full mt-4" onClick={saveGoals}>Save Goals</Button>
                     </CardContent>
                 </Card>
-                </Card>
-    )
-}
+            )}
 
-{/* Recent Foods Quick Add */ }
-<div className="mb-6">
-    <h3 className="text-sm font-medium mb-2 text-muted-foreground flex items-center">
-        <History className="h-4 w-4 mr-2" /> Recent Foods
-    </h3>
-    <div className="flex flex-wrap gap-2">
-        {recentFoodsLoading ? (
-            <div className="text-xs text-muted-foreground">Loading history...</div>
-        ) : recentFoods?.length === 0 ? (
-            <div className="text-xs text-muted-foreground">No recent meals found. Log your first meal!</div>
-        ) : (
-            recentFoods?.map((food, idx) => (
-                <Button
-                    key={idx}
-                    variant="secondary"
-                    size="sm"
-                    className="text-xs h-8"
-                    onClick={() => handleQuickAdd(food)}
-                >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {food.name}
-                </Button>
-            ))
-        )}
-    </div>
-</div>
-
-{
-    !image && !result && (
-        <Card className="border-dashed border-2">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="flex gap-4">
-                    <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
-                        <Camera className="h-8 w-8" />
-                        <span>Camera</span>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={handleImageUpload}
-                        />
-                    </Button>
-                    <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
-                        <Upload className="h-8 w-8" />
-                        <span>Upload</span>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={handleImageUpload}
-                        />
-                    </Button>
+            {/* Recent Foods Quick Add */}
+            <div className="mb-6">
+                <h3 className="text-sm font-medium mb-2 text-muted-foreground flex items-center">
+                    <History className="h-4 w-4 mr-2" /> Recent Foods
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                    {recentFoodsLoading ? (
+                        <div className="text-xs text-muted-foreground">Loading history...</div>
+                    ) : recentFoods?.length === 0 ? (
+                        <div className="text-xs text-muted-foreground">No recent meals found. Log your first meal!</div>
+                    ) : (
+                        recentFoods?.map((food, idx) => (
+                            <Button
+                                key={idx}
+                                variant="secondary"
+                                size="sm"
+                                className="text-xs h-8"
+                                onClick={() => handleQuickAdd(food)}
+                            >
+                                <Plus className="h-3 w-3 mr-1" />
+                                {food.name}
+                            </Button>
+                        ))
+                    )}
                 </div>
-                <p className="mt-4 text-muted-foreground text-sm">Take a photo or upload to analyze</p>
-            </CardContent>
-        </Card>
-    )
-}
+            </div>
 
-{
-    loading && (
-        <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-lg font-medium">Analyzing your meal...</p>
-                <p className="text-sm text-muted-foreground">This may take a few seconds</p>
-            </CardContent>
-        </Card>
-    )
-}
+            {!image && !result && (
+                <Card className="border-dashed border-2">
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <div className="flex gap-4">
+                            <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
+                                <Camera className="h-8 w-8" />
+                                <span>Camera</span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleImageUpload}
+                                />
+                            </Button>
+                            <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
+                                <Upload className="h-8 w-8" />
+                                <span>Upload</span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleImageUpload}
+                                />
+                            </Button>
+                        </div>
+                        <p className="mt-4 text-muted-foreground text-sm">Take a photo or upload to analyze</p>
+                    </CardContent>
+                </Card>
+            )}
 
-{
-    result && !loading && (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Analysis Results</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-4 gap-4 text-center mb-6 p-4 bg-muted rounded-lg">
-                        <div>
-                            <div className="text-2xl font-bold">{Math.round(result.total_calories)}</div>
-                            <div className="text-xs text-muted-foreground uppercase">Calories</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-blue-600">{Math.round(result.total_protein)}g</div>
-                            <div className="text-xs text-muted-foreground uppercase">Protein</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-green-600">{Math.round(result.total_carbs)}g</div>
-                            <div className="text-xs text-muted-foreground uppercase">Carbs</div>
-                        </div>
-                        <div>
-                            <div className="text-xl font-bold text-yellow-600">{Math.round(result.total_fat)}g</div>
-                            <div className="text-xs text-muted-foreground uppercase">Fat</div>
-                        </div>
-                    </div>
+            {loading && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                        <p className="text-lg font-medium">Analyzing your meal...</p>
+                        <p className="text-sm text-muted-foreground">This may take a few seconds</p>
+                    </CardContent>
+                </Card>
+            )}
 
-                    <div className="space-y-4">
-                        {result.foods.map((food, idx) => (
-                            <div key={idx} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50">
-                                <div className="flex justify-between items-start">
-                                    <Input
-                                        value={food.name}
-                                        onChange={(e) => updateFoodItem(idx, "name", e.target.value)}
-                                        className="font-medium bg-transparent border-0 p-0 h-auto focus-visible:ring-0 text-lg w-full"
-                                    />
-                                    <Button variant="ghost" size="icon" onClick={() => removeFoodItem(idx)}>
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
+            {result && !loading && (
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Analysis Results</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-4 gap-4 text-center mb-6 p-4 bg-muted rounded-lg">
+                                <div>
+                                    <div className="text-2xl font-bold">{Math.round(result.total_calories)}</div>
+                                    <div className="text-xs text-muted-foreground uppercase">Calories</div>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label className="text-xs">Quantity</Label>
-                                        <Input
-                                            value={food.quantity}
-                                            onChange={(e) => updateFoodItem(idx, "quantity", e.target.value)}
-                                            className="h-8"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <div>
-                                            <Label className="text-xs">Cal</Label>
-                                            <Input
-                                                type="number"
-                                                value={food.calories}
-                                                onChange={(e) => updateFoodItem(idx, "calories", parseFloat(e.target.value))}
-                                                className="h-8 px-1 text-center"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs">P</Label>
-                                            <Input
-                                                type="number"
-                                                value={food.protein}
-                                                onChange={(e) => updateFoodItem(idx, "protein", parseFloat(e.target.value))}
-                                                className="h-8 px-1 text-center"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs">C</Label>
-                                            <Input
-                                                type="number"
-                                                value={food.carbs}
-                                                onChange={(e) => updateFoodItem(idx, "carbs", parseFloat(e.target.value))}
-                                                className="h-8 px-1 text-center"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs">F</Label>
-                                            <Input
-                                                type="number"
-                                                value={food.fat}
-                                                onChange={(e) => updateFoodItem(idx, "fat", parseFloat(e.target.value))}
-                                                className="h-8 px-1 text-center"
-                                            />
-                                        </div>
-                                    </div>
+                                <div>
+                                    <div className="text-xl font-bold text-blue-600">{Math.round(result.total_protein)}g</div>
+                                    <div className="text-xs text-muted-foreground uppercase">Protein</div>
+                                </div>
+                                <div>
+                                    <div className="text-xl font-bold text-green-600">{Math.round(result.total_carbs)}g</div>
+                                    <div className="text-xs text-muted-foreground uppercase">Carbs</div>
+                                </div>
+                                <div>
+                                    <div className="text-xl font-bold text-yellow-600">{Math.round(result.total_fat)}g</div>
+                                    <div className="text-xs text-muted-foreground uppercase">Fat</div>
                                 </div>
                             </div>
-                        ))}
 
-                        <Button variant="outline" className="w-full" onClick={addFoodItem}>
-                            <Plus className="h-4 w-4 mr-2" /> Add Food Item
+                            <div className="space-y-4">
+                                {result.foods.map((food, idx) => (
+                                    <div key={idx} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50">
+                                        <div className="flex justify-between items-start">
+                                            <Input
+                                                value={food.name}
+                                                onChange={(e) => updateFoodItem(idx, "name", e.target.value)}
+                                                className="font-medium bg-transparent border-0 p-0 h-auto focus-visible:ring-0 text-lg w-full"
+                                            />
+                                            <Button variant="ghost" size="icon" onClick={() => removeFoodItem(idx)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label className="text-xs">Quantity</Label>
+                                                <Input
+                                                    value={food.quantity}
+                                                    onChange={(e) => updateFoodItem(idx, "quantity", e.target.value)}
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                <div>
+                                                    <Label className="text-xs">Cal</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={food.calories}
+                                                        onChange={(e) => updateFoodItem(idx, "calories", parseFloat(e.target.value))}
+                                                        className="h-8 px-1 text-center"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-xs">P</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={food.protein}
+                                                        onChange={(e) => updateFoodItem(idx, "protein", parseFloat(e.target.value))}
+                                                        className="h-8 px-1 text-center"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-xs">C</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={food.carbs}
+                                                        onChange={(e) => updateFoodItem(idx, "carbs", parseFloat(e.target.value))}
+                                                        className="h-8 px-1 text-center"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-xs">F</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={food.fat}
+                                                        onChange={(e) => updateFoodItem(idx, "fat", parseFloat(e.target.value))}
+                                                        className="h-8 px-1 text-center"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <Button variant="outline" className="w-full" onClick={addFoodItem}>
+                                    <Plus className="h-4 w-4 mr-2" /> Add Food Item
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="flex gap-4">
+                        <Button variant="secondary" className="flex-1" onClick={() => { setImage(null); setResult(null); }}>
+                            Retake Photo
+                        </Button>
+                        <Button className="flex-1" onClick={logMeal}>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Log Meal
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
-
-            <div className="flex gap-4">
-                <Button variant="secondary" className="flex-1" onClick={() => { setImage(null); setResult(null); }}>
-                    Retake Photo
-                </Button>
-                <Button className="flex-1" onClick={logMeal}>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Log Meal
-                </Button>
-            </div>
+                </div>
+            )}
         </div>
-    )
-}
-        </div >
     );
 }
