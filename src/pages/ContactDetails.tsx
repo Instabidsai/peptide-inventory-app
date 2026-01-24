@@ -12,8 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
+import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useUpdateBottleQuantity } from '@/hooks/use-update-bottle-quantity';
 import {
     Dialog,
     DialogContent,
@@ -996,6 +999,58 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
     const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
     const returnToStock = useRestockInventory();
+    const updateBottleQuantity = useUpdateBottleQuantity();
+
+    // NEW: Fetch bottles assigned to this protocol
+    const { data: assignedBottles } = useQuery({
+        queryKey: ['regimen-bottles', protocol.id, protocol.contact_id],
+        queryFn: async () => {
+            if (!protocol.contact_id) return [];
+
+            const protocolItems = protocol.protocol_items || [];
+            if (protocolItems.length === 0) return [];
+
+            const { data, error } = await supabase
+                .from('client_inventory')
+                .select(`
+                    id,
+                    peptide_id,
+                    batch_number,
+                    current_quantity_mg,
+                    initial_quantity_mg,
+                    movement_id,
+                    created_at
+                `)
+                .eq('contact_id', protocol.contact_id)
+                .in('peptide_id', protocolItems.map((item: any) => item.peptide_id));
+
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!protocol.contact_id
+    });
+
+    // NEW: Calculate supply for each protocol item
+    const supplyCalculations = useMemo(() => {
+        if (!protocol.protocol_items || !assignedBottles) return [];
+
+        return protocol.protocol_items.map((item: any) => {
+            const itemBottles = assignedBottles.filter(
+                (b: any) => b.peptide_id === item.peptide_id
+            );
+
+            return {
+                protocolItem: item,
+                supply: calculateSupply(item, itemBottles.map(b => ({
+                    id: b.id,
+                    uid: b.batch_number || 'Unknown',
+                    batch_number: b.batch_number,
+                    current_quantity_mg: b.current_quantity_mg,
+                    initial_quantity_mg: b.initial_quantity_mg
+                })))
+            };
+        });
+    }, [protocol.protocol_items, assignedBottles]);
 
     const handleRestockFromCard = (movement: any, lotNumber: string | undefined, price: number) => {
         // Construct minimal item object needed for hook
@@ -1185,6 +1240,70 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-1 pt-2 border-t border-dashed">
                     <span>Est. Monthly Usage Cost:</span>
                     <span className="font-medium">${totalCost.toFixed(2)}</span>
+                </div>
+
+                {/* NEW: Assigned Bottles & Supply Section */}
+                <div className="pt-3 border-t mt-3">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                            Assigned Bottles & Supply
+                        </span>
+                    </div>
+
+                    {supplyCalculations.length === 0 || supplyCalculations.every(s => s.supply.bottles.length === 0) ? (
+                        <div className="text-xs text-muted-foreground italic p-2 bg-muted/20 rounded">
+                            No bottles assigned yet. Click "Assign Inventory" above to link bottles to this regimen.
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {supplyCalculations.filter(s => s.supply.bottles.length > 0).map(({ protocolItem, supply }) => (
+                                <div key={protocolItem.id} className="border rounded-lg p-2 bg-muted/10">
+                                    {/* Peptide Header */}
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <div className="font-medium text-xs">
+                                            {peptides?.find(p => p.id === protocolItem.peptide_id)?.name}
+                                        </div>
+                                        <Badge
+                                            variant="outline"
+                                            className={`${getSupplyStatusColor(supply.status)} text-white border-0 text-[10px] px-1.5 py-0`}
+                                        >
+                                            {getSupplyStatusLabel(supply.daysRemaining)}
+                                        </Badge>
+                                    </div>
+
+                                    {/* Supply Summary */}
+                                    <div className="text-[10px] text-muted-foreground mb-1.5 grid grid-cols-2 gap-1">
+                                        <div>Supply: {supply.totalSupplyMg.toFixed(1)} mg</div>
+                                        <div>Usage: {supply.dailyUsageMg.toFixed(1)} mg/day</div>
+                                    </div>
+
+                                    {/* Bottle List */}
+                                    <Accordion type="single" collapsible>
+                                        <AccordionItem value="bottles" className="border-0">
+                                            <AccordionTrigger className="py-1 text-[10px] hover:no-underline">
+                                                {supply.bottles.length} bottle{supply.bottles.length !== 1 ? 's' : ''}
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="space-y-1 mt-1">
+                                                    {supply.bottles.map(bottle => (
+                                                        <div key={bottle.id} className="flex justify-between items-center text-[10px] bg-white p-1.5 rounded border">
+                                                            <div className="flex-1">
+                                                                <div className="font-mono text-[10px]">{bottle.uid}</div>
+                                                                <div className="text-muted-foreground">
+                                                                    {bottle.currentQuantityMg.toFixed(1)} mg
+                                                                    {bottle.usagePercent > 0 && ` • ${bottle.usagePercent.toFixed(0)}% used`}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

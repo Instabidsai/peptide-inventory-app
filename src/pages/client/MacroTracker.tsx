@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History } from "lucide-react";
+import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
@@ -18,6 +18,8 @@ import { FavoritesSheet } from "@/components/dashboards/FavoritesSheet";
 import { CircularProgress } from "@/components/ui/CircularProgress";
 import { MacroBar } from "@/components/ui/MacroBar";
 import { MACRO_COLORS } from "@/lib/colors";
+import { BarcodeScanner } from "@/components/barcode/BarcodeScanner";
+import { getProductNutrition } from "@/services/openfoodfacts";
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -31,6 +33,7 @@ export default function MacroTracker() {
     const [image, setImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
     const queryClient = useQueryClient();
     const navigate = useNavigate(); // Ensuring navigate is safe to use if unrelated logic
 
@@ -201,6 +204,47 @@ export default function MacroTracker() {
             total_fat: Number(food.fat)
         });
         toast.info(`Loaded ${food.name}. Make adjustments if needed.`);
+    };
+
+    const handleBarcodeScan = async (barcode: string) => {
+        setLoading(true);
+        try {
+            toast.info(`Looking up barcode: ${barcode}...`);
+
+            const nutrition = await getProductNutrition(barcode);
+
+            if (!nutrition) {
+                toast.error("Product not found in database. Try manual entry.");
+                setLoading(false);
+                return;
+            }
+
+            // Create FoodItem from barcode nutrition
+            const foodItem: FoodItem = {
+                name: nutrition.brand ? `${nutrition.brand} ${nutrition.name}` : nutrition.name,
+                quantity: nutrition.quantity,
+                calories: nutrition.calories,
+                protein: nutrition.protein,
+                carbs: nutrition.carbs,
+                fat: nutrition.fat
+            };
+
+            // Set result as if it was scanned
+            setResult({
+                foods: [foodItem],
+                total_calories: nutrition.calories,
+                total_protein: nutrition.protein,
+                total_carbs: nutrition.carbs,
+                total_fat: nutrition.fat
+            });
+
+            toast.success(`Found: ${foodItem.name}!`);
+        } catch (error) {
+            console.error('Barcode scan error:', error);
+            toast.error("Failed to fetch product data. Try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const logMeal = async () => {
