@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/ui/glass-card";
 import { format } from "date-fns";
-import { Trash2, Loader2, Utensils } from "lucide-react";
+import { Trash2, Loader2, Utensils, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { startOfDay, endOfDay } from "date-fns";
@@ -12,6 +12,31 @@ import { startOfDay, endOfDay } from "date-fns";
 export function TodaysLogsList() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
+
+    const addToFavorites = useMutation({
+        mutationFn: async (log: any) => {
+            if (!user?.id) throw new Error("No user");
+            // Assuming single food item for simplicity for now, or just taking the first
+            const food = log.foods?.[0];
+            if (!food) throw new Error("No food data");
+
+            const { error } = await supabase.from('favorite_foods').insert({
+                user_id: user.id,
+                name: food.name,
+                calories: food.calories || 0,
+                protein: food.protein || 0,
+                carbs: food.carbs || 0,
+                fat: food.fat || 0,
+                quantity: food.quantity
+            });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Added to favorites!");
+            queryClient.invalidateQueries({ queryKey: ['favorite-foods'] });
+        },
+        onError: () => toast.error("Could not save favorite")
+    });
 
     const { data: logs, isLoading } = useQuery({
         queryKey: ['todays-meal-logs', user?.id],
@@ -77,14 +102,24 @@ export function TodaysLogsList() {
                             {format(new Date(log.created_at), 'h:mm a')}
                         </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => deleteLog.mutate(log.id)}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+                            onClick={() => addToFavorites.mutate(log)}
+                        >
+                            <Star className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => deleteLog.mutate(log.id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </GlassCard>
             ))}
         </div>

@@ -1136,10 +1136,10 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
                     {latestMovement ? (
                         <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2 relative group">
-                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-1 right-1 transition-opacity">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 bg-white/50 hover:bg-white border shadow-sm">
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 bg-white/50 hover:bg-white border shadow-sm text-muted-foreground">
                                             <MoreVertical className="h-3 w-3" />
                                         </Button>
                                     </DropdownMenuTrigger>

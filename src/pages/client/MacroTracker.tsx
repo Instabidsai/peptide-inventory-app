@@ -14,6 +14,7 @@ import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
 import { GlassCard } from "@/components/ui/glass-card";
 import confetti from "canvas-confetti";
 import { TodaysLogsList } from '@/components/dashboards/TodaysLogsList';
+import { FavoritesSheet } from "@/components/dashboards/FavoritesSheet";
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -250,6 +251,8 @@ export default function MacroTracker() {
                     {showSettings ? "Close" : "Goals"}
                 </Button>
             </div>
+
+            <FavoritesSheet onSelect={handleQuickAdd} />
 
             {showSettings && (
                 <GlassCard className="mb-6 border-blue-200 bg-blue-50/50">
