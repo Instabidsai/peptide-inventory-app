@@ -11,16 +11,21 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Plus, Trash2, PieChart, TrendingDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useOrders } from '@/hooks/use-orders';
+import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
 import { ArrowRight, AlertCircle, CreditCard } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function Finance() {
     const { data: expenses, isLoading: expensesLoading } = useExpenses();
-    const { data: orders, isLoading: ordersLoading } = useOrders(); // Fetch all orders to find unpaids
+    const { data: orders, isLoading: ordersLoading } = useOrders();
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
     const [isAddOpen, setIsAddOpen] = useState(false);
+
+    // Bulk Payment State
+    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+    const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -31,6 +36,67 @@ export default function Finance() {
         recipient: '',
         payment_method: 'credit_card'
     });
+
+    // Bulk Payment Form State
+    const [bulkPayData, setBulkPayData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        method: 'wire',
+        note: ''
+    });
+
+    const toggleOrderSelection = (id: string) => {
+        const newSelected = new Set(selectedOrders);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedOrders(newSelected);
+    };
+
+    const handleSelectAll = (checked: boolean, allIds: string[]) => {
+        if (checked) {
+            setSelectedOrders(new Set(allIds));
+        } else {
+            setSelectedOrders(new Set());
+        }
+    };
+
+    const recordPayment = useRecordOrderPayment();
+
+    // ... logic ...
+
+    const handleBulkSubmit = async () => {
+        const ordersToPay = orders?.filter(o => selectedOrders.has(o.id)) || [];
+
+        for (const order of ordersToPay) {
+            const totalCost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+            const paid = order.amount_paid || 0;
+            const due = totalCost - paid;
+
+            if (due > 0.01) {
+                await recordPayment.mutateAsync({
+                    orderId: order.id,
+                    amount: due,
+                    method: bulkPayData.method,
+                    date: bulkPayData.date,
+                    note: bulkPayData.note || 'Bulk Payment',
+                    isFullPayment: true
+                });
+            }
+        }
+        setIsBulkPayOpen(false);
+        setSelectedOrders(new Set());
+        setBulkPayData({ ...bulkPayData, note: '' });
+    };
+
+    // Calculate total for selected
+    const selectedTotal = orders?.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => {
+        const cost = (o.quantity_ordered * (o.estimated_cost_per_unit || 0));
+        return sum + (cost - (o.amount_paid || 0));
+    }, 0) || 0;
+
+    // ... existing submit ...
 
     const handleSubmit = async () => {
         await createExpense.mutateAsync({
@@ -167,17 +233,65 @@ export default function Finance() {
             {/* Unpaid Invoices Section */}
             {unpaidOrders && unpaidOrders.length > 0 && (
                 <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/10">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-amber-500" />
-                            Unpaid Invoices
-                        </CardTitle>
-                        <CardDescription>Pending payments for inventory orders.</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-amber-500" />
+                                Unpaid Invoices
+                            </CardTitle>
+                            <CardDescription>Pending payments for inventory orders.</CardDescription>
+                        </div>
+                        {selectedOrders.size > 0 && (
+                            <Button onClick={() => setIsBulkPayOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+                                Pay Selected ({selectedOrders.size}) - ${selectedTotal.toFixed(2)}
+                            </Button>
+                        )}
+
+                        <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Bulk Payment</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Payment Date</Label>
+                                        <Input type="date" value={bulkPayData.date} onChange={e => setBulkPayData({ ...bulkPayData, date: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Payment Method</Label>
+                                        <Select value={bulkPayData.method} onValueChange={v => setBulkPayData({ ...bulkPayData, method: v })}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="wire">Wire Transfer</SelectItem>
+                                                <SelectItem value="credit_card">Credit Card</SelectItem>
+                                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                                <SelectItem value="cash">Cash</SelectItem>
+                                                <SelectItem value="other">Other</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Note / Reference</Label>
+                                        <Input placeholder="Batch Payment Ref..." value={bulkPayData.note} onChange={e => setBulkPayData({ ...bulkPayData, note: e.target.value })} />
+                                    </div>
+                                    <div className="pt-2 text-sm text-muted-foreground">
+                                        Paying <strong>{selectedOrders.size}</strong> orders for a total of <strong>${selectedTotal.toFixed(2)}</strong>.
+                                    </div>
+                                    <Button className="w-full mt-2" onClick={handleBulkSubmit}>Confirm Payment</Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[30px]">
+                                        <Checkbox
+                                            checked={selectedOrders.size === unpaidOrders.length && unpaidOrders.length > 0}
+                                            onCheckedChange={(c) => handleSelectAll(!!c, unpaidOrders.map(o => o.id))}
+                                        />
+                                    </TableHead>
                                     <TableHead>Date</TableHead>
                                     <TableHead>Supplier</TableHead>
                                     <TableHead>Items</TableHead>
@@ -195,6 +309,12 @@ export default function Finance() {
 
                                     return (
                                         <TableRow key={order.id}>
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedOrders.has(order.id)}
+                                                    onCheckedChange={() => toggleOrderSelection(order.id)}
+                                                />
+                                            </TableCell>
                                             <TableCell>{format(new Date(order.order_date), 'MMM d, yyyy')}</TableCell>
                                             <TableCell className="font-medium">{order.supplier || 'Unknown'}</TableCell>
                                             <TableCell>{order.quantity_ordered}x {order.peptides?.name}</TableCell>

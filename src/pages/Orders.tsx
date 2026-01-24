@@ -171,8 +171,13 @@ export default function Orders() {
 
     const handleDeleteConfirm = async () => {
         if (orderToDelete) {
-            await deleteOrder.mutateAsync(orderToDelete);
-            setOrderToDelete(null);
+            try {
+                await deleteOrder.mutateAsync(orderToDelete);
+                setOrderToDelete(null);
+            } catch (error) {
+                console.error("Failed to delete order:", error);
+                // Toast is handled by hook onError, but catching prevents React crash
+            }
         }
     };
 
@@ -741,7 +746,7 @@ export default function Orders() {
             <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <DialogTitle>Delete this order?</DialogTitle>
+                        <AlertDialogTitle>Delete this order?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the order record.
                         </AlertDialogDescription>
