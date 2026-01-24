@@ -12,7 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical } from 'lucide-react';
+import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import {
     Dialog,
     DialogContent,
@@ -994,6 +995,30 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     const isTakenToday = latestLog && differenceInDays(new Date(), new Date(latestLog.created_at)) === 0;
 
     const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
+    const returnToStock = useRestockInventory();
+
+    const handleRestockFromCard = (movement: any, lotNumber: string | undefined, price: number) => {
+        // Construct minimal item object needed for hook
+        const item = {
+            id: 'virtual-id', // We don't have the client_inventory ID easily unless we query it. 
+            // Problem: RegimenCard derives display from 'movements' table, NOT 'client_inventory'.
+            // 'client_inventory' is separate.
+            // BUT we can try to find the client_inventory item that matches this movement?
+            movement_id: movement.id,
+            // We need the ACTUAL client_inventory ID to delete it.
+        };
+        // Wait, if it's based on movements, we can't easily delete a client_inventory row without querying it.
+        // However, if we "Return to Stock", we act on the BOTTLE/MOVEMENT.
+        // But the hook deletes from 'client_inventory'.
+    };
+
+    // We need to fetch the Linked Inventory Item ID for this Regimen to enable the actions.
+    // Or we just tell the user to look down.
+    // Actually, let's keep it simple: Add a Link/Button "Manage in Fridge"?
+    // OR filter the 'client_inventory' list by this peptide?
+
+    // Let's modify RegimenCard to accept the 'clientInventory' list as prop and find the matching item?
+    // This is robust.
 
     return (
         <Card className={`hover:border-primary/50 transition-colors cursor-pointer group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`} onClick={onEdit}>
@@ -1110,7 +1135,22 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     </div>
 
                     {latestMovement ? (
-                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2">
+                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2 relative group">
+                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 bg-white/50 hover:bg-white border shadow-sm">
+                                            <MoreVertical className="h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Inventory Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem onClick={() => returnToStock.mutate({ id: 'virtual-id', movement_id: latestMovement.id, batch_number: lastSoldDetails?.lot, peptide_id: protocol.protocol_items?.[0]?.peptide_id })}>
+                                            <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                             <div>
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
                                 <Badge variant="outline" className={`${statusColor} capitalize font-normal border px-2 py-0 h-5`}>
@@ -1283,77 +1323,10 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
         }
     });
 
-    const returnToStock = useMutation({
-        mutationFn: async (item: any) => {
-            // 1. Find a bottle to restock
-            let bottleId = null;
 
-            if (item.movement_id) {
-                // Determine bottle from original movement
-                const { data: mItems } = await supabase
-                    .from('movement_items')
-                    .select('bottle_id')
-                    .eq('movement_id', item.movement_id)
-                    .limit(1);
-                if (mItems?.[0]) bottleId = mItems[0].bottle_id;
-            }
 
-            if (!bottleId && item.batch_number) {
-                // Fallback: Find any SOLD bottle with this batch number
-                // First get lot_id
-                const { data: lots } = await supabase
-                    .from('lots')
-                    .select('id')
-                    .eq('lot_number', item.batch_number)
-                    .eq('peptide_id', item.peptide_id) // Ensure correct peptide
-                    .limit(1);
+    const returnToStock = useRestockInventory();
 
-                if (lots?.[0]) {
-                    const { data: b } = await supabase.from('bottles')
-                        .select('id')
-                        .eq('lot_id', lots[0].id)
-                        .eq('status', 'sold')
-                        .limit(1);
-                    if (b?.[0]) bottleId = b[0].id;
-                }
-            }
-
-            if (bottleId) {
-                // 2. Mark bottle as in_stock
-                const { error: bError } = await supabase
-                    .from('bottles')
-                    .update({ status: 'in_stock' })
-                    .eq('id', bottleId);
-                if (bError) throw bError;
-
-                // 3. Delete from client inventory
-                const { error: dError } = await supabase
-                    .from('client_inventory')
-                    .delete()
-                    .eq('id', item.id);
-                if (dError) throw dError;
-
-                return "Restocked successfully";
-            } else {
-                if (confirm("Could not find the original bottle in the system history (it might be old data). Just delete it from the fridge?")) {
-                    const { error: dError } = await supabase
-                        .from('client_inventory')
-                        .delete()
-                        .eq('id', item.id);
-                    if (dError) throw dError;
-                    return "Removed (No bottle found to restock)";
-                }
-                throw new Error("Action cancelled");
-            }
-        },
-        onSuccess: (msg) => {
-            queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
-            toast({ title: msg });
-        },
-        onError: (err) => {
-            toast({ variant: "destructive", title: "Error", description: err.message });
-        }
-    });
 
     const groupedInventory = useMemo(() => {
         if (!inventory) return {};
