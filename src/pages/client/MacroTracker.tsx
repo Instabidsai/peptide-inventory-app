@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
 import { GlassCard } from "@/components/ui/glass-card";
 import confetti from "canvas-confetti";
+import { TodaysLogsList } from '@/components/dashboards/TodaysLogsList';
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -26,6 +27,9 @@ export default function MacroTracker() {
     const [image, setImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const queryClient = useQueryClient();
+    const navigate = useNavigate(); // Ensuring navigate is safe to use if unrelated logic
+
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -225,6 +229,9 @@ export default function MacroTracker() {
                 spread: 70,
                 origin: { y: 0.6 }
             });
+
+            queryClient.invalidateQueries({ queryKey: ['todays-meal-logs'] });
+            queryClient.invalidateQueries({ queryKey: ['daily-macros'] });
 
             setImage(null);
             setResult(null);
@@ -439,17 +446,21 @@ export default function MacroTracker() {
                         </CardContent>
                     </Card>
 
-                    <div className="flex gap-4">
-                        <Button variant="secondary" className="flex-1" onClick={() => { setImage(null); setResult(null); }}>
-                            Retake Photo
-                        </Button>
-                        <Button className="flex-1" onClick={logMeal}>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Log Meal
-                        </Button>
-                    </div>
+                    <Button className="flex-1" onClick={logMeal}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Log Meal
+                    </Button>
                 </div>
             )}
+
+            {/* Today's Logs */}
+            <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-3">Today's Logs</h3>
+                {/* Reuse query or fetch here. For simplicity, we can let it be handled by a separate component or add the query.
+                    Let's add the query in the main component for now for speed.
+                 */}
+                <TodaysLogsList />
+            </div>
         </div>
     );
 }
