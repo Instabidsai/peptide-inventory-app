@@ -30,37 +30,46 @@ export function calculateSupply(
         initial_quantity_mg: number | null;
     }[]
 ): SupplyCalculation {
-    // 1. Calculate daily usage in mg
-    const dosageMg = protocolItem.dosage_unit === 'mcg'
-        ? protocolItem.dosage / 1000
-        : protocolItem.dosage;
+    // 1. Calculate daily usage in mg - with safety checks
+    const dosage = protocolItem?.dosage ?? 0;
+    const dosageUnit = protocolItem?.dosage_unit ?? 'mg';
+    const frequency = protocolItem?.frequency ?? 'daily';
+
+    const dosageMg = dosageUnit === 'mcg'
+        ? dosage / 1000
+        : dosage;
 
     let dailyUsageMg = dosageMg;
 
     // Adjust for frequency
-    if (protocolItem.frequency === 'weekly') {
+    if (frequency === 'weekly') {
         dailyUsageMg = dosageMg / 7;
-    } else if (protocolItem.frequency === 'bid') {
+    } else if (frequency === 'bid') {
         dailyUsageMg = dosageMg * 2;
-    } else if (protocolItem.frequency === 'biweekly') {
+    } else if (frequency === 'biweekly') {
         dailyUsageMg = (dosageMg * 2) / 7;
+    }
+
+    // Ensure dailyUsageMg is never NaN or undefined
+    if (!Number.isFinite(dailyUsageMg)) {
+        dailyUsageMg = 0;
     }
 
     // 2. Calculate total supply from all bottles
     const totalSupplyMg = bottles.reduce((sum, bottle) => {
         // If current_quantity_mg is null, assume bottle is full
         const quantity = bottle.current_quantity_mg ?? bottle.initial_quantity_mg ?? 0;
-        return sum + quantity;
+        return sum + (Number.isFinite(quantity) ? quantity : 0);
     }, 0);
 
     // 3. Calculate days remaining
-    const daysRemaining = dailyUsageMg > 0
+    const daysRemaining = dailyUsageMg > 0 && Number.isFinite(dailyUsageMg) && Number.isFinite(totalSupplyMg)
         ? Math.floor(totalSupplyMg / dailyUsageMg)
         : 0;
 
     // 4. Determine status
     let status: 'adequate' | 'low' | 'critical' | 'depleted';
-    if (daysRemaining === 0) {
+    if (daysRemaining === 0 || !Number.isFinite(daysRemaining)) {
         status = 'depleted';
     } else if (daysRemaining < 3) {
         status = 'critical';
@@ -70,22 +79,29 @@ export function calculateSupply(
         status = 'adequate';
     }
 
-    // 5. Format bottle details
-    const bottleDetails = bottles.map(b => ({
-        id: b.id,
-        uid: b.uid || 'Unknown',
-        batchNumber: b.batch_number || 'Unknown',
-        currentQuantityMg: b.current_quantity_mg ?? b.initial_quantity_mg ?? 0,
-        initialQuantityMg: b.initial_quantity_mg ?? 0,
-        usagePercent: b.initial_quantity_mg
-            ? ((b.initial_quantity_mg - (b.current_quantity_mg ?? b.initial_quantity_mg)) / b.initial_quantity_mg) * 100
-            : 0
-    }));
+    // 5. Format bottle details - with safety checks
+    const bottleDetails = bottles.map(b => {
+        const currentQty = Number.isFinite(b.current_quantity_mg) ? b.current_quantity_mg! : (b.initial_quantity_mg ?? 0);
+        const initialQty = Number.isFinite(b.initial_quantity_mg) ? b.initial_quantity_mg! : 0;
+
+        const usagePercent = initialQty > 0
+            ? ((initialQty - currentQty) / initialQty) * 100
+            : 0;
+
+        return {
+            id: b.id,
+            uid: b.uid || 'Unknown',
+            batchNumber: b.batch_number || 'Unknown',
+            currentQuantityMg: currentQty,
+            initialQuantityMg: initialQty,
+            usagePercent: Number.isFinite(usagePercent) ? usagePercent : 0
+        };
+    });
 
     return {
-        totalSupplyMg,
-        dailyUsageMg,
-        daysRemaining,
+        totalSupplyMg: Number.isFinite(totalSupplyMg) ? totalSupplyMg : 0,
+        dailyUsageMg: Number.isFinite(dailyUsageMg) ? dailyUsageMg : 0,
+        daysRemaining: Number.isFinite(daysRemaining) ? Math.max(0, daysRemaining) : 0,
         bottles: bottleDetails,
         status
     };

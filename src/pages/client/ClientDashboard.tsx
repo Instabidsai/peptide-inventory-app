@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight } from "lucide-react";
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 import { MACRO_COLORS, MACRO_COLORS_LIGHT } from '@/lib/colors'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query'; // Ensure this is imported
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WeeklyProgressChart } from '@/components/dashboards/WeeklyProgressChart';
 import { WeeklyCompliance } from '@/components/dashboards/WeeklyCompliance';
+import { WaterTracker } from '@/components/dashboards/WaterTracker';
+import { WeeklyTrends } from '@/components/dashboards/WeeklyTrends';
 
 import { aggregateDailyLogs } from '@/utils/nutrition-utils';
 
@@ -218,6 +220,12 @@ export default function ClientDashboard() {
                     </Button>
                 </CardContent>
             </GlassCard>
+
+            {/* Water Tracker */}
+            <WaterTracker />
+
+            {/* Weekly Macro Trends */}
+            <WeeklyTrends />
 
             {/* Weekly Progress Component */}
             <WeeklyProgressChart />

@@ -420,8 +420,16 @@ export default function MacroTracker() {
                                         onChange={handleImageUpload}
                                     />
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-24 w-24 flex flex-col gap-2"
+                                    onClick={() => setShowBarcodeScanner(true)}
+                                >
+                                    <Barcode className="h-8 w-8" />
+                                    <span>Barcode</span>
+                                </Button>
                             </div>
-                            <p className="mt-4 text-muted-foreground text-sm">Take a photo or upload to analyze</p>
+                            <p className="mt-4 text-muted-foreground text-sm">Take a photo, upload, or scan a barcode</p>
                         </CardContent>
                     </GlassCard>
                 )
@@ -554,6 +562,13 @@ export default function MacroTracker() {
                  */}
                 <TodaysLogsList />
             </div>
+
+            {/* Barcode Scanner Modal */}
+            <BarcodeScanner
+                isOpen={showBarcodeScanner}
+                onClose={() => setShowBarcodeScanner(false)}
+                onScan={handleBarcodeScan}
+            />
         </div >
     );
 }
