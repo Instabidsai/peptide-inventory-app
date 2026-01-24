@@ -351,6 +351,7 @@ export function useCreateMovement() {
 
           return {
             contact_id: input.contact_id,
+            movement_id: movement.id, // Link to order
             peptide_id: bottle.lots.peptide_id,
             batch_number: bottle.lots.lot_number || null,
             vial_size_mg: vialSizeMg,

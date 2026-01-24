@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfWeek, endOfWeek, subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { Loader2 } from "lucide-react";
+import { processWeeklyChartData } from '@/utils/nutrition-utils';
 
 export function WeeklyProgressChart() {
     const { user } = useAuth();
@@ -26,26 +27,7 @@ export function WeeklyProgressChart() {
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString());
 
-            // Aggregate by day
-            const dailyMap = new Map();
-
-            // Initialize last 7 days with 0
-            for (let i = 6; i >= 0; i--) {
-                const d = subDays(new Date(), i);
-                const key = format(d, 'yyyy-MM-dd');
-                dailyMap.set(key, { name: format(d, 'EEE'), calories: 0, protein: 0 });
-            }
-
-            data?.forEach(log => {
-                const key = format(new Date(log.created_at), 'yyyy-MM-dd');
-                if (dailyMap.has(key)) {
-                    const curr = dailyMap.get(key);
-                    curr.calories += Number(log.total_calories || 0);
-                    curr.protein += Number(log.total_protein || 0);
-                }
-            });
-
-            return Array.from(dailyMap.values());
+            return processWeeklyChartData(data || []);
         },
         enabled: !!user?.id
     });

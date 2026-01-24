@@ -23,6 +23,15 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -37,7 +46,13 @@ import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
-import { Pill } from 'lucide-react';
+import { Pill, Folder } from 'lucide-react';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
@@ -1268,6 +1283,99 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
         }
     });
 
+    const returnToStock = useMutation({
+        mutationFn: async (item: any) => {
+            // 1. Find a bottle to restock
+            let bottleId = null;
+
+            if (item.movement_id) {
+                // Determine bottle from original movement
+                const { data: mItems } = await supabase
+                    .from('movement_items')
+                    .select('bottle_id')
+                    .eq('movement_id', item.movement_id)
+                    .limit(1);
+                if (mItems?.[0]) bottleId = mItems[0].bottle_id;
+            }
+
+            if (!bottleId && item.batch_number) {
+                // Fallback: Find any SOLD bottle with this batch number
+                // First get lot_id
+                const { data: lots } = await supabase
+                    .from('lots')
+                    .select('id')
+                    .eq('lot_number', item.batch_number)
+                    .eq('peptide_id', item.peptide_id) // Ensure correct peptide
+                    .limit(1);
+
+                if (lots?.[0]) {
+                    const { data: b } = await supabase.from('bottles')
+                        .select('id')
+                        .eq('lot_id', lots[0].id)
+                        .eq('status', 'sold')
+                        .limit(1);
+                    if (b?.[0]) bottleId = b[0].id;
+                }
+            }
+
+            if (bottleId) {
+                // 2. Mark bottle as in_stock
+                const { error: bError } = await supabase
+                    .from('bottles')
+                    .update({ status: 'in_stock' })
+                    .eq('id', bottleId);
+                if (bError) throw bError;
+
+                // 3. Delete from client inventory
+                const { error: dError } = await supabase
+                    .from('client_inventory')
+                    .delete()
+                    .eq('id', item.id);
+                if (dError) throw dError;
+
+                return "Restocked successfully";
+            } else {
+                if (confirm("Could not find the original bottle in the system history (it might be old data). Just delete it from the fridge?")) {
+                    const { error: dError } = await supabase
+                        .from('client_inventory')
+                        .delete()
+                        .eq('id', item.id);
+                    if (dError) throw dError;
+                    return "Removed (No bottle found to restock)";
+                }
+                throw new Error("Action cancelled");
+            }
+        },
+        onSuccess: (msg) => {
+            queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
+            toast({ title: msg });
+        },
+        onError: (err) => {
+            toast({ variant: "destructive", title: "Error", description: err.message });
+        }
+    });
+
+    const groupedInventory = useMemo(() => {
+        if (!inventory) return {};
+        const groups: Record<string, any[]> = {};
+        inventory.forEach((item: any) => {
+            const key = item.movement_id || 'unassigned';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(item);
+        });
+        return groups;
+    }, [inventory]);
+
+    const sortedGroupKeys = useMemo(() => {
+        return Object.keys(groupedInventory).sort((a, b) => {
+            if (a === 'unassigned') return 1;
+            if (b === 'unassigned') return -1;
+            const dateA = groupedInventory[a][0]?.movement?.movement_date || '';
+            const dateB = groupedInventory[b][0]?.movement?.movement_date || '';
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+    }, [groupedInventory]);
+
     if (isLoading) return <Skeleton className="h-32 w-full" />;
 
     if (!inventory?.length) {
@@ -1282,66 +1390,107 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
     }
 
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {inventory.map((item: any) => (
-                <Card key={item.id} className="relative overflow-hidden group">
-                    <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+        <div className="space-y-4">
+            <Accordion type="multiple" className="w-full">
+                {sortedGroupKeys.map(key => {
+                    const items = groupedInventory[key];
+                    const isUnassigned = key === 'unassigned';
+                    const movementDate = !isUnassigned ? items[0]?.movement?.movement_date : null;
+                    const groupTitle = isUnassigned
+                        ? 'Unassigned / Manual Adds'
+                        : `Order from ${format(new Date(movementDate), 'MMMM d, yyyy')}`;
 
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                                if (confirm('Are you sure you want to remove this item?')) {
-                                    deleteInventory.mutate(item.id);
-                                }
-                            }}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
+                    return (
+                        <AccordionItem value={key} key={key} className="border rounded-lg px-4 mb-2 bg-card">
+                            <AccordionTrigger className="hover:no-underline py-3">
+                                <div className="flex items-center gap-3">
+                                    <Folder className={`h-4 w-4 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
+                                    <span className="font-medium text-sm">{groupTitle}</span>
+                                    <Badge variant="secondary" className="ml-2 text-xs font-normal">
+                                        {items.length} items
+                                    </Badge>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pb-4">
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {items.map((item: any) => (
+                                        <Card key={item.id} className="relative overflow-hidden group border shadow-sm">
+                                            <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
-                    <CardHeader className="pb-2 pl-6 pr-8">
-                        <div className="flex justify-between items-start">
-                            <CardTitle className="text-sm font-medium leading-tight truncate pr-2">
-                                {item.peptide?.name || 'Unknown Item'}
-                            </CardTitle>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                            <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-[10px]">
-                                {item.current_quantity_mg > 0 ? 'In Stock' : 'Depleted'}
-                            </Badge>
-                            <CardDescription className="text-[10px]">
-                                {format(new Date(item.created_at), 'P')}
-                            </CardDescription>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pl-6 pb-3">
-                        <div className="flex justify-between items-end text-sm">
-                            <div className="text-muted-foreground">
-                                <div className="flex items-baseline gap-1">
-                                    <span className={item.current_quantity_mg < 2 ? "text-red-500 font-bold" : "text-foreground font-semibold"}>
-                                        {item.current_quantity_mg}mg
-                                    </span>
-                                    <span className="text-xs">remaining</span>
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-white/50 backdrop-blur-sm hover:bg-white/80">
+                                                            <MoreVertical className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
+                                                            <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => {
+                                                                if (confirm('Are you sure you want to delete this? It will NOT be restocked.')) {
+                                                                    deleteInventory.mutate(item.id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Forever
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+
+                                            <CardHeader className="pb-2 pl-6 pr-8">
+                                                <div className="flex justify-between items-start">
+                                                    <CardTitle className="text-sm font-medium leading-tight truncate pr-2">
+                                                        {item.peptide?.name || 'Unknown Item'}
+                                                    </CardTitle>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-[10px]">
+                                                        {item.current_quantity_mg > 0 ? 'In Stock' : 'Depleted'}
+                                                    </Badge>
+                                                    <div className="text-[10px] text-muted-foreground">
+                                                        Lot: {item.batch_number || 'N/A'}
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="pl-6 pb-3">
+                                                <div className="flex justify-between items-end text-sm">
+                                                    <div className="text-muted-foreground">
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className={item.current_quantity_mg < 2 ? "text-red-500 font-bold" : "text-foreground font-semibold"}>
+                                                                {item.current_quantity_mg}mg
+                                                            </span>
+                                                            <span className="text-xs">remaining</span>
+                                                        </div>
+                                                        <div className="text-[10px] mt-1">
+                                                            {format(new Date(item.created_at), 'MMM d, yyyy')}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground text-right">
+                                                        <div>/ {item.vial_size_mg}mg size</div>
+                                                        {item.current_quantity_mg < item.vial_size_mg && (
+                                                            <div className="text-[10px] text-emerald-600 font-medium">
+                                                                -{((1 - (item.current_quantity_mg / item.vial_size_mg)) * 100).toFixed(0)}% used
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
                                 </div>
-                                <div className="text-[10px] mt-1">
-                                    Last activity: {format(new Date(item.updated_at), 'MMM d, h:mm a')}
-                                </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground text-right">
-                                <div>/ {item.vial_size_mg}mg size</div>
-                                {item.current_quantity_mg < item.vial_size_mg && (
-                                    <div className="text-[10px] text-emerald-600 font-medium">
-                                        -{((1 - (item.current_quantity_mg / item.vial_size_mg)) * 100).toFixed(0)}% used
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
+                            </AccordionContent>
+                        </AccordionItem>
+                    );
+                })}
+            </Accordion>
         </div>
     );
 }
+

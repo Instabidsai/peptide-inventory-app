@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WeeklyProgressChart } from '@/components/dashboards/WeeklyProgressChart';
 
+import { aggregateDailyLogs } from '@/utils/nutrition-utils';
+
 export default function ClientDashboard() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
@@ -40,12 +42,7 @@ export default function ClientDashboard() {
                 return { calories: 0, protein: 0, carbs: 0, fat: 0 };
             }
 
-            return data.reduce((acc, log) => ({
-                calories: acc.calories + Number(log.total_calories || 0),
-                protein: acc.protein + Number(log.total_protein || 0),
-                carbs: acc.carbs + Number(log.total_carbs || 0),
-                fat: acc.fat + Number(log.total_fat || 0),
-            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+            return aggregateDailyLogs(data);
         },
         enabled: !!user?.id
     });
