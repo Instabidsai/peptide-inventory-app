@@ -15,6 +15,7 @@ export interface Movement {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  status?: 'active' | 'returned' | 'cancelled' | 'partial_return';
   contacts?: {
     id: string;
     name: string;

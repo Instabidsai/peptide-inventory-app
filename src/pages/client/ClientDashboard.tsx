@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Clock, ChevronRight, Loader2, Utensils } from 'lucide-react'; // Added Utensils
-import { format, differenceInDays, startOfDay, endOfDay } from 'date-fns'; // Added start/endOfDay
+import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight } from "lucide-react";
+import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { MACRO_COLORS, MACRO_COLORS_LIGHT } from '@/lib/colors'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query'; // Ensure this is imported
 import { supabase } from '@/integrations/sb_client/client';
@@ -185,25 +186,25 @@ export default function ClientDashboard() {
 
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] text-blue-600 font-medium">
+                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.protein }}>
                                     <span>Protein</span>
                                     <span>{Math.round(dailyMacros?.protein || 0)}/{userGoals?.protein_target}g</span>
                                 </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-1.5 bg-blue-100" />
+                                <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.protein }} />
                             </div>
                             <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] text-green-600 font-medium">
+                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.carbs }}>
                                     <span>Carbs</span>
                                     <span>{Math.round(dailyMacros?.carbs || 0)}/{userGoals?.carbs_target}g</span>
                                 </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-1.5 bg-green-100" />
+                                <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.carbs }} />
                             </div>
                             <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] text-yellow-600 font-medium">
+                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.fat }}>
                                     <span>Fat</span>
                                     <span>{Math.round(dailyMacros?.fat || 0)}/{userGoals?.fat_target}g</span>
                                 </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.fat || 0) / (userGoals?.fat_target || 1)) * 100)} className="h-1.5 bg-yellow-100" />
+                                <Progress value={Math.min(100, ((dailyMacros?.fat || 0) / (userGoals?.fat_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.fat }} />
                             </div>
                         </div>
                     </div>

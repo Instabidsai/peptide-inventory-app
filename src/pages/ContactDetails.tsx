@@ -1132,25 +1132,20 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 <div className="pt-3 border-t grid gap-2">
                     <div className="flex justify-between items-center">
                         <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">Inventory & Billing</span>
+                        {/* Fulfillment Status Badge */}
+                        {latestMovement && (
+                            <Badge
+                                variant={latestMovement.status === 'active' ? 'default' : 'outline'}
+                                className={latestMovement.status === 'active' ? 'bg-green-500' : 'border-amber-500 text-amber-600'}
+                            >
+                                <Package className="h-3 w-3 mr-1" />
+                                {latestMovement.status === 'active' ? 'Has Inventory' : 'Needs Inventory'}
+                            </Badge>
+                        )}
                     </div>
 
                     {latestMovement ? (
-                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2 relative group">
-                            <div className="absolute top-1 right-1 transition-opacity">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 bg-white/50 hover:bg-white border shadow-sm text-muted-foreground">
-                                            <MoreVertical className="h-3 w-3" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Inventory Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => returnToStock.mutate({ id: 'virtual-id', movement_id: latestMovement.id, batch_number: lastSoldDetails?.lot, peptide_id: protocol.protocol_items?.[0]?.peptide_id })}>
-                                            <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
+                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2">
                             <div>
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
                                 <Badge variant="outline" className={`${statusColor} capitalize font-normal border px-2 py-0 h-5`}>
@@ -1304,7 +1299,11 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('client_inventory')
-                .select('*, peptide:peptides(name)')
+                .select(`
+                    *, 
+                    peptide:peptides(name),
+                    movement:movements(movement_date, id, status)
+                `)
                 .eq('contact_id', contactId)
                 .order('created_at', { ascending: false });
             if (error) throw error;
@@ -1369,19 +1368,34 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                     const items = groupedInventory[key];
                     const isUnassigned = key === 'unassigned';
                     const movementDate = !isUnassigned ? items[0]?.movement?.movement_date : null;
+                    const movementStatus = !isUnassigned ? items[0]?.movement?.status : 'active';
+                    const isReturned = movementStatus === 'returned';
+                    const isCancelled = movementStatus === 'cancelled';
+                    const isInactive = isReturned || isCancelled;
                     const groupTitle = isUnassigned
                         ? 'Unassigned / Manual Adds'
                         : `Order from ${format(new Date(movementDate), 'MMMM d, yyyy')}`;
 
                     return (
-                        <AccordionItem value={key} key={key} className="border rounded-lg px-4 mb-2 bg-card">
+                        <AccordionItem value={key} key={key} className={`border rounded-lg px-4 mb-2 bg-card ${isInactive ? 'opacity-60' : ''}`}>
                             <AccordionTrigger className="hover:no-underline py-3">
-                                <div className="flex items-center gap-3">
-                                    <Folder className={`h-4 w-4 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
-                                    <span className="font-medium text-sm">{groupTitle}</span>
-                                    <Badge variant="secondary" className="ml-2 text-xs font-normal">
-                                        {items.length} items
-                                    </Badge>
+                                <div className="flex items-center justify-between w-full pr-4">
+                                    <div className="flex items-center gap-3">
+                                        <Folder className={`h-4 w-4 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
+                                        <span className="font-medium text-sm">{groupTitle}</span>
+                                        <Badge variant="secondary" className="ml-2 text-xs font-normal">
+                                            {items.length} items
+                                        </Badge>
+                                    </div>
+                                    {/* Movement Status Badge */}
+                                    {movementStatus && movementStatus !== 'active' && (
+                                        <Badge
+                                            variant={isReturned ? 'outline' : 'destructive'}
+                                            className="ml-2 capitalize text-xs"
+                                        >
+                                            {movementStatus}
+                                        </Badge>
+                                    )}
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 pb-4">
@@ -1390,32 +1404,35 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                                         <Card key={item.id} className="relative overflow-hidden group border shadow-sm">
                                             <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-white/50 backdrop-blur-sm hover:bg-white/80">
-                                                            <MoreVertical className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
-                                                            <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive focus:text-destructive"
-                                                            onClick={() => {
-                                                                if (confirm('Are you sure you want to delete this? It will NOT be restocked.')) {
-                                                                    deleteInventory.mutate(item.id);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Forever
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
+                                            {/* Only show action menu for active items */}
+                                            {movementStatus === 'active' && (
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 bg-white/50 backdrop-blur-sm hover:bg-white/80">
+                                                                <MoreVertical className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
+                                                                <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-destructive focus:text-destructive"
+                                                                onClick={() => {
+                                                                    if (confirm('Are you sure you want to delete this? It will NOT be restocked.')) {
+                                                                        deleteInventory.mutate(item.id);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Forever
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            )}
 
                                             <CardHeader className="pb-2 pl-6 pr-8">
                                                 <div className="flex justify-between items-start">

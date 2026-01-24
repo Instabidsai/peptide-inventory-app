@@ -67,7 +67,20 @@ export function useRestockInventory() {
                 const { error: dError } = await dQuery;
                 if (dError) throw dError;
 
-                return "Restocked successfully";
+                // 4. Mark the movement as 'returned' (preserves transaction history)
+                if (item.movement_id) {
+                    const { error: movementError } = await supabase
+                        .from('movements')
+                        .update({ status: 'returned' })
+                        .eq('id', item.movement_id);
+
+                    if (movementError) {
+                        console.error('Failed to update movement status:', movementError);
+                        // Don't throw - this is not critical to the return operation
+                    }
+                }
+
+                return "Restocked successfully and movement marked as returned";
             } else {
                 if (confirm("Could not find the original bottle in the system history (it might be old data). Just delete it from the fridge?")) {
                     let dQuery = supabase.from('client_inventory').delete();
