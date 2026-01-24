@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 
 type AppRole = 'admin' | 'staff' | 'viewer' | 'sales_rep';
 

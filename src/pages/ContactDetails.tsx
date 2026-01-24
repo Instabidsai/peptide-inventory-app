@@ -5,7 +5,7 @@ import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useCreateMovement, useMovements } from '@/hooks/use-movements';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
 // ... rest imports

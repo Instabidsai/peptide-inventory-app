@@ -1,13 +1,14 @@
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Clock, ChevronRight, Loader2, Utensils } from 'lucide-react'; // Added Utensils
 import { format, differenceInDays, startOfDay, endOfDay } from 'date-fns'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query'; // Ensure this is imported
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WeeklyProgressChart } from '@/components/dashboards/WeeklyProgressChart';
 import { WeeklyCompliance } from '@/components/dashboards/WeeklyCompliance';
@@ -113,11 +114,11 @@ export default function ClientDashboard() {
             </div>
 
             {/* Today's Overview Card */}
-            <Card className="border-l-4 border-l-primary shadow-sm">
+            <GlassCard className="border-l-4 border-l-primary shadow-sm">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex justify-between items-center">
                         Today's Regimen
-                        <span className="text-xs font-normal text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                        <span className="text-xs font-normal text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full">
                             {takenCount} of {totalCount} Done
                         </span>
                     </CardTitle>
@@ -128,7 +129,7 @@ export default function ClientDashboard() {
                             <div className="text-sm text-muted-foreground py-2">No active protocols assigned.</div>
                         ) : (
                             todaysItems.map((item: any, idx) => (
-                                <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${item.isTakenToday ? 'bg-muted/40' : 'border'}`}>
+                                <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${item.isTakenToday ? 'bg-muted/40' : 'border border-white/10'}`}>
                                     <div className={`flex items-center gap-3 ${item.isTakenToday ? '' : 'opacity-80'}`}>
                                         {item.isTakenToday ? (
                                             <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -161,13 +162,13 @@ export default function ClientDashboard() {
                         )}
                     </div>
                 </CardContent>
-            </Card>
+            </GlassCard>
 
             {/* Weekly Compliance */}
             <WeeklyCompliance />
 
             {/* Daily Macros Widget */}
-            <Card className="shadow-sm">
+            <GlassCard className="shadow-sm">
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Today's Nutrition</CardTitle>
                     <Utensils className="h-4 w-4 text-muted-foreground" />
@@ -215,26 +216,26 @@ export default function ClientDashboard() {
                         Log Meal <ChevronRight className="ml-1 h-3 w-3" />
                     </Button>
                 </CardContent>
-            </Card>
+            </GlassCard>
 
             {/* Weekly Progress Component */}
             <WeeklyProgressChart />
 
             {/* Streak / Stats */}
             <div className="grid grid-cols-2 gap-4">
-                <Card>
+                <GlassCard>
                     <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
                         <div className="text-3xl font-bold text-primary">{contact?.notes?.match(/streak:(\d+)/i)?.[1] || 0}</div>
                         {/* Placeholder for streak logic */}
                         <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Day Streak</div>
                     </CardContent>
-                </Card>
-                <Card>
+                </GlassCard>
+                <GlassCard>
                     <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
                         <div className="text-3xl font-bold text-green-600">{adherenceRate}%</div>
                         <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Daily Adherence</div>
                     </CardContent>
-                </Card>
+                </GlassCard>
             </div>
 
             {/* Quick Actions */}

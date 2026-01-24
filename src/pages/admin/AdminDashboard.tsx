@@ -7,7 +7,7 @@ import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancialMetrics } from '@/hooks/use-financials';
 import { usePendingOrdersCount, usePendingOrderValue } from '@/hooks/use-orders';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 import {
     Package,
     TrendingUp,

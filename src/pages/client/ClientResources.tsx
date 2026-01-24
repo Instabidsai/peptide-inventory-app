@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/sb_client/client";
 import {
     Loader2, ArrowLeft, BookOpen, Video, ExternalLink, MessageSquare, Send,
     Search, Play, ChevronRight, Eye, Clock, FileText, Download, Users,

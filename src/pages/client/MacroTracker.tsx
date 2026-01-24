@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History } from "lu
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
+import { GlassCard } from "@/components/ui/glass-card";
+import confetti from "canvas-confetti";
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -216,6 +218,14 @@ export default function MacroTracker() {
             if (error) throw error;
 
             toast.success("Meal logged successfully!");
+
+            // Celebration!
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+
             setImage(null);
             setResult(null);
             // navigate('/dashboard'); // Optional
@@ -235,7 +245,7 @@ export default function MacroTracker() {
             </div>
 
             {showSettings && (
-                <Card className="mb-6 border-blue-200 bg-blue-50/50">
+                <GlassCard className="mb-6 border-blue-200 bg-blue-50/50">
                     <CardHeader>
                         <CardTitle className="text-lg">Daily Goals</CardTitle>
                     </CardHeader>
@@ -260,7 +270,7 @@ export default function MacroTracker() {
                         </div>
                         <Button className="w-full mt-4" onClick={saveGoals}>Save Goals</Button>
                     </CardContent>
-                </Card>
+                </GlassCard>
             )}
 
             {/* Recent Foods Quick Add */}
@@ -291,7 +301,7 @@ export default function MacroTracker() {
             </div>
 
             {!image && !result && (
-                <Card className="border-dashed border-2">
+                <GlassCard className="border-dashed border-2">
                     <CardContent className="flex flex-col items-center justify-center py-12">
                         <div className="flex gap-4">
                             <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
@@ -318,7 +328,7 @@ export default function MacroTracker() {
                         </div>
                         <p className="mt-4 text-muted-foreground text-sm">Take a photo or upload to analyze</p>
                     </CardContent>
-                </Card>
+                </GlassCard>
             )}
 
             {loading && (

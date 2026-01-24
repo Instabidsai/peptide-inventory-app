@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { useProtocols } from "@/hooks/use-protocols";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/sb_client/client";
 import { ClientInventoryItem, ClientDailyLog, DailyProtocolTask } from "@/types/regimen";
 import { DigitalFridge } from "@/components/regimen/DigitalFridge";
 import { DailyProtocol } from "@/components/regimen/DailyProtocol";

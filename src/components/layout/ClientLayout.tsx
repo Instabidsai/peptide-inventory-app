@@ -2,11 +2,13 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, ListChecks, BookOpen, Settings, Utensils, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { PageTransition } from '@/components/ui/PageTransition';
 
 export function ClientLayout() {
     const navigate = useNavigate();
@@ -39,7 +41,7 @@ export function ClientLayout() {
     ];
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-50 via-background to-background dark:from-slate-950 dark:via-background dark:to-background flex flex-col">
             {/* Top Bar (Simplified) */}
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 justify-between">
                 <div className="font-semibold text-lg">Family Hub</div>
@@ -52,8 +54,12 @@ export function ClientLayout() {
             </header>
 
             {/* Content */}
-            <main className="flex-1 p-4 pb-24"> {/* Padding bottom for mobile nav */}
-                <Outlet />
+            <main className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
+                <AnimatePresence mode="wait">
+                    <PageTransition key={location.pathname} className="h-full">
+                        <Outlet />
+                    </PageTransition>
+                </AnimatePresence>
             </main>
 
             {/* Bottom Navigation (Mobile First) */}

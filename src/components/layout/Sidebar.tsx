@@ -2,7 +2,7 @@ import { NavLink, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/sb_client/client';
 import {
   LayoutDashboard, Beaker, Archive, FlaskConical, Users, FileText, ArrowLeftRight, Settings, LogOut, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
   ClipboardList,

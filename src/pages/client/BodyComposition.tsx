@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, Plus, TrendingDown, TrendingUp, History, Camera } from "lucide-react";
 import {
-    LineChart,
     Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -21,6 +22,7 @@ import {
     Legend
 } from "recharts";
 import { calculateRollingAverage } from "@/utils/chart-utils";
+import { GlassCard } from "@/components/ui/glass-card";
 
 interface BodyLog {
     id: string;
@@ -214,24 +216,24 @@ export default function BodyComposition() {
             {/* Latest Stats Cards */}
             {latestLog && (
                 <div className="grid grid-cols-3 gap-4">
-                    <Card>
+                    <GlassCard>
                         <CardContent className="pt-6 text-center">
                             <div className="text-2xl font-bold">{latestLog.weight}</div>
                             <div className="text-xs text-muted-foreground uppercase">Weight</div>
                         </CardContent>
-                    </Card>
-                    <Card>
+                    </GlassCard>
+                    <GlassCard>
                         <CardContent className="pt-6 text-center">
                             <div className="text-2xl font-bold text-blue-600">{latestLog.body_fat_percentage}%</div>
                             <div className="text-xs text-muted-foreground uppercase">Body Fat</div>
                         </CardContent>
-                    </Card>
-                    <Card>
+                    </GlassCard>
+                    <GlassCard>
                         <CardContent className="pt-6 text-center">
                             <div className="text-2xl font-bold text-green-600">{latestLog.muscle_mass}</div>
                             <div className="text-xs text-muted-foreground uppercase">Muscle</div>
                         </CardContent>
-                    </Card>
+                    </GlassCard>
                 </div>
             )}
 
@@ -260,16 +262,23 @@ export default function BodyComposition() {
             )}
 
             {/* Charts */}
+            {/* Charts */}
             {logs && logs.length > 1 && (
                 <div className="space-y-6">
-                    <Card>
+                    <GlassCard>
                         <CardHeader>
                             <CardTitle className="text-sm">Weight Trend</CardTitle>
                         </CardHeader>
                         <CardContent className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={calculateRollingAverage(logs, 'weight')}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <AreaChart data={calculateRollingAverage(logs, 'weight')}>
+                                    <defs>
+                                        <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
                                     <XAxis
                                         dataKey="date"
                                         tickFormatter={str => format(new Date(str), 'MMM d')}
@@ -287,24 +296,30 @@ export default function BodyComposition() {
                                     />
                                     <Tooltip
                                         labelFormatter={label => format(new Date(label), 'MMM d, yyyy')}
-                                        contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                                        contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
                                     <Legend />
-                                    <Line name="Daily" type="monotone" dataKey="weight" stroke="#93c5fd" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                                    <Area type="monotone" dataKey="weight" stroke="#93c5fd" fillOpacity={1} fill="url(#colorWeight)" strokeWidth={2} activeDot={{ r: 5 }} />
                                     <Line name="7-Day Avg" type="monotone" dataKey="weight_avg" stroke="#2563eb" strokeWidth={3} dot={false} strokeDasharray="5 5" />
-                                </LineChart>
+                                </AreaChart>
                             </ResponsiveContainer>
                         </CardContent>
-                    </Card>
+                    </GlassCard>
 
-                    <Card>
+                    <GlassCard>
                         <CardHeader>
                             <CardTitle className="text-sm">Body Fat % Trend</CardTitle>
                         </CardHeader>
                         <CardContent className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={calculateRollingAverage(logs, 'body_fat_percentage')}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <AreaChart data={calculateRollingAverage(logs, 'body_fat_percentage')}>
+                                    <defs>
+                                        <linearGradient id="colorFat" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ea384c" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#ea384c" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
                                     <XAxis
                                         dataKey="date"
                                         tickFormatter={str => format(new Date(str), 'MMM d')}
@@ -322,15 +337,15 @@ export default function BodyComposition() {
                                     />
                                     <Tooltip
                                         labelFormatter={label => format(new Date(label), 'MMM d, yyyy')}
-                                        contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                                        contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
                                     <Legend />
-                                    <Line name="Daily" type="monotone" dataKey="body_fat_percentage" stroke="#fca5a5" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                                    <Area type="monotone" dataKey="body_fat_percentage" stroke="#fca5a5" fillOpacity={1} fill="url(#colorFat)" strokeWidth={2} activeDot={{ r: 5 }} />
                                     <Line name="7-Day Avg" type="monotone" dataKey="body_fat_percentage_avg" stroke="#ea384c" strokeWidth={3} dot={false} strokeDasharray="5 5" />
-                                </LineChart>
+                                </AreaChart>
                             </ResponsiveContainer>
                         </CardContent>
-                    </Card>
+                    </GlassCard>
                 </div>
             )}
 
