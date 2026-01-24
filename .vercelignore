@@ -1,0 +1,4 @@
+supabase/
+scripts/
+.env
+.env.*
