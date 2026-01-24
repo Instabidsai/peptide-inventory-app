@@ -18,6 +18,7 @@ export interface Order {
     status: OrderStatus;
     payment_status?: 'unpaid' | 'partial' | 'paid';
     amount_paid?: number;
+    order_group_id?: string | null;
     created_at: string;
     updated_at: string;
     peptides?: {

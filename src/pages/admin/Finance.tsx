@@ -44,6 +44,10 @@ export default function Finance() {
         note: ''
     });
 
+    // Batch Payment State
+    const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+    const [batchPayAmount, setBatchPayAmount] = useState('');
+
     const toggleOrderSelection = (id: string) => {
         const newSelected = new Set(selectedOrders);
         if (newSelected.has(id)) {
@@ -124,6 +128,65 @@ export default function Finance() {
         const paid = o.amount_paid || 0;
         return sum + (cost - paid);
     }, 0) || 0;
+
+    // Group By Batch (Purchase Orders)
+    const batches = orders?.reduce((acc, order) => {
+        if (order.status === 'cancelled') return acc;
+
+        const batchId = order.order_group_id || 'Unassigned';
+        if (!acc[batchId]) {
+            acc[batchId] = { id: batchId, total: 0, paid: 0, due: 0, orders: [] };
+        }
+
+        const cost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+        const paid = order.amount_paid || 0;
+
+        acc[batchId].total += cost;
+        acc[batchId].paid += paid;
+        acc[batchId].due += (cost - paid);
+        acc[batchId].orders.push(order);
+
+        return acc;
+    }, {} as Record<string, { id: string, total: number, paid: number, due: number, orders: typeof orders }>) || {};
+
+    const handleBatchPayment = async () => {
+        if (!selectedBatch || !batchPayAmount) return;
+
+        const batch = batches[selectedBatch];
+        let remainingAmount = Number(batchPayAmount);
+
+        // Sort orders by due amount (smallest first? or oldest first? let's do oldest created_at)
+        // actually, standard accounting might strictly apply to specific invoices, but here we just want to burn down the "pool".
+        // Let's iterate through unpaid orders in the batch.
+
+        const unpaidInBatch = batch.orders
+            .filter(o => (o.quantity_ordered * (o.estimated_cost_per_unit || 0)) - (o.amount_paid || 0) > 0.01)
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        for (const order of unpaidInBatch) {
+            if (remainingAmount <= 0) break;
+
+            const cost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+            const aleadyPaid = order.amount_paid || 0;
+            const due = cost - aleadyPaid;
+
+            const payAmount = Math.min(remainingAmount, due);
+
+            await recordPayment.mutateAsync({
+                orderId: order.id,
+                amount: payAmount,
+                method: 'wire', // Default or add selector
+                date: new Date().toISOString().split('T')[0],
+                note: `Batch Payment: ${selectedBatch}`,
+                isFullPayment: Math.abs(payAmount - due) < 0.01
+            });
+
+            remainingAmount -= payAmount;
+        }
+
+        setSelectedBatch(null);
+        setBatchPayAmount('');
+    };
 
     return (
         <div className="space-y-6">
@@ -228,6 +291,77 @@ export default function Finance() {
                         </CardContent>
                     </Card>
                 ))}
+            </div>
+
+            {/* Purchase Orders / Batches */}
+            <h2 className="text-xl font-semibold mt-8 mb-4">Purchase Orders</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Object.values(batches).map(batch => (
+                    <Card key={batch.id} className={batch.due > 0 ? 'border-l-4 border-l-blue-500' : 'opacity-70'}>
+                        <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle className="text-lg">{batch.id}</CardTitle>
+                                    <CardDescription>{batch.orders.length} items</CardDescription>
+                                </div>
+                                <Badge variant={batch.due > 0.01 ? 'default' : 'secondary'}>
+                                    {batch.due > 0.01 ? 'Open' : 'Paid'}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-1 mb-4">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Total:</span>
+                                    <span className="font-medium">${batch.total.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Paid:</span>
+                                    <span className="font-medium text-green-600">${batch.paid.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Due:</span>
+                                    <span className="font-bold text-amber-600">${batch.due.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {batch.due > 0.01 && (
+                                <Dialog open={selectedBatch === batch.id} onOpenChange={(open) => setSelectedBatch(open ? batch.id : null)}>
+                                    <DialogTrigger asChild>
+                                        <Button className="w-full" variant="outline">Make Payment</Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Pay towards {batch.id}</DialogTitle>
+                                            <CardDescription>
+                                                Apply a lump sum payment to this batch. The system will distribute it order-by-order.
+                                            </CardDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Payment Amount ($)</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={batchPayAmount}
+                                                    onChange={e => setBatchPayAmount(e.target.value)}
+                                                    placeholder={`Max: ${batch.due.toFixed(2)}`}
+                                                />
+                                            </div>
+                                            <Button onClick={handleBatchPayment} className="w-full">
+                                                Confirm Payment
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+                {Object.keys(batches).length === 0 && (
+                    <div className="col-span-full text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+                        No purchase orders found.
+                    </div>
+                )}
             </div>
 
             {/* Unpaid Invoices Section */}

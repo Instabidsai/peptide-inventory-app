@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +32,7 @@ export function ClientLayout() {
     const navItems = [
         { label: 'Home', icon: Home, path: '/dashboard' },
         { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: unreadCount && unreadCount > 0 },
+        { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Resources', icon: BookOpen, path: '/resources' },
         { label: 'Settings', icon: Settings, path: '/settings' },
     ];

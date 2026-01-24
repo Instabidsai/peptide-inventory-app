@@ -2,16 +2,70 @@ import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Clock, ChevronRight, Loader2 } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle2, Clock, ChevronRight, Loader2, Utensils } from 'lucide-react'; // Added Utensils
+import { format, differenceInDays, startOfDay, endOfDay } from 'date-fns'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query'; // Ensure this is imported
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { WeeklyProgressChart } from '@/components/dashboards/WeeklyProgressChart';
 
 export default function ClientDashboard() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get auth user
 
     const today = new Date();
+
+    // Fetch Today's Macros
+    const { data: dailyMacros } = useQuery({
+        queryKey: ['daily-macros', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+            const start = startOfDay(new Date()).toISOString();
+            const end = endOfDay(new Date()).toISOString();
+
+            const { data, error } = await supabase
+                .from('meal_logs')
+                .select('total_calories, total_protein, total_carbs, total_fat')
+                .eq('user_id', user.id)
+                .gte('created_at', start)
+                .lte('created_at', end);
+
+            if (error) {
+                console.error('Error fetching macros:', error);
+                return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+            }
+
+            return data.reduce((acc, log) => ({
+                calories: acc.calories + Number(log.total_calories || 0),
+                protein: acc.protein + Number(log.total_protein || 0),
+                carbs: acc.carbs + Number(log.total_carbs || 0),
+                fat: acc.fat + Number(log.total_fat || 0),
+            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+        },
+        enabled: !!user?.id
+    });
+
+    // Fetch Daily Goals
+    const { data: userGoals } = useQuery({
+        queryKey: ['user-goals', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return { calories_target: 2000, protein_target: 150, carbs_target: 200, fat_target: 65 };
+
+            const { data } = await supabase
+                .from('daily_macro_goals')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            return data || { calories_target: 2000, protein_target: 150, carbs_target: 200, fat_target: 65 };
+        },
+        enabled: !!user?.id
+    });
 
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
 
@@ -111,6 +165,60 @@ export default function ClientDashboard() {
                 </CardContent>
             </Card>
 
+            {/* Daily Macros Widget */}
+            <Card className="shadow-sm">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg">Today's Nutrition</CardTitle>
+                    <Utensils className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                                <span className="font-medium">Calories</span>
+                                <span>{Math.round(dailyMacros?.calories || 0)} / {userGoals?.calories_target}</span>
+                            </div>
+                            <Progress value={Math.min(100, ((dailyMacros?.calories || 0) / (userGoals?.calories_target || 2000)) * 100)} className="h-2" />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] text-blue-600 font-medium">
+                                    <span>Protein</span>
+                                    <span>{Math.round(dailyMacros?.protein || 0)}/{userGoals?.protein_target}g</span>
+                                </div>
+                                <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-1.5 bg-blue-100" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] text-green-600 font-medium">
+                                    <span>Carbs</span>
+                                    <span>{Math.round(dailyMacros?.carbs || 0)}/{userGoals?.carbs_target}g</span>
+                                </div>
+                                <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-1.5 bg-green-100" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] text-yellow-600 font-medium">
+                                    <span>Fat</span>
+                                    <span>{Math.round(dailyMacros?.fat || 0)}/{userGoals?.fat_target}g</span>
+                                </div>
+                                <Progress value={Math.min(100, ((dailyMacros?.fat || 0) / (userGoals?.fat_target || 1)) * 100)} className="h-1.5 bg-yellow-100" />
+                            </div>
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full mt-4 text-xs h-7"
+                        onClick={() => navigate('/macro-tracker')}
+                    >
+                        Log Meal <ChevronRight className="ml-1 h-3 w-3" />
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Weekly Progress Component */}
+            <WeeklyProgressChart />
+
             {/* Streak / Stats */}
             <div className="grid grid-cols-2 gap-4">
                 <Card>
@@ -144,6 +252,6 @@ export default function ClientDashboard() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Button>
             </div>
-        </div>
+        </div >
     );
 }
