@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 import { useContacts } from '@/hooks/use-contacts';
 import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
@@ -60,9 +60,60 @@ export default function NewOrder() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedContactId, setSelectedContactId] = useState<string>('');
     const [cart, setCart] = useState<CartItem[]>([]);
+
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [openCombobox, setOpenCombobox] = useState(false);
+
+    const location = useLocation();
+
+    // Handle Prefill from Admin Requests
+    useEffect(() => {
+        const state = location.state as any;
+        if (state?.prefill && contacts && peptides) {
+            const { email, peptideId, quantity, notes: prefillNotes } = state.prefill;
+
+            // 1. Resolve to Contact ID
+            if (email) {
+                const contact = contacts.find(c => c.email?.toLowerCase() === email.toLowerCase());
+                if (contact) {
+                    setSelectedContactId(contact.id);
+                }
+            }
+
+            // 2. Add Item to Cart
+            if (peptideId && quantity > 0) {
+                const peptide = peptides.find(p => p.id === peptideId);
+                if (peptide) {
+                    // Check if already in cart to avoid dupes on re-render (basic check)
+                    setCart(prev => {
+                        if (prev.some(i => i.peptide.id === peptideId)) return prev;
+
+                        // Calculate price using the same logic as addToCart
+                        // We need to replicate getRepPrice or just call it if we could, 
+                        // but getRepPrice depends on activeProfile which is available here.
+
+                        // Copying logic from getRepPrice for safety inside effect or assuming helpers are stable
+                        const multiplier = activeProfile?.price_multiplier || 1.0;
+                        const overhead = activeProfile?.overhead_per_unit !== undefined ? activeProfile.overhead_per_unit : 4.00;
+                        const basePrice = (peptide as any).retail_price || 10.50;
+                        const price = (basePrice + overhead) * multiplier;
+
+                        return [{
+                            peptide,
+                            quantity: quantity,
+                            unitPrice: price,
+                            basePrice: (peptide as any).retail_price || 0
+                        }];
+                    });
+                }
+            }
+
+            if (prefillNotes) {
+                setNotes(prev => prev ? prev : prefillNotes);
+            }
+        }
+    }, [location.state, contacts, peptides, activeProfile]);
 
     const activePeptides = peptides?.filter(p => p.active) || [];
 

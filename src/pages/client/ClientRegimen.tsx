@@ -12,6 +12,7 @@ import { SupplementStack, SupplementItem } from "@/components/regimen/Supplement
 import { SuggestedStack } from "@/components/regimen/SuggestedStack";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 
 export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
@@ -22,6 +23,9 @@ export default function ClientRegimen() {
     const [dailyLogs, setDailyLogs] = useState<ClientDailyLog[]>([]);
     const [tasks, setTasks] = useState<DailyProtocolTask[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [requestModalOpen, setRequestModalOpen] = useState(false);
+    const [selectedRefillPeptide, setSelectedRefillPeptide] = useState<{ id: string, name: string } | undefined>(undefined);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -278,6 +282,10 @@ export default function ClientRegimen() {
                         onAddVial={handleAddVial}
                         onReconstitute={() => { }}
                         onDelete={handleDeleteVial}
+                        onRequestRefill={(peptide) => {
+                            setSelectedRefillPeptide({ id: peptide.id, name: peptide.name });
+                            setRequestModalOpen(true);
+                        }}
                     />
                 </div>
 
@@ -289,7 +297,16 @@ export default function ClientRegimen() {
                     />
                 </div>
 
+                <ClientRequestModal
+                    open={requestModalOpen}
+                    onOpenChange={setRequestModalOpen}
+                    defaultType="product_request"
+                    prefillPeptide={selectedRefillPeptide}
+                    onSuccess={() => setSelectedRefillPeptide(undefined)}
+                />
             </div>
+
         </div>
+
     );
 }

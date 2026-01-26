@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical, roles: ['admin', 'staff'] },
   { name: 'Contacts', href: '/contacts', icon: Users, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Resources', href: '/admin-resources', icon: BookOpen, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Requests', href: '/requests', icon: MessageSquare, roles: ['admin', 'staff'] },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep'] },

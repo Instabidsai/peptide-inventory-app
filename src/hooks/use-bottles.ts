@@ -22,6 +22,7 @@ export interface Bottle {
     peptides?: {
       id: string;
       name: string;
+      retail_price?: number;
     };
   };
 }
@@ -38,7 +39,7 @@ export function useBottles(filters?: { status?: BottleStatus; peptide_id?: strin
     queryFn: async () => {
       let query = supabase
         .from('bottles')
-        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name))')
+        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .order('created_at', { ascending: false });
 
       if (filters?.status) {
@@ -66,7 +67,7 @@ export function useBottle(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bottles')
-        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name))')
+        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('id', id)
         .single();
 
@@ -83,7 +84,7 @@ export function useBottleByUid(uid: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bottles')
-        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name))')
+        .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('uid', uid)
         .maybeSingle();
 

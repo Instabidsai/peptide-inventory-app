@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -37,6 +37,7 @@ export function ClientLayout() {
         { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Body', icon: Scale, path: '/body-composition' },
         { label: 'Resources', icon: BookOpen, path: '/resources' },
+        { label: 'Messages', icon: MessageSquare, path: '/messages' },
         { label: 'Settings', icon: Settings, path: '/account' },
     ];
 

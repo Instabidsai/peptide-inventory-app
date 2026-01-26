@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
@@ -44,8 +44,54 @@ export default function MovementWizard() {
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [selectedBottles, setSelectedBottles] = useState<SelectedBottle[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+
   const [bottleProtocolMap, setBottleProtocolMap] = useState<Record<string, string>>({});
   const [extraItems, setExtraItems] = useState<{ id: string, description: string, price: number }[]>([]);
+
+  const location = useLocation();
+
+  // Handle Prefill from Requests
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.prefill && bottles && contacts) {
+      const { type, email, peptideId, quantity, notes: prefillNotes } = state.prefill;
+
+      // 1. Set Basic Fields
+      if (type) setMovementType(type);
+      if (prefillNotes) setNotes(prev => prev ? prev : prefillNotes);
+
+      // 2. Resolve Contact
+      if (email) {
+        const contact = contacts.find(c => c.email?.toLowerCase() === email.toLowerCase());
+        if (contact) setContactId(contact.id);
+      }
+
+      // 3. Auto-select Bottles
+      if (peptideId && quantity > 0) {
+        // Find matching bottles
+        const matchingBottles = bottles.filter(b => b.lots?.peptide_id === peptideId);
+        // Take up to requested quantity
+        const toSelect = matchingBottles.slice(0, quantity);
+
+        if (toSelect.length > 0) {
+          const selection = toSelect.map(b => {
+            const msrp = b.lots?.peptides?.retail_price;
+            const cost = Number(b.lots?.cost_per_unit || 0);
+            return {
+              bottle: b,
+              price: msrp && msrp > 0 ? msrp : cost
+            };
+          });
+          setSelectedBottles(selection);
+        }
+      }
+
+      // Clear state so it doesn't re-run or persist weirdly
+      // Actually, we don't clear it here or we lose it on re-renders, 
+      // but we rely on the dependencies not changing too much. 
+      // Ideally rely on a flag or just let it be.
+    }
+  }, [location.state, bottles, contacts]);
 
   // NEW: Fetch contact's protocols and protocol items
   const { data: contactProtocols } = useQuery({
@@ -80,9 +126,11 @@ export default function MovementWizard() {
     if (isBottleSelected(bottle.id)) {
       setSelectedBottles(selectedBottles.filter((sb) => sb.bottle.id !== bottle.id));
     } else {
+      const msrp = bottle.lots?.peptides?.retail_price;
+      const cost = Number(bottle.lots?.cost_per_unit || 0);
       setSelectedBottles([
         ...selectedBottles,
-        { bottle, price: Number(bottle.lots?.cost_per_unit || 0) },
+        { bottle, price: msrp && msrp > 0 ? msrp : cost },
       ]);
     }
   };

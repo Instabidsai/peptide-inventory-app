@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import fs from 'fs';
 import path from "path"
-import { componentTagger } from "lovable-tagger"
+// import { componentTagger } from "lovable-tagger"
 
 // Custom plugin to copy index.html as 404.html for Vercel SPA routing
 function vercelSPAPlugin() {
@@ -25,14 +25,14 @@ function vercelSPAPlugin() {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 4550,
     strictPort: true,
   },
   plugins: [
     react(),
     mode === 'development' &&
-    componentTagger(),
+    // componentTagger(),
     vercelSPAPlugin(),
   ].filter(Boolean),
   resolve: {

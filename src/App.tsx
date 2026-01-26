@@ -28,6 +28,7 @@ import Movements from "./pages/Movements";
 import MovementWizard from "./pages/MovementWizard";
 import Settings from "./pages/Settings";
 import AdminFeedback from "./pages/AdminFeedback";
+import AdminRequests from "./pages/admin/AdminRequests";
 import AdminResources from "./pages/AdminResources";
 import Commissions from "./pages/admin/Commissions";
 import Finance from "./pages/admin/Finance";
@@ -43,6 +44,7 @@ import CommunityForum from "./pages/client/CommunityForum";
 import MacroTracker from "./pages/client/MacroTracker";
 import BodyComposition from "./pages/client/BodyComposition";
 import ClientSettings from "./pages/client/ClientSettings";
+import ClientMessages from "./pages/client/ClientMessages";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 
 const queryClient = new QueryClient();
@@ -79,6 +81,7 @@ const App = () => (
               <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/feedback" element={<RoleBasedRedirect><AdminFeedback /></RoleBasedRedirect>} />
+              <Route path="/requests" element={<RoleBasedRedirect><AdminRequests /></RoleBasedRedirect>} />
               <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
               <Route path="/sales" element={<OrderList />} />
               <Route path="/sales/new" element={<NewOrder />} />
@@ -107,6 +110,7 @@ const App = () => (
               <Route path="/community" element={<CommunityForum />} />
               <Route path="/macro-tracker" element={<MacroTracker />} />
               <Route path="/body-composition" element={<BodyComposition />} />
+              <Route path="/messages" element={<ClientMessages />} />
               <Route path="/account" element={<ClientSettings />} />
             </Route>
 

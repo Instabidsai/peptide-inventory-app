@@ -20,6 +20,7 @@ export interface CreatePeptideInput {
   name: string;
   description?: string;
   sku?: string;
+  retail_price?: number;
 }
 
 export interface UpdatePeptideInput extends Partial<CreatePeptideInput> {

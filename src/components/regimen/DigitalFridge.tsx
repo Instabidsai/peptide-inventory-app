@@ -20,8 +20,9 @@ interface DigitalFridgeProps {
     onAddVial: (data: Partial<ClientInventoryItem>) => void;
     onReconstitute: (id: string, waterMl: number) => void;
     onDelete: (id: string) => void;
+    onRequestRefill?: (peptide: { id: string, name: string }) => void;
 }
-export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete }: DigitalFridgeProps) {
+export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete, onRequestRefill }: DigitalFridgeProps) {
     // Define activeVials (missing previously causing ReferenceError)
     const activeVials = useMemo(() => {
         return inventory.filter(item => item.status !== 'archived' && item.status !== 'depleted');
@@ -132,13 +133,23 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                         </Badge>
                                                     </div>
 
-                                                    {/* Visual Liquid Indicator */}
                                                     <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden mb-2">
                                                         <div
                                                             className={`h-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-emerald-500'}`}
                                                             style={{ width: `${pct}%` }}
                                                         />
                                                     </div>
+
+                                                    {isLow && onRequestRefill && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="w-full text-xs h-6 mb-2 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900"
+                                                            onClick={() => vial.peptide && onRequestRefill({ id: vial.peptide_id, name: vial.peptide.name })}
+                                                        >
+                                                            Request Refill
+                                                        </Button>
+                                                    )}
 
                                                     <div className="text-xs flex justify-between items-center text-muted-foreground">
                                                         <div className="flex flex-col">
