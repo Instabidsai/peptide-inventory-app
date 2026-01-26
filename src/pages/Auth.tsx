@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2, FlaskConical, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 
@@ -31,13 +31,14 @@ const signupSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 
-function LoginForm({ 
-  onSubmit, 
-  isLoading 
-}: { 
-  onSubmit: (data: LoginFormData) => void; 
+function LoginForm({
+  onSubmit,
+  isLoading
+}: {
+  onSubmit: (data: LoginFormData) => void;
   isLoading: boolean;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -53,12 +54,12 @@ function LoginForm({
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input 
-                  type="email" 
-                  placeholder="you@example.com" 
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
                   className="bg-secondary border-border"
                   autoComplete="email"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -72,13 +73,28 @@ function LoginForm({
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="bg-secondary border-border"
-                  autoComplete="current-password"
-                  {...field} 
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="bg-secondary border-border pr-10"
+                    autoComplete="current-password"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -93,11 +109,11 @@ function LoginForm({
   );
 }
 
-function SignupForm({ 
-  onSubmit, 
-  isLoading 
-}: { 
-  onSubmit: (data: SignupFormData) => void; 
+function SignupForm({
+  onSubmit,
+  isLoading
+}: {
+  onSubmit: (data: SignupFormData) => void;
   isLoading: boolean;
 }) {
   const form = useForm<SignupFormData>({
@@ -115,11 +131,11 @@ function SignupForm({
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="John Doe" 
+                <Input
+                  placeholder="John Doe"
                   className="bg-secondary border-border"
                   autoComplete="name"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -133,12 +149,12 @@ function SignupForm({
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input 
-                  type="email" 
-                  placeholder="you@example.com" 
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
                   className="bg-secondary border-border"
                   autoComplete="email"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -152,12 +168,12 @@ function SignupForm({
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
+                <Input
+                  type="password"
+                  placeholder="••••••••"
                   className="bg-secondary border-border"
                   autoComplete="new-password"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -171,12 +187,12 @@ function SignupForm({
             <FormItem>
               <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
+                <Input
+                  type="password"
+                  placeholder="••••••••"
                   className="bg-secondary border-border"
                   autoComplete="new-password"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -232,7 +248,7 @@ export default function Auth() {
       toast({
         variant: 'destructive',
         title: 'Login failed',
-        description: error.message === 'Invalid login credentials' 
+        description: error.message === 'Invalid login credentials'
           ? 'Invalid email or password. Please try again.'
           : error.message,
       });
@@ -271,7 +287,7 @@ export default function Auth() {
         redirectTo: `${window.location.origin}/`,
       },
     });
-    
+
     if (error) {
       setIsGoogleLoading(false);
       toast({
@@ -303,10 +319,10 @@ export default function Auth() {
 
         <CardContent className="space-y-4">
           {/* Google Sign In Button */}
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="w-full" 
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isLoading}
           >
