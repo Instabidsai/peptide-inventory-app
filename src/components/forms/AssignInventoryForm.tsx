@@ -91,12 +91,17 @@ export function AssignInventoryForm({
 
         const fee = selectedBottles.length * 4;
         const totalWithFee = totalCost + fee;
+        const totalMSRP = selectedBottles.reduce((acc, b) => acc + (b.lots?.peptides?.retail_price || 0), 0);
 
         // Auto-update price only if the user hasn't manually edited it
         if (!isPriceDirty) {
-            setPrice(totalWithFee.toString());
+            if (totalMSRP > 0) {
+                setPrice(totalMSRP.toString());
+            } else {
+                setPrice(totalWithFee.toString());
+            }
         }
-    }, [selectedBottles.length, totalCost, movementType, isPriceDirty]);
+    }, [selectedBottles.length, totalCost, movementType, isPriceDirty, JSON.stringify(selectedBottles.map(b => b.lots?.peptides?.retail_price))]);
 
     const toggleBottle = (id: string) => {
         setSelectedBottleIds(prev =>
@@ -227,42 +232,87 @@ export function AssignInventoryForm({
                 )}
             </div>
 
-            {selectedBottles.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                        <div className="flex justify-between items-center">
-                            <Label>Total Sale Price ($)</Label>
-                            {isPriceDirty && (
-                                <Button
-                                    variant="link"
-                                    className="h-auto p-0 text-xs"
-                                    onClick={() => setIsPriceDirty(false)}
-                                >
-                                    Reset to Auto
-                                </Button>
+            {selectedBottles.length > 0 && (() => {
+                const totalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
+                const totalMSRP = selectedBottles.reduce((acc, b) => acc + (b.lots?.peptides?.retail_price || 0), 0);
+                const fees = selectedBottles.length * 4;
+                const costPlusFees = totalCost + fees;
+
+                return (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <div className="flex justify-between items-center">
+                                <Label>Total Sale Price ($)</Label>
+                                {isPriceDirty && (
+                                    <Button
+                                        variant="link"
+                                        className="h-auto p-0 text-xs"
+                                        onClick={() => setIsPriceDirty(false)}
+                                    >
+                                        Reset to Auto
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* MSRP / Discount Selector */}
+                            {movementType === 'sale' && totalMSRP > 0 && (
+                                <Select onValueChange={(val) => {
+                                    setPrice(parseFloat(val).toFixed(2));
+                                    setIsPriceDirty(true);
+                                }}>
+                                    <SelectTrigger className="w-full mb-2">
+                                        <SelectValue placeholder="Quick Select Price..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={totalMSRP.toString()}>
+                                            MSRP: ${totalMSRP.toFixed(2)}
+                                        </SelectItem>
+                                        <SelectItem value={(totalMSRP * 0.9).toString()}>
+                                            MSRP - 10%: ${(totalMSRP * 0.9).toFixed(2)}
+                                        </SelectItem>
+                                        <SelectItem value={(totalMSRP * 0.8).toString()}>
+                                            MSRP - 20%: ${(totalMSRP * 0.8).toFixed(2)}
+                                        </SelectItem>
+                                        <SelectItem value={(totalMSRP * 0.7).toString()}>
+                                            MSRP - 30%: ${(totalMSRP * 0.7).toFixed(2)}
+                                        </SelectItem>
+                                        <SelectItem value={costPlusFees.toString()}>
+                                            Cost + Fees: ${costPlusFees.toFixed(2)}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={price}
+                                onChange={(e) => {
+                                    setPrice(e.target.value);
+                                    setIsPriceDirty(true);
+                                }}
+                                disabled={movementType !== 'sale'}
+                            />
+                            {!movementType.match(/^(giveaway|internal_use)$/) && (
+                                <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
+                                    <div className="flex justify-between">
+                                        <span>Base: ${totalCost.toFixed(2)} + Fees: ${fees.toFixed(2)}</span>
+                                        <span>Cost Basis: ${costPlusFees.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between font-medium">
+                                        <span>MSRP Total: ${totalMSRP > 0 ? totalMSRP.toFixed(2) : 'N/A'}</span>
+                                        <span className={cn(
+                                            parseFloat(price) < costPlusFees ? "text-destructive" : "text-emerald-600"
+                                        )}>
+                                            ${(parseFloat(price) / selectedBottles.length || 0).toFixed(2)} / bottle
+                                        </span>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            value={price}
-                            onChange={(e) => {
-                                setPrice(e.target.value);
-                                setIsPriceDirty(true);
-                            }}
-                            disabled={movementType !== 'sale'}
-                        />
-                        {!movementType.match(/^(giveaway|internal_use)$/) && (
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Base: ${totalCost.toFixed(2)} + Fees: ${(selectedBottles.length * 4).toFixed(2)}</span>
-                                <span className="font-semibold text-blue-600">
-                                    ${(parseFloat(price) / selectedBottles.length || 0).toFixed(2)} / bottle
-                                </span>
-                            </div>
-                        )}
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             <Separator />
 

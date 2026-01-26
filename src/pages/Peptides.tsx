@@ -252,7 +252,7 @@ export default function Peptides() {
                   ) : (
                     <TableHead>Avg Cost</TableHead>
                   )}
-                  {!isPartner && <TableHead>MSRP</TableHead>}
+                  <TableHead>MSRP</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -302,11 +302,9 @@ export default function Peptides() {
                         })()}
                       </TableCell>
                     )}
-                    {!isPartner && (
-                      <TableCell>
-                        ${((peptide as any).retail_price || 0).toFixed(2)}
-                      </TableCell>
-                    )}
+                    <TableCell>
+                      ${((peptide as any).retail_price || 0).toFixed(2)}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Switch
