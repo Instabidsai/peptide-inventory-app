@@ -4,7 +4,7 @@ import { useProtocols } from '@/hooks/use-protocols';
 import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
-import { useCreateMovement, useMovements } from '@/hooks/use-movements';
+import { useCreateMovement, useMovements, useDeleteMovement } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,7 +97,7 @@ export default function ContactDetails() {
     const [durationValue, setDurationValue] = useState<string>('30');
     const [costMultiplier, setCostMultiplier] = useState<string>('1');
     const [vialSize, setVialSize] = useState<string>('5'); // New State for Vial Size
-    const [autoAssignInventory, setAutoAssignInventory] = useState(true);
+    const [autoAssignInventory, setAutoAssignInventory] = useState(false);
     const [tempPeptideIdForAssign, setTempPeptideIdForAssign] = useState<string | undefined>(undefined);
     const [tempQuantityForAssign, setTempQuantityForAssign] = useState<number | undefined>(undefined);
 
@@ -950,7 +950,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
     const returnToStock = useRestockInventory();
     const updateBottleQuantity = useUpdateBottleQuantity();
-    const deleteMovement = useDeleteMovement(); 
+    const deleteMovement = useDeleteMovement();
 
     const { data: assignedBottles } = useQuery({
         queryKey: ['regimen-bottles', protocol.id, protocol.contact_id],
@@ -1129,14 +1129,14 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Sold At</span>
                                 <div className="flex items-center justify-end gap-2">
                                     <span className="font-mono font-medium">${lastSoldDetails?.price.toFixed(2)}</span>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
                                         className="h-5 w-5 opacity-0 group-hover-billing:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity"
                                         title="Void Invoice / Delete Movement"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if(confirm(`Are you sure you want to void this ${latestMovement.type} record? This will return items to stock.`)) {
+                                            if (confirm(`Are you sure you want to void this ${latestMovement.type} record? This will return items to stock.`)) {
                                                 deleteMovement.mutate(latestMovement.id);
                                             }
                                         }}
