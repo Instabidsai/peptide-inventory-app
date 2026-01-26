@@ -51,7 +51,8 @@ export interface Movement {
 export interface MovementItem {
   id: string;
   movement_id: string;
-  bottle_id: string;
+  bottle_id: string | null;
+  description: string | null;
   price_at_sale: number | null;
   created_at: string;
   bottles?: {
@@ -75,7 +76,8 @@ export interface CreateMovementInput {
   movement_date?: string;
   notes?: string;
   items: {
-    bottle_id: string;
+    bottle_id?: string;
+    description?: string;
     price_at_sale?: number;
     protocol_item_id?: string; // NEW: Link bottle to specific protocol item
   }[];
@@ -319,7 +321,8 @@ export function useCreateMovement() {
       // 2. Create movement items
       const movementItems = input.items.map(item => ({
         movement_id: movement.id,
-        bottle_id: item.bottle_id,
+        bottle_id: item.bottle_id || null,
+        description: item.description || null,
         price_at_sale: item.price_at_sale || null,
       }));
 

@@ -133,8 +133,8 @@ function MovementDetailsDialog({
                   <TableBody>
                     {items?.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="font-mono text-sm">{item.bottles?.uid}</TableCell>
-                        <TableCell>{item.bottles?.lots?.peptides?.name}</TableCell>
+                        <TableCell className="font-mono text-sm">{item.bottles?.uid || '-'}</TableCell>
+                        <TableCell>{item.bottles?.lots?.peptides?.name || item.description || 'Unknown'}</TableCell>
                         <TableCell>${Number(item.bottles?.lots?.cost_per_unit || 0).toFixed(2)}</TableCell>
                         <TableCell>${Number(item.price_at_sale || 0).toFixed(2)}</TableCell>
                       </TableRow>
@@ -323,7 +323,7 @@ export default function Movements() {
 
                   // Extract peptide names and counts
                   const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item: any) => {
-                    const name = item.bottles?.lots?.peptides?.name || 'Unknown';
+                    const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
                     acc[name] = (acc[name] || 0) + 1;
                     return acc;
                   }, {});
