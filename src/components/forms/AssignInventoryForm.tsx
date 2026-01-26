@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, DollarSign, Gift, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     Command,
@@ -30,7 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"; // Keeping Select for Payment Status
 
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export function AssignInventoryForm({
     contactId,
@@ -57,8 +57,8 @@ export function AssignInventoryForm({
     // Multi-select state
     const [selectedBottleIds, setSelectedBottleIds] = useState<string[]>([]);
 
-    // Giveaway state
-    const [isGiveaway, setIsGiveaway] = useState(false);
+    // Movement Type state
+    const [movementType, setMovementType] = useState<'sale' | 'giveaway' | 'internal_use'>('sale');
 
     // Auto-select defaults when bottles load
     useEffect(() => {
@@ -82,7 +82,7 @@ export function AssignInventoryForm({
 
     // Auto-fill price with cost + $4 fee when selection changes
     useEffect(() => {
-        if (isGiveaway) {
+        if (movementType !== 'sale') {
             setPrice('0');
             setPaymentStatus('paid');
             setAmountPaid('0');
@@ -96,7 +96,7 @@ export function AssignInventoryForm({
         if (!isPriceDirty) {
             setPrice(totalWithFee.toString());
         }
-    }, [selectedBottles.length, totalCost, isGiveaway, isPriceDirty]);
+    }, [selectedBottles.length, totalCost, movementType, isPriceDirty]);
 
     const toggleBottle = (id: string) => {
         setSelectedBottleIds(prev =>
@@ -113,7 +113,7 @@ export function AssignInventoryForm({
             const pricePerItem = parseFloat(price) / selectedBottleIds.length;
 
             await createMovement.mutateAsync({
-                type: isGiveaway ? 'giveaway' : 'sale',
+                type: movementType,
                 contact_id: contactId,
                 movement_date: new Date().toISOString(),
                 items: selectedBottleIds.map(id => ({
@@ -179,21 +179,52 @@ export function AssignInventoryForm({
                 </Popover>
             </div>
 
-            {/* Giveaway Toggle */}
-            <div className="flex items-center space-x-2 border p-3 rounded-md bg-muted/40">
-                <Switch
-                    id="giveaway-mode"
-                    checked={isGiveaway}
-                    onCheckedChange={setIsGiveaway}
-                />
-                <div className="grid gap-1.5 leading-none">
-                    <Label htmlFor="giveaway-mode" className="font-medium">
-                        Mark as Giveaway / Free
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                        Inventory cost will be tracked, but client will not be charged.
+            {/* Movement Type Selector */}
+            <div className="space-y-3 border p-4 rounded-md bg-muted/20">
+                <Label className="text-sm font-medium">Assignment Type</Label>
+                <RadioGroup value={movementType} onValueChange={(v: any) => setMovementType(v)} className="grid grid-cols-3 gap-2">
+                    <div>
+                        <RadioGroupItem value="sale" id="type-sale" className="peer sr-only" />
+                        <Label
+                            htmlFor="type-sale"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer"
+                        >
+                            <DollarSign className="mb-2 h-4 w-4 text-emerald-600" />
+                            <span className="text-xs">Sale</span>
+                        </Label>
+                    </div>
+                    <div>
+                        <RadioGroupItem value="giveaway" id="type-giveaway" className="peer sr-only" />
+                        <Label
+                            htmlFor="type-giveaway"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer"
+                        >
+                            <Gift className="mb-2 h-4 w-4 text-purple-600" />
+                            <span className="text-xs">Giveaway</span>
+                        </Label>
+                    </div>
+                    <div>
+                        <RadioGroupItem value="internal_use" id="type-internal" className="peer sr-only" />
+                        <Label
+                            htmlFor="type-internal"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer"
+                        >
+                            <Home className="mb-2 h-4 w-4 text-blue-600" />
+                            <span className="text-xs">Internal</span>
+                        </Label>
+                    </div>
+                </RadioGroup>
+
+                {movementType === 'giveaway' && (
+                    <p className="text-xs text-muted-foreground bg-purple-500/10 p-2 rounded border border-purple-500/20">
+                        Tracks cost as overhead. Client not charged.
                     </p>
-                </div>
+                )}
+                {movementType === 'internal_use' && (
+                    <p className="text-xs text-muted-foreground bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                        For personal/family use. Tracks cost as overhead.
+                    </p>
+                )}
             </div>
 
             {selectedBottles.length > 0 && (
@@ -219,9 +250,9 @@ export function AssignInventoryForm({
                                 setPrice(e.target.value);
                                 setIsPriceDirty(true);
                             }}
-                            disabled={isGiveaway}
+                            disabled={movementType !== 'sale'}
                         />
-                        {!isGiveaway && (
+                        {!movementType.match(/^(giveaway|internal_use)$/) && (
                             <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>Base: ${totalCost.toFixed(2)} + Fees: ${(selectedBottles.length * 4).toFixed(2)}</span>
                                 <span className="font-semibold text-blue-600">
@@ -242,7 +273,7 @@ export function AssignInventoryForm({
                         setPaymentStatus(val);
                         if (val === 'paid') setAmountPaid(price);
                         if (val === 'unpaid') setAmountPaid('0');
-                    }} disabled={isGiveaway}>
+                    }} disabled={movementType !== 'sale'}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -258,7 +289,7 @@ export function AssignInventoryForm({
                         step="0.01"
                         value={amountPaid}
                         onChange={(e) => setAmountPaid(e.target.value)}
-                        disabled={paymentStatus === 'unpaid' || isGiveaway}
+                        disabled={paymentStatus === 'unpaid' || movementType !== 'sale'}
                     />
                 </div>
             </div>
@@ -266,7 +297,9 @@ export function AssignInventoryForm({
             <DialogFooter className="mt-4">
                 <Button onClick={handleSubmit} disabled={selectedBottleIds.length === 0 || createMovement.isPending}>
                     {createMovement.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isGiveaway ? `Distribute ${selectedBottleIds.length} Free Bottle(s)` : `Confirm Sale (${selectedBottleIds.length})`}
+                    {movementType === 'giveaway' ? `Distribute ${selectedBottleIds.length} Free Bottle(s)` :
+                        movementType === 'internal_use' ? `Assign ${selectedBottleIds.length} to Internal Use` :
+                            `Confirm Sale (${selectedBottleIds.length})`}
                 </Button>
             </DialogFooter>
         </div>
