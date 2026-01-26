@@ -1535,3 +1535,6 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
     );
 }
 
+/ /  
+ R e f a c t o r e d  
+ 
