@@ -42,6 +42,7 @@ import ClientResources from "./pages/client/ClientResources";
 import CommunityForum from "./pages/client/CommunityForum";
 import MacroTracker from "./pages/client/MacroTracker";
 import BodyComposition from "./pages/client/BodyComposition";
+import ClientSettings from "./pages/client/ClientSettings";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,7 @@ const App = () => (
               <Route path="/community" element={<CommunityForum />} />
               <Route path="/macro-tracker" element={<MacroTracker />} />
               <Route path="/body-composition" element={<BodyComposition />} />
+              <Route path="/account" element={<ClientSettings />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

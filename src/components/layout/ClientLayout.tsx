@@ -37,7 +37,7 @@ export function ClientLayout() {
         { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Body', icon: Scale, path: '/body-composition' },
         { label: 'Resources', icon: BookOpen, path: '/resources' },
-        { label: 'Settings', icon: Settings, path: '/settings' },
+        { label: 'Settings', icon: Settings, path: '/account' },
     ];
 
     return (

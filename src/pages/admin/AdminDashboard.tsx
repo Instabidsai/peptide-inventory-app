@@ -170,8 +170,8 @@ export default function AdminDashboard() {
                 </Link>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Inventory Overview */}
+            <div className="grid gap-4 md:grid-cols-2">
                 <Link to="/bottles?status=in_stock">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -193,6 +193,30 @@ export default function AdminDashboard() {
                     </Card>
                 </Link>
 
+                <Link to="/peptides">
+                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Peptides</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-warning" />
+                        </CardHeader>
+                        <CardContent>
+                            {statsLoading ? (
+                                <Skeleton className="h-8 w-20" />
+                            ) : (
+                                <>
+                                    <div className="text-2xl font-bold">{peptides?.length || 0}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        products tracked
+                                    </p>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                </Link>
+            </div>
+
+            {/* Movement Stats (Sold / Giveaway / Internal) */}
+            <div className="grid gap-4 md:grid-cols-3">
                 <Link to="/movements?type=sale">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -235,20 +259,20 @@ export default function AdminDashboard() {
                     </Card>
                 </Link>
 
-                <Link to="/peptides">
+                <Link to="/movements?type=internal_use">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Peptides</CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-warning" />
+                            <CardTitle className="text-sm font-medium">Internal Use</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{peptides?.length || 0}</div>
+                                    <div className="text-2xl font-bold">{stats?.internal_use || 0}</div>
                                     <p className="text-xs text-muted-foreground">
-                                        products tracked
+                                        personal / family
                                     </p>
                                 </>
                             )}
@@ -261,16 +285,13 @@ export default function AdminDashboard() {
             <div className="grid gap-4 md:grid-cols-3">
                 <Card className="bg-card border-border">
                     <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                            <Link to="/movements?type=internal_use" className="group">
-                                <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Internal Use</p>
-                                <p className="text-xl font-semibold group-hover:text-primary transition-colors">{stats?.internal_use || 0}</p>
-                            </Link>
+                        <div className="flex items-center justify-around">
                             <Link to="/movements?type=loss" className="group text-center">
                                 <p className="text-sm text-muted-foreground group-hover:text-destructive transition-colors">Lost/Damaged</p>
                                 <p className="text-xl font-semibold group-hover:text-destructive transition-colors">{stats?.lost || 0}</p>
                             </Link>
-                            <Link to="/movements?type=return" className="group text-right">
+                            <div className="h-8 w-[1px] bg-border mx-4"></div>
+                            <Link to="/movements?type=return" className="group text-center">
                                 <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Returned</p>
                                 <p className="text-xl font-semibold group-hover:text-primary transition-colors">{stats?.returned || 0}</p>
                             </Link>
@@ -368,7 +389,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+        </div>
 
-        </div >
     );
 }
