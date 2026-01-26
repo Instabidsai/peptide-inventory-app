@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/sb_client/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, AlertCircle, CheckCircle2, History, CreditCard } from "lucide-react";
+import { DollarSign, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -88,6 +88,13 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             await fetchFinancials(); // Re-fetch to update history and clear balance
             setIsPaymentOpen(false);
 
+            // Show success toast
+            toast({
+                title: "Payment Recorded",
+                description: `Successfully marked ${updates.length} orders as paid.`,
+                className: "bg-green-50 border-green-200 text-green-900"
+            });
+
         } catch (error: any) {
             console.error("Error marking paid:", error);
             // Show error toast
@@ -106,15 +113,15 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     const hasBalance = outstandingBalance > 0;
 
     return (
-        <Card className={`${hasBalance ? 'border-amber-200 bg-amber-50/50' : 'border-green-100 bg-green-50/30'}`}>
+        <Card className={`${hasBalance ? 'border-slate-200 bg-slate-50/50' : 'border-emerald-100 bg-emerald-50/30'}`}>
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className={`text-base flex items-center gap-2 ${hasBalance ? 'text-amber-900' : 'text-green-900'}`}>
-                        {hasBalance ? <AlertCircle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                    <CardTitle className={`text-base flex items-center gap-2 ${hasBalance ? 'text-slate-800' : 'text-emerald-900'}`}>
+                        {hasBalance ? <AlertCircle className="h-5 w-5 text-slate-600" /> : <CheckCircle2 className="h-5 w-5 text-emerald-600" />}
                         {hasBalance ? 'Outstanding Balance' : 'Account Status'}
                     </CardTitle>
                     {hasBalance && (
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-300 shadow-sm">
                             Action Required
                         </Badge>
                     )}
@@ -123,17 +130,17 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             <CardContent>
                 <div className="space-y-4">
                     <div className="flex items-baseline gap-2">
-                        <DollarSign className={`h-6 w-6 ${hasBalance ? 'text-amber-700' : 'text-green-700'}`} />
-                        <span className={`text-3xl font-bold ${hasBalance ? 'text-amber-900' : 'text-green-900'}`}>
+                        <DollarSign className={`h-6 w-6 ${hasBalance ? 'text-slate-600' : 'text-emerald-600'}`} />
+                        <span className={`text-3xl font-bold ${hasBalance ? 'text-slate-900' : 'text-emerald-900'}`}>
                             {outstandingBalance.toFixed(2)}
                         </span>
-                        {!hasBalance && <span className="text-sm text-green-700 font-medium">All paid up</span>}
+                        {!hasBalance && <span className="text-sm text-emerald-700 font-medium">All paid up</span>}
                     </div>
 
                     {hasBalance && (
                         <Button
                             variant="default"
-                            className="w-full bg-amber-600 hover:bg-amber-700"
+                            className="w-full bg-slate-800 hover:bg-slate-900 text-white shadow-sm"
                             onClick={() => setIsPaymentOpen(true)}
                         >
                             Mark as Paid
@@ -142,20 +149,20 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
                     <div className="pt-2">
                         <Tabs defaultValue={hasBalance ? "unpaid" : "history"} className="w-full">
-                            <TabsList className="w-full grid grid-cols-2">
-                                <TabsTrigger value="unpaid" disabled={!hasBalance}>Unpaid Orders</TabsTrigger>
-                                <TabsTrigger value="history">History</TabsTrigger>
+                            <TabsList className="w-full grid grid-cols-2 bg-slate-100/50">
+                                <TabsTrigger value="unpaid" disabled={!hasBalance} className="data-[state=active]:bg-white data-[state=active]:text-slate-900">Unpaid Orders</TabsTrigger>
+                                <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:text-slate-900">History</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="unpaid" className="mt-2 text-sm">
-                                <div className="bg-white/50 rounded-md border p-2 max-h-[200px] overflow-y-auto space-y-2">
+                                <div className="bg-white rounded-md border border-slate-200 p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
                                     {allMovements.filter(m => m.payment_status !== 'paid').map(m => (
-                                        <div key={m.id} className="p-2 border-b last:border-0">
-                                            <div className="flex justify-between font-medium">
+                                        <div key={m.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors rounded-sm">
+                                            <div className="flex justify-between font-medium text-slate-900">
                                                 <span>{format(new Date(m.created_at), 'MMM d, yyyy')}</span>
-                                                <Badge variant="outline" className="text-amber-600 border-amber-200">Unpaid</Badge>
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-200">Unpaid</Badge>
                                             </div>
-                                            <div className="text-xs text-muted-foreground mt-1 pl-2 border-l-2 border-amber-100">
+                                            <div className="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">
                                                 {m.movement_items?.map((item: any) => (
                                                     <div key={item.random_id || Math.random()} className="flex justify-between">
                                                         <span>{item.bottle?.lot?.peptide?.name}</span>
@@ -169,17 +176,17 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             </TabsContent>
 
                             <TabsContent value="history" className="mt-2 text-sm">
-                                <div className="bg-white/50 rounded-md border p-2 max-h-[200px] overflow-y-auto space-y-2">
+                                <div className="bg-white rounded-md border border-slate-200 p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
                                     {allMovements.filter(m => m.payment_status === 'paid').length === 0 ? (
-                                        <div className="text-center py-4 text-muted-foreground">No payment history found.</div>
+                                        <div className="text-center py-4 text-slate-400">No payment history found.</div>
                                     ) : (
                                         allMovements.filter(m => m.payment_status === 'paid').map(m => (
-                                            <div key={m.id} className="p-2 border-b last:border-0 opacity-80">
+                                            <div key={m.id} className="p-3 border-b border-slate-100 last:border-0 opacity-90 hover:bg-slate-50/50 transition-colors">
                                                 <div className="flex justify-between">
-                                                    <span className="font-medium">{format(new Date(m.created_at), 'MMM d, yyyy')}</span>
-                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Paid</Badge>
+                                                    <span className="font-medium text-slate-800">{format(new Date(m.created_at), 'MMM d, yyyy')}</span>
+                                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Paid</Badge>
                                                 </div>
-                                                <div className="text-[10px] text-muted-foreground mt-1">
+                                                <div className="text-[10px] text-slate-500 mt-1">
                                                     Paid on {m.payment_date ? format(new Date(m.payment_date), 'MMM d') : 'N/A'} • {m.notes || 'No notes'}
                                                 </div>
                                             </div>

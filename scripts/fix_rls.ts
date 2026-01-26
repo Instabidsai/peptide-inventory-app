@@ -5,6 +5,7 @@ const connectionString = "postgres://postgres.mckkegmkpqdicudnfhor:eApOyEConVNU0
 
 const client = new Client({
     connectionString,
+    ssl: { rejectUnauthorized: false }
 });
 
 async function runRLSFix() {
