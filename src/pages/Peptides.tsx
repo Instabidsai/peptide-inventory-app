@@ -52,7 +52,7 @@ const peptideSchema = z.object({
 type PeptideFormData = z.infer<typeof peptideSchema>;
 
 export default function Peptides() {
-  const { userRole, user } = useAuth(); // Destructure user
+  const { userRole, user, profile } = useAuth(); // Destructure user and profile
   const { data: peptides, isLoading } = usePeptides();
   const { data: pendingByPeptide } = usePendingOrdersByPeptide();
   const createPeptide = useCreatePeptide();
@@ -66,12 +66,11 @@ export default function Peptides() {
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
 
   const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
-  // Use URL search param for preview if needed, or just strict override for now for verify
-  // But let's keep it consistent.
-  const isPartner = userRole?.role === 'sales_rep' || isThompsonOverride;
+  // Use profile.role for more robust detection (especially for partners like Sofia)
+  const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || isThompsonOverride;
 
-  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff') && !isThompsonOverride;
-  const canDelete = userRole?.role === 'admin' && !isThompsonOverride;
+  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
+  const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),
@@ -290,12 +289,8 @@ export default function Peptides() {
                     </TableCell>
                     {isPartner ? (
                       <TableCell>
-                        {/* Partner sees AvgCost + 4.00 overhead generally, or we could just show the $4 overhead if base is 0. 
-                                User said: "cost is the additional $4 without seeing the up cost" - wait.
-                                "base price should be the cost plus $4 as base".
-                                Let's assume (AvgCost + 4). 
-                            */}
-                        ${((peptide.avg_cost || 0) + 4.00).toFixed(2)}
+                        {/* Partner sees AvgCost + overhead (default 4.00) */}
+                        ${((peptide.avg_cost || 0) + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}
                       </TableCell>
                     ) : (
                       <TableCell>

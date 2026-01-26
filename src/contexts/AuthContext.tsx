@@ -10,6 +10,8 @@ interface Profile {
   org_id: string | null;
   full_name: string | null;
   email: string | null;
+  role: AppRole;
+  overhead_per_unit: number;
 }
 
 interface UserRole {
