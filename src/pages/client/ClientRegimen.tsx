@@ -138,6 +138,10 @@ export default function ClientRegimen() {
         }
     };
 
+    const handleTaskToggle = (id: string) => {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
+    };
+
     const handleDeleteVial = async (id: string) => {
         if (!contact) return;
 
