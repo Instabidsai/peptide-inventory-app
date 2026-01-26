@@ -176,22 +176,45 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
                             <TabsContent value="unpaid" className="mt-2 text-sm">
                                 <div className="bg-white rounded-md border border-slate-200 p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
-                                    {allMovements.filter(m => m.payment_status !== 'paid').map(m => (
-                                        <div key={m.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors rounded-sm">
-                                            <div className="flex justify-between font-medium text-slate-900">
-                                                <span>{format(new Date(m.created_at), 'MMM d, yyyy')}</span>
-                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-200">Unpaid</Badge>
-                                            </div>
-                                            <div className="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">
-                                                {m.movement_items?.map((item: any) => (
-                                                    <div key={item.random_id || Math.random()} className="flex justify-between">
-                                                        <span>{item.bottle?.lot?.peptide?.name}</span>
-                                                        <span>${item.price_at_sale}</span>
+                                    {allMovements.filter(m => m.payment_status !== 'paid').map(m => {
+                                        const totalPrice = m.movement_items?.reduce((sum: number, item: any) => sum + (item.price_at_sale || 0), 0) || 0;
+                                        const paid = m.amount_paid || 0;
+                                        const isPartial = paid > 0;
+                                        const remaining = totalPrice - paid;
+
+                                        return (
+                                            <div key={m.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors rounded-sm">
+                                                <div className="flex justify-between font-medium text-slate-900">
+                                                    <span>{format(new Date(m.created_at), 'MMM d, yyyy')}</span>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        {isPartial ? (
+                                                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200">Partial</Badge>
+                                                        ) : (
+                                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-200">Unpaid</Badge>
+                                                        )}
+                                                        <span className="text-xs font-bold text-slate-700">
+                                                            ${remaining.toFixed(2)}
+                                                            {isPartial && <span className="text-slate-400 font-normal ml-1">(of ${totalPrice.toFixed(0)})</span>}
+                                                        </span>
                                                     </div>
-                                                ))}
+                                                </div>
+                                                <div className="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">
+                                                    {m.movement_items?.map((item: any) => (
+                                                        <div key={item.random_id || Math.random()} className="flex justify-between">
+                                                            <span>{item.bottle?.lot?.peptide?.name}</span>
+                                                            <span className="opacity-70">${item.price_at_sale?.toFixed(2)}</span>
+                                                        </div>
+                                                    ))}
+                                                    {isPartial && (
+                                                        <div className="flex justify-between mt-1 pt-1 border-t border-slate-100 font-medium text-emerald-600">
+                                                            <span>Paid to date</span>
+                                                            <span>-${paid.toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </TabsContent>
 
