@@ -739,7 +739,7 @@ export default function ContactDetails() {
             {/* Client Inventory (Digital Fridge) Inspection */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
-                <ClientInventoryList contactId={id!} contactName={contact?.name} />
+                <ClientInventoryList contactId={id!} contactName={contact?.name} assignedProtocols={assignedProtocols} />
             </div>
 
             {/* Client Portal Access Card */}
@@ -1357,7 +1357,7 @@ function Skeleton({ className }: { className?: string }) {
 
 
 
-function ClientInventoryList({ contactId, contactName }: { contactId: string, contactName?: string }) {
+function ClientInventoryList({ contactId, contactName, assignedProtocols }: { contactId: string, contactName?: string, assignedProtocols?: any[] }) {
     const queryClient = useQueryClient();
     const { data: inventory, isLoading } = useQuery({
         queryKey: ['client-inventory-admin', contactId],
