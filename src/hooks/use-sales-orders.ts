@@ -367,3 +367,27 @@ export function useFulfillOrder() {
         }
     });
 }
+
+export function useDeleteSalesOrder() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('sales_orders')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            toast({ title: 'Order deleted' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to delete order', description: error.message });
+        },
+    });
+}

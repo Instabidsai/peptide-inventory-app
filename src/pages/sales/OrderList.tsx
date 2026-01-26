@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSalesOrders, useMySalesOrders, type SalesOrder, useUpdateSalesOrder, type SalesOrderStatus } from '@/hooks/use-sales-orders';
+import { useSalesOrders, useMySalesOrders, type SalesOrder, useUpdateSalesOrder, type SalesOrderStatus, useDeleteSalesOrder } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,17 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, DollarSign, Package } from 'lucide-react';
+import { Plus, Eye, Trash2 } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Select,
     SelectContent,
@@ -33,6 +43,8 @@ export default function OrderList() {
 
     const { data: allOrders, isLoading: allLoading } = useSalesOrders(filterStatus === 'all' ? undefined : filterStatus);
     const { data: myOrders, isLoading: myLoading } = useMySalesOrders();
+    const deleteOrder = useDeleteSalesOrder();
+    const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
     const orders = isRep ? myOrders : allOrders;
     const isLoading = isRep ? myLoading : allLoading;
@@ -151,6 +163,16 @@ export default function OrderList() {
                                                     <Eye className="h-4 w-4 mr-1" /> View
                                                 </Link>
                                             </Button>
+                                            {(!isRep || order.status === 'draft') && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => setOrderToDelete(order.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -165,6 +187,31 @@ export default function OrderList() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Sales Order?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete this order record.
+                            <br /><br />
+                            <strong className="text-destructive">Note on Inventory:</strong> Deleting this order does <strong>NOT</strong> automatically revert any inventory movements or restock bottles. You must separate manage any refunds or inventory adjustments in the "Movements" tab.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                if (orderToDelete) deleteOrder.mutate(orderToDelete);
+                                setOrderToDelete(null);
+                            }}
+                        >
+                            Delete Order
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

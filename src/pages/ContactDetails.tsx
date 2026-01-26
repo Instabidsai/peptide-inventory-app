@@ -57,6 +57,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
@@ -682,6 +683,9 @@ export default function ContactDetails() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Financial Overview - Visible to Admins */}
+            <FinancialOverview contactId={id!} />
 
             {
                 isLoadingProtocols ? (
