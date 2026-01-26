@@ -45,7 +45,8 @@ async function runRLSFix() {
             // ... duplicate for bottles/movements if needed, but primarily read is the issue now.
             // Let's add full access for verified users just to be safe for this demo app context.
             `CREATE POLICY "Authenticated All Bottles" ON bottles FOR ALL TO authenticated USING (true)`,
-            `CREATE POLICY "Authenticated All Movements" ON movements FOR ALL TO authenticated USING (true)`,
+            `DROP POLICY IF EXISTS "Authenticated All Movements" ON movements`,
+            `CREATE POLICY "Authenticated All Movements" ON movements FOR ALL TO authenticated USING (true) WITH CHECK (true)`,
             `CREATE POLICY "Authenticated All Movement Items" ON movement_items FOR ALL TO authenticated USING (true)`
         ];
 

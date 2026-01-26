@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label as FormLabel } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 interface FinancialOverviewProps {
     contactId: string;
@@ -87,8 +88,14 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             await fetchFinancials(); // Re-fetch to update history and clear balance
             setIsPaymentOpen(false);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error marking paid:", error);
+            // Show error toast
+            toast({
+                title: "Payment Failed",
+                description: error.message || "Could not update payment status. Please try again.",
+                variant: "destructive"
+            });
         } finally {
             setLoading(false);
         }
