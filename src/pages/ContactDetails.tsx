@@ -1376,6 +1376,24 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
         }
     });
 
+    const [linkingItem, setLinkingItem] = useState<any | null>(null);
+
+    const linkToRegimen = useMutation({
+        mutationFn: async ({ inventoryId, protocolItemId }: { inventoryId: string, protocolItemId: string }) => {
+            const { error } = await supabase
+                .from('client_inventory')
+                .update({ protocol_item_id: protocolItemId })
+                .eq('id', inventoryId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
+            queryClient.invalidateQueries({ queryKey: ['regimen-bottles'] });
+            toast({ title: "Item linked to regimen" });
+            setLinkingItem(null);
+        }
+    });
+
     const deleteInventory = useMutation({
         mutationFn: async (id: string) => {
             const { error } = await supabase.from('client_inventory').delete().eq('id', id);
@@ -1441,15 +1459,23 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                         ? 'Unassigned / Manual Adds'
                         : `Order from ${format(new Date(movementDate), 'MMMM d, yyyy')}`;
 
+                    // Extract unique peptide names for the header
+                    const peptideNames = Array.from(new Set(items.map((i: any) => i.peptide?.name))).filter(Boolean);
+
                     return (
                         <AccordionItem value={key} key={key} className={`border rounded-lg px-4 mb-2 bg-card ${isInactive ? 'opacity-60' : ''}`}>
                             <AccordionTrigger className="hover:no-underline py-3">
                                 <div className="flex items-center justify-between w-full pr-4">
-                                    <div className="flex items-center gap-3">
-                                        <Folder className={`h-4 w-4 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
-                                        <span className="font-medium text-sm">{groupTitle}</span>
-                                        <Badge variant="secondary" className="ml-2 text-xs font-normal">
-                                            {items.length} items
+                                    <div className="flex items-center overflow-hidden gap-3">
+                                        <Folder className={`h-4 w-4 shrink-0 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
+                                        <div className="flex flex-col items-start truncate">
+                                            <span className="font-medium text-sm">{groupTitle}</span>
+                                            <span className="text-[10px] text-muted-foreground truncate max-w-[200px] md:max-w-md">
+                                                {peptideNames.join(', ')}
+                                            </span>
+                                        </div>
+                                        <Badge variant="secondary" className="ml-2 text-[10px] font-normal shrink-0">
+                                            {items.length} vial{items.length !== 1 ? 's' : ''}
                                         </Badge>
                                     </div>
                                     {/* Movement Status Badge */}
@@ -1480,6 +1506,13 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+                                                            {!item.protocol_item_id && (
+                                                                <DropdownMenuItem onClick={() => setLinkingItem(item)}>
+                                                                    <Plus className="mr-2 h-3.5 w-3.5" /> Attach to Regimen
+                                                                </DropdownMenuItem>
+                                                            )}
+
                                                             <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
                                                                 <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
                                                             </DropdownMenuItem>
@@ -1545,6 +1578,51 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                     );
                 })}
             </Accordion>
+
+            {/* Link to Regimen Dialog */}
+            <Dialog open={!!linkingItem} onOpenChange={() => setLinkingItem(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Attach to Regimen</DialogTitle>
+                        <DialogDescription>
+                            Link this {linkingItem?.peptide?.name} vial to one of {contact?.name}'s active regimens.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <Label>Select Protocol Item</Label>
+                        <div className="space-y-2">
+                            {assignedProtocols?.flatMap(p =>
+                                p.protocol_items
+                                    ?.filter((item: any) => item.peptide_id === linkingItem?.peptide_id)
+                                    .map((item: any) => (
+                                        <Button
+                                            key={item.id}
+                                            variant="outline"
+                                            className="w-full justify-start text-left h-auto py-3"
+                                            onClick={() => linkToRegimen.mutate({ inventoryId: linkingItem.id, protocolItemId: item.id })}
+                                            disabled={linkToRegimen.isPending}
+                                        >
+                                            <div className="flex flex-col gap-1">
+                                                <div className="font-semibold text-sm">{p.name}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {item.dosage_amount}{item.dosage_unit} • {item.frequency}
+                                                </div>
+                                            </div>
+                                        </Button>
+                                    ))
+                            )}
+
+                            {/* If no matching protocol items found */}
+                            {(!assignedProtocols || assignedProtocols.every(p => !p.protocol_items?.some((i: any) => i.peptide_id === linkingItem?.peptide_id))) && (
+                                <div className="text-sm text-amber-600 bg-amber-50 p-4 rounded-md border border-amber-200">
+                                    No active regimen found for <strong>{linkingItem?.peptide?.name}</strong>.
+                                    Please create a regimen for this peptide first.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
