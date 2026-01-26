@@ -11,6 +11,8 @@ export interface SupplyCalculation {
         usagePercent: number;
     }[];
     status: 'adequate' | 'low' | 'critical' | 'depleted';
+    suggestedUnits?: number;
+    concentration?: number;
 }
 
 /**
@@ -42,12 +44,26 @@ export function calculateSupply(
     let dailyUsageMg = dosageMg;
 
     // Adjust for frequency
-    if (frequency === 'weekly') {
+    const freqLower = frequency.toLowerCase().trim();
+    if (freqLower === 'weekly') {
         dailyUsageMg = dosageMg / 7;
-    } else if (frequency === 'bid') {
+    } else if (freqLower === 'bid' || freqLower === 'twice daily' || freqLower.includes('2x')) {
         dailyUsageMg = dosageMg * 2;
-    } else if (frequency === 'biweekly') {
+    } else if (freqLower === 'biweekly' || freqLower === 'twice weekly') {
         dailyUsageMg = (dosageMg * 2) / 7;
+    } else if (freqLower.includes('5on2off')) {
+        dailyUsageMg = (dosageMg * 5) / 7;
+    } else if (freqLower === 'daily' || freqLower === 'ed') {
+        dailyUsageMg = dosageMg;
+    } else {
+        // Fallback: If frequency is not recognized but dosage is present, assume daily for calculation
+        // Or check if it contains a number like '3x weekly'
+        const match = freqLower.match(/(\d+)x\s*(weekly|week)/);
+        if (match) {
+            dailyUsageMg = (dosageMg * parseInt(match[1])) / 7;
+        } else {
+            dailyUsageMg = dosageMg;
+        }
     }
 
     // Ensure dailyUsageMg is never NaN or undefined
@@ -103,7 +119,9 @@ export function calculateSupply(
         dailyUsageMg: Number.isFinite(dailyUsageMg) ? dailyUsageMg : 0,
         daysRemaining: Number.isFinite(daysRemaining) ? Math.max(0, daysRemaining) : 0,
         bottles: bottleDetails,
-        status
+        status,
+        concentration: bottles.find(b => b.current_quantity_mg && b.current_quantity_mg > 0)?.current_quantity_mg ? (bottles.find(b => b.current_quantity_mg! > 0) as any).concentration_mg_ml : undefined,
+        suggestedUnits: undefined // Will be set by caller if needed
     };
 }
 

@@ -57,13 +57,25 @@ export default function ClientRegimen() {
                 // 3. Build Tasks from Protocols (Mocking/transforming for now)
                 if (protocols) {
                     const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p => {
-                        const items = p.protocol_items?.map(item => ({
-                            id: item.id,
-                            type: 'peptide' as const,
-                            label: `${p.name} (${item.dosage_amount}${item.dosage_unit})`,
-                            detail: item.frequency,
-                            is_completed: false
-                        })) || [];
+                        const items = p.protocol_items?.map(item => {
+                            // Find active vial for this peptide to get concentration
+                            const activeVial = invData?.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
+                            const doseMg = item.dosage_unit === 'mcg' ? item.dosage_amount / 1000 : item.dosage_amount;
+
+                            let unitsLabel = '';
+                            if (activeVial?.concentration_mg_ml) {
+                                const units = (doseMg / activeVial.concentration_mg_ml) * 100;
+                                unitsLabel = ` - Take ${units.toFixed(0)} units`;
+                            }
+
+                            return {
+                                id: item.id,
+                                type: 'peptide' as const,
+                                label: `${item.peptides?.name || p.name} (${item.dosage_amount}${item.dosage_unit})${unitsLabel}`,
+                                detail: item.frequency,
+                                is_completed: false
+                            };
+                        }) || [];
 
                         const supps = p.protocol_supplements?.map((s: any) => {
                             if (!s.supplements) return null;

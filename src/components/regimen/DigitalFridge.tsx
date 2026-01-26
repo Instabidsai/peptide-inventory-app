@@ -141,11 +141,26 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                     </div>
 
                                                     <div className="text-xs flex justify-between items-center text-muted-foreground">
-                                                        <span>
-                                                            {vial.concentration_mg_ml
-                                                                ? `${vial.concentration_mg_ml.toFixed(1)}mg/ml`
-                                                                : "Not Mixed"}
-                                                        </span>
+                                                        <div className="flex flex-col">
+                                                            <span>
+                                                                {vial.concentration_mg_ml
+                                                                    ? `${vial.concentration_mg_ml.toFixed(1)}mg/ml`
+                                                                    : "Not Mixed"}
+                                                            </span>
+                                                            {vial.concentration_mg_ml && protocols && (
+                                                                <div className="text-[10px] text-emerald-500/80 font-medium">
+                                                                    {(() => {
+                                                                        const protocolItem = protocols.flatMap(p => p.protocol_items || []).find(i => i.peptide_id === vial.peptide_id);
+                                                                        if (protocolItem) {
+                                                                            const doseMg = protocolItem.dosage_unit === 'mcg' ? protocolItem.dosage_amount / 1000 : protocolItem.dosage_amount;
+                                                                            const units = (doseMg / vial.concentration_mg_ml) * 100;
+                                                                            return `Dose: ${units.toFixed(0)} units (${protocolItem.dosage_amount}${protocolItem.dosage_unit})`;
+                                                                        }
+                                                                        return null;
+                                                                    })()}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         {isLow && <span className="text-red-400 font-medium flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Low</span>}
                                                     </div>
 

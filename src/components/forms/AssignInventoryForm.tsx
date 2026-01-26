@@ -74,17 +74,17 @@ export function AssignInventoryForm({
     const [price, setPrice] = useState<string>('');
     const [paymentStatus, setPaymentStatus] = useState<string>('unpaid');
     const [amountPaid, setAmountPaid] = useState<string>('0');
+    const [isPriceDirty, setIsPriceDirty] = useState(false);
 
     // Calculate total cost for all selected
     const selectedBottles = bottles?.filter(b => selectedBottleIds.includes(b.id)) || [];
     const totalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
 
-    // Auto-fill price with cost when selection changes (if empty or default)
-    // Auto-fill price with cost + $4 fee when selection changes (if empty or default)
+    // Auto-fill price with cost + $4 fee when selection changes
     useEffect(() => {
         if (isGiveaway) {
             setPrice('0');
-            setPaymentStatus('paid'); // Giveaways are "settled"
+            setPaymentStatus('paid');
             setAmountPaid('0');
             return;
         }
@@ -92,16 +92,11 @@ export function AssignInventoryForm({
         const fee = selectedBottles.length * 4;
         const totalWithFee = totalCost + fee;
 
-        if (selectedBottles.length > 0 && !price) {
+        // Auto-update price only if the user hasn't manually edited it
+        if (!isPriceDirty) {
             setPrice(totalWithFee.toString());
-            // Reset to unpaid if switching back from giveaway
-            if (paymentStatus === 'paid' && amountPaid === '0') setPaymentStatus('unpaid');
-        } else if (selectedBottles.length > 0 && price === '0') {
-            // If price was 0 (maybe from giveaway), reset it
-            setPrice(totalWithFee.toString());
-            if (paymentStatus === 'paid' && amountPaid === '0') setPaymentStatus('unpaid');
         }
-    }, [selectedBottles.length, totalCost, isGiveaway]);
+    }, [selectedBottles.length, totalCost, isGiveaway, isPriceDirty]);
 
     const toggleBottle = (id: string) => {
         setSelectedBottleIds(prev =>
@@ -204,18 +199,35 @@ export function AssignInventoryForm({
             {selectedBottles.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label>Total Sale Price ($)</Label>
+                        <div className="flex justify-between items-center">
+                            <Label>Total Sale Price ($)</Label>
+                            {isPriceDirty && (
+                                <Button
+                                    variant="link"
+                                    className="h-auto p-0 text-xs"
+                                    onClick={() => setIsPriceDirty(false)}
+                                >
+                                    Reset to Auto
+                                </Button>
+                            )}
+                        </div>
                         <Input
                             type="number"
                             step="0.01"
                             value={price}
-                            onChange={(e) => setPrice(e.target.value)}
+                            onChange={(e) => {
+                                setPrice(e.target.value);
+                                setIsPriceDirty(true);
+                            }}
                             disabled={isGiveaway}
                         />
                         {!isGiveaway && (
-                            <p className="text-xs text-muted-foreground">
-                                Base Cost: ${(totalCost).toFixed(2)} + ${(selectedBottles.length * 4).toFixed(2)} Fee
-                            </p>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>Base: ${totalCost.toFixed(2)} + Fees: ${(selectedBottles.length * 4).toFixed(2)}</span>
+                                <span className="font-semibold text-blue-600">
+                                    ${(parseFloat(price) / selectedBottles.length || 0).toFixed(2)} / bottle
+                                </span>
+                            </div>
                         )}
                     </div>
                 </div>

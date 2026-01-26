@@ -693,12 +693,18 @@ export default function ContactDetails() {
                     <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
                         <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
                         <p className="text-lg font-medium">No active regimens</p>
-                        <p className="text-sm">Assign a protocol, or create a supplement stack.</p>
-                        <div className="flex justify-center gap-2 mt-4">
+                        <p className="text-sm">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
+                        <div className="flex justify-center flex-wrap gap-2 mt-4">
                             <Button variant="outline" onClick={handleAddClick}>
-                                Add Peptide
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Peptide Regimen
+                            </Button>
+                            <Button variant="outline" onClick={() => setIsAssignInventoryOpen(true)}>
+                                <ShoppingBag className="mr-2 h-4 w-4" />
+                                Just Add to Fridge
                             </Button>
                             <Button variant="outline" onClick={() => createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
+                                <Pill className="mr-2 h-4 w-4" />
                                 Create Supplement Stack
                             </Button>
                         </div>
@@ -994,7 +1000,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
             return {
                 protocolItem: item,
-                supply: calculateSupply(item, itemBottles.map(b => ({
+                supply: calculateSupply({
+                    dosage: item.dosage_amount,
+                    dosage_unit: item.dosage_unit,
+                    frequency: item.frequency
+                }, itemBottles.map(b => ({
                     id: b.id,
                     uid: b.batch_number || 'Unknown',
                     batch_number: b.batch_number,

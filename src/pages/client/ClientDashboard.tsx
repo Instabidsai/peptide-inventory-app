@@ -52,6 +52,21 @@ export default function ClientDashboard() {
         enabled: !!user?.id
     });
 
+    // Fetch Inventory for unit conversions
+    const { data: inventory } = useQuery({
+        queryKey: ['client-inventory', contact?.id],
+        queryFn: async () => {
+            if (!contact?.id) return [];
+            const { data } = await supabase
+                .from('client_inventory')
+                .select('*, peptide:peptides(name)')
+                .eq('contact_id', contact.id)
+                .eq('status', 'active');
+            return data || [];
+        },
+        enabled: !!contact?.id
+    });
+
     // Fetch Daily Goals
     const { data: userGoals } = useQuery({
         queryKey: ['user-goals', user?.id],
@@ -87,7 +102,13 @@ export default function ClientDashboard() {
             protocolName: p.name, // or peptide name if we fetched peptide
             item,
             isTakenToday,
-            lastTaken: latestLog?.created_at
+            lastTaken: latestLog?.created_at,
+            units: (() => {
+                const activeVial = inventory?.find((v: any) => v.peptide_id === item.peptide_id && v.concentration_mg_ml);
+                if (!activeVial) return null;
+                const doseMg = item.dosage_unit === 'mcg' ? item.dosage_amount / 1000 : item.dosage_amount;
+                return Math.round((doseMg / activeVial.concentration_mg_ml) * 100);
+            })()
         };
     }).filter(Boolean);
 
@@ -143,6 +164,9 @@ export default function ClientDashboard() {
                                             <p className="font-medium">{item.protocolName}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 {item.item.dosage_amount}{item.item.dosage_unit} • {item.item.frequency}
+                                                {item.units && (
+                                                    <span className="ml-1 text-emerald-500 font-semibold">• {item.units} units</span>
+                                                )}
                                             </p>
                                         </div>
                                     </div>

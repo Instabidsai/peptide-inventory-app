@@ -362,10 +362,10 @@ export function useCreateMovement() {
             peptide_id: bottle.lots.peptide_id,
             batch_number: bottle.lots.lot_number || null,
             vial_size_mg: vialSizeMg,
-            water_added_ml: waterAddedMl,
+            water_added_ml: null,
             current_quantity_mg: vialSizeMg, // Starts full
             initial_quantity_mg: vialSizeMg, // NEW: Track initial amount
-            concentration_mg_ml: vialSizeMg / waterAddedMl,
+            concentration_mg_ml: null,
             status: 'active',
             protocol_item_id: bottleToProtocolMap.get(bottle.id) || null // NEW: Link to protocol item
           };
