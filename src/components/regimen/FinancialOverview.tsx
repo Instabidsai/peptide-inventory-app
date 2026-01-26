@@ -83,10 +83,24 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         payment_date: new Date().toISOString(),
                         notes: m.notes ? `${m.notes} | Paid via ${paymentMethod}` : `Paid via ${paymentMethod}`
                     })
-                    .eq('id', m.id);
+                    .eq('id', m.id)
+                    .select(); // Must select to know if it worked
             });
 
-            await Promise.all(updates);
+            const results = await Promise.all(updates);
+
+            // Check for failures (RLS often returns no error but 0 rows)
+            const failed = results.filter(r => r.error || !r.data || r.data.length === 0);
+
+            if (failed.length > 0) {
+                // If all failed, throw error. If partial, maybe warn?
+                // For now, let's look at the first failure
+                if (failed[0].error) throw failed[0].error;
+                if (!failed[0].data || failed[0].data.length === 0) {
+                    throw new Error("Permission Denied: Unable to update payment records. Please contact support.");
+                }
+            }
+
             await fetchFinancials(); // Re-fetch to update history and clear balance
 
             // Invalidate global movements query so Admin table updates
