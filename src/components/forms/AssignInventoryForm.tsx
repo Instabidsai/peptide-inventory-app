@@ -32,7 +32,19 @@ import {
 
 import { Switch } from "@/components/ui/switch";
 
-export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defaultQuantity = 1 }: { contactId: string, onClose: () => void, defaultPeptideId?: string, defaultQuantity?: number }) {
+export function AssignInventoryForm({
+    contactId,
+    onClose,
+    defaultPeptideId,
+    defaultQuantity = 1,
+    protocolItemId
+}: {
+    contactId: string,
+    onClose: () => void,
+    defaultPeptideId?: string,
+    defaultQuantity?: number,
+    protocolItemId?: string
+}) {
     const { data: allBottles } = useBottles({ status: 'in_stock' });
     const createMovement = useCreateMovement();
 
@@ -111,7 +123,8 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                 movement_date: new Date().toISOString(),
                 items: selectedBottleIds.map(id => ({
                     bottle_id: id,
-                    price_at_sale: pricePerItem || 0
+                    price_at_sale: pricePerItem || 0,
+                    protocol_item_id: protocolItemId
                 })),
                 payment_status: paymentStatus as any,
                 amount_paid: parseFloat(amountPaid) || 0,

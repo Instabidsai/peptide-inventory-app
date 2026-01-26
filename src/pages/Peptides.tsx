@@ -289,12 +289,18 @@ export default function Peptides() {
                     </TableCell>
                     {isPartner ? (
                       <TableCell>
-                        {/* Partner sees AvgCost + overhead (default 4.00) */}
-                        ${((peptide.avg_cost || 0) + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}
+                        {/* Partner sees (AvgCost OR PendingCost) + overhead (default 4.00) */}
+                        {(() => {
+                          const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                          return `$${(baseCost + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}`;
+                        })()}
                       </TableCell>
                     ) : (
                       <TableCell>
-                        ${(peptide.avg_cost || 0).toFixed(2)}
+                        {(() => {
+                          const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                          return `$${baseCost.toFixed(2)}`;
+                        })()}
                       </TableCell>
                     )}
                     {!isPartner && (

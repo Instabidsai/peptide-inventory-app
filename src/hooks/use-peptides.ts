@@ -38,35 +38,52 @@ export function usePeptides() {
 
       if (peptidesError) throw peptidesError;
 
-      // 2. Fetch all in-stock bottles (using lots relation to get peptide_id)
+      // 2. Fetch all lots to calculate true historical average cost
+      const { data: lotsData, error: lotsError } = await supabase
+        .from('lots')
+        .select('peptide_id, cost_per_unit');
+
+      if (lotsError) throw lotsError;
+
+      // 3. Fetch in-stock bottle counts
       const { data: bottlesData, error: bottlesError } = await supabase
         .from('bottles')
-        .select('lots!inner(peptide_id, cost_per_unit)')
+        .select('lot_id, lots(peptide_id)')
         .eq('status', 'in_stock');
 
       if (bottlesError) throw bottlesError;
 
-      // 3. Aggregate counts and costs in memory
-      const stats: Record<string, { count: number, totalCost: number }> = {};
+      // 4. Aggregate data
+      const peptideStats: Record<string, { totalStock: number, totalLotCost: number, lotCount: number }> = {};
 
-      bottlesData?.forEach((b: any) => {
-        const pId = b.lots?.peptide_id;
-        const cost = Number(b.lots?.cost_per_unit || 0);
+      // Initialize stats for each peptide
+      peptidesData?.forEach(p => {
+        peptideStats[p.id] = { totalStock: 0, totalLotCost: 0, lotCount: 0 };
+      });
 
-        if (pId) {
-          if (!stats[pId]) stats[pId] = { count: 0, totalCost: 0 };
-          stats[pId].count += 1; // Assuming 1 bottle = 1 unit
-          stats[pId].totalCost += cost;
+      // Calculate historical average cost from lots
+      lotsData?.forEach(lot => {
+        if (lot.peptide_id && peptideStats[lot.peptide_id]) {
+          peptideStats[lot.peptide_id].totalLotCost += Number(lot.cost_per_unit || 0);
+          peptideStats[lot.peptide_id].lotCount += 1;
         }
       });
 
-      // 4. Merge
+      // Count in-stock bottles
+      bottlesData?.forEach((b: any) => {
+        const pId = b.lots?.peptide_id;
+        if (pId && peptideStats[pId]) {
+          peptideStats[pId].totalStock += 1;
+        }
+      });
+
+      // 5. Merge
       return (peptidesData as Peptide[]).map(peptide => {
-        const pStats = stats[peptide.id] || { count: 0, totalCost: 0 };
+        const stats = peptideStats[peptide.id];
         return {
           ...peptide,
-          stock_count: pStats.count,
-          avg_cost: pStats.count > 0 ? pStats.totalCost / pStats.count : 0
+          stock_count: stats.totalStock,
+          avg_cost: stats.lotCount > 0 ? stats.totalLotCost / stats.lotCount : 0
         };
       });
     },

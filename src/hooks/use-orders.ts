@@ -116,25 +116,45 @@ export function usePendingOrdersByPeptide() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('orders')
-                .select('peptide_id, quantity_ordered, expected_arrival_date')
+                .select('peptide_id, quantity_ordered, expected_arrival_date, estimated_cost_per_unit')
                 .eq('status', 'pending');
 
             if (error) throw error;
 
             // Group by peptide_id
-            const byPeptide: Record<string, { totalOrdered: number; nextDelivery: string | null }> = {};
+            const byPeptide: Record<string, {
+                totalOrdered: number;
+                nextDelivery: string | null;
+                avgPendingCost: number;
+            }> = {};
 
             data?.forEach(order => {
-                if (!byPeptide[order.peptide_id]) {
-                    byPeptide[order.peptide_id] = { totalOrdered: 0, nextDelivery: null };
+                const pId = order.peptide_id;
+                if (!byPeptide[pId]) {
+                    byPeptide[pId] = {
+                        totalOrdered: 0,
+                        nextDelivery: null,
+                        avgPendingCost: 0
+                    };
                 }
-                byPeptide[order.peptide_id].totalOrdered += order.quantity_ordered;
+
+                const currentCount = byPeptide[pId].totalOrdered;
+                const newCount = currentCount + order.quantity_ordered;
+                const currentAvg = byPeptide[pId].avgPendingCost;
+                const orderCost = order.estimated_cost_per_unit || 0;
+
+                // Update running average cost
+                if (newCount > 0) {
+                    byPeptide[pId].avgPendingCost = ((currentAvg * currentCount) + (orderCost * order.quantity_ordered)) / newCount;
+                }
+
+                byPeptide[pId].totalOrdered = newCount;
 
                 // Track earliest delivery date
                 if (order.expected_arrival_date) {
-                    const current = byPeptide[order.peptide_id].nextDelivery;
-                    if (!current || order.expected_arrival_date < current) {
-                        byPeptide[order.peptide_id].nextDelivery = order.expected_arrival_date;
+                    const currentDelivery = byPeptide[pId].nextDelivery;
+                    if (!currentDelivery || order.expected_arrival_date < currentDelivery) {
+                        byPeptide[pId].nextDelivery = order.expected_arrival_date;
                     }
                 }
             });

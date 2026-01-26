@@ -100,6 +100,7 @@ export default function ContactDetails() {
     const [autoAssignInventory, setAutoAssignInventory] = useState(false);
     const [tempPeptideIdForAssign, setTempPeptideIdForAssign] = useState<string | undefined>(undefined);
     const [tempQuantityForAssign, setTempQuantityForAssign] = useState<number | undefined>(undefined);
+    const [tempProtocolItemIdForAssign, setTempProtocolItemIdForAssign] = useState<string | undefined>(undefined);
 
     // Add Protocol (Template) State
     const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -449,6 +450,7 @@ export default function ContactDetails() {
                                     contactId={id!}
                                     defaultPeptideId={tempPeptideIdForAssign}
                                     defaultQuantity={tempQuantityForAssign}
+                                    protocolItemId={tempProtocolItemIdForAssign}
                                     onClose={() => {
                                         queryClient.invalidateQueries({ queryKey: ['contacts', id] });
                                         queryClient.invalidateQueries({ queryKey: ['movements'] });
@@ -456,6 +458,7 @@ export default function ContactDetails() {
                                         setIsAssignInventoryOpen(false);
                                         setTempPeptideIdForAssign(undefined);
                                         setTempQuantityForAssign(undefined);
+                                        setTempProtocolItemIdForAssign(undefined);
                                     }}
                                 />
                             </DialogContent>
@@ -711,8 +714,9 @@ export default function ContactDetails() {
                                 onLog={logProtocolUsage.mutate}
                                 onAddSupplement={addProtocolSupplement.mutateAsync}
                                 onDeleteSupplement={deleteProtocolSupplement.mutate}
-                                onAssignInventory={(peptideId) => {
+                                onAssignInventory={(peptideId, itemId) => {
                                     setTempPeptideIdForAssign(peptideId);
+                                    setTempProtocolItemIdForAssign(itemId);
                                     setIsAssignInventoryOpen(true);
                                 }}
                                 peptides={peptides}
@@ -861,7 +865,7 @@ export default function ContactDetails() {
     );
 }
 
-function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string) => void, peptides: any[] | undefined, movements?: any[] }) {
+function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: any[] | undefined, movements?: any[] }) {
     // Determine Status Logic
     const { latestMovement, statusColor, statusLabel } = useMemo(() => {
         if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No History' };
@@ -1162,8 +1166,8 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             </div>
                             <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 bg-white hover:bg-amber-50 text-amber-900" onClick={(e) => {
                                 e.stopPropagation();
-                                const peptideId = protocol.protocol_items?.[0]?.peptide_id;
-                                if (peptideId) onAssignInventory(peptideId);
+                                const item = protocol.protocol_items?.[0];
+                                if (item) onAssignInventory(item.peptide_id, item.id);
                             }}>
                                 Assign Now
                             </Button>
