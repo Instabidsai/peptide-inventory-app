@@ -329,9 +329,9 @@ export function useCreateMovement() {
 
       if (itemsError) throw itemsError;
 
-      // 3. For 'sale' movements, populate client_inventory with the bottles
+      // 3. For 'sale' or 'giveaway' movements, populate client_inventory with the bottles
       // Use the pre-fetched bottleDetails
-      if (input.type === 'sale' && input.contact_id && bottleDetails.length > 0) {
+      if ((input.type === 'sale' || input.type === 'giveaway') && input.contact_id && bottleDetails.length > 0) {
         // Helper to extract vial size from peptide name
         const parseVialSize = (name: string): number => {
           const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);

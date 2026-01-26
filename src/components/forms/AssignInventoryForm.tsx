@@ -30,6 +30,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"; // Keeping Select for Payment Status
 
+import { Switch } from "@/components/ui/switch";
+
 export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defaultQuantity = 1 }: { contactId: string, onClose: () => void, defaultPeptideId?: string, defaultQuantity?: number }) {
     const { data: allBottles } = useBottles({ status: 'in_stock' });
     const createMovement = useCreateMovement();
@@ -42,6 +44,9 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
     const [open, setOpen] = useState(false);
     // Multi-select state
     const [selectedBottleIds, setSelectedBottleIds] = useState<string[]>([]);
+
+    // Giveaway state
+    const [isGiveaway, setIsGiveaway] = useState(false);
 
     // Auto-select defaults when bottles load
     useEffect(() => {
@@ -65,16 +70,26 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
     // Auto-fill price with cost when selection changes (if empty or default)
     // Auto-fill price with cost + $4 fee when selection changes (if empty or default)
     useEffect(() => {
+        if (isGiveaway) {
+            setPrice('0');
+            setPaymentStatus('paid'); // Giveaways are "settled"
+            setAmountPaid('0');
+            return;
+        }
+
         const fee = selectedBottles.length * 4;
         const totalWithFee = totalCost + fee;
 
         if (selectedBottles.length > 0 && !price) {
             setPrice(totalWithFee.toString());
+            // Reset to unpaid if switching back from giveaway
+            if (paymentStatus === 'paid' && amountPaid === '0') setPaymentStatus('unpaid');
         } else if (selectedBottles.length > 0 && price === '0') {
+            // If price was 0 (maybe from giveaway), reset it
             setPrice(totalWithFee.toString());
+            if (paymentStatus === 'paid' && amountPaid === '0') setPaymentStatus('unpaid');
         }
-    }, [selectedBottles.length, totalCost]); // Only update if selection count changes to avoid overriding user input
-    // Actually, simpler: Default price to totalCost.
+    }, [selectedBottles.length, totalCost, isGiveaway]);
 
     const toggleBottle = (id: string) => {
         setSelectedBottleIds(prev =>
@@ -88,17 +103,10 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
         if (selectedBottleIds.length === 0) return;
 
         try {
-            // Distribute price and payment across items? 
-            // Or just treat 'price' as total sale price.
-            // Data model expects price_at_sale per ITEM.
-            // We should split the total price evenly or per unit cost?
-            // User inputs TOTAL Price usually.
-            // Let's split it evenly for simplicity.
             const pricePerItem = parseFloat(price) / selectedBottleIds.length;
-            const payPerItem = parseFloat(amountPaid) / selectedBottleIds.length;
 
             await createMovement.mutateAsync({
-                type: 'sale',
+                type: isGiveaway ? 'giveaway' : 'sale',
                 contact_id: contactId,
                 movement_date: new Date().toISOString(),
                 items: selectedBottleIds.map(id => ({
@@ -163,6 +171,23 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                 </Popover>
             </div>
 
+            {/* Giveaway Toggle */}
+            <div className="flex items-center space-x-2 border p-3 rounded-md bg-muted/40">
+                <Switch
+                    id="giveaway-mode"
+                    checked={isGiveaway}
+                    onCheckedChange={setIsGiveaway}
+                />
+                <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="giveaway-mode" className="font-medium">
+                        Mark as Giveaway / Free
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                        Inventory cost will be tracked, but client will not be charged.
+                    </p>
+                </div>
+            </div>
+
             {selectedBottles.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
@@ -172,10 +197,13 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                             step="0.01"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
+                            disabled={isGiveaway}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Base Cost: ${(totalCost).toFixed(2)} + ${(selectedBottles.length * 4).toFixed(2)} Fee
-                        </p>
+                        {!isGiveaway && (
+                            <p className="text-xs text-muted-foreground">
+                                Base Cost: ${(totalCost).toFixed(2)} + ${(selectedBottles.length * 4).toFixed(2)} Fee
+                            </p>
+                        )}
                     </div>
                 </div>
             )}
@@ -189,7 +217,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                         setPaymentStatus(val);
                         if (val === 'paid') setAmountPaid(price);
                         if (val === 'unpaid') setAmountPaid('0');
-                    }}>
+                    }} disabled={isGiveaway}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -205,7 +233,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
                         step="0.01"
                         value={amountPaid}
                         onChange={(e) => setAmountPaid(e.target.value)}
-                        disabled={paymentStatus === 'unpaid'}
+                        disabled={paymentStatus === 'unpaid' || isGiveaway}
                     />
                 </div>
             </div>
@@ -213,7 +241,7 @@ export function AssignInventoryForm({ contactId, onClose, defaultPeptideId, defa
             <DialogFooter className="mt-4">
                 <Button onClick={handleSubmit} disabled={selectedBottleIds.length === 0 || createMovement.isPending}>
                     {createMovement.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Assignment ({selectedBottleIds.length})
+                    {isGiveaway ? `Distribute ${selectedBottleIds.length} Free Bottle(s)` : `Confirm Sale (${selectedBottleIds.length})`}
                 </Button>
             </DialogFooter>
         </div>

@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PeptideSuggestions } from '@/components/peptides/PeptideSuggestions';
+import { PeptideHistoryDialog } from '@/components/peptides/PeptideHistoryDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -62,6 +63,7 @@ export default function Peptides() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
+  const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
 
   const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
   // Use URL search param for preview if needed, or just strict override for now for verify
@@ -328,6 +330,14 @@ export default function Peptides() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="View Sales History"
+                          onClick={() => setHistoryPeptide(peptide)}
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
                         {canDelete && (
                           <Button
                             variant="ghost"
@@ -441,6 +451,13 @@ export default function Peptides() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      <PeptideHistoryDialog
+        open={!!historyPeptide}
+        onClose={() => setHistoryPeptide(null)}
+        peptideId={historyPeptide?.id || null}
+        peptideName={historyPeptide?.name || ''}
+      />
+    </div >
   );
 }

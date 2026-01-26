@@ -110,10 +110,15 @@ export function WeeklyTrends() {
                 }
             };
         },
-        enabled: !!user?.id
+        enabled: !!user?.id,
+        retry: false
     });
 
+    // Don't render anything while loading or if no data
     if (!weeklyData) return null;
+
+    // Ensure we have valid data before rendering
+    if (!weeklyData.chartData || !weeklyData.stats) return null;
 
     return (
         <Card className="shadow-sm bg-white">

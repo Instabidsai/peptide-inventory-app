@@ -555,25 +555,11 @@ export default function ContactDetails() {
                                         </div>
                                     </div>
 
-                                    <div className="grid gap-2">
-                                        <Label>Cost Pricing (Markup)</Label>
-                                        <Select value={costMultiplier} onValueChange={setCostMultiplier}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="1">At Cost (1x)</SelectItem>
-                                                <SelectItem value="1.5">1.5x Cost</SelectItem>
-                                                <SelectItem value="2">2x Cost</SelectItem>
-                                                <SelectItem value="3">3x Cost</SelectItem>
-                                                <SelectItem value="4">4x Cost</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Calc Summary */}
+                                    {/* Calc Summary - Simplified */}
                                     <div className="bg-muted p-3 rounded-md text-sm space-y-2">
                                         <div className="flex items-center gap-2 font-semibold border-b border-border pb-2">
                                             <Calculator className="h-4 w-4" />
-                                            <span>Regimen Summary</span>
+                                            <span>Regimen Supply Plan</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-muted-foreground">
                                             <div>Daily Dose: <span className="text-foreground">{dosageAmount}{dosageUnit}</span></div>
@@ -581,35 +567,8 @@ export default function ContactDetails() {
 
                                             <div>Vial Lasts: <span className="text-foreground">{Math.floor(calculations.daysPerVial)} days</span></div>
                                             <div>Vials Needed: <span className="text-foreground font-semibold">{calculations.vialsNeeded}</span></div>
-
-                                            <div className="col-span-2 pt-2 border-t border-border mt-1">
-                                                <div className="flex justify-between items-center">
-                                                    <span>Total Cost Estimate:</span>
-                                                    <span className="text-lg font-bold text-primary">${calculations.estimatedCost.toFixed(2)}</span>
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    ({calculations.vialsNeeded} vials @ ${((peptides?.find(p => p.id === selectedPeptideId)?.avg_cost || 0) * parseFloat(costMultiplier)).toFixed(2)} each)
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
-
-                                    {!editingItemId && (
-                                        <div className="flex items-center space-x-2 pt-2">
-                                            <Checkbox
-                                                id="auto-assign"
-                                                checked={autoAssignInventory}
-                                                onCheckedChange={(checked) => setAutoAssignInventory(checked === true)}
-                                            />
-                                            <label
-                                                htmlFor="auto-assign"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Assign inventory now?
-                                            </label>
-                                        </div>
-                                    )}
-
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setIsAddPeptideOpen(false)}>Cancel</Button>
@@ -903,10 +862,7 @@ export default function ContactDetails() {
 }
 
 function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string) => void, peptides: any[] | undefined, movements?: any[] }) {
-    // Calculate Total Cost for the Display
-    // ... (keep cost logic) ...
-
-    // Find latest movement status for this peptide
+    // Determine Status Logic
     const { latestMovement, statusColor, statusLabel } = useMemo(() => {
         if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No History' };
 
@@ -923,11 +879,18 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
         const latest = relevant[0];
         let color = 'bg-gray-100 text-gray-800 border-gray-200';
-        if (latest.payment_status === 'paid') color = 'bg-green-100 text-green-800 border-green-200';
-        if (latest.payment_status === 'unpaid') color = 'bg-amber-100 text-amber-800 border-amber-200';
-        if (latest.payment_status === 'partial') color = 'bg-blue-100 text-blue-800 border-blue-200';
+        let label = latest.payment_status;
 
-        return { latestMovement: latest, statusColor: color, statusLabel: latest.payment_status };
+        if (latest.type === 'giveaway') {
+            color = 'bg-purple-100 text-purple-800 border-purple-200';
+            label = 'Giveaway';
+        } else {
+            if (latest.payment_status === 'paid') color = 'bg-green-100 text-green-800 border-green-200';
+            if (latest.payment_status === 'unpaid') color = 'bg-amber-100 text-amber-800 border-amber-200';
+            if (latest.payment_status === 'partial') color = 'bg-blue-100 text-blue-800 border-blue-200';
+        }
+
+        return { latestMovement: latest, statusColor: color, statusLabel: label };
     }, [movements, protocol]);
 
     const lastSoldDetails = useMemo(() => {
@@ -943,6 +906,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             date: latestMovement.movement_date
         };
     }, [latestMovement, protocol]);
+
     const totalCost = useMemo(() => {
         if (!protocol.protocol_items || !peptides) return 0;
         return protocol.protocol_items.reduce((acc: number, item: any) => {
@@ -958,7 +922,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             if (unit === 'mcg') amountInMg = amount / 1000;
 
             let totalAmountNeededMg = amountInMg * duration;
-            // Simplified frequency logic for card display
             if (item.frequency === 'weekly') {
                 totalAmountNeededMg = amountInMg * (duration / 7);
             } else if (item.frequency === 'bid') {
@@ -967,7 +930,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 totalAmountNeededMg = amountInMg * 2 * (duration / 7);
             }
 
-            // Helper to extract vial size (duplicated for now to avoid large refactor)
             const parseVialSize = (name: string): number => {
                 const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
                 if (!match) return 5;
@@ -985,23 +947,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
         }, 0);
     }, [protocol, peptides]);
 
-    // Determine Status
-    const lastLog = protocol.protocol_items?.[0]?.protocol_logs?.[0]; // Assuming logs are ordered desc in backend or we should sort
-    // The query used order('created_at', {ascending: false }) generally, but we need to check nested order if supported or sort here.
-    // For now, let's just grab the most recent if available.
-
-    // Sort logs just in case
-    const logs = protocol.protocol_items?.[0]?.protocol_logs || [];
-    const sortedLogs = [...logs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    const latestLog = sortedLogs[0];
-
-    const isTakenToday = latestLog && differenceInDays(new Date(), new Date(latestLog.created_at)) === 0;
-
     const [isAddSuppOpen, setIsAddSuppOpen] = useState(false);
     const returnToStock = useRestockInventory();
     const updateBottleQuantity = useUpdateBottleQuantity();
+    const deleteMovement = useDeleteMovement(); 
 
-    // NEW: Fetch bottles assigned to this protocol
     const { data: assignedBottles } = useQuery({
         queryKey: ['regimen-bottles', protocol.id, protocol.contact_id],
         queryFn: async () => {
@@ -1030,7 +980,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
         enabled: !!protocol.contact_id
     });
 
-    // NEW: Calculate supply for each protocol item
     const supplyCalculations = useMemo(() => {
         if (!protocol.protocol_items || !assignedBottles) return [];
 
@@ -1051,29 +1000,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             };
         });
     }, [protocol.protocol_items, assignedBottles]);
-
-    const handleRestockFromCard = (movement: any, lotNumber: string | undefined, price: number) => {
-        // Construct minimal item object needed for hook
-        const item = {
-            id: 'virtual-id', // We don't have the client_inventory ID easily unless we query it. 
-            // Problem: RegimenCard derives display from 'movements' table, NOT 'client_inventory'.
-            // 'client_inventory' is separate.
-            // BUT we can try to find the client_inventory item that matches this movement?
-            movement_id: movement.id,
-            // We need the ACTUAL client_inventory ID to delete it.
-        };
-        // Wait, if it's based on movements, we can't easily delete a client_inventory row without querying it.
-        // However, if we "Return to Stock", we act on the BOTTLE/MOVEMENT.
-        // But the hook deletes from 'client_inventory'.
-    };
-
-    // We need to fetch the Linked Inventory Item ID for this Regimen to enable the actions.
-    // Or we just tell the user to look down.
-    // Actually, let's keep it simple: Add a Link/Button "Manage in Fridge"?
-    // OR filter the 'client_inventory' list by this peptide?
-
-    // Let's modify RegimenCard to accept the 'clientInventory' list as prop and find the matching item?
-    // This is robust.
 
     return (
         <Card className={`hover:border-primary/50 transition-colors cursor-pointer group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`} onClick={onEdit}>
@@ -1098,7 +1024,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Peptide Items */}
                 <div className="space-y-2">
                     {protocol.protocol_items?.map((item: any) => (
                         <div key={item.id} className="flex justify-between items-center p-3 bg-muted rounded-lg md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
@@ -1123,7 +1048,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     )}
                 </div>
 
-                {/* Supplement Items */}
                 <div className="pt-2" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider text-xs">
@@ -1177,17 +1101,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             </div>
                         ))}
                     </div>
-                    {(!protocol.protocol_supplements || protocol.protocol_supplements.length === 0) && (
-                        <div className="text-xs text-muted-foreground italic border-t pt-2">No supplements assigned.</div>
-                    )}
                 </div>
 
-
-                {/* Detailed Inventory & Billing Status */}
                 <div className="pt-3 border-t grid gap-2">
                     <div className="flex justify-between items-center">
                         <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">Inventory & Billing</span>
-                        {/* Fulfillment Status Badge */}
                         {latestMovement && (
                             <Badge
                                 variant={latestMovement.status === 'active' ? 'default' : 'outline'}
@@ -1200,7 +1118,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     </div>
 
                     {latestMovement ? (
-                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2">
+                        <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2 relative group-billing">
                             <div>
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
                                 <Badge variant="outline" className={`${statusColor} capitalize font-normal border px-2 py-0 h-5`}>
@@ -1209,7 +1127,23 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             </div>
                             <div className="text-right">
                                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Sold At</span>
-                                <span className="font-mono font-medium">${lastSoldDetails?.price.toFixed(2)}</span>
+                                <div className="flex items-center justify-end gap-2">
+                                    <span className="font-mono font-medium">${lastSoldDetails?.price.toFixed(2)}</span>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-5 w-5 opacity-0 group-hover-billing:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                                        title="Void Invoice / Delete Movement"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if(confirm(`Are you sure you want to void this ${latestMovement.type} record? This will return items to stock.`)) {
+                                                deleteMovement.mutate(latestMovement.id);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="col-span-2 flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
                                 <div className="text-xs flex items-center gap-1.5 text-muted-foreground">
@@ -1258,7 +1192,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                         <div className="space-y-2">
                             {supplyCalculations.filter(s => s.supply.bottles.length > 0).map(({ protocolItem, supply }) => (
                                 <div key={protocolItem.id} className="border rounded-lg p-2 bg-muted/10">
-                                    {/* Peptide Header */}
                                     <div className="flex justify-between items-center mb-1.5">
                                         <div className="font-medium text-xs">
                                             {peptides?.find(p => p.id === protocolItem.peptide_id)?.name}
@@ -1271,13 +1204,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                         </Badge>
                                     </div>
 
-                                    {/* Supply Summary */}
                                     <div className="text-[10px] text-muted-foreground mb-1.5 grid grid-cols-2 gap-1">
                                         <div>Supply: {supply.totalSupplyMg.toFixed(1)} mg</div>
                                         <div>Usage: {supply.dailyUsageMg.toFixed(1)} mg/day</div>
                                     </div>
 
-                                    {/* Bottle List */}
                                     <Accordion type="single" collapsible>
                                         <AccordionItem value="bottles" className="border-0">
                                             <AccordionTrigger className="py-1 text-[10px] hover:no-underline">
@@ -1310,6 +1241,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     );
 }
 
+// 
 function AddResourceForm({ contactId, onComplete }: { contactId: string, onComplete: () => void }) {
     const [title, setTitle] = useState('');
     const [url, setUrl] = useState('');

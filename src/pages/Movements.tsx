@@ -307,6 +307,7 @@ export default function Movements() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Items</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Cost</TableHead>
                   <TableHead>Amount Paid</TableHead>
@@ -320,6 +321,17 @@ export default function Movements() {
                     return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                   }, 0) || 0;
 
+                  // Extract peptide names and counts
+                  const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+                    const name = item.bottles?.lots?.peptides?.name || 'Unknown';
+                    acc[name] = (acc[name] || 0) + 1;
+                    return acc;
+                  }, {});
+
+                  const itemsDisplay = itemsSummary
+                    ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
+                    : '-';
+
                   return (
                     <TableRow key={movement.id}>
                       <TableCell className="font-medium">
@@ -329,6 +341,9 @@ export default function Movements() {
                         <Badge variant={typeColors[movement.type]}>
                           {typeLabels[movement.type]}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={itemsDisplay}>
+                        {itemsDisplay}
                       </TableCell>
                       <TableCell>
                         <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className="capitalize">
