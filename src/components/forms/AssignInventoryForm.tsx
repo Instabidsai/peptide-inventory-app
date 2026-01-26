@@ -144,7 +144,7 @@ export function AssignInventoryForm({
                             className="w-full justify-between"
                         >
                             {selectedBottleIds.length > 0
-                                ? `${selectedBottleIds.length} bottles selected`
+                                ? (selectedBottleIds.length + " bottles selected")
                                 : "Select bottles..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -158,7 +158,7 @@ export function AssignInventoryForm({
                                     {bottles?.map((b) => (
                                         <CommandItem
                                             key={b.id}
-                                            value={`${b.uid} ${b.lots?.peptides?.name} ${b.lots?.lot_number}`}
+                                            value={b.uid + " " + (b.lots?.peptides?.name || "") + " " + (b.lots?.lot_number || "")}
                                             onSelect={() => {
                                                 toggleBottle(b.id);
                                             }}
@@ -297,11 +297,12 @@ export function AssignInventoryForm({
             <DialogFooter className="mt-4">
                 <Button onClick={handleSubmit} disabled={selectedBottleIds.length === 0 || createMovement.isPending}>
                     {createMovement.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {movementType === 'giveaway' ? `Distribute ${selectedBottleIds.length} Free Bottle(s)` :
-                        movementType === 'internal_use' ? `Assign ${selectedBottleIds.length} to Internal Use` :
-                            `Confirm Sale (${selectedBottleIds.length})`}
+                    {movementType === 'giveaway' ? ("Distribute " + selectedBottleIds.length + " Free Bottle(s)") :
+                        movementType === 'internal_use' ? ("Assign " + selectedBottleIds.length + " to Internal Use") :
+                            ("Confirm Sale(" + selectedBottleIds.length + ")")}
                 </Button>
             </DialogFooter>
         </div>
     );
 }
+

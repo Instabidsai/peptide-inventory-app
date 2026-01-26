@@ -65,9 +65,15 @@ const App = () => (
 
 
 
-            {/* Admin Routes */}
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<RoleBasedRedirect><Dashboard /></RoleBasedRedirect>} />
+            {/* Admin Routes - Strictly Restricted */}
+            <Route element={
+              <ProtectedRoute>
+                <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep']}>
+                  <AppLayout />
+                </RoleBasedRedirect>
+              </ProtectedRoute>
+            }>
+              <Route path="/" element={<Dashboard />} />
               <Route path="/peptides" element={<Peptides />} />
               <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
               <Route path="/orders" element={<Orders />} />
@@ -75,7 +81,6 @@ const App = () => (
               <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
               <Route path="/sales" element={<OrderList />} />
               <Route path="/sales/new" element={<NewOrder />} />
-              <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
               <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />

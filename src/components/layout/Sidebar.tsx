@@ -19,21 +19,21 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Peptides', href: '/peptides', icon: FlaskConical },
-  { name: 'Orders', href: '/orders', icon: ClipboardList },
-  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff'] },
+  { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
-  { name: 'Lots', href: '/lots', icon: Package },
-  { name: 'Bottles', href: '/bottles', icon: Pill }, // Keep this if used, or replace icon if duplicate
-  { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical }, // Use FlaskConical or similar if Pill is taken. Or reuse Pill.
-  { name: 'Contacts', href: '/contacts', icon: Users },
-  { name: 'Resources', href: '/admin-resources', icon: BookOpen },
-  { name: 'Feedback', href: '/feedback', icon: MessageSquare },
-  { name: 'Movements', href: '/movements', icon: ArrowLeftRight },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Lots', href: '/lots', icon: Package, roles: ['admin', 'staff'] },
+  { name: 'Bottles', href: '/bottles', icon: Pill, roles: ['admin', 'staff'] },
+  { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical, roles: ['admin', 'staff'] },
+  { name: 'Contacts', href: '/contacts', icon: Users, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Resources', href: '/admin-resources', icon: BookOpen, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
+  { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {

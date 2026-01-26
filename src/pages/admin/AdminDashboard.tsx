@@ -262,18 +262,18 @@ export default function AdminDashboard() {
                 <Card className="bg-card border-border">
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Internal Use</p>
-                                <p className="text-xl font-semibold">{stats?.internal_use || 0}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Lost/Damaged</p>
-                                <p className="text-xl font-semibold">{stats?.lost || 0}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Returned</p>
-                                <p className="text-xl font-semibold">{stats?.returned || 0}</p>
-                            </div>
+                            <Link to="/movements?type=internal_use" className="group">
+                                <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Internal Use</p>
+                                <p className="text-xl font-semibold group-hover:text-primary transition-colors">{stats?.internal_use || 0}</p>
+                            </Link>
+                            <Link to="/movements?type=loss" className="group text-center">
+                                <p className="text-sm text-muted-foreground group-hover:text-destructive transition-colors">Lost/Damaged</p>
+                                <p className="text-xl font-semibold group-hover:text-destructive transition-colors">{stats?.lost || 0}</p>
+                            </Link>
+                            <Link to="/movements?type=return" className="group text-right">
+                                <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Returned</p>
+                                <p className="text-xl font-semibold group-hover:text-primary transition-colors">{stats?.returned || 0}</p>
+                            </Link>
                         </div>
                     </CardContent>
                 </Card>
