@@ -24,12 +24,12 @@ import {
 } from "@/components/ui/select";
 
 export default function OrderList() {
-    const { userRole } = useAuth();
+    const { userRole, profile } = useAuth();
     const navigate = useNavigate();
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
 
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
-    const isRep = userRole?.role === 'sales_rep';
+    const isRep = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
 
     const { data: allOrders, isLoading: allLoading } = useSalesOrders(filterStatus === 'all' ? undefined : filterStatus);
     const { data: myOrders, isLoading: myLoading } = useMySalesOrders();

@@ -32,6 +32,7 @@ import AdminResources from "./pages/AdminResources";
 import Commissions from "./pages/admin/Commissions";
 import Finance from "./pages/admin/Finance";
 import AdminSupplements from "./pages/admin/AdminSupplements";
+import PartnerDetail from "./pages/admin/PartnerDetail";
 import NotFound from "./pages/NotFound";
 
 import { ClientLayout } from "@/components/layout/ClientLayout";
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
+              <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />
               <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
               <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
               <Route path="/admin/supplements" element={<AdminSupplements />} />

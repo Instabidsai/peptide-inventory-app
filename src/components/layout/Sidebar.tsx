@@ -37,15 +37,18 @@ const navigation = [
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
-  const { organization, userRole, user } = useAuth();
+  const { organization, userRole, user, profile: authProfile } = useAuth();
   const [searchParams] = useSearchParams();
   const previewRole = searchParams.get('preview_role');
 
   const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
-  const effectiveRole = previewRole || (isThompsonOverride ? 'sales_rep' : userRole?.role);
+  const effectiveRole = previewRole || (
+    isThompsonOverride ? 'sales_rep' :
+      (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep' ? 'sales_rep' : userRole?.role)
+  );
 
   // Fetch verified profile data for balance
-  const { data: profile } = useQuery({
+  const { data: balanceData } = useQuery({
     queryKey: ['my_sidebar_profile'],
     queryFn: async () => {
       const { data } = await supabase.from('profiles').select('credit_balance').eq('user_id', user?.id).single();

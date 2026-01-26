@@ -80,8 +80,8 @@ export default function Reps() {
                                     <TableCell>x{rep.price_multiplier?.toFixed(2) || '1.00'}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => window.open(`/sales/new?preview_rep_id=${rep.id}`, '_blank')}>
-                                                <Eye className="h-4 w-4 mr-2" /> Preview
+                                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
+                                                <Eye className="h-4 w-4 mr-2" /> View Details
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
                                                 <Pencil className="h-4 w-4 mr-2" /> Edit
