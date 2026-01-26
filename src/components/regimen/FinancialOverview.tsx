@@ -20,9 +20,10 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 // Fetch movements where payment_status is 'unpaid' or 'partial'
                 const { data: movements, error } = await supabase
                     .from('movements')
-                    .select('id, payment_status, amount_paid, created_at, movement_items(price_at_sale, bottle:bottles(lot:lots(peptide:peptides(name), lot_number)))')
+                    .select('id, payment_status, status, amount_paid, created_at, movement_items(price_at_sale, bottle:bottles(lot:lots(peptide:peptides(name), lot_number)))')
                     .eq('contact_id', contactId)
-                    .in('payment_status', ['unpaid', 'partial']);
+                    .in('payment_status', ['unpaid', 'partial'])
+                    .neq('status', 'returned');
 
                 if (error) throw error;
 

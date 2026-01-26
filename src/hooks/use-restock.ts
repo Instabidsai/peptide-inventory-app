@@ -18,22 +18,24 @@ export function useRestockInventory() {
 
             if (item.movement_id) {
                 // Determine bottle from original movement
+                // We join with bottles to find one that is NOT already 'in_stock'
                 const { data: mItems } = await supabase
                     .from('movement_items')
-                    .select('bottle_id')
-                    .eq('movement_id', item.movement_id)
-                    .limit(1);
-                if (mItems?.[0]) bottleId = mItems[0].bottle_id;
+                    .select('bottle_id, bottles(status)')
+                    .eq('movement_id', item.movement_id);
+
+                // Find a bottle from this movement that is currently sold/internal_use (not in_stock)
+                const target = mItems?.find((mi: any) => mi.bottles?.status !== 'in_stock');
+                if (target) bottleId = target.bottle_id;
             }
 
             if (!bottleId && item.batch_number) {
-                // Fallback: Find any SOLD bottle with this batch number
-                // First get lot_id
+                // ... same fallback ...
                 const { data: lots } = await supabase
                     .from('lots')
                     .select('id')
                     .eq('lot_number', item.batch_number)
-                    .eq('peptide_id', item.peptide_id) // Ensure correct peptide
+                    .eq('peptide_id', item.peptide_id)
                     .limit(1);
 
                 if (lots?.[0]) {
@@ -67,20 +69,27 @@ export function useRestockInventory() {
                 const { error: dError } = await dQuery;
                 if (dError) throw dError;
 
-                // 4. Mark the movement as 'returned' (preserves transaction history)
+                // 4. Conditionally mark the movement as 'returned'
                 if (item.movement_id) {
-                    const { error: movementError } = await supabase
-                        .from('movements')
-                        .update({ status: 'returned' })
-                        .eq('id', item.movement_id);
+                    // Only mark as fully returned if NO items remain in the fridge for this movement
+                    const { data: remainingItems } = await supabase
+                        .from('client_inventory')
+                        .select('id')
+                        .eq('movement_id', item.movement_id);
 
-                    if (movementError) {
-                        console.error('Failed to update movement status:', movementError);
-                        // Don't throw - this is not critical to the return operation
+                    if (!remainingItems || remainingItems.length === 0) {
+                        const { error: movementError } = await supabase
+                            .from('movements')
+                            .update({ status: 'returned' })
+                            .eq('id', item.movement_id);
+
+                        if (movementError) {
+                            console.error('Failed to update movement status:', movementError);
+                        }
                     }
                 }
 
-                return "Restocked successfully and movement marked as returned";
+                return "Restocked successfully";
             } else {
                 if (confirm("Could not find the original bottle in the system history (it might be old data). Just delete it from the fridge?")) {
                     let dQuery = supabase.from('client_inventory').delete();
