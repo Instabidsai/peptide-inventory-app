@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label as FormLabel } from "@/components/ui/label";
 
 interface FinancialOverviewProps {
     contactId: string;
@@ -52,6 +55,42 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
         fetchFinancials();
     }, [contactId]);
 
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('cash');
+
+    const handleMarkPaid = async () => {
+        try {
+            setLoading(true);
+            const updates = unpaidMovements.map(m => {
+                const totalPrice = m.movement_items?.reduce(
+                    (sum: number, item: any) => sum + (item.price_at_sale || 0),
+                    0
+                ) || 0;
+
+                return supabase
+                    .from('movements')
+                    .update({
+                        payment_status: 'paid',
+                        amount_paid: totalPrice,
+                        payment_date: new Date().toISOString(),
+                        notes: m.notes ? `${m.notes} | Paid via ${paymentMethod}` : `Paid via ${paymentMethod}`
+                    })
+                    .eq('id', m.id);
+            });
+
+            await Promise.all(updates);
+
+            // Refresh local state by hiding the card (simplest way without refetching parent)
+            setOutstandingBalance(0);
+            setIsPaymentOpen(false);
+
+        } catch (error) {
+            console.error("Error marking paid:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) return null;
     if (outstandingBalance <= 0) return null;
 
@@ -98,16 +137,51 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             ))}
                         </div>
                     </div>
-                    <Button
-                        variant="default"
-                        className="w-full bg-amber-600 hover:bg-amber-700"
-                        onClick={() => {
-                            // TODO: Integrate with payment system
-                            alert('Payment integration coming soon!');
-                        }}
-                    >
-                        Make Payment
-                    </Button>
+
+                    <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="default"
+                                className="w-full bg-amber-600 hover:bg-amber-700"
+                            >
+                                Mark as Paid
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Record Payment</DialogTitle>
+                                <DialogDescription>
+                                    Verify you have made payment for the outstanding balance of <strong>${outstandingBalance.toFixed(2)}</strong>.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <FormLabel>Payment Method</FormLabel>
+                                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cash">Cash</SelectItem>
+                                        <SelectItem value="venmo">Venmo</SelectItem>
+                                        <SelectItem value="zelle">Zelle</SelectItem>
+                                        <SelectItem value="apple_pay">Apple Pay</SelectItem>
+                                        <SelectItem value="credit_card">Credit Card (External)</SelectItem>
+                                        <SelectItem value="check">Check</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+                                    <strong>Note:</strong> This checks off the debt in your digital ledger. Please ensure actual transaction is complete.
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsPaymentOpen(false)}>Cancel</Button>
+                                <Button onClick={handleMarkPaid} className="bg-green-600 hover:bg-green-700">
+                                    Confirm Payment
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </CardContent>
         </Card>
