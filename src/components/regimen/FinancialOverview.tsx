@@ -10,12 +10,14 @@ import { Label as FormLabel } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FinancialOverviewProps {
     contactId: string;
 }
 
 export function FinancialOverview({ contactId }: FinancialOverviewProps) {
+    const queryClient = useQueryClient();
     const [outstandingBalance, setOutstandingBalance] = useState(0);
     const [loading, setLoading] = useState(true);
     const [allMovements, setAllMovements] = useState<any[]>([]);
@@ -86,6 +88,10 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
             await Promise.all(updates);
             await fetchFinancials(); // Re-fetch to update history and clear balance
+
+            // Invalidate global movements query so Admin table updates
+            queryClient.invalidateQueries({ queryKey: ['movements'] });
+
             setIsPaymentOpen(false);
 
             // Show success toast
