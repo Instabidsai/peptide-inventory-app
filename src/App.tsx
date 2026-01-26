@@ -16,7 +16,7 @@ import Lots from "./pages/Lots";
 import Bottles from "./pages/Bottles";
 import Orders from "./pages/Orders";
 import OrderList from "./pages/sales/OrderList";
-import NewOrder from "./pages/sales/NewOrder";
+// import NewOrder from "./pages/sales/NewOrder";
 import OrderDetails from "./pages/sales/OrderDetails";
 import DebugInvite from "./pages/DebugInvite";
 import Join from "./pages/Join";
@@ -25,10 +25,10 @@ import Contacts from "./pages/Contacts";
 import Protocols from "./pages/Protocols";
 import ContactDetails from "./pages/ContactDetails";
 import Movements from "./pages/Movements";
-import MovementWizard from "./pages/MovementWizard";
+// import MovementWizard from "./pages/MovementWizard";
 import Settings from "./pages/Settings";
 import AdminFeedback from "./pages/AdminFeedback";
-import AdminRequests from "./pages/admin/AdminRequests";
+// import AdminRequests from "./pages/admin/AdminRequests";
 import AdminResources from "./pages/AdminResources";
 import Commissions from "./pages/admin/Commissions";
 import Finance from "./pages/admin/Finance";
@@ -81,10 +81,10 @@ const App = () => (
               <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/feedback" element={<RoleBasedRedirect><AdminFeedback /></RoleBasedRedirect>} />
-              <Route path="/requests" element={<RoleBasedRedirect><AdminRequests /></RoleBasedRedirect>} />
+              {/* <Route path="/requests" element={<RoleBasedRedirect><AdminRequests /></RoleBasedRedirect>} /> */}
               <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
               <Route path="/sales" element={<OrderList />} />
-              <Route path="/sales/new" element={<NewOrder />} />
+              {/* <Route path="/sales/new" element={<NewOrder />} /> */}
               <Route path="/sales/:id" element={<OrderDetails />} />
               <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
               <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />
@@ -94,7 +94,7 @@ const App = () => (
               <Route path="/bottles" element={<Bottles />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/movements" element={<Movements />} />
-              <Route path="/movements/new" element={<MovementWizard />} />
+              {/* <Route path="/movements/new" element={<MovementWizard />} /> */}
               <Route path="/protocols" element={<Protocols />} />
               <Route path="/contacts/:id" element={<ContactDetails />} />
               <Route path="/settings" element={<Settings />} />

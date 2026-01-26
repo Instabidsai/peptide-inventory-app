@@ -46,7 +46,7 @@ const peptideSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   sku: z.string().optional(),
-  retail_price: z.coerce.number().min(0).optional(), // New field
+  retail_price: z.union([z.string(), z.number()]).transform(v => Number(v) || 0).optional(),
 });
 
 type PeptideFormData = z.infer<typeof peptideSchema>;
@@ -179,7 +179,6 @@ export default function Peptides() {
                               step="0.01"
                               placeholder="0.00"
                               {...field}
-                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -416,7 +415,6 @@ export default function Peptides() {
                               step="0.01"
                               placeholder="0.00"
                               {...field}
-                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
                           <FormMessage />
