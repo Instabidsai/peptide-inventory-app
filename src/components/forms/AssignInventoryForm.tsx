@@ -60,16 +60,16 @@ export function AssignInventoryForm({
     // Movement Type state
     const [movementType, setMovementType] = useState<'sale' | 'giveaway' | 'internal_use'>('sale');
 
-    // Auto-select defaults when bottles load
+    // Auto-select defaults only if we have a specific target peptide (e.g. from Regimen flow)
     useEffect(() => {
-        if (bottles && bottles.length > 0 && selectedBottleIds.length === 0) {
+        if (defaultPeptideId && bottles && bottles.length > 0 && selectedBottleIds.length === 0) {
             // Sort by creation or lot? Usually FIFO (First In First Out) is best.
             // Assuming bottles are returned sorted or we sort them.
             // For now, take the first N available.
             const autoSelect = bottles.slice(0, defaultQuantity).map(b => b.id);
             setSelectedBottleIds(autoSelect);
         }
-    }, [bottles, defaultQuantity]);
+    }, [bottles, defaultQuantity, defaultPeptideId]);
 
     const [price, setPrice] = useState<string>('');
     const [paymentStatus, setPaymentStatus] = useState<string>('unpaid');
