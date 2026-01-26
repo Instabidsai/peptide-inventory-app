@@ -12,6 +12,14 @@ FOREIGN KEY (sales_order_id)
 REFERENCES public.sales_orders(id)
 ON DELETE CASCADE;
 
--- 3. Ensure permissions are set correctly
+-- 3. Ensure permissions are set correctly for Orders
 DROP POLICY IF EXISTS "Authenticated Users Can Delete Orders" ON public.sales_orders;
 CREATE POLICY "Authenticated Users Can Delete Orders" ON public.sales_orders FOR DELETE TO authenticated USING (true);
+
+-- 4. Enable Delete on Items too (Critical for cascading)
+DROP POLICY IF EXISTS "Authenticated Users Can Delete Order Items" ON public.sales_order_items;
+CREATE POLICY "Authenticated Users Can Delete Order Items" ON public.sales_order_items FOR DELETE TO authenticated USING (true);
+
+-- 5. Ensure SELECT permissions exist (sometimes needed to verify the row before delete)
+DROP POLICY IF EXISTS "Authenticated Users Can Select Orders" ON public.sales_orders;
+CREATE POLICY "Authenticated Users Can Select Orders" ON public.sales_orders FOR SELECT TO authenticated USING (true);

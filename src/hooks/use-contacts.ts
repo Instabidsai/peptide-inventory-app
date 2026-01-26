@@ -179,6 +179,20 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Manual Cascade Delete
+      // 1. Delete dependent sales_orders (which caused the error)
+      const { error: soError } = await supabase.from('sales_orders').delete().eq('client_id', id);
+      if (soError) console.error('Error deleting sales_orders:', soError); // Log but try proceed? Or throw?
+
+      // 2. Delete dependent movements
+      const { error: movError } = await supabase.from('movements').delete().eq('contact_id', id);
+      if (movError) console.error('Error deleting movements:', movError);
+
+      // 3. Delete dependent client_inventory
+      const { error: invError } = await supabase.from('client_inventory').delete().eq('contact_id', id);
+      if (invError) console.error('Error deleting client_inventory:', invError);
+
+      // 4. Finally delete the contact
       const { error } = await supabase
         .from('contacts')
         .delete()
