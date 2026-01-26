@@ -50,10 +50,12 @@ export function PeptideHistoryDialog({
             movement_date,
             type,
             notes,
+            contact_id,
             contacts (
               name
             )
           ),
+          description,
           bottles!inner (
             uid,
             lots!inner (
@@ -108,7 +110,9 @@ export function PeptideHistoryDialog({
                                                 {format(new Date(item.movements?.movement_date || item.created_at), "MMM d, yyyy")}
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {item.movements?.contacts?.name || "Unknown"}
+                                                {item.movements?.contacts?.name ||
+                                                    (item.movements?.contact_id ? `Client (Join Hidden)` :
+                                                        "Staff/Misc")}
                                             </TableCell>
                                             <TableCell>
                                                 ${Number(item.price_at_sale || 0).toFixed(2)}

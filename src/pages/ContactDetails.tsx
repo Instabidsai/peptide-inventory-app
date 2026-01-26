@@ -739,7 +739,7 @@ export default function ContactDetails() {
             {/* Client Inventory (Digital Fridge) Inspection */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
-                <ClientInventoryList contactId={id!} />
+                <ClientInventoryList contactId={id!} contactName={contact?.name} />
             </div>
 
             {/* Client Portal Access Card */}
@@ -1357,7 +1357,7 @@ function Skeleton({ className }: { className?: string }) {
 
 
 
-function ClientInventoryList({ contactId }: { contactId: string }) {
+function ClientInventoryList({ contactId, contactName }: { contactId: string, contactName?: string }) {
     const queryClient = useQueryClient();
     const { data: inventory, isLoading } = useQuery({
         queryKey: ['client-inventory-admin', contactId],
@@ -1585,7 +1585,7 @@ function ClientInventoryList({ contactId }: { contactId: string }) {
                     <DialogHeader>
                         <DialogTitle>Attach to Regimen</DialogTitle>
                         <DialogDescription>
-                            Link this {linkingItem?.peptide?.name} vial to one of {contact?.name}'s active regimens.
+                            Link this {linkingItem?.peptide?.name} vial to one of {contactName}'s active regimens.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
