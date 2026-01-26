@@ -145,6 +145,33 @@ export default function MacroTracker() {
         }
     };
 
+    // Calculate Daily Totals
+    const { data: dailyTotals } = useQuery({
+        queryKey: ['daily-macros'],
+        queryFn: async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const { data } = await supabase
+                .from('meal_logs')
+                .select('total_calories, total_protein, total_carbs, total_fat')
+                .eq('user_id', session.user.id)
+                .gte('created_at', startOfDay.toISOString());
+
+            if (!data) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+            return data.reduce((acc, log) => ({
+                calories: acc.calories + (log.total_calories || 0),
+                protein: acc.protein + (log.total_protein || 0),
+                carbs: acc.carbs + (log.total_carbs || 0),
+                fat: acc.fat + (log.total_fat || 0)
+            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+        }
+    });
+
     const recalculateTotals = (foods: FoodItem[]) => {
         const totals = foods.reduce((acc, item) => ({
             calories: acc.calories + Number(item.calories || 0),

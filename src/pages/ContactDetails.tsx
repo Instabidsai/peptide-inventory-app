@@ -684,59 +684,80 @@ export default function ContactDetails() {
                 </Card>
             </div>
 
-            {/* Financial Overview - Visible to Admins */}
-            <FinancialOverview contactId={id!} />
-
-            {
-                isLoadingProtocols ? (
-                    <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                    </div>
-                ) : assignedProtocols?.length === 0 ? (
-
-                    <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
-                        <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                        <p className="text-lg font-medium">No active regimens</p>
-                        <p className="text-sm">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
-                        <div className="flex justify-center flex-wrap gap-2 mt-4">
-                            <Button variant="outline" onClick={handleAddClick}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Peptide Regimen
-                            </Button>
-                            <Button variant="outline" onClick={() => setIsAssignInventoryOpen(true)}>
-                                <ShoppingBag className="mr-2 h-4 w-4" />
-                                Just Add to Fridge
-                            </Button>
-                            <Button variant="outline" onClick={() => createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
-                                <Pill className="mr-2 h-4 w-4" />
-                                Create Supplement Stack
-                            </Button>
+            <Accordion type="single" collapsible defaultValue="financial" className="w-full space-y-4">
+                <AccordionItem value="financial" className="border rounded-lg bg-card px-4">
+                    <AccordionTrigger className="hover:no-underline py-4">
+                        <div className="flex items-center gap-2">
+                            <Calculator className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-semibold text-lg">Account Status & Financials</span>
                         </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {assignedProtocols?.map(protocol => (
-                            <RegimenCard
-                                key={protocol.id}
-                                protocol={protocol}
-                                onDelete={deleteProtocol.mutate}
-                                onEdit={() => handleEditClick(protocol)}
-                                onLog={logProtocolUsage.mutate}
-                                onAddSupplement={addProtocolSupplement.mutateAsync}
-                                onDeleteSupplement={deleteProtocolSupplement.mutate}
-                                onAssignInventory={(peptideId, itemId) => {
-                                    setTempPeptideIdForAssign(peptideId);
-                                    setTempProtocolItemIdForAssign(itemId);
-                                    setIsAssignInventoryOpen(true);
-                                }}
-                                peptides={peptides}
-                                movements={movements}
-                            />
-                        ))}
-                    </div>
-                )
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                        {/* Financial Overview - Visible to Admins */}
+                        <FinancialOverview contactId={id!} />
+                    </AccordionContent>
+                </AccordionItem>
 
-            }
+                <AccordionItem value="regimens" className="border rounded-lg bg-card px-4">
+                    <AccordionTrigger className="hover:no-underline py-4">
+                        <div className="flex items-center gap-2">
+                            <FlaskConical className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-semibold text-lg">Active Regimens</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                        {
+                            isLoadingProtocols ? (
+                                <div className="space-y-4">
+                                    <Skeleton className="h-24 w-full" />
+                                </div>
+                            ) : assignedProtocols?.length === 0 ? (
+
+                                <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
+                                    <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                                    <p className="text-lg font-medium">No active regimens</p>
+                                    <p className="text-sm">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
+                                    <div className="flex justify-center flex-wrap gap-2 mt-4">
+                                        <Button variant="outline" onClick={handleAddClick}>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Peptide Regimen
+                                        </Button>
+                                        <Button variant="outline" onClick={() => setIsAssignInventoryOpen(true)}>
+                                            <ShoppingBag className="mr-2 h-4 w-4" />
+                                            Just Add to Fridge
+                                        </Button>
+                                        <Button variant="outline" onClick={() => createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
+                                            <Pill className="mr-2 h-4 w-4" />
+                                            Create Supplement Stack
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {assignedProtocols?.map(protocol => (
+                                        <RegimenCard
+                                            key={protocol.id}
+                                            protocol={protocol}
+                                            onDelete={deleteProtocol.mutate}
+                                            onEdit={() => handleEditClick(protocol)}
+                                            onLog={logProtocolUsage.mutate}
+                                            onAddSupplement={addProtocolSupplement.mutateAsync}
+                                            onDeleteSupplement={deleteProtocolSupplement.mutate}
+                                            onAssignInventory={(peptideId, itemId) => {
+                                                setTempPeptideIdForAssign(peptideId);
+                                                setTempProtocolItemIdForAssign(itemId);
+                                                setIsAssignInventoryOpen(true);
+                                            }}
+                                            peptides={peptides}
+                                            movements={movements}
+                                        />
+                                    ))}
+                                </div>
+                            )
+                        }
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
 
 
 
