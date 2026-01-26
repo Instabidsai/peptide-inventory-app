@@ -19,8 +19,14 @@ interface DigitalFridgeProps {
     protocols?: Protocol[];
     onAddVial: (data: Partial<ClientInventoryItem>) => void;
     onReconstitute: (id: string, waterMl: number) => void;
+    onDelete: (id: string) => void;
 }
-export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute }: DigitalFridgeProps) {
+export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete }: DigitalFridgeProps) {
+    // Define activeVials (missing previously causing ReferenceError)
+    const activeVials = useMemo(() => {
+        return inventory.filter(item => item.status !== 'archived' && item.status !== 'depleted');
+    }, [inventory]);
+
     const groupedVials = useMemo(() => {
         const groups: Record<string, ClientInventoryItem[]> = {};
         activeVials.forEach(vial => {
@@ -96,7 +102,12 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute 
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                                            onClick={() => handleDelete(vial.id)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (confirm('Are you sure you want to remove this vial?')) {
+                                                                    onDelete(vial.id);
+                                                                }
+                                                            }}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>

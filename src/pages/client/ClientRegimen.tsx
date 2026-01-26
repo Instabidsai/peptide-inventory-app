@@ -138,8 +138,20 @@ export default function ClientRegimen() {
         }
     };
 
-    const handleTaskToggle = (id: string) => {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
+    const handleDeleteVial = async (id: string) => {
+        if (!contact) return;
+
+        const { error } = await supabase
+            .from('client_inventory')
+            .update({ status: 'archived' })
+            .eq('id', id);
+
+        if (error) {
+            toast({ variant: "destructive", title: "Error removing vial", description: error.message });
+        } else {
+            toast({ title: "Vial Removed", description: "Vial has been moved to archive." });
+            setInventory(prev => prev.filter(item => item.id !== id));
+        }
     };
 
     if (profileLoading) {
@@ -249,6 +261,7 @@ export default function ClientRegimen() {
                         protocols={protocols}
                         onAddVial={handleAddVial}
                         onReconstitute={() => { }}
+                        onDelete={handleDeleteVial}
                     />
                 </div>
 
