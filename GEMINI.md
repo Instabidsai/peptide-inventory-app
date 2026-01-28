@@ -38,6 +38,14 @@ The application has experienced crashes due to missing imports and bad hook usag
 - **Context Errors**: Do not use `DialogTitle` inside `AlertDialog`. Use `AlertDialogTitle`.
 - **RLS Policies**: If a query returns empty data unexpectedly, check Row Level Security policies on Supabase.
 
-## 5. 📝 Task Management
 - Always update `task.md` and `walkthrough.md` in the `.gemini/...` directory.
 - Keep the user informed of *exactly* what you are doing (e.g., "Running build check...").
+
+## 6. 🚨 Troubleshooting & Stability
+- **STRICT PORT POLICY**: **WE ONLY RUN TERMINAL ON PORT 4550.** Do not check 5173, 3000, or others.
+- **White Screen (Local Dev)**: If `npm run dev` works but the browser shows a blank white screen with NO console errors, it is likely a **Circular Dependency** or **Module Evaluation Failure**.
+  - **Action**: Check recent imports in high-level Pages (e.g., `ContactDetails.tsx`).
+  - **Diagnostic**: Use "Strip Down" method—comment out all child component imports in the Page to see if it renders.
+- **Toxic Imports**: Avoid importing "Page" components into "Hook" files or "Form" components. This creates cycles.
+- **Duplicate Identifiers**: Be careful when auto-importing; VS Code sometimes redundantly imports the same symbol (e.g., icons from `lucide-react`).
+

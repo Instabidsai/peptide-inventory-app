@@ -12,6 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AudioRecorder } from "@/components/ui/AudioRecorder";
+import { MessageThread } from "@/components/messaging/MessageThread";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AdminRequests() {
     const navigate = useNavigate();
@@ -42,11 +46,37 @@ export default function AdminRequests() {
         }
     });
 
-    const handleStatusUpdate = async (id: string, newStatus: string, notes?: string) => {
+    const handleStatusUpdate = async (id: string, newStatus: string, notes?: string, voiceBlob?: Blob) => {
         setProcessingId(id);
         try {
+            // 1. Upload Voice Note (if any)
+            let adminAttachments: any[] = [];
+            if (voiceBlob) {
+                const fileName = `admin_voice_${Date.now()}.webm`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('messaging-attachments')
+                    .upload(`${id}/${fileName}`, voiceBlob); // Use Request ID as folder for admin replies? Or User ID? Let's use Request ID context or User ID.
+                // Actually, ClientRequestModal uses `user.id`. For Admin, we should probably store it under the CLIENT's user_id folder to keep it consistent, OR a generic 'admin' folder.
+                // Let's use the `client_requests` row ID as the folder prefix for uniqueAdmin uploads to avoid permission issues if RLS is strict.
+                // WAIT: RLS for Storage usually restricts to `auth.uid()`. Admin has full access.
+                // Let's upload to `admin/${fileName}` directory.
+
+                if (!uploadError && uploadData) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('messaging-attachments')
+                        .getPublicUrl(uploadData.path);
+
+                    adminAttachments.push({
+                        name: 'Voice Message',
+                        type: 'audio/webm',
+                        url: publicUrl
+                    });
+                }
+            }
+
             const updateData: any = { status: newStatus };
             if (notes) updateData.admin_notes = notes;
+            if (adminAttachments.length > 0) updateData.admin_attachments = adminAttachments;
 
             const { error } = await supabase
                 .from('client_requests')
@@ -54,6 +84,22 @@ export default function AdminRequests() {
                 .eq('id', id);
 
             if (error) throw error;
+
+            // Trigger Notification for Client
+            const targetReq = requests?.find((r: any) => r.id === id);
+            if (targetReq) {
+                const message = notes
+                    ? `Admin update: ${notes}`
+                    : `Your request has been marked as ${newStatus}.`;
+
+                await supabase.from('notifications').insert({
+                    user_id: targetReq.user_id,
+                    type: newStatus === 'approved' ? 'success' : newStatus === 'rejected' ? 'error' : 'info',
+                    title: `Request ${newStatus ? newStatus.charAt(0).toUpperCase() + newStatus.slice(1) : 'Updated'}`,
+                    message: message,
+                    link: '/messages'
+                });
+            }
 
             toast.success(`Request ${newStatus}`);
             refetch();
@@ -119,6 +165,7 @@ export default function AdminRequests() {
 function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
     const [notes, setNotes] = useState(req.admin_notes || "");
     const [showReply, setShowReply] = useState(false);
+    const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
 
     const isProductRequest = req.type === 'product_request';
 
@@ -147,6 +194,29 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                     "{req.message}"
                 </div>
 
+                {/* Attachments Display */}
+                {req.attachments && Array.isArray(req.attachments) && req.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {req.attachments.map((att: any, idx: number) => (
+                            <a
+                                key={idx}
+                                href={att.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group relative block w-16 h-16 rounded border overflow-hidden hover:ring-2 ring-primary"
+                            >
+                                {att.type?.startsWith('image/') ? (
+                                    <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-xs text-center p-1 break-all">
+                                        {att.name}
+                                    </div>
+                                )}
+                            </a>
+                        ))}
+                    </div>
+                )}
+
                 {req.peptide && (
                     <div className="flex items-center gap-2 text-xs bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-purple-700 dark:text-purple-300">
                         <ShoppingBag className="h-3 w-3" />
@@ -154,21 +224,12 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                     </div>
                 )}
 
-                {showReply && (
-                    <Textarea
-                        placeholder="Add notes or reply..."
-                        value={notes}
-                        onChange={e => setNotes(e.target.value)}
-                        className="text-xs min-h-[60px]"
-                    />
-                )}
+                {/* Reply / Thread Logic Replaced by Modal */}
             </CardContent>
             <CardFooter className="pt-2 border-t flex flex-wrap gap-2 justify-end">
-                {!showReply && !req.admin_notes && (
-                    <Button variant="outline" size="sm" onClick={() => setShowReply(true)}>
-                        <MessageSquare className="mr-2 h-4 w-4" /> Message Client
-                    </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={() => setShowReply(true)}>
+                    <MessageSquare className="mr-2 h-4 w-4" /> Threads
+                </Button>
 
                 {/* Archive Button */}
                 <Button
@@ -188,7 +249,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                     size="icon"
                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                     title="Reject"
-                    onClick={() => onUpdate(req.id, 'rejected', notes)}
+                    onClick={() => onUpdate(req.id, 'rejected', notes, voiceBlob)}
                     disabled={processing}
                 >
                     <XCircle className="h-4 w-4" />
@@ -208,7 +269,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                     req.status === 'pending' && (
                         <Button
                             size="sm"
-                            onClick={() => onUpdate(req.id, 'approved', notes)}
+                            onClick={() => onUpdate(req.id, 'approved', notes, voiceBlob)}
                             disabled={processing}
                         >
                             Mark Done <CheckCircle2 className="ml-1 h-3 w-3" />
@@ -216,6 +277,14 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                     )
                 )}
             </CardFooter>
+            <Dialog open={showReply} onOpenChange={setShowReply}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Conversation with {req.profile?.full_name}</DialogTitle>
+                    </DialogHeader>
+                    {showReply && <MessageThread requestId={req.id} userRole="admin" />}
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

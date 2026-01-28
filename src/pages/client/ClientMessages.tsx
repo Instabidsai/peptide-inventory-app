@@ -3,16 +3,31 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag } from "lucide-react";
+import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
+import { MessageThread } from "@/components/messaging/MessageThread";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function ClientMessages() {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const [modalOpen, setModalOpen] = useState(false);
+    const [viewId, setViewId] = useState<string | null>(null);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const { data: requests, isLoading, refetch } = useQuery({
         queryKey: ['client-requests', user?.id],
@@ -50,9 +65,28 @@ export default function ClientMessages() {
             case 'product_request':
                 return <ShoppingBag className="h-4 w-4 text-purple-500" />;
             case 'regimen_help':
-                return <ShoppingBag className="h-4 w-4 text-blue-500" />; // Reuse or find better icon
+                return <ShoppingBag className="h-4 w-4 text-blue-500" />;
             default:
                 return <MessageSquare className="h-4 w-4 text-gray-500" />;
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            const { error } = await supabase
+                .from('client_requests')
+                .delete()
+                .eq('id', deleteId);
+
+            if (error) throw error;
+            toast.success("Message deleted");
+            refetch();
+        } catch (error) {
+            toast.error("Failed to delete message");
+            console.error(error);
+        } finally {
+            setDeleteId(null);
         }
     };
 
@@ -104,7 +138,24 @@ export default function ClientMessages() {
                                         </CardDescription>
                                     </div>
                                 </div>
-                                {getStatusBadge(req.status)}
+                                <div className="flex items-center gap-2">
+                                    {getStatusBadge(req.status)}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-red-500 -mr-2"
+                                        onClick={() => setDeleteId(req.id)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setViewId(req.id)}
+                                    >
+                                        View Thread
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -133,6 +184,30 @@ export default function ClientMessages() {
                 onOpenChange={setModalOpen}
                 onSuccess={() => refetch()}
             />
+
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This cannot be undone. The message will be permanently removed.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <Dialog open={!!viewId} onOpenChange={(open) => !open && setViewId(null)}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Conversation</DialogTitle>
+                    </DialogHeader>
+                    {viewId && <MessageThread requestId={viewId} userRole="client" />}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -16,7 +16,7 @@ export function ClientLayout() {
     const { userRole } = useAuth();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
 
-    const { data: unreadCount } = useQuery({
+    const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback'],
         queryFn: async () => {
             const { count, error } = await supabase
@@ -24,16 +24,37 @@ export function ClientLayout() {
                 .select('*', { count: 'exact', head: true })
                 .eq('is_read_by_client', false)
                 .not('admin_response', 'is', null);
-
             if (error) return 0;
             return count || 0;
         },
-        refetchInterval: 30000, // Poll every 30s
+        refetchInterval: 30000,
+    });
+
+    const { data: unreadNotifications } = useQuery({
+        queryKey: ['unread-notifications'],
+        queryFn: async () => {
+            // Defensive: check if table exists first? No, just run query and catch error
+            try {
+                const { count, error } = await supabase
+                    .from('notifications')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('is_read', false);
+
+                if (error) {
+                    console.warn("Notifications query error:", error);
+                    return 0;
+                }
+                return count || 0;
+            } catch (e) {
+                return 0;
+            }
+        },
+        refetchInterval: 15000, // Poll faster
     });
 
     const navItems = [
         { label: 'Home', icon: Home, path: '/dashboard' },
-        { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: unreadCount && unreadCount > 0 },
+        { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: unreadFeedback && unreadFeedback > 0 },
         { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Body', icon: Scale, path: '/body-composition' },
         { label: 'Resources', icon: BookOpen, path: '/resources' },
@@ -46,12 +67,22 @@ export function ClientLayout() {
             {/* Top Bar (Simplified) */}
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 justify-between">
                 <div className="font-semibold text-lg">Family Hub</div>
-                {isAdmin && (
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Admin View
+                <div className="flex items-center gap-2">
+                    {/* Notification Bell */}
+                    <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
+                        <Bell className="h-5 w-5" />
+                        {unreadNotifications && unreadNotifications > 0 && (
+                            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
+                        )}
                     </Button>
-                )}
+
+                    {isAdmin && (
+                        <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            Admin View
+                        </Button>
+                    )}
+                </div>
             </header>
 
             {/* Content */}

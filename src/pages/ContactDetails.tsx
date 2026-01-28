@@ -34,7 +34,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+
 import {
     Select,
     SelectContent,
@@ -52,12 +52,12 @@ import { toast } from '@/hooks/use-toast';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { Pill, Folder } from 'lucide-react';
 import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
+    Accordion as AccordionUI, // Alias to avoid duplicate? No, standard import
+    AccordionContent as AccordionContentUI,
+    AccordionItem as AccordionItemUI,
+    AccordionTrigger as AccordionTriggerUI,
 } from "@/components/ui/accordion";
-import { FinancialOverview } from "@/components/regimen/FinancialOverview";
+// import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();

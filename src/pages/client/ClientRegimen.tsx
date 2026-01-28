@@ -212,6 +212,12 @@ export default function ClientRegimen() {
                         Track your protocol, inventory, and health metrics in one place.
                     </p>
                 </div>
+                <button
+                    onClick={() => setRequestModalOpen(true)}
+                    className="bg-secondary/50 hover:bg-secondary text-sm px-4 py-2 rounded-lg transition-colors border border-border"
+                >
+                    Have a Question?
+                </button>
             </div>
 
             {/* Financial Overview (if outstanding balance exists) */}
@@ -300,7 +306,8 @@ export default function ClientRegimen() {
                 <ClientRequestModal
                     open={requestModalOpen}
                     onOpenChange={setRequestModalOpen}
-                    defaultType="product_request"
+                    defaultType="regimen_help"
+                    context={!selectedRefillPeptide ? { type: 'regimen', id: contact.id, title: 'My Regimen' } : undefined}
                     prefillPeptide={selectedRefillPeptide}
                     onSuccess={() => setSelectedRefillPeptide(undefined)}
                 />
