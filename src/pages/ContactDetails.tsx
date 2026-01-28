@@ -57,7 +57,7 @@ import {
     AccordionItem as AccordionItemUI,
     AccordionTrigger as AccordionTriggerUI,
 } from "@/components/ui/accordion";
-// import { FinancialOverview } from "@/components/regimen/FinancialOverview";
+import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
