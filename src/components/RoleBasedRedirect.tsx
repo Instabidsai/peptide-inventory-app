@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
@@ -35,7 +35,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
     try {
         // 1. Explicitly block clients/customers from Admin areas
-        const roleName = userRole?.role || '';
+        const [searchParams] = useSearchParams();
+        const previewRole = searchParams.get('preview_role');
+
+        // Allow Admins to preview as other roles
+        let roleName = userRole?.role || '';
+        if (roleName === 'admin' && previewRole) {
+            console.log(`RoleBasedRedirect: Admin previewing as ${previewRole}`);
+            roleName = previewRole;
+        }
 
         if (roleName === 'client' || roleName === 'customer') {
             // ...unless the allowedRoles explicitly INCLUDES 'client' (unlikely for admin routes)

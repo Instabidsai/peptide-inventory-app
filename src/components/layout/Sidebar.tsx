@@ -166,7 +166,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Family Portal Switcher */}
         <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
           <NavLink
-            to="/dashboard"
+            to="/dashboard?preview_role=customer"
             onClick={onClose}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
           >
