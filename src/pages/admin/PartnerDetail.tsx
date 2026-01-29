@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected to default import
 import { usePartnerDownline, useCommissions, usePayCommission, useConvertCommission } from '@/hooks/use-partner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 
 // Helper for the Network Tab
 function NetworkTabContent({ repId }: { repId: string }) {
@@ -331,11 +335,18 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     );
 }
 
+    );
+}
+
 function AssignedClientsTabContent({ repId }: { repId: string }) {
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const [promoteOpen, setPromoteOpen] = useState(false);
+    const [selectedContact, setSelectedContact] = useState<any>(null);
+    const [isPromoting, setIsPromoting] = useState(false);
 
     // Fetch contacts assigned to this partner
-    const { data: clients, isLoading } = useQuery({
+    const { data: clients, isLoading, refetch } = useQuery({
         queryKey: ['partner_clients', repId],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -348,64 +359,145 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
         }
     });
 
+    const handlePromote = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedContact) return;
+        setIsPromoting(true);
+
+        try {
+            const { data, error } = await supabase.functions.invoke('invite-user', {
+                body: {
+                    email: selectedContact.email,
+                    contact_id: selectedContact.id,
+                    role: 'sales_rep',
+                    tier: 'standard',
+                    parent_rep_id: repId // New: Link to current rep
+                }
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: "Promotion Started",
+                description: `${selectedContact.name} has been invited as a Partner.`
+            });
+            setPromoteOpen(false);
+            refetch(); // Refresh list (though they might still be 'customer' until token exchange, depends on logic)
+        } catch (err: any) {
+            toast({
+                variant: 'destructive',
+                title: "Promotion Failed",
+                description: err.message || "Could not promote contact."
+            });
+        } finally {
+            setIsPromoting(false);
+        }
+    };
+
+    const openPromote = (contact: any) => {
+        if (!contact.email) {
+            toast({ variant: 'destructive', title: "Email Required", description: "Contact must have an email to be promoted." });
+            return;
+        }
+        setSelectedContact(contact);
+        setPromoteOpen(true);
+    }
+
     if (isLoading) return <div>Loading clients...</div>;
 
     const list = clients || [];
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle>Assigned Clients</CardTitle>
-                <CardDescription>
-                    Customers and Partners explicitly assigned to this Rep.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead className="text-right">Action</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {list.length === 0 && (
+        <>
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle>Assigned Clients</CardTitle>
+                    <CardDescription>
+                        Customers and Partners explicitly assigned to this Rep.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                                    No assigned clients found.
-                                </TableCell>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Phone</TableHead>
+                                <TableHead>Created</TableHead>
+                                <TableHead className="text-right">Action</TableHead>
                             </TableRow>
-                        )}
-                        {list.map(client => (
-                            <TableRow key={client.id} className="hover:bg-muted/50">
-                                <TableCell className="font-medium">
-                                    <div className="flex flex-col">
-                                        <span>{client.name}</span>
-                                        {client.company && <span className="text-xs text-muted-foreground">{client.company}</span>}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={client.type === 'partner' ? 'secondary' : 'default'} className="capitalize">
-                                        {client.type}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>{client.email || '-'}</TableCell>
-                                <TableCell>{client.phone || '-'}</TableCell>
-                                <TableCell>{new Date(client.created_at).toLocaleDateString()}</TableCell>
-                                <TableCell className="text-right">
-                                    <Button size="sm" variant="ghost" onClick={() => navigate(`/contacts/${client.id}`)}>
-                                        View
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+                        </TableHeader>
+                        <TableBody>
+                            {list.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                        No assigned clients found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {list.map(client => (
+                                <TableRow key={client.id} className="hover:bg-muted/50">
+                                    <TableCell className="font-medium">
+                                        <div className="flex flex-col">
+                                            <span>{client.name}</span>
+                                            {client.company && <span className="text-xs text-muted-foreground">{client.company}</span>}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={client.type === 'partner' ? 'secondary' : 'default'} className="capitalize">
+                                            {client.type}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{client.email || '-'}</TableCell>
+                                    <TableCell>{client.phone || '-'}</TableCell>
+                                    <TableCell>{new Date(client.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            {client.type !== 'partner' && (
+                                                <Button size="sm" variant="outline" onClick={() => openPromote(client)}>
+                                                    <UserPlus className="h-3 w-3 mr-1" /> Promote
+                                                </Button>
+                                            )}
+                                            <Button size="sm" variant="ghost" onClick={() => navigate(`/contacts/${client.id}`)}>
+                                                View
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Promote to Partner</DialogTitle>
+                        <DialogDescription>
+                            This will invite <strong>{selectedContact?.name}</strong> to become a Sales Partner.
+                            They will be placed in the downline under this Rep.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Email</Label>
+                            <Input value={selectedContact?.email || ''} disabled className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Parent Rep</Label>
+                            <Input value={repId} disabled className="col-span-3 font-mono text-xs" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>
+                        <Button onClick={handlePromote} disabled={isPromoting}>
+                            {isPromoting ? 'Sending Invite...' : 'Send Partner Invite'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
