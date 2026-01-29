@@ -105,6 +105,10 @@ export default function ContactDetails() {
     const [foundSuggestions, setFoundSuggestions] = useState<any[]>([]);
     const [relatedProtocolId, setRelatedProtocolId] = useState<string | null>(null);
 
+    // Edit Details State
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
+    const [editForm, setEditForm] = useState({ email: '', phone: '', company: '' });
+
     const handleLinkUser = async () => {
         if (!linkEmail) return;
         setIsLinking(true);
@@ -409,22 +413,66 @@ export default function ContactDetails() {
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Contact Info Card */}
                 <Card className="md:col-span-1 h-fit">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle>Details</CardTitle>
+                        <div className="flex gap-2">
+                            {isEditingDetails ? (
+                                <>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
+                                    <Button size="sm" onClick={() => {
+                                        updateContact.mutate({
+                                            id: id!,
+                                            email: editForm.email,
+                                            phone: editForm.phone,
+                                            company: editForm.company
+                                        });
+                                        setIsEditingDetails(false);
+                                    }}>Save</Button>
+                                </>
+                            ) : (
+                                <Edit className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => {
+                                    setEditForm({
+                                        email: contact.email || '',
+                                        phone: contact.phone || '',
+                                        company: contact.company || ''
+                                    });
+                                    setIsEditingDetails(true);
+                                }} />
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-semibold text-foreground">Email:</span>
-                            {contact.email || 'N/A'}
-                        </div>
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-semibold text-foreground">Phone:</span>
-                            {contact.phone || 'N/A'}
-                        </div>
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-semibold text-foreground">Company:</span>
-                            {contact.company || 'N/A'}
-                        </div>
+                        {isEditingDetails ? (
+                            <div className="space-y-3">
+                                <div className="grid gap-1">
+                                    <Label>Email</Label>
+                                    <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label>Phone</Label>
+                                    <Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label>Company</Label>
+                                    <Input value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                    <span className="font-semibold text-foreground">Email:</span>
+                                    {contact.email || 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                    <span className="font-semibold text-foreground">Phone:</span>
+                                    {contact.phone || 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                    <span className="font-semibold text-foreground">Company:</span>
+                                    {contact.company || 'N/A'}
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                     <div className="flex gap-2">
                         {/* Assign Inventory Dialog */}
