@@ -19,15 +19,15 @@ export function useSupplements() {
     const { data: supplements, isLoading, error } = useQuery({
         queryKey: ['supplements'],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error: dbError } = await supabase
                 .from('supplements')
                 .select('*')
                 .order('name');
 
-            if (error) {
+            if (dbError) {
                 // If table doesn't exist yet, return empty to prevent crash during migration gap
-                if (error.code === '42P01') return [];
-                throw error;
+                if (dbError.code === '42P01') return [];
+                throw dbError;
             }
             return data as Supplement[];
         }
@@ -35,12 +35,12 @@ export function useSupplements() {
 
     const createSupplement = useMutation({
         mutationFn: async (newSupplement: Omit<Supplement, 'id' | 'created_at'>) => {
-            const { data, error } = await supabase
+            const { data, error: dbError } = await supabase
                 .from('supplements')
                 .insert(newSupplement)
                 .select()
                 .single();
-            if (error) throw error;
+            if (dbError) throw dbError;
             return data;
         },
         onSuccess: () => {
@@ -55,13 +55,13 @@ export function useSupplements() {
     const updateSupplement = useMutation({
         mutationFn: async (supplement: Partial<Supplement> & { id: string }) => {
             const { id, ...updates } = supplement;
-            const { data, error } = await supabase
+            const { data, error: dbError } = await supabase
                 .from('supplements')
                 .update(updates)
                 .eq('id', id)
                 .select()
                 .single();
-            if (error) throw error;
+            if (dbError) throw dbError;
             return data;
         },
         onSuccess: () => {
@@ -75,11 +75,11 @@ export function useSupplements() {
 
     const deleteSupplement = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
+            const { error: dbError } = await supabase
                 .from('supplements')
                 .delete()
                 .eq('id', id);
-            if (error) throw error;
+            if (dbError) throw dbError;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['supplements'] });

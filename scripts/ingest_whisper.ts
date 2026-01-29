@@ -4,14 +4,13 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { spawn } from 'child_process';
 import fs from 'fs';
-import path from 'path';
+import path, { dirname, resolve as pathResolve } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 
 // Load env
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: resolve(__dirname, '../.env') });
+dotenv.config({ path: pathResolve(__dirname, '../.env') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -35,7 +34,7 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 100
 }
 
 async function downloadAudio(url: string, outputPath: string) {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((res, reject) => {
         console.log(`   ⬇️  Spawning yt-dlp (via Python)...`);
 
         const args = [
@@ -59,7 +58,7 @@ async function downloadAudio(url: string, outputPath: string) {
         });
 
         proc.on('close', (code) => {
-            if (code === 0) resolve();
+            if (code === 0) res();
             else reject(new Error(`yt-dlp exited with code ${code}`));
         });
 
@@ -89,7 +88,7 @@ async function processVideo(videoId: string) {
         if (videoId === 'e_p5nJ48_6I') title = "MOTS-C versus Metformin For Longevity";
         if (videoId === 'F3S0p5_9oXk') title = "Retatrutide Needs Carbohydrates to Work Properly";
 
-        let author = "Dr. Trevor Bachmeyer";
+        const author = "Dr. Trevor Bachmeyer";
 
         // 2. Transcribe with Whisper
         console.log('   👂 Transcribing with Whisper...');
@@ -103,7 +102,7 @@ async function processVideo(videoId: string) {
         console.log(`   ✅ Transcribed ${fullText.length} chars.`);
 
         // Cleanup Audio
-        try { fs.unlinkSync(audioPath); } catch (e) { }
+        try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
 
         // 3. Chunk & Embed
         console.log('   🧠 Vectorizing & Saving...');

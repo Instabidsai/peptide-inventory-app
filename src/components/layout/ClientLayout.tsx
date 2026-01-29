@@ -1,12 +1,12 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard } from 'lucide-react';
+
 import { AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
 
@@ -110,7 +110,7 @@ export function ClientLayout() {
                             >
                                 <div className="relative">
                                     <item.icon className={cn("h-5 w-5", isActive && "fill-current")} />
-                                    {/* @ts-ignore */}
+                                    {/* @ts-expect-error - hasBadge is valid on item object definition */}
                                     {item.hasBadge && (
                                         <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
                                     )}

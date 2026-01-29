@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react-swc'
 import fs from 'fs';
 import path from "path"
 import { fileURLToPath } from "url"
+import checker from 'vite-plugin-checker';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,6 +38,10 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === 'development' &&
     // componentTagger(),
+    checker({
+      typescript: true,
+      eslint: { lintCommand: 'eslint . --max-warnings=0', useFlatConfig: true }
+    }),
     vercelSPAPlugin(),
   ].filter(Boolean),
   resolve: {

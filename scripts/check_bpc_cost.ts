@@ -1,67 +1,40 @@
 
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
 
-const supabaseUrl = "https://mckkegmkpqdicudnfhor.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja2tlZ21rcHFkaWN1ZG5maG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0OTIxMTcsImV4cCI6MjA4NDA2ODExN30.Amo1Aw6I_JnDGiSmfoIhkcBmemkKl73kcfuHAPdX_rU";
-const supabase = createClient(supabaseUrl, supabaseKey);
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl!, supabaseKey!);
 
-async function checkCost() {
-    // 1. Find BPC-157 (broader search)
-    const { data: peptides } = await supabase.from('peptides').select('*').ilike('name', '%BPC-157%');
+async function run() {
+    console.log("Fetching BPC-157 Data...");
 
-    if (!peptides || peptides.length === 0) {
-        console.log('No BPC-157 found with broad search.');
-        // List all peptides to see what EXISTS
-        const { data: allPeptides } = await supabase.from('peptides').select('*').limit(5);
-        console.log('Sample of peptides in DB:', allPeptides);
-        return;
-    }
-
-    const peptide = peptides[0];
-    console.log(`Found Peptide: ${peptide.name} (ID: ${peptide.id})`);
-
-    // 2. Get bottles/lots for this peptide
-    const { data: lots } = await supabase.from('lots')
+    // 1. Get Peptide
+    const { data: peptide, error: pErr } = await supabase
+        .from('peptides')
         .select('*')
+        .ilike('name', '%BPC-157 10mg%')
+        .single();
+
+    if (pErr) { console.error("Peptide Error:", pErr); return; }
+    console.log(`Product: ${peptide.name} (Retail: $${peptide.retail_price})`);
+
+    // 2. Get Average Cost
+    const { data: lots, error: lErr } = await supabase
+        .from('lots')
+        .select('cost_per_unit')
         .eq('peptide_id', peptide.id);
 
-    console.log('Lots:', lots);
+    if (lErr) { console.error("Lot Error:", lErr); return; }
 
-    // 3. Calculate avg cost
-    let totalCost = 0;
-    let count = 0;
+    const costs = lots.map(l => Number(l.cost_per_unit));
+    const avgCost = costs.length > 0
+        ? costs.reduce((a, b) => a + b, 0) / costs.length
+        : (peptide.retail_price || 0) * 0.3; // Fallback
 
-    // We need to look at bottles to be accurate to the hook logic roughly, 
-    // but the hook uses bottles status='in_stock'.
-    // Let's just average the lots for a quick check or check available bottles.
-
-    const { data: bottles } = await supabase.from('bottles')
-        .select(`
-            id,
-            status,
-            lots (
-                cost_per_unit
-            )
-        `)
-        .eq('status', 'in_stock')
-    // Filter by peptide virtually or fetch all and filter
-    // Easier to fetch lots first? No, the hook does bottles -> lots.
-
-    const relevantBottles = bottles?.filter((b: any) => b.lots && lots?.some(l => l.id === b.lots.id && l.peptide_id === peptide.id));
-
-    if (relevantBottles) {
-        relevantBottles.forEach((b: any) => {
-            count++;
-            totalCost += b.lots.cost_per_unit;
-        });
-        console.log(`In-Stock Bottles Count: ${count}`);
-        console.log(`Total Cost: ${totalCost}`);
-        console.log(`Avg Cost: ${count ? totalCost / count : 0}`);
-    } else {
-        console.log("No in-stock bottles found via this query path.");
-    }
+    console.log(`Avg Cost: $${avgCost.toFixed(2)}`);
 }
 
-checkCost();
+run();

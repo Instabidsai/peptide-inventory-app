@@ -28,7 +28,7 @@ async function testVariant(variant: any) {
         return variant.constr;
     } catch (err: any) {
         console.log(`FAILED: ${variant.name} - ${err.message}`);
-        try { await client.end(); } catch { }
+        try { await client.end(); } catch { /* ignore */ }
         return null;
     }
 }

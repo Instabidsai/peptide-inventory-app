@@ -31,6 +31,7 @@ import {
     Popover,
     PopoverContent,
     PopoverTrigger,
+    PopoverTrigger as PopoverTriggerOriginal,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,8 @@ interface CartItem {
     peptide: Peptide;
     quantity: number;
     unitPrice: number;
-    basePrice: number; // Keep track of base for reference
+    basePrice: number;
+    commissionRate: number; // Added
 }
 
 export default function NewOrder() {
@@ -67,55 +69,71 @@ export default function NewOrder() {
 
     const location = useLocation();
 
+    // Helper to get consistent Base Cost
+    const getBaseCost = (peptide: Peptide, profile: any) => {
+        // Inventory Avg Cost + Overhead
+        const avgCost = (peptide.avg_cost && peptide.avg_cost > 0) ? peptide.avg_cost : ((peptide as any).retail_price || 10.50);
+        const overhead = profile?.overhead_per_unit !== undefined ? profile.overhead_per_unit : 4.00;
+        return avgCost + overhead;
+    };
+
+    // Helper to generate Pricing Tiers
+    const getPricingTiers = (peptide: Peptide, baseCost: number) => {
+        const retail = (peptide as any).retail_price || 0;
+
+        // Define Tiers
+        const tiers = [
+            { label: 'Cost', price: baseCost, commRate: 0.00, variant: 'outline' as const },
+            { label: '2x', price: baseCost * 2, commRate: 0.05, variant: 'secondary' as const },
+            { label: '3x', price: baseCost * 3, commRate: 0.10, variant: 'secondary' as const },
+            { label: 'MSRP', price: retail, commRate: 0.15, variant: 'default' as const },
+        ];
+
+        // Filter: Hide any tier where Price > MSRP (unless it IS the MSRP tier)
+        // Also ensure MSRP > 0 to show it
+        return tiers.filter(t => {
+            if (t.label === 'MSRP') return retail > 0;
+            // If 3x breaks MSRP, hide it. 
+            if (retail > 0 && t.price > retail) return false;
+            return true;
+        });
+    };
+
     // Handle Prefill from Admin Requests
     useEffect(() => {
         const state = location.state as any;
         if (state?.prefill && contacts && peptides) {
             const { email, peptideId, quantity, notes: prefillNotes } = state.prefill;
 
-            // 1. Resolve to Contact ID
             if (email) {
                 const contact = contacts.find(c => c.email?.toLowerCase() === email.toLowerCase());
-                if (contact) {
-                    setSelectedContactId(contact.id);
-                }
+                if (contact) setSelectedContactId(contact.id);
             }
 
-            // 2. Add Item to Cart
             if (peptideId && quantity > 0) {
                 const peptide = peptides.find(p => p.id === peptideId);
                 if (peptide) {
-                    // Check if already in cart to avoid dupes on re-render (basic check)
                     setCart(prev => {
                         if (prev.some(i => i.peptide.id === peptideId)) return prev;
 
-                        // Calculate price using the same logic as addToCart
-                        // We need to replicate getRepPrice or just call it if we could, 
-                        // but getRepPrice depends on activeProfile which is available here.
-
-                        // Copying logic from getRepPrice for safety inside effect or assuming helpers are stable
-                        const multiplier = activeProfile?.price_multiplier || 1.0;
-                        const overhead = activeProfile?.overhead_per_unit !== undefined ? activeProfile.overhead_per_unit : 4.00;
-
-                        const basePrice = (peptide.avg_cost && peptide.avg_cost > 0)
-                            ? peptide.avg_cost
-                            : ((peptide as any).retail_price || 10.50);
-
-                        const price = (basePrice + overhead) * multiplier;
+                        const baseCost = getBaseCost(peptide, activeProfile);
+                        // Default to MSRP for prefill? Or Cost? Let's use MSRP logic if safer, or just Cost if Admin request?
+                        // Admin prefill usually implies "Send this to client". Let's default to MSRP (15%).
+                        const tiers = getPricingTiers(peptide, baseCost);
+                        const msrpTier = tiers.find(t => t.label === 'MSRP') || tiers[0];
 
                         return [{
                             peptide,
                             quantity: quantity,
-                            unitPrice: price,
-                            basePrice: basePrice
+                            unitPrice: msrpTier.price,
+                            basePrice: baseCost,
+                            commissionRate: msrpTier.commRate
                         }];
                     });
                 }
             }
 
-            if (prefillNotes) {
-                setNotes(prev => prev ? prev : prefillNotes);
-            }
+            if (prefillNotes) setNotes(prev => prev ? prev : prefillNotes);
         }
     }, [location.state, contacts, peptides, activeProfile]);
 
@@ -128,27 +146,13 @@ export default function NewOrder() {
 
     const selectedContact = contacts?.find(c => c.id === selectedContactId);
 
-    // Calculate Price based on Active Profile Multiplier AND Overhead
-    const getRepPrice = (peptide: Peptide) => {
-        // Default to 1.0 multiplier if not found
-        const multiplier = activeProfile?.price_multiplier || 1.0;
-        // Default overhead to $4.00 if not found (or column undefined)
-        const overhead = activeProfile?.overhead_per_unit !== undefined ? activeProfile.overhead_per_unit : 4.00;
-
-        // Retrieve base price
-        // PRIORITIZE avg_cost (Inventory Cost) for Partners. 
-        // Fallback to retail_price if no stock history, then mock 10.50 if absolutely nothing.
-        const basePrice = (peptide.avg_cost && peptide.avg_cost > 0)
-            ? peptide.avg_cost
-            : ((peptide as any).retail_price || 10.50);
-
-        // Formula: (Base Cost + Overhead) * Multiplier
-        return (basePrice + overhead) * multiplier;
-    };
-
     // Handle adding to cart
     const addToCart = (peptide: Peptide) => {
-        const price = getRepPrice(peptide);
+        const baseCost = getBaseCost(peptide, activeProfile);
+        const tiers = getPricingTiers(peptide, baseCost);
+        // Default to MSRP if available, else highest tier?
+        // User wants to start high.
+        const defaultTier = tiers.find(t => t.label === 'MSRP') || tiers[tiers.length - 1];
 
         setCart(prev => {
             const existing = prev.find(item => item.peptide.id === peptide.id);
@@ -159,7 +163,13 @@ export default function NewOrder() {
                         : item
                 );
             }
-            return [...prev, { peptide, quantity: 1, unitPrice: price, basePrice: (peptide as any).retail_price || 0 }];
+            return [...prev, {
+                peptide,
+                quantity: 1,
+                unitPrice: defaultTier.price,
+                basePrice: baseCost,
+                commissionRate: defaultTier.commRate
+            }];
         });
     };
 
@@ -168,9 +178,9 @@ export default function NewOrder() {
         setCart(prev => prev.map(item => item.peptide.id === id ? { ...item, quantity: qty } : item));
     };
 
-    const updatePrice = (id: string, price: number) => {
+    const updatePrice = (id: string, price: number, commRate: number) => {
         if (price < 0) return;
-        setCart(prev => prev.map(item => item.peptide.id === id ? { ...item, unitPrice: price } : item));
+        setCart(prev => prev.map(item => item.peptide.id === id ? { ...item, unitPrice: price, commissionRate: commRate } : item));
     };
 
     const removeFromCart = (id: string) => {
@@ -178,6 +188,10 @@ export default function NewOrder() {
     };
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+    // Calculate total commission based on line items
+    // Comm = UnitPrice * CommRate * Qty
+    const totalCommission = cart.reduce((sum, item) => sum + (item.unitPrice * item.commissionRate * item.quantity), 0);
 
     const handleSubmit = async () => {
         if (!selectedContactId || cart.length === 0) return;
@@ -192,7 +206,8 @@ export default function NewOrder() {
                     peptide_id: item.peptide.id,
                     quantity: item.quantity,
                     unit_price: item.unitPrice
-                }))
+                })),
+                commission_amount: totalCommission // Send calculated commission
             });
             navigate('/sales');
         } catch (error) {
@@ -235,7 +250,9 @@ export default function NewOrder() {
                     {filteredPeptides.map((peptide) => {
                         const inCart = cart.find(i => i.peptide.id === peptide.id);
                         const stock = peptide.stock_count || 0;
-                        const price = getRepPrice(peptide);
+                        const baseCost = getBaseCost(peptide, activeProfile);
+                        const tiers = getPricingTiers(peptide, baseCost);
+                        const defaultPrice = tiers.find(t => t.label === 'MSRP')?.price || tiers[tiers.length - 1].price;
 
                         return (
                             <Card key={peptide.id} className={`cursor-pointer transition-all hover:border-primary ${inCart ? 'border-primary bg-primary/5' : ''}`} onClick={() => addToCart(peptide)}>
@@ -254,7 +271,7 @@ export default function NewOrder() {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">{peptide.sku}</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-green-700">${price.toFixed(0)}</span>
+                                            <span className="font-bold text-green-700">${defaultPrice.toFixed(0)}</span>
                                             <Button size="sm" variant="secondary" className="h-8">
                                                 Add <Plus className="ml-1 h-3 w-3" />
                                             </Button>
@@ -362,98 +379,70 @@ export default function NewOrder() {
                                 Cart is empty
                             </div>
                         ) : (
-                            cart.map(item => (
-                                <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-card">
-                                    <div className="flex justify-between items-start">
-                                        <span className="font-medium">{item.peptide.name}</span>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.peptide.id)}>
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    </div>
+                            cart.map(item => {
+                                const tiers = getPricingTiers(item.peptide, item.basePrice);
 
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center border rounded-md">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
-                                            <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
+                                return (
+                                    <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-card">
+                                        <div className="flex justify-between items-start">
+                                            <span className="font-medium">{item.peptide.name}</span>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.peptide.id)}>
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
                                         </div>
 
-                                        <div className="flex-1">
-                                            <div className="relative">
-                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={item.unitPrice}
-                                                    onChange={(e) => updatePrice(item.peptide.id, parseFloat(e.target.value) || 0)}
-                                                    className="pl-5 h-8 text-right"
-                                                    placeholder="Price"
-                                                />
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center border rounded-md">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
+                                                <span className="w-8 text-center text-sm">{item.quantity}</span>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
+                                            </div>
+
+                                            <div className="flex-1">
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={item.unitPrice}
+                                                        onChange={(e) => updatePrice(item.peptide.id, parseFloat(e.target.value) || 0, 0)} // Manual edit resets comm? Or simplistic logic?
+                                                        // Let's force badge use for commission. Manual = 0% fallback? 
+                                                        // No, let's keep it simple. If they edit price manually, pass 0 commission or last known?
+                                                        // Pass 0 to be safe for admin.
+                                                        className="pl-5 h-8 text-right"
+                                                        placeholder="Price"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="w-16 text-right font-medium">
+                                                ${(item.quantity * item.unitPrice).toFixed(0)}
                                             </div>
                                         </div>
 
-                                        <div className="w-16 text-right font-medium">
-                                            ${(item.quantity * item.unitPrice).toFixed(0)}
+                                        {/* Calculated commission display */}
+                                        <div className="text-right text-xs text-muted-foreground">
+                                            Comm: ${(item.unitPrice * item.commissionRate * item.quantity).toFixed(2)} ({item.commissionRate * 100}%)
+                                        </div>
+
+                                        {/* Suggested Pricing Badges */}
+                                        <div className="flex flex-wrap gap-2 mt-1 justify-end">
+                                            <div className="text-xs text-muted-foreground self-center mr-1">Tiers:</div>
+                                            {tiers.map(tier => (
+                                                <Badge
+                                                    key={tier.label}
+                                                    variant={tier.variant} // outline for Cost, secondary for 2x/3x, default for MSRP
+                                                    className={`cursor-pointer transition-colors ${item.unitPrice === tier.price ? 'ring-2 ring-primary ring-offset-1' : 'hover:bg-muted'}`}
+                                                    onClick={() => updatePrice(item.peptide.id, tier.price, tier.commRate)}
+                                                >
+                                                    {tier.label}: ${tier.price.toFixed(0)}
+                                                </Badge>
+                                            ))}
                                         </div>
                                     </div>
-
-                                    {/* Suggested Pricing */}
-                                    <div className="flex flex-wrap gap-2 mt-1 justify-end">
-                                        <div className="text-xs text-muted-foreground self-center mr-1">Suggested:</div>
-                                        {/* Cost (Base + 4) */}
-                                        <Badge
-                                            variant="outline"
-                                            className="cursor-pointer hover:bg-muted"
-                                            onClick={() => {
-                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
-                                                const cost = base + 4.00;
-                                                updatePrice(item.peptide.id, cost);
-                                            }}
-                                        >
-                                            Cost: ${(((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4).toFixed(2)}
-                                        </Badge>
-
-                                        {/* MSRP */}
-                                        {/* MOCK: Check if retail_price exists OR use fallback for testing */}
-                                        {((item.peptide as any).retail_price || 60) && (
-                                            <Badge
-                                                variant="outline"
-                                                className="cursor-pointer hover:bg-muted"
-                                                onClick={() => updatePrice(item.peptide.id, (item.peptide as any).retail_price || 60)}
-                                            >
-                                                MSRP: ${(item.peptide as any).retail_price || 60}
-                                            </Badge>
-                                        )}
-
-                                        {/* 2x */}
-                                        <Badge
-                                            variant="secondary"
-                                            className="cursor-pointer hover:bg-secondary/80"
-                                            onClick={() => {
-                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
-                                                const cost = base + 4.00;
-                                                updatePrice(item.peptide.id, cost * 2);
-                                            }}
-                                        >
-                                            2x: ${((((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4.00) * 2).toFixed(2)}
-                                        </Badge>
-
-                                        {/* 3x */}
-                                        <Badge
-                                            variant="secondary"
-                                            className="cursor-pointer hover:bg-secondary/80"
-                                            onClick={() => {
-                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
-                                                const cost = base + 4.00;
-                                                updatePrice(item.peptide.id, cost * 3);
-                                            }}
-                                        >
-                                            3x: ${((((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4.00) * 3).toFixed(2)}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
 
@@ -487,6 +476,12 @@ export default function NewOrder() {
                         <span>Total</span>
                         <span>${cartTotal.toFixed(2)}</span>
                     </div>
+                    {totalCommission > 0 && (
+                        <div className="flex justify-between w-full text-sm text-green-600 font-medium">
+                            <span>Est. Commission</span>
+                            <span>+${totalCommission.toFixed(2)}</span>
+                        </div>
+                    )}
                     <Button
                         className="w-full"
                         size="lg"

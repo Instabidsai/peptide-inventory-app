@@ -233,10 +233,10 @@ export function AssignInventoryForm({
             </div>
 
             {selectedBottles.length > 0 && (() => {
-                const totalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
+                const calculatedTotalCost = selectedBottles.reduce((acc, b) => acc + (b.lots?.cost_per_unit || 0), 0);
                 const totalMSRP = selectedBottles.reduce((acc, b) => acc + (b.lots?.peptides?.retail_price || 0), 0);
                 const fees = selectedBottles.length * 4;
-                const costPlusFees = totalCost + fees;
+                const costPlusFees = calculatedTotalCost + fees;
 
                 return (
                     <div className="grid grid-cols-2 gap-4">
@@ -296,7 +296,7 @@ export function AssignInventoryForm({
                             {!movementType.match(/^(giveaway|internal_use)$/) && (
                                 <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
                                     <div className="flex justify-between">
-                                        <span>Base: ${totalCost.toFixed(2)} + Fees: ${fees.toFixed(2)}</span>
+                                        <span>Base: ${calculatedTotalCost.toFixed(2)} + Fees: ${fees.toFixed(2)}</span>
                                         <span>Cost Basis: ${costPlusFees.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between font-medium">

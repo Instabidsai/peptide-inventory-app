@@ -20,7 +20,13 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-explicit-any": "off",
+      "no-redeclare": "off",
+      "@typescript-eslint/no-redeclare": "error",
+      "no-shadow": "off",
+      "@typescript-eslint/no-shadow": "error",
+      "no-duplicate-imports": "error",
     },
   },
 );

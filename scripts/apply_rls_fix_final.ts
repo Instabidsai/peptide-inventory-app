@@ -46,7 +46,7 @@ async function applyFix() {
     console.log("Applying RLS fix via RPC 'exec_sql'...");
 
     // Attempt 1: exec_sql (standard helper often added)
-    let { error } = await supabase.rpc('exec_sql', { sql_query: sql });
+    const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
 
     if (error) {
         console.error("Attempt 1 (exec_sql) failed:", error.message);

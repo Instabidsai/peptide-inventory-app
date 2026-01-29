@@ -30,8 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useDeleteBottle } from '@/hooks/use-bottles';
-
 const statusColors: Record<BottleStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   in_stock: 'default',
   sold: 'secondary',

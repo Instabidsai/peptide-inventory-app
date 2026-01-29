@@ -21,11 +21,11 @@ export default function Join() {
         setError(null);
 
         try {
-            const { data, error } = await supabase.functions.invoke('exchange-token', {
+            const { data, error: invokeError } = await supabase.functions.invoke('exchange-token', {
                 body: { token }
             });
 
-            if (error) throw error;
+            if (invokeError) throw invokeError;
             if (data.error) throw new Error(data.error);
 
             if (data.url) {

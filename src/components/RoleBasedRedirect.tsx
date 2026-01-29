@@ -9,6 +9,7 @@ interface RoleBasedRedirectProps {
 
 export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectProps) {
     const { userRole, loading, user } = useAuth();
+    const [searchParams] = useSearchParams();
 
     console.log("RoleBasedRedirect Check:", {
         loading,
@@ -35,7 +36,6 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
     try {
         // 1. Explicitly block clients/customers from Admin areas
-        const [searchParams] = useSearchParams();
         const previewRole = searchParams.get('preview_role');
 
         // Allow Admins to preview as other roles

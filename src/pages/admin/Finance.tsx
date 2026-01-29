@@ -9,11 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Plus, Trash2, PieChart, TrendingDown } from 'lucide-react';
+import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
-import { ArrowRight, AlertCircle, CreditCard } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export default function Finance() {

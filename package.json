@@ -4,13 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npx kill-port 4550",
     "dev": "vite --port 4550 --strictPort",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview --port 4550 --strictPort",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "cycles": "madge --circular src",
+    "preflight": "npm run typecheck && npm run lint && npm run cycles && npm run build"
   },
   "dependencies": {
     "@distube/ytdl-core": "4.16.12",
@@ -93,7 +97,9 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
+    "kill-port": "2.0.1",
     "lovable-tagger": "^1.1.13",
+    "madge": "8.0.0",
     "pg": "8.17.1",
     "postcss": "^8.5.6",
     "supabase": "2.72.8",
@@ -102,6 +108,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
+    "vite-plugin-checker": "0.12.0",
     "vitest": "^3.2.4"
   }
 }

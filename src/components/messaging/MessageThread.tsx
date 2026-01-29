@@ -75,7 +75,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
         mutationFn: async () => {
             if (!user) throw new Error("No user");
 
-            let attachments: any[] = [];
+            const attachments: any[] = [];
 
             // Upload Voice Blob if exists
             if (voiceBlob) {

@@ -69,7 +69,7 @@ async function tryConnection(connString: string) {
         return true;
     } catch (err: any) {
         console.error(`Connection failed: ${err.message}`);
-        try { await client.end(); } catch { }
+        try { await client.end(); } catch { /* ignore */ }
         return false;
     }
 }

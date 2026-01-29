@@ -83,7 +83,7 @@ export default function Peptides() {
   );
 
   const handleCreate = async (data: PeptideFormData) => {
-    // @ts-ignore - retail_price might not exist in type yet but we'll send it
+    // @ts-expect-error - retail_price might not exist in type yet but we'll send it
     await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku, retail_price: data.retail_price });
     setIsCreateOpen(false);
     form.reset();
@@ -91,7 +91,7 @@ export default function Peptides() {
 
   const handleEdit = async (data: PeptideFormData) => {
     if (!editingPeptide) return;
-    // @ts-ignore
+    // @ts-expect-error - id matching is handled by mutation
     await updatePeptide.mutateAsync({ id: editingPeptide.id, ...data });
     setEditingPeptide(null);
     form.reset();

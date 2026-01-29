@@ -49,7 +49,7 @@ export default function AdminRequests() {
         setProcessingId(id);
         try {
             // 1. Upload Voice Note (if any)
-            let adminAttachments: any[] = [];
+            const adminAttachments: any[] = [];
             if (voiceBlob) {
                 const fileName = `admin_voice_${Date.now()}.webm`;
                 const { data: uploadData, error: uploadError } = await supabase.storage

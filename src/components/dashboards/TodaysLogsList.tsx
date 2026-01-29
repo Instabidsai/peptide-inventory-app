@@ -3,11 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/ui/glass-card";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { Trash2, Loader2, Utensils, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { startOfDay, endOfDay } from "date-fns";
 
 export function TodaysLogsList() {
     const { user } = useAuth();
@@ -89,9 +86,9 @@ export function TodaysLogsList() {
                 <GlassCard key={log.id} className="p-4 flex items-center justify-between group">
                     <div>
                         <div className="font-medium flex items-center gap-2">
-                            {/* @ts-ignore */}
+                            {/* @ts-expect-error - foods is joined */}
                             {log.foods?.[0]?.name || "Meal"}
-                            {/* @ts-ignore */}
+                            {/* @ts-expect-error - foods is joined */}
                             {log.foods && log.foods.length > 1 && <span className="text-xs text-muted-foreground text-normal">+{log.foods.length - 1} more</span>}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">

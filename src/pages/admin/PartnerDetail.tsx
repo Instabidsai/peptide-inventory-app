@@ -161,12 +161,7 @@ export default function PartnerDetail() {
                 </TabsContent>
 
                 <TabsContent value="clients">
-                    <Card>
-                        <CardHeader><CardTitle>Assigned Clients</CardTitle></CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Client list coming soon...</p>
-                        </CardContent>
-                    </Card>
+                    <AssignedClientsTabContent repId={id!} />
                 </TabsContent>
 
                 <TabsContent value="network" className="space-y-4">
@@ -333,5 +328,84 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+function AssignedClientsTabContent({ repId }: { repId: string }) {
+    const navigate = useNavigate();
+
+    // Fetch contacts assigned to this partner
+    const { data: clients, isLoading } = useQuery({
+        queryKey: ['partner_clients', repId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('*')
+                .eq('assigned_rep_id', repId)
+                .order('name');
+            if (error) throw error;
+            return data;
+        }
+    });
+
+    if (isLoading) return <div>Loading clients...</div>;
+
+    const list = clients || [];
+
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle>Assigned Clients</CardTitle>
+                <CardDescription>
+                    Customers and Partners explicitly assigned to this Rep.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {list.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                    No assigned clients found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        {list.map(client => (
+                            <TableRow key={client.id} className="hover:bg-muted/50">
+                                <TableCell className="font-medium">
+                                    <div className="flex flex-col">
+                                        <span>{client.name}</span>
+                                        {client.company && <span className="text-xs text-muted-foreground">{client.company}</span>}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={client.type === 'partner' ? 'secondary' : 'default'} className="capitalize">
+                                        {client.type}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>{client.email || '-'}</TableCell>
+                                <TableCell>{client.phone || '-'}</TableCell>
+                                <TableCell>{new Date(client.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button size="sm" variant="ghost" onClick={() => navigate(`/contacts/${client.id}`)}>
+                                        View
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
     );
 }

@@ -9,7 +9,7 @@ export function useProtocols(contactId?: string) {
     const query = useQuery({
         queryKey: ['protocols', contactId],
         queryFn: async () => {
-            let query = supabase
+            let dbQuery = supabase
                 .from('protocols')
                 .select(`
                     *,
@@ -40,12 +40,12 @@ export function useProtocols(contactId?: string) {
                 .order('created_at', { ascending: false });
 
             if (contactId) {
-                query = query.eq('contact_id', contactId);
+                dbQuery = dbQuery.eq('contact_id', contactId);
             } else {
-                query = query.is('contact_id', null);
+                dbQuery = dbQuery.is('contact_id', null);
             }
 
-            const { data, error } = await query;
+            const { data, error } = await dbQuery;
             if (error) throw error;
             return data;
         },

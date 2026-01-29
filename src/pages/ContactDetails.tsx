@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -50,13 +50,6 @@ import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
-import { Pill, Folder } from 'lucide-react';
-import {
-    Accordion as AccordionUI, // Alias to avoid duplicate? No, standard import
-    AccordionContent as AccordionContentUI,
-    AccordionItem as AccordionItemUI,
-    AccordionTrigger as AccordionTriggerUI,
-} from "@/components/ui/accordion";
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 
 export default function ContactDetails() {
@@ -969,8 +962,8 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
                 if (!match) return 5;
                 const val = parseFloat(match[1]);
-                const unit = match[2].toLowerCase();
-                if (unit === 'mcg') return val / 1000;
+                const sizeUnit = match[2].toLowerCase();
+                if (sizeUnit === 'mcg') return val / 1000;
                 return val;
             };
 
@@ -1376,9 +1369,7 @@ function ResourceList({ contactId }: { contactId: string }) {
     );
 }
 
-function Skeleton({ className }: { className?: string }) {
-    return <div className={`animate-pulse rounded-md bg-muted ${className}`} />;
-}
+
 
 
 

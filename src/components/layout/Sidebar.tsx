@@ -9,7 +9,6 @@ import {
   ShoppingBag,
   Briefcase,
   DollarSign,
-  DollarSign,
   PieChart,
   Network
 } from 'lucide-react';

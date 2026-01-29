@@ -26,7 +26,7 @@ export function useFinancialMetrics() {
 
                 // Fetch lots for these bottles
                 const lotIds = [...new Set(bottles?.map(b => b.lot_id).filter(Boolean) || [])];
-                let lotMap = new Map<string, number>();
+                const lotMap = new Map<string, number>();
 
                 if (lotIds.length > 0) {
                     const { data: lots, error: lotsError } = await supabase
