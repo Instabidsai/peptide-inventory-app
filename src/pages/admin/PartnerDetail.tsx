@@ -335,8 +335,6 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     );
 }
 
-    );
-}
 
 function AssignedClientsTabContent({ repId }: { repId: string }) {
     const navigate = useNavigate();
