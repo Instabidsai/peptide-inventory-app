@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, type SalesOrder } from '@/hooks/use-sales-orders';
+import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, type SalesOrder } from '@/hooks/use-sales-orders';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -17,11 +18,13 @@ import { useToast } from '@/hooks/use-toast';
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { profile } = useAuth();
     const { data: salesOrders, isLoading } = useSalesOrders();
     // Optimization: In real app use specific hook useSalesOrder(id), but filtering list for now is okay for prototype
 
     const updateOrder = useUpdateSalesOrder();
     const fulfillOrder = useFulfillOrder();
+    const payWithCredit = usePayWithCredit();
     const { toast } = useToast();
 
     const order = salesOrders?.find(o => o.id === id);
@@ -40,6 +43,18 @@ export default function OrderDetails() {
             // If paid, set amount_paid to total if currently 0
             amount_paid: status === 'paid' && order.amount_paid === 0 ? order.total_amount : order.amount_paid
         });
+    };
+
+    const handlePayWithCredit = () => {
+        if (!profile?.credit_balance || profile.credit_balance < order.total_amount) {
+            toast({
+                title: "Insufficient Credit",
+                description: `Balance: $${(profile?.credit_balance || 0).toFixed(2)}. Needed: $${order.total_amount.toFixed(2)}`,
+                variant: "destructive"
+            });
+            return;
+        }
+        payWithCredit.mutate({ orderId: order.id });
     };
 
     const attemptFulfill = () => {
@@ -145,6 +160,14 @@ export default function OrderDetails() {
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('paid')}>Paid (Full)</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('partial')}>Partial</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('refunded')}>Refunded</DropdownMenuItem>
+                                        {(profile?.credit_balance || 0) > 0 && (
+                                            <>
+                                                <div className="h-px bg-muted my-1" />
+                                                <DropdownMenuItem onClick={handlePayWithCredit} className="text-green-600 font-medium">
+                                                    Pay with Credit (${(profile?.credit_balance || 0).toFixed(2)})
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>

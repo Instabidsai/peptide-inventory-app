@@ -35,6 +35,7 @@ import Commissions from "./pages/admin/Commissions";
 import Finance from "./pages/admin/Finance";
 import AdminSupplements from "./pages/admin/AdminSupplements";
 import PartnerDetail from "./pages/admin/PartnerDetail";
+import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import NotFound from "./pages/NotFound";
 
 // Client Portal
@@ -61,6 +62,7 @@ const App = () => (
                 <AuthProvider>
                     <Routes>
                         <Route path="/auth" element={<Auth />} />
+                        <Route path="/debug-auth" element={<Auth />} />
                         <Route path="/join" element={<Join />} />
                         <Route path="/onboarding" element={<Onboarding />} />
                         <Route element={
@@ -104,8 +106,11 @@ const App = () => (
                             <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
                             <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />
                             <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
+
                             <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
                             <Route path="/admin/supplements" element={<AdminSupplements />} />
+
+                            <Route path="/partner" element={<PartnerDashboard />} />
 
                             <Route path="/bottles" element={<Bottles />} />
 

@@ -162,6 +162,27 @@ export type Database = {
           },
         ]
       }
+      embeddings: {
+        Row: {
+          id: string
+          content: string | null
+          metadata: Json | null
+          embedding: string | null // Vector is returned as string in REST often, or we treat opaque
+        }
+        Insert: {
+          id?: string
+          content?: string | null
+          metadata?: Json | null
+          embedding?: string | null
+        }
+        Update: {
+          id?: string
+          content?: string | null
+          metadata?: Json | null
+          embedding?: string | null
+        }
+        Relationships: []
+      }
       lots: {
         Row: {
           cost_per_unit: number

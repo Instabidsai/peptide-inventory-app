@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight, Loader2, CheckCircle2, Clock } from "lucide-react";
+import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight, Loader2, CheckCircle2, Clock, Sparkles } from "lucide-react";
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 import { MACRO_COLORS, MACRO_COLORS_LIGHT } from '@/lib/colors'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,13 @@ import { WeeklyTrends } from '@/components/dashboards/WeeklyTrends';
 
 import { aggregateDailyLogs } from '@/utils/nutrition-utils';
 
-export default function ClientDashboard() {
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AIChatInterface } from "@/components/ai/AIChatInterface";
+
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+function ClientDashboardContent() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
@@ -84,7 +90,32 @@ export default function ClientDashboard() {
         enabled: !!user?.id
     });
 
-    if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+    if (isLoadingContact) return <div className="flex h-screen items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+    // Safety check: specific to debugging/admin-preview mode where contact might not link
+    if (!contact && !isLoadingContact) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4 p-8">
+                <div className="p-4 bg-muted rounded-full">
+                    <User className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h2 className="text-xl font-semibold">No Client Profile Found</h2>
+                <p className="text-muted-foreground text-center max-w-md">
+                    We couldn't find a client profile linked to this account. If you are an admin previewing, ensure the Contact is linked.
+                </p>
+                {/* Allow AI Coach access for debugging even if no profile? */}
+                <div className="w-full max-w-md border rounded-lg p-4 mt-8">
+                    <h3 className="font-medium mb-4 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Debug: AI Coach
+                    </h3>
+                    <div className="h-[400px]">
+                        <AIChatInterface />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const activeProtocols = protocols || [];
 
@@ -137,156 +168,182 @@ export default function ClientDashboard() {
                 )}
             </div>
 
-            {/* Today's Overview Card */}
-            <GlassCard className="border-l-4 border-l-primary shadow-sm">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex justify-between items-center">
-                        Today's Regimen
-                        <span className="text-xs font-normal text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full">
-                            {takenCount} of {totalCount} Done
-                        </span>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {todaysItems.length === 0 ? (
-                            <div className="text-sm text-muted-foreground py-2">No active protocols assigned.</div>
-                        ) : (
-                            todaysItems.map((item: any, idx) => (
-                                <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${item.isTakenToday ? 'bg-muted/40' : 'border border-white/10'}`}>
-                                    <div className={`flex items-center gap-3 ${item.isTakenToday ? '' : 'opacity-80'}`}>
-                                        {item.isTakenToday ? (
-                                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                        ) : (
-                                            <Clock className="h-5 w-5 text-muted-foreground" />
-                                        )}
-                                        <div>
-                                            <p className="font-medium">{item.protocolName}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {item.item.dosage_amount}{item.item.dosage_unit} • {item.item.frequency}
-                                                {item.units && (
-                                                    <span className="ml-1 text-emerald-500 font-semibold">• {item.units} units</span>
+            <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="w-full grid grid-cols-2 mb-4">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="ai-coach" className="gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        AI Coach
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-6">
+                    {/* Today's Overview Card */}
+                    <GlassCard className="border-l-4 border-l-primary shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg flex justify-between items-center">
+                                Today's Regimen
+                                <span className="text-xs font-normal text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full">
+                                    {takenCount} of {totalCount} Done
+                                </span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {todaysItems.length === 0 ? (
+                                    <div className="text-sm text-muted-foreground py-2">No active protocols assigned.</div>
+                                ) : (
+                                    todaysItems.map((item: any, idx) => (
+                                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${item.isTakenToday ? 'bg-muted/40' : 'border border-white/10'}`}>
+                                            <div className={`flex items-center gap-3 ${item.isTakenToday ? '' : 'opacity-80'}`}>
+                                                {item.isTakenToday ? (
+                                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                                ) : (
+                                                    <Clock className="h-5 w-5 text-muted-foreground" />
                                                 )}
-                                            </p>
+                                                <div>
+                                                    <p className="font-medium">{item.protocolName}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {item.item.dosage_amount}{item.item.dosage_unit} • {item.item.frequency}
+                                                        {item.units && (
+                                                            <span className="ml-1 text-emerald-500 font-semibold">• {item.units} units</span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {item.isTakenToday ? (
+                                                <span className="text-xs text-green-600 font-medium">
+                                                    {format(new Date(item.lastTaken), 'h:mm a')}
+                                                </span>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => logProtocolUsage.mutate({ itemId: item.item.id })}
+                                                >
+                                                    Mark
+                                                </Button>
+                                            )}
                                         </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </GlassCard>
+
+                    {/* Weekly Compliance */}
+                    <WeeklyCompliance />
+
+                    {/* Daily Macros Widget */}
+                    <GlassCard className="shadow-sm">
+                        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                            <CardTitle className="text-lg">Today's Nutrition</CardTitle>
+                            <Utensils className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-xs">
+                                        <span className="font-medium">Calories</span>
+                                        <span>{Math.round(dailyMacros?.calories || 0)} / {userGoals?.calories_target}</span>
                                     </div>
-                                    {item.isTakenToday ? (
-                                        <span className="text-xs text-green-600 font-medium">
-                                            {format(new Date(item.lastTaken), 'h:mm a')}
-                                        </span>
-                                    ) : (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-7 text-xs"
-                                            onClick={() => logProtocolUsage.mutate({ itemId: item.item.id })}
-                                        >
-                                            Mark
-                                        </Button>
-                                    )}
+                                    <Progress value={Math.min(100, ((dailyMacros?.calories || 0) / (userGoals?.calories_target || 2000)) * 100)} className="h-2" />
                                 </div>
-                            ))
-                        )}
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.protein }}>
+                                            <span>Protein</span>
+                                            <span>{Math.round(dailyMacros?.protein || 0)}/{userGoals?.protein_target}g</span>
+                                        </div>
+                                        <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.protein }} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.carbs }}>
+                                            <span>Carbs</span>
+                                            <span>{Math.round(dailyMacros?.carbs || 0)}/{userGoals?.carbs_target}g</span>
+                                        </div>
+                                        <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.carbs }} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.fat }}>
+                                            <span>Fat</span>
+                                            <span>{Math.round(dailyMacros?.fat || 0)}/{userGoals?.fat_target}g</span>
+                                        </div>
+                                        <Progress value={Math.min(100, ((dailyMacros?.fat || 0) / (userGoals?.fat_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.fat }} />
+                                    </div>
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full mt-4 text-xs h-7"
+                                onClick={() => navigate('/macro-tracker')}
+                            >
+                                Log Meal <ChevronRight className="ml-1 h-3 w-3" />
+                            </Button>
+                        </CardContent>
+                    </GlassCard>
+
+                    {/* Water Tracker */}
+                    <WaterTracker />
+
+                    {/* Weekly Macro Trends */}
+                    <WeeklyTrends />
+
+                    {/* Weekly Progress Component */}
+                    <WeeklyProgressChart />
+
+                    {/* Streak / Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <GlassCard>
+                            <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
+                                <div className="text-3xl font-bold text-primary">{contact?.notes?.match(/streak:(\d+)/i)?.[1] || 0}</div>
+                                {/* Placeholder for streak logic */}
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Day Streak</div>
+                            </CardContent>
+                        </GlassCard>
+                        <GlassCard>
+                            <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
+                                <div className="text-3xl font-bold text-green-600">{adherenceRate}%</div>
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Daily Adherence</div>
+                            </CardContent>
+                        </GlassCard>
                     </div>
-                </CardContent>
-            </GlassCard>
 
-            {/* Weekly Compliance */}
-            <WeeklyCompliance />
+                    {/* Quick Actions */}
 
-            {/* Daily Macros Widget */}
-            <GlassCard className="shadow-sm">
-                <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Today's Nutrition</CardTitle>
-                    <Utensils className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                                <span className="font-medium">Calories</span>
-                                <span>{Math.round(dailyMacros?.calories || 0)} / {userGoals?.calories_target}</span>
-                            </div>
-                            <Progress value={Math.min(100, ((dailyMacros?.calories || 0) / (userGoals?.calories_target || 2000)) * 100)} className="h-2" />
-                        </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.protein }}>
-                                    <span>Protein</span>
-                                    <span>{Math.round(dailyMacros?.protein || 0)}/{userGoals?.protein_target}g</span>
+                    <div className="space-y-3">
+                        <h3 className="font-semibold text-lg">Quick Actions</h3>
+                        <Button variant="secondary" className="w-full justify-between h-auto py-4" onClick={() => navigate('/my-regimen')}>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-background rounded-full">
+                                    <Clock className="h-4 w-4" />
                                 </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.protein }} />
-                            </div>
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.carbs }}>
-                                    <span>Carbs</span>
-                                    <span>{Math.round(dailyMacros?.carbs || 0)}/{userGoals?.carbs_target}g</span>
+                                <div className="text-left">
+                                    <div className="font-medium">Full Regimen</div>
+                                    <div className="text-xs text-muted-foreground">View all details</div>
                                 </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.carbs }} />
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.fat }}>
-                                    <span>Fat</span>
-                                    <span>{Math.round(dailyMacros?.fat || 0)}/{userGoals?.fat_target}g</span>
-                                </div>
-                                <Progress value={Math.min(100, ((dailyMacros?.fat || 0) / (userGoals?.fat_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.fat }} />
-                            </div>
-                        </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full mt-4 text-xs h-7"
-                        onClick={() => navigate('/macro-tracker')}
-                    >
-                        Log Meal <ChevronRight className="ml-1 h-3 w-3" />
-                    </Button>
-                </CardContent>
-            </GlassCard>
+                </TabsContent>
 
-            {/* Water Tracker */}
-            <WaterTracker />
-
-            {/* Weekly Macro Trends */}
-            <WeeklyTrends />
-
-            {/* Weekly Progress Component */}
-            <WeeklyProgressChart />
-
-            {/* Streak / Stats */}
-            <div className="grid grid-cols-2 gap-4">
-                <GlassCard>
-                    <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
-                        <div className="text-3xl font-bold text-primary">{contact?.notes?.match(/streak:(\d+)/i)?.[1] || 0}</div>
-                        {/* Placeholder for streak logic */}
-                        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Day Streak</div>
-                    </CardContent>
-                </GlassCard>
-                <GlassCard>
-                    <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
-                        <div className="text-3xl font-bold text-green-600">{adherenceRate}%</div>
-                        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Daily Adherence</div>
-                    </CardContent>
-                </GlassCard>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="space-y-3">
-                <h3 className="font-semibold text-lg">Quick Actions</h3>
-                <Button variant="secondary" className="w-full justify-between h-auto py-4" onClick={() => navigate('/my-regimen')}>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-background rounded-full">
-                            <Clock className="h-4 w-4" />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-medium">Full Regimen</div>
-                            <div className="text-xs text-muted-foreground">View all details</div>
-                        </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </Button>
-            </div>
+                <TabsContent value="ai-coach" className="min-h-[600px]">
+                    <AIChatInterface />
+                </TabsContent>
+            </Tabs>
         </div >
+    );
+}
+
+export default function ClientDashboard() {
+    return (
+        <ErrorBoundary name="ClientDashboard">
+            <ClientDashboardContent />
+        </ErrorBoundary>
     );
 }

@@ -48,4 +48,9 @@ The application has experienced crashes due to missing imports and bad hook usag
   - **Diagnostic**: Use "Strip Down" method—comment out all child component imports in the Page to see if it renders.
 - **Toxic Imports**: Avoid importing "Page" components into "Hook" files or "Form" components. This creates cycles.
 - **Duplicate Identifiers**: Be careful when auto-importing; VS Code sometimes redundantly imports the same symbol (e.g., icons from `lucide-react`).
+- **TypeScript Verification**: `npm run build` is not enough. Always run `npx tsc --noEmit` if you suspect a "silent" crash.
+    -   *Why*: Vite is lenient and will bundle code that React refuses to run (e.g., missing exports). `tsc` catches these.
+- **Admin Impersonation**: To view client data as an Admin, use `?preview_role=customer`.
+    -   *Context*: Our `useClientProfile` hook has specific logic to "mock" a client user when an Admin uses this query param.
+- **Live Site Fallback**: If local port 4550 is unstable or blocked, verified changes on `https://app.thepeptideai.com` are an acceptable "proof of life" **IF AND ONLY IF** `tsc --noEmit` passes locally.
 

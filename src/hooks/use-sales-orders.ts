@@ -253,10 +253,20 @@ export function useUpdateSalesOrder() {
                 .eq('id', id);
 
             if (error) throw error;
+
+            // Check if we should trigger commission processing
+            if (updates.status === 'fulfilled' || updates.payment_status === 'paid') {
+                // We call the RPC. Ideally it handles idempotency.
+                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
+                if (rpcError) {
+                    console.error("Commission processing failed:", rpcError);
+                }
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
             toast({ title: 'Order updated' });
         },
         onError: (error: Error) => {
@@ -388,6 +398,52 @@ export function useDeleteSalesOrder() {
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to delete order', description: error.message });
+        },
+    });
+}
+
+export function usePayWithCredit() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async ({ orderId }: { orderId: string }) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            // We need the partner's profile ID, not just auth ID, if distinct.
+            // But RPC takes User ID and checks profiles.id. Usually they match or linked.
+            // Let's assume user.id maps to profile.user_id, but profile PK is uuid.
+            // Wait, profiles table: id is PK. user_id is FK.
+            // My RPC uses `where id = p_user_id`. Wait, is p_user_id the Profile ID or Auth ID?
+            // `create_don_partner.ts`: `id: '2cd0fd2f-6ba2-48a6-8913-554c4cf9dd63', user_id: '...'`
+            // The RPC says: `select ... from profiles where id = p_user_id`.
+            // So it expects PROFILE ID.
+
+            // I must fetch the profile ID first.
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+
+            if (!profile) throw new Error('Profile not found');
+
+            const { error } = await supabase.rpc('pay_order_with_credit', {
+                p_order_id: orderId,
+                p_user_id: profile.id
+            });
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['profile'] }); // Update balance
+            toast({ title: 'Payment Successful', description: 'Order paid with store credit.' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Payment Failed', description: error.message });
         },
     });
 }

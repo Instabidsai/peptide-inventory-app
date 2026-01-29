@@ -9,7 +9,9 @@ import {
   ShoppingBag,
   Briefcase,
   DollarSign,
-  PieChart
+  DollarSign,
+  PieChart,
+  Network
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,6 +37,7 @@ const navigation = [
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
@@ -151,7 +154,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {userRole?.role === 'admin' && (
           <div className="mt-2 px-3">
             <NavLink
-              to="/?preview_role=sales_rep"
+              to="/partner?preview_role=sales_rep"
               onClick={onClose}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
             >

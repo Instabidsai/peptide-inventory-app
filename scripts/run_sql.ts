@@ -1,9 +1,14 @@
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load env
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // Hardcoded fallback (Might be outdated)
-const connectionString = process.env.DATABASE_URL || "postgres://postgres.mckkegmkpqdicudnfhor:eApOyEConVNU0nQj@aws-0-us-east-1.pooler.supabase.com:5432/postgres";
+// Connection logic from apply_rls_via_pg.ts
+const connectionString = process.env.DATABASE_URL || "postgres://postgres.mckkegmkpqdicudnfhor:eApOyEConVNU0nQj@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
 
 const sqlFile = process.argv[2];
 
@@ -22,7 +27,10 @@ async function main() {
     const sql = fs.readFileSync(filePath, 'utf8');
 
     // Use PG Client
-    const client = new Client({ connectionString });
+    const client = new Client({
+        connectionString,
+        ssl: { rejectUnauthorized: false }
+    });
 
     try {
         await client.connect();

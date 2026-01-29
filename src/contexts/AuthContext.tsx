@@ -12,6 +12,7 @@ interface Profile {
   email: string | null;
   role: AppRole;
   overhead_per_unit: number;
+  credit_balance?: number;
 }
 
 interface UserRole {

@@ -33,7 +33,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast"; // Correct import for Shadcn toast
 
+import { useNavigate } from 'react-router-dom';
+
 export default function Reps() {
+    const navigate = useNavigate();
     const { data: reps, isLoading } = useReps();
     const updateProfile = useUpdateProfile();
 

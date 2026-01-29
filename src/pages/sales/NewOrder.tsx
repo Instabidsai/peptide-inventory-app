@@ -96,14 +96,18 @@ export default function NewOrder() {
                         // Copying logic from getRepPrice for safety inside effect or assuming helpers are stable
                         const multiplier = activeProfile?.price_multiplier || 1.0;
                         const overhead = activeProfile?.overhead_per_unit !== undefined ? activeProfile.overhead_per_unit : 4.00;
-                        const basePrice = (peptide as any).retail_price || 10.50;
+
+                        const basePrice = (peptide.avg_cost && peptide.avg_cost > 0)
+                            ? peptide.avg_cost
+                            : ((peptide as any).retail_price || 10.50);
+
                         const price = (basePrice + overhead) * multiplier;
 
                         return [{
                             peptide,
                             quantity: quantity,
                             unitPrice: price,
-                            basePrice: (peptide as any).retail_price || 0
+                            basePrice: basePrice
                         }];
                     });
                 }
@@ -131,14 +135,14 @@ export default function NewOrder() {
         // Default overhead to $4.00 if not found (or column undefined)
         const overhead = activeProfile?.overhead_per_unit !== undefined ? activeProfile.overhead_per_unit : 4.00;
 
-        // Retrieve base price (assuming retail_price column added, fallback to 10.50 for testing if missing)
-        // MOCK: Using 60.00 as MSRP for verification if missing
-        const basePrice = (peptide as any).retail_price || 10.50;
+        // Retrieve base price
+        // PRIORITIZE avg_cost (Inventory Cost) for Partners. 
+        // Fallback to retail_price if no stock history, then mock 10.50 if absolutely nothing.
+        const basePrice = (peptide.avg_cost && peptide.avg_cost > 0)
+            ? peptide.avg_cost
+            : ((peptide as any).retail_price || 10.50);
 
         // Formula: (Base Cost + Overhead) * Multiplier
-        // User said: "add in some overhead on them as far as they see maybe like 4$ each vial... for the view on any cost side"
-        // Usually multipliers are for profit, overhead is for cost coverage.
-        // Let's do: (Base + Overhead) * Multiplier.
         return (basePrice + overhead) * multiplier;
     };
 
@@ -402,12 +406,12 @@ export default function NewOrder() {
                                             variant="outline"
                                             className="cursor-pointer hover:bg-muted"
                                             onClick={() => {
-                                                const base = (item.peptide as any).retail_price || 10.50;
+                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
                                                 const cost = base + 4.00;
                                                 updatePrice(item.peptide.id, cost);
                                             }}
                                         >
-                                            Cost: ${((item.peptide as any).retail_price || 10.50) + 4}
+                                            Cost: ${(((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4).toFixed(2)}
                                         </Badge>
 
                                         {/* MSRP */}
@@ -427,12 +431,12 @@ export default function NewOrder() {
                                             variant="secondary"
                                             className="cursor-pointer hover:bg-secondary/80"
                                             onClick={() => {
-                                                const base = (item.peptide as any).retail_price || 10.50;
+                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
                                                 const cost = base + 4.00;
                                                 updatePrice(item.peptide.id, cost * 2);
                                             }}
                                         >
-                                            2x: ${(((item.peptide as any).retail_price || 10.50) + 4.00) * 2}
+                                            2x: ${((((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4.00) * 2).toFixed(2)}
                                         </Badge>
 
                                         {/* 3x */}
@@ -440,12 +444,12 @@ export default function NewOrder() {
                                             variant="secondary"
                                             className="cursor-pointer hover:bg-secondary/80"
                                             onClick={() => {
-                                                const base = (item.peptide as any).retail_price || 10.50;
+                                                const base = (item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50);
                                                 const cost = base + 4.00;
                                                 updatePrice(item.peptide.id, cost * 3);
                                             }}
                                         >
-                                            3x: ${(((item.peptide as any).retail_price || 10.50) + 4.00) * 3}
+                                            3x: ${((((item.peptide.avg_cost && item.peptide.avg_cost > 0) ? item.peptide.avg_cost : ((item.peptide as any).retail_price || 10.50)) + 4.00) * 3).toFixed(2)}
                                         </Badge>
                                     </div>
                                 </div>
