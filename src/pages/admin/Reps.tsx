@@ -71,6 +71,7 @@ export default function Reps() {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Commission Rate</TableHead>
                                 <TableHead>Price Multiplier</TableHead>
+                                <TableHead>Tier</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -81,6 +82,9 @@ export default function Reps() {
                                     <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
                                     <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
                                     <TableCell>x{rep.price_multiplier?.toFixed(2) || '1.00'}</TableCell>
+                                    <TableCell className="capitalize">
+                                        <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
@@ -279,6 +283,7 @@ function EditRepDialog({
 function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => void }) {
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
     const [mult, setMult] = useState(rep.price_multiplier || 1.0);
+    const [tier, setTier] = useState(rep.partner_tier || 'standard');
 
     return (
         <div className="grid gap-4 py-4">
@@ -291,8 +296,6 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                     onChange={e => setComm(parseFloat(e.target.value))}
                 />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Price Multiplier</Label>
                 <Input
                     type="number"
                     step="0.01"
@@ -301,6 +304,19 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                     onChange={e => setMult(parseFloat(e.target.value))}
                 />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Tier</Label>
+                <Select value={tier} onValueChange={setTier}>
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                        <SelectItem value="executive">Executive</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
             <p className="text-xs text-muted-foreground ml-auto col-span-4 text-right">
                 Example: 1.2 Multiplier = $100 item sells for $120.
             </p>
@@ -308,11 +324,12 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
             <DialogFooter>
                 <Button onClick={() => onSubmit({
                     commission_rate: comm / 100,
-                    price_multiplier: mult
+                    price_multiplier: mult,
+                    partner_tier: tier
                 })}>
                     Save Changes
                 </Button>
             </DialogFooter>
-        </div>
+        </div >
     )
 }
