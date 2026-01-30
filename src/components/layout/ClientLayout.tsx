@@ -77,10 +77,12 @@ export function ClientLayout() {
                     </Button>
 
                     {isAdmin && (
-                        <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            Admin View
-                        </Button>
+                        { isAdmin && (
+                            <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                                <LayoutDashboard className="mr-2 h-4 w-4" />
+                                Return to Admin
+                            </Button>
+                        )}
                     )}
                 </div>
             </header>

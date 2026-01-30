@@ -29,7 +29,14 @@ export default function PartnerDashboard() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
+                    {/* Admin Switcher */}
+                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/#/'} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Return to Admin
+                    </Button>
+                </div>
                 <p className="text-muted-foreground">Manage your team and track your earnings.</p>
             </div>
 
@@ -114,7 +121,7 @@ export default function PartnerDashboard() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className={`text-right font-medium ${comm.status === 'paid' ? 'text-muted-foreground' :
-                                                    comm.status === 'available' ? 'text-green-600' : 'text-amber-600'
+                                                comm.status === 'available' ? 'text-green-600' : 'text-amber-600'
                                                 }`}>
                                                 ${Number(comm.amount).toFixed(2)}
                                             </TableCell>
