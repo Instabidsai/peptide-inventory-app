@@ -70,7 +70,6 @@ export default function Peptides() {
   const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || isThompsonOverride;
 
   const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
-  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
   const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
 
   // Protect Route: If Sales Rep but NOT Senior, Redirect to Home
