@@ -296,6 +296,8 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                     onChange={e => setComm(parseFloat(e.target.value))}
                 />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Price Multiplier</Label>
                 <Input
                     type="number"
                     step="0.01"
