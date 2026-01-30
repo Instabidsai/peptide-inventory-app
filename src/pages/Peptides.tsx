@@ -70,7 +70,34 @@ export default function Peptides() {
   const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || isThompsonOverride;
 
   const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
+  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
   const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
+
+  // Protect Route: If Sales Rep but NOT Senior, Redirect to Home
+  // (Sidebar hides it, but this prevents direct link access)
+  if (isPartner && (profile?.partner_tier || 'standard') !== 'senior') {
+    // We can just return null or use Navigate. 
+    // Since we are inside a component, usually we use useEffect/Navigate, but here we can just show access denied or empty
+    // But better to let the Sidebar handle the 'UX' part and this be a fail-safe.
+    // Actually, let's just render a "Not Authorized" message or redirect.
+    // Returning null causes a white flash.
+    // Let's assume valid access for now to avoid "flicker" while profile loads, 
+    // BUT we must be careful. 
+    // If profile is loading, it might be null.
+    // Let's rely on Sidebar for primary UX.
+    // But I will add a "Access Denied" view if they manage to get here.
+  }
+
+  // Safety Check: If partner is trying to view this page and isn't senior
+  if (isPartner && profile && (profile.partner_tier !== 'senior')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <h1 className="text-2xl font-bold">Access Restricted</h1>
+        <p className="text-muted-foreground">You must be a Senior Partner to access the Master Peptide List.</p>
+        <Button variant="outline" onClick={() => window.history.back()}>Go Back</Button>
+      </div>
+    )
+  }
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),

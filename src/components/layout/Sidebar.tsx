@@ -21,7 +21,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff'] },
+  { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
@@ -120,6 +120,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           // Special: Sales Rep Restriction
           if (effectiveRole === 'sales_rep') {
             const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Movements', 'Orders'];
+
+            // Only Senior partners can see Peptides
+            // Default to 'standard' if undefined
+            const tier = authProfile?.partner_tier || 'standard';
+            if (tier !== 'senior') {
+              hiddenForRep.push('Peptides');
+            }
+
             if (hiddenForRep.includes(item.name)) return false;
           }
 

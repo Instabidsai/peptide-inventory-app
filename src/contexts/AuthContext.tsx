@@ -13,6 +13,7 @@ interface Profile {
   role: AppRole;
   overhead_per_unit: number;
   credit_balance?: number;
+  partner_tier?: string;
 }
 
 interface UserRole {
