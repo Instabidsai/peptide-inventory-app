@@ -823,15 +823,15 @@ export default function ContactDetails() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {!contact.email ? (
-                        <div className="flex flex-col gap-2 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                            <div className="text-amber-800 text-sm font-medium">Contact Missing Email</div>
-                            <p className="text-amber-700 text-xs">An email is required to create a client portal account.</p>
+                        <div className="flex flex-col gap-2 p-4 bg-amber-900/20 rounded-lg border border-amber-900/50">
+                            <div className="text-amber-200 text-sm font-medium">Contact Missing Email</div>
+                            <p className="text-amber-200/80 text-xs">An email is required to create a client portal account.</p>
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="Enter client email..."
                                     value={linkEmail}
                                     onChange={(e) => setLinkEmail(e.target.value)}
-                                    className="bg-white"
+                                    className="border-amber-900/50 focus-visible:ring-amber-900"
                                 />
                                 <Button size="sm" onClick={() => {
                                     if (linkEmail) updateContact.mutate({ id: contact.id, email: linkEmail });
