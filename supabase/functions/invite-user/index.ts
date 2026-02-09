@@ -109,7 +109,7 @@ serve(async (req) => {
                         role: role || 'sales_rep', // Ensure role is set if upgrading
                         partner_tier: 'standard' // Default tier
                     })
-                    .eq('id', userId); // profiles.id usually matches user.id
+                    .eq('user_id', userId); // profiles.user_id matches auth.users.id
 
                 if (profileError) console.error("Failed to link parent rep:", profileError);
             } else {

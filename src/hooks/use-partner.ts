@@ -8,9 +8,11 @@ export interface PartnerNode {
     full_name: string | null;
     email: string | null;
     partner_tier: string;
+    commission_rate: number;
     total_sales: number;
     depth: number;
     path: string[];
+    parent_rep_id: string | null;
 }
 
 export interface Commission {
@@ -134,5 +136,53 @@ export function useConvertCommission() {
             queryClient.invalidateQueries({ queryKey: ['partner_detail'] });
             queryClient.invalidateQueries({ queryKey: ['profile'] });
         }
+    });
+}
+
+// Admin hook: fetch ALL partners as a flat tree for the Network View
+export function useFullNetwork() {
+    return useQuery({
+        queryKey: ['full_network'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
+                .eq('role', 'sales_rep')
+                .order('full_name');
+
+            if (error) throw error;
+
+            // Convert flat profiles into PartnerNode format
+            // Build depth by walking parent chains
+            const profileMap = new Map(data.map(p => [p.id, p]));
+
+            const getDepth = (id: string, visited = new Set<string>()): number => {
+                if (visited.has(id)) return 0; // prevent cycles
+                visited.add(id);
+                const p = profileMap.get(id);
+                if (!p?.parent_rep_id || !profileMap.has(p.parent_rep_id)) return 0;
+                return 1 + getDepth(p.parent_rep_id, visited);
+            };
+
+            const getPath = (id: string, visited = new Set<string>()): string[] => {
+                if (visited.has(id)) return [id]; // prevent cycles
+                visited.add(id);
+                const p = profileMap.get(id);
+                if (!p?.parent_rep_id || !profileMap.has(p.parent_rep_id)) return [id];
+                return [...getPath(p.parent_rep_id, visited), id];
+            };
+
+            return data.map(p => ({
+                id: p.id,
+                full_name: p.full_name,
+                email: p.email,
+                partner_tier: p.partner_tier || 'standard',
+                commission_rate: p.commission_rate || 0,
+                total_sales: 0,
+                depth: getDepth(p.id),
+                path: getPath(p.id),
+                parent_rep_id: p.parent_rep_id,
+            })) as PartnerNode[];
+        },
     });
 }

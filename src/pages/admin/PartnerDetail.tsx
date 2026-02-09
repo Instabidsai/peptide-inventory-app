@@ -370,9 +370,8 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
             if (contactError) throw contactError;
 
-            // 2. If contact has a linked user profile, update their role and parent_rep_id
+            // 2. If contact already has a linked user profile, just update role + parent
             if (selectedContact.linked_user_id) {
-                // Find the profile by user_id
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('id')
@@ -380,24 +379,51 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     .single();
 
                 if (profile) {
-                    const { error: profileError } = await supabase
+                    await supabase
                         .from('profiles')
                         .update({
                             role: 'sales_rep',
                             parent_rep_id: repId,
-                            commission_rate: 0.10, // Default 10%
+                            commission_rate: 0.10,
                             partner_tier: 'standard',
                         })
                         .eq('id', profile.id);
-
-                    if (profileError) throw profileError;
                 }
+
+                toast({
+                    title: "Promoted!",
+                    description: `${selectedContact.name} is now a Partner under this rep.`
+                });
+            } else if (selectedContact.email) {
+                // 3. No linked user → call invite-user to create account + link parent
+                const { data, error: invokeError } = await supabase.functions.invoke('invite-user', {
+                    body: {
+                        email: selectedContact.email,
+                        contact_id: selectedContact.id,
+                        role: 'sales_rep',
+                        tier: 'standard',
+                        parent_rep_id: repId,
+                    }
+                });
+
+                if (invokeError) throw invokeError;
+
+                // Check response
+                const result = typeof data === 'string' ? JSON.parse(data) : data;
+                if (!result?.success) throw new Error(result?.error || 'Invite failed');
+
+                toast({
+                    title: "Promoted!",
+                    description: `${selectedContact.name} has been set up as a Partner. They'll get an invite link to activate their account.`
+                });
+            } else {
+                // No email, no linked user — just mark as partner in contacts
+                toast({
+                    title: "Marked as Partner",
+                    description: `${selectedContact.name} is now tagged as a Partner. Add an email to give them login access.`
+                });
             }
 
-            toast({
-                title: "Promoted!",
-                description: `${selectedContact.name} is now a Partner under this rep.`
-            });
             setPromoteOpen(false);
             refetch();
         } catch (err: any) {

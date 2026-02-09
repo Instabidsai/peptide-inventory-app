@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
+import { useFullNetwork } from '@/hooks/use-partner';
+import DownlineVisualizer from './components/DownlineVisualizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,7 +23,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2 } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2, Network } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -37,6 +39,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Reps() {
     const navigate = useNavigate();
     const { data: reps, isLoading } = useReps();
+    const { data: networkData, isLoading: networkLoading } = useFullNetwork();
     const updateProfile = useUpdateProfile();
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
@@ -60,62 +63,94 @@ export default function Reps() {
                 </Button>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" /> Active Partners
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Commission Rate</TableHead>
-                                <TableHead>Tier</TableHead>
-                                <TableHead>Upline</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {reps?.map((rep) => (
-                                <TableRow key={rep.id}>
-                                    <TableCell className="font-medium">{rep.full_name || 'Unnamed'}</TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
-                                    <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
-                                    <TableCell className="capitalize">
-                                        <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {rep.parent_rep_id
-                                            ? <span className="text-sm">{repNameMap.get(rep.parent_rep_id) || '—'}</span>
-                                            : <span className="text-muted-foreground text-xs">None</span>
-                                        }
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
-                                                <Eye className="h-4 w-4 mr-2" /> View Details
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
-                                                <Pencil className="h-4 w-4 mr-2" /> Edit
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {(!reps || reps.length === 0) && (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                        No sales reps found. Invite or promote users to get started.
-                                    </TableCell>
-                                </TableRow>
+            <Tabs defaultValue="list" className="space-y-4">
+                <TabsList>
+                    <TabsTrigger value="list" className="gap-2">
+                        <Users className="h-4 w-4" /> List View
+                    </TabsTrigger>
+                    <TabsTrigger value="network" className="gap-2">
+                        <Network className="h-4 w-4" /> Network View
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="list">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5" /> Active Partners
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Commission Rate</TableHead>
+                                        <TableHead>Tier</TableHead>
+                                        <TableHead>Upline</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {reps?.map((rep) => (
+                                        <TableRow key={rep.id}>
+                                            <TableCell className="font-medium">{rep.full_name || 'Unnamed'}</TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
+                                            <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
+                                            <TableCell className="capitalize">
+                                                <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                {rep.parent_rep_id
+                                                    ? <span className="text-sm">{repNameMap.get(rep.parent_rep_id) || '—'}</span>
+                                                    : <span className="text-muted-foreground text-xs">None</span>
+                                                }
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
+                                                        <Eye className="h-4 w-4 mr-2" /> View Details
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
+                                                        <Pencil className="h-4 w-4 mr-2" /> Edit
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {(!reps || reps.length === 0) && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No sales reps found. Invite or promote users to get started.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="network">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Network className="h-5 w-5" /> Partner Network
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {networkLoading ? (
+                                <div className="flex items-center justify-center py-12 text-muted-foreground">
+                                    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading network...
+                                </div>
+                            ) : (
+                                <DownlineVisualizer data={networkData || []} />
                             )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <EditRepDialog
                 rep={editingRep}
