@@ -50,7 +50,8 @@ export function usePeptides() {
       const { data: bottlesData, error: bottlesError } = await supabase
         .from('bottles')
         .select('lot_id, lots(peptide_id)')
-        .eq('status', 'in_stock');
+        .eq('status', 'in_stock')
+        .limit(5000);
 
       if (bottlesError) throw bottlesError;
 
