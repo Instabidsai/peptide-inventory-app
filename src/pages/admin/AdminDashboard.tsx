@@ -389,7 +389,9 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+            <div className="text-center text-xs text-muted-foreground mt-8">
+                System Version: 2.1 (Inventory Fix Applied)
+            </div>
         </div>
-
     );
 }
