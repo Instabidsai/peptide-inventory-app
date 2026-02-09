@@ -45,6 +45,9 @@ const lotSchema = z.object({
   received_date: z.string().optional(),
   expiry_date: z.string().optional(),
   notes: z.string().optional(),
+  payment_status: z.enum(['paid', 'unpaid', 'partial']).default('unpaid'),
+  payment_date: z.string().optional(),
+  payment_method: z.string().optional(),
 });
 
 type LotFormData = z.infer<typeof lotSchema>;
@@ -74,6 +77,9 @@ export default function Lots() {
       received_date: new Date().toISOString().split('T')[0],
       expiry_date: '',
       notes: '',
+      payment_status: 'paid', // Default to paid as per user preference? Or 'unpaid'? User said "all received is paid up". Let's default to 'paid' for convenience? Or 'unpaid' for accuracy? User said "every peptide i have recived is all paid up". So defaulting to 'paid' seems helpful.
+      payment_date: new Date().toISOString().split('T')[0],
+      payment_method: '',
     },
   });
 
@@ -96,6 +102,9 @@ export default function Lots() {
       received_date: lot.received_date?.split('T')[0] || '',
       expiry_date: lot.expiry_date?.split('T')[0] || '',
       notes: lot.notes || '',
+      payment_status: lot.payment_status || 'unpaid',
+      payment_date: lot.payment_date?.split('T')[0] || '',
+      payment_method: lot.payment_method || '',
     });
   };
 
@@ -107,6 +116,9 @@ export default function Lots() {
       cost_per_unit: data.cost_per_unit,
       expiry_date: data.expiry_date || undefined,
       notes: data.notes,
+      payment_status: data.payment_status,
+      payment_date: data.payment_date || undefined,
+      payment_method: data.payment_method,
     });
     setEditingLot(null);
   };
@@ -127,6 +139,9 @@ export default function Lots() {
       received_date: data.received_date || undefined,
       expiry_date: data.expiry_date || undefined,
       notes: data.notes,
+      payment_status: data.payment_status,
+      payment_date: data.payment_date || undefined,
+      payment_method: data.payment_method,
     });
     setIsCreateOpen(false);
     form.reset();
@@ -251,6 +266,43 @@ export default function Lots() {
                       )}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="payment_status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="unpaid">Unpaid</SelectItem>
+                              <SelectItem value="partial">Partial</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="payment_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="notes"
@@ -312,6 +364,7 @@ export default function Lots() {
                   <TableHead>Quantity</TableHead>
                   <TableHead>Cost/Unit</TableHead>
                   <TableHead>Received</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead>Expiry</TableHead>
                   {canEdit && <TableHead className="w-[70px]"></TableHead>}
                 </TableRow>
@@ -337,6 +390,15 @@ export default function Lots() {
                         <Calendar className="h-3 w-3" />
                         {format(new Date(lot.received_date), 'MMM d, yyyy')}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {lot.payment_status === 'paid' ? (
+                        <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Paid</Badge>
+                      ) : lot.payment_status === 'partial' ? (
+                        <Badge variant="outline" className="text-amber-500 border-amber-500/30">Partial</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-red-500 border-red-500/30">Unpaid</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {lot.expiry_date ? (
@@ -417,6 +479,28 @@ export default function Lots() {
                     <FormControl>
                       <Input type="number" step="0.01" min={0} {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="payment_status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

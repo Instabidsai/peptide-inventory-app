@@ -12,6 +12,9 @@ export interface Lot {
   received_date: string;
   expiry_date: string | null;
   notes: string | null;
+  payment_status: 'paid' | 'unpaid' | 'partial';
+  payment_date: string | null;
+  payment_method: string | null;
   created_at: string;
   updated_at: string;
   peptides?: {
@@ -28,6 +31,9 @@ export interface CreateLotInput {
   received_date?: string;
   expiry_date?: string;
   notes?: string;
+  payment_status?: 'paid' | 'unpaid' | 'partial';
+  payment_date?: string;
+  payment_method?: string;
 }
 
 export function useLots() {

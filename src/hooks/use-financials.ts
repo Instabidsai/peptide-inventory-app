@@ -16,31 +16,17 @@ export function useFinancialMetrics() {
         queryFn: async (): Promise<FinancialMetrics> => {
             try {
                 // --- 1. Inventory Asset Value ---
-                // Fetch in_stock bottles
-                const { data: bottles, error: bottlesError } = await supabase
-                    .from('bottles')
-                    .select('id, lot_id')
-                    .eq('status', 'in_stock');
+                // Use RPC to avoid 1000-row limit
+                const { data: valuation, error: valError } = await supabase
+                    .rpc('get_inventory_valuation');
 
-                if (bottlesError) throw bottlesError;
-
-                // Fetch lots for these bottles
-                const lotIds = [...new Set(bottles?.map(b => b.lot_id).filter(Boolean) || [])];
-                const lotMap = new Map<string, number>();
-
-                if (lotIds.length > 0) {
-                    const { data: lots, error: lotsError } = await supabase
-                        .from('lots')
-                        .select('id, cost_per_unit')
-                        .in('id', lotIds);
-
-                    if (lotsError) throw lotsError;
-                    lots?.forEach(l => lotMap.set(l.id, l.cost_per_unit));
+                if (valError) {
+                    console.error("Valuation RPC failed:", valError);
+                    // Fallback? No, fallback is the broken query. Just log.
                 }
 
-                const inventoryValue = bottles?.reduce((sum, bottle) => {
-                    return sum + (lotMap.get(bottle.lot_id) || 0);
-                }, 0) || 0;
+                const inventoryValue = valuation?.[0]?.total_value || 0;
+                // const totalItems = valuation?.[0]?.item_count || 0; 
 
 
                 // --- 2. Sales & COGS ---

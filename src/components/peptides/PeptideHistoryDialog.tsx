@@ -78,7 +78,8 @@ export function PeptideHistoryDialog({
                     cost_per_unit,
                     received_date,
                     created_at,
-                    notes
+                    notes,
+                    payment_status
                 `)
                 .eq("peptide_id", peptideId);
 
@@ -104,7 +105,11 @@ export function PeptideHistoryDialog({
                 contact: `Lot: ${lot.lot_number}`,
                 quantity: lot.quantity_received,
                 price: lot.cost_per_unit,
-                notes: lot.notes
+                contact: `Lot: ${lot.lot_number}`,
+                quantity: lot.quantity_received,
+                price: lot.cost_per_unit,
+                notes: lot.notes,
+                paymentStatus: lot.payment_status // Pass it through
             })) || [];
 
             return [...sales, ...receipts].sort((a, b) =>
@@ -186,6 +191,17 @@ export function PeptideHistoryDialog({
                                             </TableCell>
                                             <TableCell className="text-right font-mono text-muted-foreground">
                                                 {item.price ? `$${Number(item.price).toFixed(2)}` : '-'}
+                                                {item.type === 'restock' && (
+                                                    <div className="mt-1">
+                                                        {(item as any).paymentStatus === 'paid' ? (
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-emerald-500/20 text-emerald-500">Paid</Badge>
+                                                        ) : (item as any).paymentStatus === 'partial' ? (
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-amber-500/20 text-amber-500">Partial</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-red-500/20 text-red-500">Unpaid</Badge>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
