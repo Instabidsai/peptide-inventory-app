@@ -150,22 +150,30 @@ export function useBottleStats() {
   return useQuery({
     queryKey: ['bottles', 'stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bottles')
-        .select('status, lots(peptides(name))');
+      const { data, error } = await supabase.rpc('get_bottle_stats');
 
       if (error) throw error;
 
+      // Convert RPC result (rows of { status, count }) to object
       const stats = {
-        total: data.length,
-        in_stock: data.filter(b => b.status === 'in_stock').length,
-        sold: data.filter(b => b.status === 'sold').length,
-        given_away: data.filter(b => b.status === 'given_away').length,
-        internal_use: data.filter(b => b.status === 'internal_use').length,
-        lost: data.filter(b => b.status === 'lost').length,
-        returned: data.filter(b => b.status === 'returned').length,
-        expired: data.filter(b => b.status === 'expired').length,
+        total: 0,
+        in_stock: 0,
+        sold: 0,
+        given_away: 0,
+        internal_use: 0,
+        lost: 0,
+        returned: 0,
+        expired: 0,
       };
+
+      data?.forEach((row: { status: string; count: number }) => {
+        const count = Number(row.count);
+        stats.total += count;
+        if (row.status in stats) {
+          // @ts-ignore
+          stats[row.status] = count;
+        }
+      });
 
       return stats;
     },
