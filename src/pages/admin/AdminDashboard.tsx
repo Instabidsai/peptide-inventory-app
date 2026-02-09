@@ -24,6 +24,7 @@ import {
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import React from 'react';
 
@@ -73,69 +74,123 @@ export default function AdminDashboard() {
 
 
             {/* Financial Overview */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link to="/lots">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
-                            <DollarSign className="h-4 w-4 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(financials?.inventoryValue ?? 0).toFixed(2)}</div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+            <Tabs defaultValue="operations" className="w-full">
+                <div className="flex items-center justify-between mb-4">
+                    <TabsList>
+                        <TabsTrigger value="operations">Operations View</TabsTrigger>
+                        <TabsTrigger value="cashflow">Cash Flow View</TabsTrigger>
+                    </TabsList>
+                </div>
 
-                <Link to="/movements?type=sale">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-green-500" />
-                        </CardHeader>
-                        <CardContent>
-                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(financials?.salesRevenue ?? 0).toFixed(2)}</div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Total collected from sales</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Link to="/lots">
+                        <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
+                                <DollarSign className="h-4 w-4 text-primary" />
+                            </CardHeader>
+                            <CardContent>
+                                {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                    <div className="text-2xl font-bold">${(financials?.inventoryValue ?? 0).toFixed(2)}</div>
+                                )}
+                                <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
 
-                <Link to="/movements?type=overhead">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Overhead / Expenses</CardTitle>
-                            <PieChart className="h-4 w-4 text-orange-500" />
-                        </CardHeader>
-                        <CardContent>
-                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(financials?.overhead ?? 0).toFixed(2)}</div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Cost of internal use & giveaways</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                    <Link to="/movements?type=sale">
+                        <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                            </CardHeader>
+                            <CardContent>
+                                {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                    <div className="text-2xl font-bold">${(financials?.salesRevenue ?? 0).toFixed(2)}</div>
+                                )}
+                                <p className="text-xs text-muted-foreground">Total collected from sales</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
 
-                <Link to="/movements">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-                            <DollarSign className="h-4 w-4 text-blue-500" />
-                        </CardHeader>
-                        <CardContent>
-                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className={`text-2xl font-bold ${(financials?.netProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                    ${(financials?.netProfit ?? 0).toFixed(2)}
-                                </div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Revenue - (COGS + Overhead)</p>
-                        </CardContent>
-                    </Card>
-                </Link>
-            </div>
+                    {/* Overhead Card - Dynamic based on Tab */}
+                    <TabsContent value="operations" className="mt-0">
+                        <Link to="/movements?type=overhead">
+                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Operational Overhead</CardTitle>
+                                    <PieChart className="h-4 w-4 text-orange-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                        <div className="text-2xl font-bold">${(financials?.overhead ?? 0).toFixed(2)}</div>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">Excludes inventory purchases</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </TabsContent>
+
+                    <TabsContent value="cashflow" className="mt-0">
+                        <Link to="/expenses">
+                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                                    <PieChart className="h-4 w-4 text-red-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                        <div className="text-2xl font-bold">
+                                            ${((financials?.overhead ?? 0) + (financials?.inventoryPurchases ?? 0)).toFixed(2)}
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">Includes inventory purchases</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </TabsContent>
+
+                    {/* Net Profit Card - Dynamic based on Tab */}
+                    <TabsContent value="operations" className="mt-0">
+                        <Link to="/movements">
+                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Operating Profit</CardTitle>
+                                    <DollarSign className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                        <div className={`text-2xl font-bold ${(financials?.operatingProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            ${(financials?.operatingProfit ?? 0).toFixed(2)}
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">Sales - (COGS + Ops Overhead)</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </TabsContent>
+
+                    <TabsContent value="cashflow" className="mt-0">
+                        <Link to="/movements">
+                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Net Cash Flow</CardTitle>
+                                    <DollarSign className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                        <div className={`text-2xl font-bold ${(financials?.netProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            ${(financials?.netProfit ?? 0).toFixed(2)}
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">All Revenue - All Expenses</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </TabsContent>
+
+                </div>
+            </Tabs>
 
             {/* Pending Orders Row */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

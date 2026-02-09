@@ -7,7 +7,9 @@ export interface FinancialMetrics {
     salesRevenue: number;
     cogs: number;
     overhead: number;
+    inventoryPurchases: number;
     netProfit: number;
+    operatingProfit: number;
 }
 
 export function useFinancialMetrics() {
@@ -130,21 +132,34 @@ export function useFinancialMetrics() {
                 // --- 4. Cash Expenses (from expenses table) ---
                 const { data: expenses, error: expenseError } = await supabase
                     .from('expenses')
-                    .select('amount');
+                    .select('amount, category');
 
                 if (expenseError) throw expenseError;
 
-                const cashExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+                let inventoryExpenses = 0;
+                let operatingExpenses = 0;
 
-                // Total Overhead = Internal Usage Cost + Cash Expenses
-                const totalOverhead = internalOverhead + cashExpenses;
+                expenses?.forEach(e => {
+                    const amt = Number(e.amount);
+                    if (e.category === 'inventory') {
+                        inventoryExpenses += amt;
+                    } else {
+                        operatingExpenses += amt;
+                    }
+                });
+
+                // Total Cash Outflow = Ops + Inventory
+                // Total Overhead (for Cash Flow) = Internal + Ops + Inventory
+                // Operational Overhead = Internal + Ops
 
                 return {
                     inventoryValue,
                     salesRevenue,
                     cogs,
-                    overhead: totalOverhead,
-                    netProfit: salesRevenue - cogs - totalOverhead
+                    overhead: internalOverhead + operatingExpenses, // Operational Overhead
+                    inventoryPurchases: inventoryExpenses, // New field
+                    netProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses), // True Net (Cash Flow)
+                    operatingProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses) // Operational Profit
                 };
             } catch (err) {
                 console.error("Error calculating financials:", err);

@@ -1,0 +1,170 @@
+[
+  {
+    "peptide_id": "80b0cd16-eec9-4352-a656-48892d77b644",
+    "name": "Tirzepatide 10mg",
+    "missing_value": 345,
+    "inventory_value": 345,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "aa42c936-0892-4fa1-ae8e-09d591fcaf19",
+    "name": "Tirzepatide 20mg",
+    "missing_value": 435,
+    "inventory_value": 435,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "c13b4b92-5e28-4a21-b105-eb77f3b04a26",
+    "name": "Tirzepatide 30mg",
+    "missing_value": 490,
+    "inventory_value": 490,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "59dc98a5-22f0-47e3-bcb1-cb2937edcc29",
+    "name": "Retatrutide 10mg",
+    "missing_value": 390,
+    "inventory_value": 650,
+    "order_value": 260
+  },
+  {
+    "peptide_id": "77ef9201-652b-452c-b41e-1e87723b4392",
+    "name": "Retatrutide 20mg",
+    "missing_value": 380,
+    "inventory_value": 950,
+    "order_value": 570
+  },
+  {
+    "peptide_id": "a9155c89-08d0-455c-b3a8-8c6eae3a53ef",
+    "name": "Retatrutide 30mg",
+    "missing_value": 572,
+    "inventory_value": 572,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "9dabd618-b132-4c5e-a9db-bc3be07d654b",
+    "name": "BPC-157 10mg",
+    "missing_value": 210,
+    "inventory_value": 210,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "48b48c12-5589-484d-a660-4f748996500c",
+    "name": "TB500 10mg",
+    "missing_value": 170,
+    "inventory_value": 340,
+    "order_value": 170
+  },
+  {
+    "peptide_id": "a55d7d8c-61cc-462d-804c-05b87d0ab0cb",
+    "name": "BPC/TB500 Blend 5mg/5mg",
+    "missing_value": 140,
+    "inventory_value": 280,
+    "order_value": 140
+  },
+  {
+    "peptide_id": "462d6aeb-f02c-4836-9425-091bfe8a1e49",
+    "name": "BPC/TB500 Blend 10mg/10mg",
+    "missing_value": 555,
+    "inventory_value": 925,
+    "order_value": 370
+  },
+  {
+    "peptide_id": "f5e93a83-34fb-474f-8f48-4d4ae09552c8",
+    "name": "CJC (no DAC)/Ipamorelin 5mg/5mg",
+    "missing_value": 145,
+    "inventory_value": 290,
+    "order_value": 145
+  },
+  {
+    "peptide_id": "e53fa5c8-73ae-4c85-8749-4fdd376d7e2f",
+    "name": "CJC (no DAC) 5mg",
+    "missing_value": 250,
+    "inventory_value": 375,
+    "order_value": 125
+  },
+  {
+    "peptide_id": "d1df8c95-48d1-4ea5-89db-78a567ed4436",
+    "name": "Epithalon 40mg",
+    "missing_value": 190,
+    "inventory_value": 380,
+    "order_value": 190
+  },
+  {
+    "peptide_id": "2cc1dfe5-f12a-44b7-8808-36842c1441a3",
+    "name": "Glutathione 1500mg",
+    "missing_value": 280,
+    "inventory_value": 280,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "3fe6f25d-edbc-4c42-8fe1-1fd56b49b59a",
+    "name": "LL-37 5mg",
+    "missing_value": 290,
+    "inventory_value": 290,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "5d466cbd-02fa-4725-9188-35012446f8c3",
+    "name": "NAD+ 1000mg",
+    "missing_value": 310,
+    "inventory_value": 775,
+    "order_value": 465
+  },
+  {
+    "peptide_id": "0f2c9c95-74f9-4144-86bd-7186bebd5bd7",
+    "name": "PT-141 10mg",
+    "missing_value": 200,
+    "inventory_value": 200,
+    "order_value": 0
+  },
+  {
+    "peptide_id": "7694886b-93b7-4663-89d2-149fc22e5f6e",
+    "name": "Selank 10mg",
+    "missing_value": 180,
+    "inventory_value": 450,
+    "order_value": 270
+  },
+  {
+    "peptide_id": "c88d6990-cd75-4a9a-9051-d09260afd4dd",
+    "name": "Semax 10mg",
+    "missing_value": 180,
+    "inventory_value": 450,
+    "order_value": 270
+  },
+  {
+    "peptide_id": "02ad5852-708b-4107-8e7b-05e19ef1dd2f",
+    "name": "Sermorelin 10mg",
+    "missing_value": 170,
+    "inventory_value": 340,
+    "order_value": 170
+  },
+  {
+    "peptide_id": "1afae30b-1ca0-4a10-a219-9fc7ccca0a66",
+    "name": "Tesamorelin 10mg",
+    "missing_value": 180,
+    "inventory_value": 360,
+    "order_value": 180
+  },
+  {
+    "peptide_id": "56d2e287-30dd-480f-a659-df174761e5ce",
+    "name": "ARA-290 10mg",
+    "missing_value": 180,
+    "inventory_value": 450,
+    "order_value": 270
+  },
+  {
+    "peptide_id": "28b743e0-abca-4049-8c7e-76c1d7787b09",
+    "name": "Thy Alpha 1 10mg",
+    "missing_value": 180,
+    "inventory_value": 360,
+    "order_value": 180
+  },
+  {
+    "peptide_id": "c6ab9fce-9172-41b9-9a22-643501ea16f9",
+    "name": "TRT Cypionate 20ml ",
+    "missing_value": 800,
+    "inventory_value": 800,
+    "order_value": 0
+  }
+]
