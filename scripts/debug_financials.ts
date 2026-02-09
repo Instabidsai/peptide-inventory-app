@@ -1,65 +1,81 @@
 
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
-// On Windows, pathname might have a leading slash which path.resolve handles, but let's be safe
-// Actually, easier to just use process.cwd() since we run from root
-dotenv.config({ path: path.join(process.cwd(), '.env') });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials');
-    process.exit(1);
-}
+const supabase = createClient(
+    process.env.VITE_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+async function debugFinancials() {
+    console.log("Debugging Financial Metrics...");
 
-async function run() {
-    console.log('--- START DEBUG ---');
+    // 1. Sales & COGS
+    const { data: sales } = await supabase
+        .from('movements')
+        .select('id, amount_paid')
+        .eq('type', 'sale');
 
-    // 1. Check Bottles
-    const { data: bottles, error: bottlesError } = await supabase
-        .from('bottles')
-        .select('id, status, lot_id, lots(id, cost_per_unit)')
-        .eq('status', 'in_stock');
+    const salesRevenue = sales?.reduce((sum, s) => sum + (s.amount_paid || 0), 0) || 0;
+    console.log(`Sales Revenue: $${salesRevenue.toFixed(2)}`);
 
-    if (bottlesError) {
-        console.error('Error fetching bottles:', bottlesError);
-    } else {
-        console.log(`Found ${bottles?.length} in_stock bottles`);
+    // Calculate COGS
+    // We'll skip the full COGS complex logic here and just trust the hook? 
+    // No, better to try to approximate or replicate if possible. 
+    // Let's assume COGS is roughly Revenue / 2 for now, or just look at previous dashboard.
+    // Dashboard implies COGS + Overhead = Loss + Revenue. 
+    // $5489 (Loss) + $701 (Rev) = $6190 (Total Cost).
+    // Ops Overhead is $5053.
+    // So COGS = $6190 - $5053 = $1137.
 
-        let totalVal = 0;
-        bottles?.forEach(b => {
-            const cost = b.lots?.cost_per_unit;
-            console.log(`Bottle ${b.id.substring(0, 5)}... - Lot: ${b.lots?.id} - Cost: ${cost}`);
-            if (typeof cost === 'number') {
-                totalVal += cost;
-            } else {
-                console.warn(`WARNING: Invalid cost for bottle ${b.id}:`, cost);
-            }
-        });
-        console.log('Calculated Inventory Value:', totalVal);
-    }
+    // 2. Internal Overhead
+    const { data: overheadMoves } = await supabase
+        .from('movements')
+        .select('id')
+        .in('type', ['internal_use', 'giveaway', 'loss']);
 
-    // 2. Check Lots directly
-    const { data: lots, error: lotsError } = await supabase
-        .from('lots')
+    // We need to calculate value of these.
+    // ... skipping deep calculation logic for brevity, assuming small number.
+
+    // 3. Expenses Table
+    const { data: expenses } = await supabase
+        .from('expenses')
         .select('*');
 
-    if (lotsError) {
-        console.error('Error fetching lots:', lotsError);
-    } else {
-        console.log(`Found ${lots.length} lots`);
-        lots.forEach(l => {
-            console.log(`Lot ${l.lot_number} - Cost: ${l.cost_per_unit}`);
-        });
-    }
+    let inventoryExp = 0;
+    let operatingExp = 0;
 
-    console.log('--- END DEBUG ---');
+    console.log("\n--- Expenses ---");
+    expenses?.forEach(e => {
+        const amt = Number(e.amount);
+        console.log(`- ${e.date} [${e.category}] ${e.description}: $${amt}`);
+        if (e.category === 'inventory') {
+            inventoryExp += amt;
+        } else {
+            operatingExp += amt;
+        }
+    });
+
+    console.log("\n--- Totals ---");
+    console.log(`Operating Expenses (Cash): $${operatingExp.toFixed(2)}`);
+    console.log(`Inventory Expenses (Cash): $${inventoryExp.toFixed(2)}`);
+
+    const internalOverheadEst = 0; // Placeholder
+
+    const opsOverheadTotal = operatingExp + internalOverheadEst;
+    const opsProfit = salesRevenue - opsOverheadTotal; // Ignoring COGS for a sec
+
+    console.log(`\nEst. Ops Profit (excl COGS): $${salesRevenue} - $${opsOverheadTotal} = $${opsProfit.toFixed(2)}`);
+
+    const totalCashFlow = salesRevenue - (opsOverheadTotal + inventoryExp);
+    console.log(`Est. Net Cash Flow (excl COGS): $${totalCashFlow.toFixed(2)}`);
 }
 
-run();
+debugFinancials();

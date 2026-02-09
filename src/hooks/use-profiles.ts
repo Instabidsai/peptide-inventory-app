@@ -13,6 +13,7 @@ export interface UserProfile {
     overhead_per_unit: number; // Defaults to 4.00
     credit_balance: number; // Partner's wallet balance
     org_id: string;
+    parent_rep_id?: string | null;
 }
 
 export function useProfile() {

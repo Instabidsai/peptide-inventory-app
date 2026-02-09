@@ -6,7 +6,7 @@ import { useMovements } from '@/hooks/use-movements';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancialMetrics } from '@/hooks/use-financials';
-import { usePendingOrdersCount, usePendingOrderValue } from '@/hooks/use-orders';
+import { usePendingOrdersCount, usePendingOrderValue, usePendingOrderFinancials } from '@/hooks/use-orders';
 import { supabase } from '@/integrations/sb_client/client';
 import {
     Package,
@@ -36,13 +36,36 @@ export default function AdminDashboard() {
     const { data: peptides } = usePeptides();
     const { data: financials, isLoading: financialsLoading, error: financialsError } = useFinancialMetrics();
     const { data: pendingOrdersCount, isLoading: pendingCountLoading } = usePendingOrdersCount();
-    const { data: pendingOrderValue, isLoading: pendingValueLoading } = usePendingOrderValue();
+    const { data: pendingFinancials, isLoading: pendingValueLoading } = usePendingOrderFinancials(); // Use new hook
 
     if (financialsError) {
         console.error("Financials Error:", financialsError);
     }
 
     const recentMovements = movements?.slice(0, 5) || [];
+
+    // Calculated fields
+    const totalExpensesWithLiability = (financials?.overhead ?? 0) +
+        (financials?.inventoryPurchases ?? 0) +
+        (pendingFinancials?.outstandingLiability ?? 0);
+
+    const netCashFlowWithLiability = (financials?.salesRevenue ?? 0) - (financials?.cogs ?? 0) - totalExpensesWithLiability;
+    // Note: Technically COGS is removed from Profit calculation but for "Cash Flow" we shouldn't subtract COGS if we are already subtracting Inventory Purchases.
+    // Cash Flow = Revenue - (Ops Expense + Total Inventory Buy).
+    // Let's correct this.
+    // Net Profit (Ops) = Rev - COGS - OpsOverhead.
+    // Net Cash Flow = Rev - (OpsOverhead + InventoryPurchases).
+    // Wait, useFinancials.ts currently does: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses).
+    // DOUBLE COUNTING RISK: If we subtract COGS AND Inventory Purchases, we are double counting the cost of the sold items.
+
+    // Correct Cash Flow Logic:
+    // Cash In = Sales Revenue
+    // Cash Out = Ops Overhead + Inventory Purchases
+    // Net Cash = Sales Revenue - (Ops Overhead + Inventory Purchases). (No COGS).
+
+    // However, keeping consistent with previous "Net Profit" label, users often expect COGS.
+    // But for "Cash Flow", you definitely do not subtract COGS if you subtract the purchase price of the inventory.
+    // I will fix the display logic below.
 
     return (
         <div className="space-y-6">
@@ -78,7 +101,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between mb-4">
                     <TabsList>
                         <TabsTrigger value="operations">Operations View</TabsTrigger>
-                        <TabsTrigger value="cashflow">Cash Flow View</TabsTrigger>
+                        <TabsTrigger value="cashflow">Full Investment View</TabsTrigger> {/* Renamed */}
                     </TabsList>
                 </div>
 
@@ -135,16 +158,16 @@ export default function AdminDashboard() {
                         <Link to="/expenses">
                             <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Total Investment</CardTitle>
                                     <PieChart className="h-4 w-4 text-red-500" />
                                 </CardHeader>
                                 <CardContent>
                                     {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
                                         <div className="text-2xl font-bold">
-                                            ${((financials?.overhead ?? 0) + (financials?.inventoryPurchases ?? 0)).toFixed(2)}
+                                            ${totalExpensesWithLiability.toFixed(2)}
                                         </div>
                                     )}
-                                    <p className="text-xs text-muted-foreground">Includes inventory purchases</p>
+                                    <p className="text-xs text-muted-foreground">Cash + Unpaid Liabilities</p>
                                 </CardContent>
                             </Card>
                         </Link>
@@ -174,16 +197,16 @@ export default function AdminDashboard() {
                         <Link to="/movements">
                             <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Net Cash Flow</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Net Position</CardTitle>
                                     <DollarSign className="h-4 w-4 text-blue-500" />
                                 </CardHeader>
                                 <CardContent>
                                     {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                        <div className={`text-2xl font-bold ${(financials?.netProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            ${(financials?.netProfit ?? 0).toFixed(2)}
+                                        <div className={`text-2xl font-bold ${((financials?.salesRevenue || 0) - totalExpensesWithLiability) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            ${((financials?.salesRevenue || 0) - totalExpensesWithLiability).toFixed(2)}
                                         </div>
                                     )}
-                                    <p className="text-xs text-muted-foreground">All Revenue - All Expenses</p>
+                                    <p className="text-xs text-muted-foreground">Revenue - All Costs (Paid & Owed)</p>
                                 </CardContent>
                             </Card>
                         </Link>
@@ -217,7 +240,7 @@ export default function AdminDashboard() {
                         </CardHeader>
                         <CardContent>
                             {pendingValueLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(pendingOrderValue || 0).toFixed(2)}</div>
+                                <div className="text-2xl font-bold">${(pendingFinancials?.totalValue ?? 0).toFixed(2)}</div>
                             )}
                             <p className="text-xs text-muted-foreground">Est. cost of pending orders</p>
                         </CardContent>

@@ -109,6 +109,35 @@ export function usePendingOrderValue() {
     });
 }
 
+// Get detailed pending financials (Total, Paid, Owed)
+export function usePendingOrderFinancials() {
+    return useQuery({
+        queryKey: ['orders', 'pending', 'financials'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('quantity_ordered, estimated_cost_per_unit, amount_paid')
+                .eq('status', 'pending');
+
+            if (error) throw error;
+
+            let totalValue = 0;
+            let totalPaid = 0;
+
+            data?.forEach(order => {
+                totalValue += (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+                totalPaid += (order.amount_paid || 0);
+            });
+
+            return {
+                totalValue,
+                totalPaid,
+                outstandingLiability: totalValue - totalPaid
+            };
+        },
+    });
+}
+
 // Get pending orders by peptide (for peptides page)
 export function usePendingOrdersByPeptide() {
     return useQuery({

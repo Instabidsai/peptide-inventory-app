@@ -1,4 +1,18 @@
-import { useState } from 'react';
+// Assuming UserProfile is imported from hooks. Checking file content above (line 2). 
+// UserProfile is imported. I need to update the hook definition file first.
+// Aborting this specific replace to update the hook first.
+// Wait, I can't abort comfortably. I'll do a valid replace in Reps.tsx to just ensure it compiles locally if I cast it?
+// Or better, update the hook file next.
+// I will just let this tool call fail or do a no-op?
+// Actually, I'll updating the hook file in next step.
+// For now, let's just finish the UI changes in Reps.tsx which expects UserProfile to have parent_rep_id.
+// If it doesn't, TS will complain.
+// So I MUST update the hook first.
+// I will skip this replace and do it after hook update.
+// BUT I already queued 2 replaces for Reps.tsx. 
+// I will change the Plan. I should update the hook `use-profiles.ts` NOW.
+// I cannot cancel the previous tool calls in this turn.
+// I will add a `view_file` for `use-profiles.ts` to the queue so I can fix it immediately.
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
 import { Button } from '@/components/ui/button';
@@ -284,6 +298,7 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
     const [mult, setMult] = useState(rep.price_multiplier || 1.0);
     const [tier, setTier] = useState(rep.partner_tier || 'standard');
+    const [parentRep, setParentRep] = useState(rep.parent_rep_id || '');
 
     return (
         <div className="grid gap-4 py-4">
@@ -319,6 +334,18 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                     </SelectContent>
                 </Select>
             </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Parent Rep ID</Label>
+                <Input
+                    className="col-span-3 font-mono text-xs"
+                    placeholder="UUID of Parent Rep"
+                    value={parentRep}
+                    onChange={e => setParentRep(e.target.value)}
+                />
+            </div>
+
+
             <p className="text-xs text-muted-foreground ml-auto col-span-4 text-right">
                 Example: 1.2 Multiplier = $100 item sells for $120.
             </p>
@@ -327,7 +354,8 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                 <Button onClick={() => onSubmit({
                     commission_rate: comm / 100,
                     price_multiplier: mult,
-                    partner_tier: tier
+                    partner_tier: tier,
+                    parent_rep_id: parentRep || null
                 })}>
                     Save Changes
                 </Button>
