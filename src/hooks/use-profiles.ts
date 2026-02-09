@@ -8,8 +8,11 @@ export interface UserProfile {
     id: string;
     user_id: string;
     full_name: string | null;
+    email?: string | null;
     role: UserRole;
     commission_rate: number;
+    price_multiplier?: number;
+    partner_tier?: string;
     overhead_per_unit: number; // Defaults to 4.00
     credit_balance: number; // Partner's wallet balance
     org_id: string;
