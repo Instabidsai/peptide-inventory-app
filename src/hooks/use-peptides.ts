@@ -46,14 +46,14 @@ export function usePeptides() {
 
       if (lotsError) throw lotsError;
 
-      // 3. Fetch in-stock bottle counts
-      const { data: bottlesData, error: bottlesError } = await supabase
-        .from('bottles')
-        .select('lot_id, lots(peptide_id)')
-        .eq('status', 'in_stock')
-        .limit(5000);
+      // 3. Fetch in-stock bottle counts via RPC (Bypass 1000-row limit)
+      const { data: stockCounts, error: stockError } = await supabase
+        .rpc('get_peptide_stock_counts');
 
-      if (bottlesError) throw bottlesError;
+      if (stockError) {
+        console.error('Failed to fetch stock counts:', stockError);
+        // Don't throw, just show 0 stock to avoid crashing app if RPC is missing
+      }
 
       // 4. Aggregate data
       const peptideStats: Record<string, { totalStock: number, totalLotCost: number, lotCount: number }> = {};
@@ -71,11 +71,10 @@ export function usePeptides() {
         }
       });
 
-      // Count in-stock bottles
-      bottlesData?.forEach((b: any) => {
-        const pId = b.lots?.peptide_id;
-        if (pId && peptideStats[pId]) {
-          peptideStats[pId].totalStock += 1;
+      // Apply stock counts from RPC
+      stockCounts?.forEach((item: any) => {
+        if (peptideStats[item.peptide_id]) {
+          peptideStats[item.peptide_id].totalStock = Number(item.stock_count);
         }
       });
 
