@@ -357,30 +357,49 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
         }
     });
 
-    const handlePromote = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handlePromote = async () => {
         if (!selectedContact) return;
         setIsPromoting(true);
 
         try {
-            const { data, error } = await supabase.functions.invoke('invite-user', {
-                body: {
-                    email: selectedContact.email,
-                    contact_id: selectedContact.id,
-                    role: 'sales_rep',
-                    tier: 'standard',
-                    parent_rep_id: repId // New: Link to current rep
-                }
-            });
+            // 1. Update the contact's type to 'partner'
+            const { error: contactError } = await supabase
+                .from('contacts')
+                .update({ type: 'partner' })
+                .eq('id', selectedContact.id);
 
-            if (error) throw error;
+            if (contactError) throw contactError;
+
+            // 2. If contact has a linked user profile, update their role and parent_rep_id
+            if (selectedContact.linked_user_id) {
+                // Find the profile by user_id
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('user_id', selectedContact.linked_user_id)
+                    .single();
+
+                if (profile) {
+                    const { error: profileError } = await supabase
+                        .from('profiles')
+                        .update({
+                            role: 'sales_rep',
+                            parent_rep_id: repId,
+                            commission_rate: 0.10, // Default 10%
+                            partner_tier: 'standard',
+                        })
+                        .eq('id', profile.id);
+
+                    if (profileError) throw profileError;
+                }
+            }
 
             toast({
-                title: "Promotion Started",
-                description: `${selectedContact.name} has been invited as a Partner.`
+                title: "Promoted!",
+                description: `${selectedContact.name} is now a Partner under this rep.`
             });
             setPromoteOpen(false);
-            refetch(); // Refresh list (though they might still be 'customer' until token exchange, depends on logic)
+            refetch();
         } catch (err: any) {
             toast({
                 variant: 'destructive',
@@ -393,10 +412,6 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
     };
 
     const openPromote = (contact: any) => {
-        if (!contact.email) {
-            toast({ variant: 'destructive', title: "Email Required", description: "Contact must have an email to be promoted." });
-            return;
-        }
         setSelectedContact(contact);
         setPromoteOpen(true);
     }
@@ -457,6 +472,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                                     <UserPlus className="h-3 w-3 mr-1" /> Promote
                                                 </Button>
                                             )}
+                                            {client.type === 'partner' && (
+                                                <Badge variant="outline" className="text-emerald-500 border-emerald-500">
+                                                    ✓ Partner
+                                                </Badge>
+                                            )}
                                             <Button size="sm" variant="ghost" onClick={() => navigate(`/contacts/${client.id}`)}>
                                                 View
                                             </Button>
@@ -474,24 +494,24 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     <DialogHeader>
                         <DialogTitle>Promote to Partner</DialogTitle>
                         <DialogDescription>
-                            This will invite <strong>{selectedContact?.name}</strong> to become a Sales Partner.
-                            They will be placed in the downline under this Rep.
+                            This will promote <strong>{selectedContact?.name}</strong> to a Sales Partner
+                            under this Rep's downline. They'll start at 10% commission, Standard tier.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Email</Label>
-                            <Input value={selectedContact?.email || ''} disabled className="col-span-3" />
+                    <div className="py-4 space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Name:</span>
+                            <span className="font-medium">{selectedContact?.name}</span>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Parent Rep</Label>
-                            <Input value={repId} disabled className="col-span-3 font-mono text-xs" />
+                        <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Email:</span>
+                            <span>{selectedContact?.email || 'No email'}</span>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>
                         <Button onClick={handlePromote} disabled={isPromoting}>
-                            {isPromoting ? 'Sending Invite...' : 'Send Partner Invite'}
+                            {isPromoting ? 'Promoting...' : 'Promote Now'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
