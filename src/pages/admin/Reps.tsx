@@ -1,18 +1,4 @@
-// Assuming UserProfile is imported from hooks. Checking file content above (line 2). 
-// UserProfile is imported. I need to update the hook definition file first.
-// Aborting this specific replace to update the hook first.
-// Wait, I can't abort comfortably. I'll do a valid replace in Reps.tsx to just ensure it compiles locally if I cast it?
-// Or better, update the hook file next.
-// I will just let this tool call fail or do a no-op?
-// Actually, I'll updating the hook file in next step.
-// For now, let's just finish the UI changes in Reps.tsx which expects UserProfile to have parent_rep_id.
-// If it doesn't, TS will complain.
-// So I MUST update the hook first.
-// I will skip this replace and do it after hook update.
-// BUT I already queued 2 replaces for Reps.tsx. 
-// I will change the Plan. I should update the hook `use-profiles.ts` NOW.
-// I cannot cancel the previous tool calls in this turn.
-// I will add a `view_file` for `use-profiles.ts` to the queue so I can fix it immediately.
+import { useState } from 'react';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
 import { Button } from '@/components/ui/button';
@@ -35,7 +21,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, ArrowUpCircle } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -45,8 +31,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { useToast } from "@/hooks/use-toast"; // Correct import for Shadcn toast
-
+import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 
 export default function Reps() {
@@ -58,6 +43,10 @@ export default function Reps() {
     const [isInviteOpen, setIsInviteOpen] = useState(false);
 
     if (isLoading) return <div>Loading reps...</div>;
+
+    // Build a lookup map: rep ID -> name (for showing upline names in the table)
+    const repNameMap = new Map<string, string>();
+    reps?.forEach(r => repNameMap.set(r.id, r.full_name || 'Unnamed'));
 
     return (
         <div className="space-y-6">
@@ -84,8 +73,8 @@ export default function Reps() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Commission Rate</TableHead>
-                                <TableHead>Price Multiplier</TableHead>
                                 <TableHead>Tier</TableHead>
+                                <TableHead>Upline</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -95,9 +84,14 @@ export default function Reps() {
                                     <TableCell className="font-medium">{rep.full_name || 'Unnamed'}</TableCell>
                                     <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
                                     <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
-                                    <TableCell>x{rep.price_multiplier?.toFixed(2) || '1.00'}</TableCell>
                                     <TableCell className="capitalize">
                                         <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        {rep.parent_rep_id
+                                            ? <span className="text-sm">{repNameMap.get(rep.parent_rep_id) || '—'}</span>
+                                            : <span className="text-muted-foreground text-xs">None</span>
+                                        }
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
@@ -113,7 +107,7 @@ export default function Reps() {
                             ))}
                             {(!reps || reps.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                         No sales reps found. Invite or promote users to get started.
                                     </TableCell>
                                 </TableRow>
@@ -125,6 +119,7 @@ export default function Reps() {
 
             <EditRepDialog
                 rep={editingRep}
+                allReps={reps || []}
                 open={!!editingRep}
                 onOpenChange={(open) => !open && setEditingRep(null)}
                 onSave={(id, updates) => {
@@ -150,7 +145,7 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
-    const [activeTab, setActiveTab] = useState('promote'); // Default to promote for quick access
+    const [activeTab, setActiveTab] = useState('promote');
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -169,7 +164,6 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
         updateProfile.mutate({
             id: selectedUserId,
             role: 'sales_rep',
-            // Initialize defaults
             commission_rate: 0,
             price_multiplier: 1.0,
         }, {
@@ -264,11 +258,13 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
 
 function EditRepDialog({
     rep,
+    allReps,
     open,
     onOpenChange,
     onSave
 }: {
     rep: UserProfile | null,
+    allReps: UserProfile[],
     open: boolean,
     onOpenChange: (open: boolean) => void,
     onSave: (id: string, updates: Partial<UserProfile>) => void
@@ -277,15 +273,16 @@ function EditRepDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Edit Representative</DialogTitle>
+                    <DialogTitle>Edit Partner</DialogTitle>
                     <DialogDescription>
-                        Adjust commission and pricing settings for {rep?.full_name}.
+                        Adjust commission, tier, and upline for {rep?.full_name}.
                     </DialogDescription>
                 </DialogHeader>
 
                 {rep && (
                     <RepForm
                         rep={rep}
+                        allReps={allReps}
                         onSubmit={(updates) => onSave(rep.id, updates)}
                     />
                 )}
@@ -294,11 +291,14 @@ function EditRepDialog({
     );
 }
 
-function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => void }) {
+function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: any) => void }) {
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
     const [mult, setMult] = useState(rep.price_multiplier || 1.0);
     const [tier, setTier] = useState(rep.partner_tier || 'standard');
     const [parentRep, setParentRep] = useState(rep.parent_rep_id || '');
+
+    // Filter out the current rep from potential parents (can't be your own parent)
+    const potentialParents = allReps.filter(r => r.id !== rep.id);
 
     return (
         <div className="grid gap-4 py-4">
@@ -336,18 +336,25 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Parent Rep ID</Label>
-                <Input
-                    className="col-span-3 font-mono text-xs"
-                    placeholder="UUID of Parent Rep"
-                    value={parentRep}
-                    onChange={e => setParentRep(e.target.value)}
-                />
+                <Label className="text-right">Upline</Label>
+                <Select value={parentRep || '__none__'} onValueChange={(v) => setParentRep(v === '__none__' ? '' : v)}>
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select upline partner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__none__">
+                            <span className="text-muted-foreground">No Upline (Top-Level)</span>
+                        </SelectItem>
+                        {potentialParents.map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                                {p.full_name || 'Unnamed'} — {((p.commission_rate || 0) * 100).toFixed(0)}%
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
-
-
-            <p className="text-xs text-muted-foreground ml-auto col-span-4 text-right">
-                Example: 1.2 Multiplier = $100 item sells for $120.
+            <p className="text-xs text-muted-foreground text-right">
+                The upline partner earns override commissions on this partner's sales.
             </p>
 
             <DialogFooter>
@@ -360,6 +367,6 @@ function RepForm({ rep, onSubmit }: { rep: UserProfile, onSubmit: (u: any) => vo
                     Save Changes
                 </Button>
             </DialogFooter>
-        </div >
+        </div>
     )
 }
