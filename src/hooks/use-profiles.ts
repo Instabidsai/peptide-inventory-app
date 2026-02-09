@@ -98,18 +98,35 @@ export function useUpdateProfile() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<UserProfile> & { id: string }) => {
-            const { error } = await supabase
+            console.log('[useUpdateProfile] Updating profile:', id, updates);
+
+            const { data, error } = await supabase
                 .from('profiles')
                 .update(updates)
-                .eq('id', id);
+                .eq('id', id)
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error('[useUpdateProfile] Error:', error);
+                throw error;
+            }
+
+            console.log('[useUpdateProfile] Result:', data);
+
+            // If no rows returned, RLS silently blocked the update
+            if (!data || data.length === 0) {
+                throw new Error('Update blocked — check RLS policies on profiles table');
+            }
+
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['reps'] });
+            queryClient.invalidateQueries({ queryKey: ['profile'] });
             toast({ title: 'Profile updated' });
         },
         onError: (error: Error) => {
+            console.error('[useUpdateProfile] Mutation error:', error);
             toast({ variant: 'destructive', title: 'Update failed', description: error.message });
         },
     });

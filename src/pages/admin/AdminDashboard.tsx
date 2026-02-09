@@ -6,7 +6,7 @@ import { useMovements } from '@/hooks/use-movements';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFinancialMetrics } from '@/hooks/use-financials';
-import { usePendingOrdersCount, usePendingOrderValue, usePendingOrderFinancials } from '@/hooks/use-orders';
+import { usePendingOrdersCount, usePendingOrderFinancials } from '@/hooks/use-orders';
 import { supabase } from '@/integrations/sb_client/client';
 import {
     Package,
@@ -24,19 +24,18 @@ import {
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 import React from 'react';
 
 export default function AdminDashboard() {
     const { organization } = useAuth();
+    const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>('operations');
 
     const { data: stats, isLoading: statsLoading } = useBottleStats();
     const { data: movements, isLoading: movementsLoading } = useMovements();
     const { data: peptides } = usePeptides();
     const { data: financials, isLoading: financialsLoading, error: financialsError } = useFinancialMetrics();
     const { data: pendingOrdersCount, isLoading: pendingCountLoading } = usePendingOrdersCount();
-    const { data: pendingFinancials, isLoading: pendingValueLoading } = usePendingOrderFinancials(); // Use new hook
+    const { data: pendingFinancials, isLoading: pendingValueLoading } = usePendingOrderFinancials();
 
     if (financialsError) {
         console.error("Financials Error:", financialsError);
@@ -44,28 +43,14 @@ export default function AdminDashboard() {
 
     const recentMovements = movements?.slice(0, 5) || [];
 
-    // Calculated fields
+    // Calculated fields for Full Investment View
     const totalExpensesWithLiability = (financials?.overhead ?? 0) +
         (financials?.inventoryPurchases ?? 0) +
         (pendingFinancials?.outstandingLiability ?? 0);
 
-    const netCashFlowWithLiability = (financials?.salesRevenue ?? 0) - (financials?.cogs ?? 0) - totalExpensesWithLiability;
-    // Note: Technically COGS is removed from Profit calculation but for "Cash Flow" we shouldn't subtract COGS if we are already subtracting Inventory Purchases.
-    // Cash Flow = Revenue - (Ops Expense + Total Inventory Buy).
-    // Let's correct this.
-    // Net Profit (Ops) = Rev - COGS - OpsOverhead.
-    // Net Cash Flow = Rev - (OpsOverhead + InventoryPurchases).
-    // Wait, useFinancials.ts currently does: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses).
-    // DOUBLE COUNTING RISK: If we subtract COGS AND Inventory Purchases, we are double counting the cost of the sold items.
+    const netPosition = (financials?.salesRevenue ?? 0) - totalExpensesWithLiability;
 
-    // Correct Cash Flow Logic:
-    // Cash In = Sales Revenue
-    // Cash Out = Ops Overhead + Inventory Purchases
-    // Net Cash = Sales Revenue - (Ops Overhead + Inventory Purchases). (No COGS).
-
-    // However, keeping consistent with previous "Net Profit" label, users often expect COGS.
-    // But for "Cash Flow", you definitely do not subtract COGS if you subtract the purchase price of the inventory.
-    // I will fix the display logic below.
+    const isOps = viewMode === 'operations';
 
     return (
         <div className="space-y-6">
@@ -94,126 +79,104 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
+            {/* Financial View Toggle */}
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-md w-fit">
+                <button
+                    onClick={() => setViewMode('operations')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${isOps ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                >
+                    Operations View
+                </button>
+                <button
+                    onClick={() => setViewMode('investment')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${!isOps ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                >
+                    Full Investment View
+                </button>
+            </div>
 
+            {/* Financial Overview - 4 cards, always in a clean grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Link to="/lots">
+                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
+                            <DollarSign className="h-4 w-4 text-primary" />
+                        </CardHeader>
+                        <CardContent>
+                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                <div className="text-2xl font-bold">${(financials?.inventoryValue ?? 0).toFixed(2)}</div>
+                            )}
+                            <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-            {/* Financial Overview */}
-            <Tabs defaultValue="operations" className="w-full">
-                <div className="flex items-center justify-between mb-4">
-                    <TabsList>
-                        <TabsTrigger value="operations">Operations View</TabsTrigger>
-                        <TabsTrigger value="cashflow">Full Investment View</TabsTrigger> {/* Renamed */}
-                    </TabsList>
-                </div>
+                <Link to="/movements?type=sale">
+                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-green-500" />
+                        </CardHeader>
+                        <CardContent>
+                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                <div className="text-2xl font-bold">${(financials?.salesRevenue ?? 0).toFixed(2)}</div>
+                            )}
+                            <p className="text-xs text-muted-foreground">Total collected from sales</p>
+                        </CardContent>
+                    </Card>
+                </Link>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Link to="/lots">
-                        <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
-                                <DollarSign className="h-4 w-4 text-primary" />
-                            </CardHeader>
-                            <CardContent>
-                                {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                    <div className="text-2xl font-bold">${(financials?.inventoryValue ?? 0).toFixed(2)}</div>
-                                )}
-                                <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                {/* Card 3: Overhead / Total Investment */}
+                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">
+                            {isOps ? 'Operational Overhead' : 'Total Investment'}
+                        </CardTitle>
+                        <PieChart className={`h-4 w-4 ${isOps ? 'text-orange-500' : 'text-red-500'}`} />
+                    </CardHeader>
+                    <CardContent>
+                        {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                            <div className="text-2xl font-bold">
+                                ${isOps
+                                    ? (financials?.overhead ?? 0).toFixed(2)
+                                    : totalExpensesWithLiability.toFixed(2)
+                                }
+                            </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            {isOps ? 'Excludes inventory purchases' : 'Overhead + Inventory + Owed'}
+                        </p>
+                    </CardContent>
+                </Card>
 
-                    <Link to="/movements?type=sale">
-                        <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
-                                <TrendingUp className="h-4 w-4 text-green-500" />
-                            </CardHeader>
-                            <CardContent>
-                                {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                    <div className="text-2xl font-bold">${(financials?.salesRevenue ?? 0).toFixed(2)}</div>
-                                )}
-                                <p className="text-xs text-muted-foreground">Total collected from sales</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    {/* Overhead Card - Dynamic based on Tab */}
-                    <TabsContent value="operations" className="mt-0">
-                        <Link to="/movements?type=overhead">
-                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Operational Overhead</CardTitle>
-                                    <PieChart className="h-4 w-4 text-orange-500" />
-                                </CardHeader>
-                                <CardContent>
-                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                        <div className="text-2xl font-bold">${(financials?.overhead ?? 0).toFixed(2)}</div>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">Excludes inventory purchases</p>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    </TabsContent>
-
-                    <TabsContent value="cashflow" className="mt-0">
-                        <Link to="/expenses">
-                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Total Investment</CardTitle>
-                                    <PieChart className="h-4 w-4 text-red-500" />
-                                </CardHeader>
-                                <CardContent>
-                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                        <div className="text-2xl font-bold">
-                                            ${totalExpensesWithLiability.toFixed(2)}
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">Cash + Unpaid Liabilities</p>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    </TabsContent>
-
-                    {/* Net Profit Card - Dynamic based on Tab */}
-                    <TabsContent value="operations" className="mt-0">
-                        <Link to="/movements">
-                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Operating Profit</CardTitle>
-                                    <DollarSign className="h-4 w-4 text-blue-500" />
-                                </CardHeader>
-                                <CardContent>
-                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                        <div className={`text-2xl font-bold ${(financials?.operatingProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            ${(financials?.operatingProfit ?? 0).toFixed(2)}
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">Sales - (COGS + Ops Overhead)</p>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    </TabsContent>
-
-                    <TabsContent value="cashflow" className="mt-0">
-                        <Link to="/movements">
-                            <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Net Position</CardTitle>
-                                    <DollarSign className="h-4 w-4 text-blue-500" />
-                                </CardHeader>
-                                <CardContent>
-                                    {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                        <div className={`text-2xl font-bold ${((financials?.salesRevenue || 0) - totalExpensesWithLiability) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            ${((financials?.salesRevenue || 0) - totalExpensesWithLiability).toFixed(2)}
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">Revenue - All Costs (Paid & Owed)</p>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    </TabsContent>
-
-                </div>
-            </Tabs>
+                {/* Card 4: Operating Profit / Net Position */}
+                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">
+                            {isOps ? 'Operating Profit' : 'Net Position'}
+                        </CardTitle>
+                        <DollarSign className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent>
+                        {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                            <div className={`text-2xl font-bold ${(isOps ? (financials?.operatingProfit ?? 0) : netPosition) >= 0
+                                    ? 'text-green-600' : 'text-red-500'
+                                }`}>
+                                ${isOps
+                                    ? (financials?.operatingProfit ?? 0).toFixed(2)
+                                    : netPosition.toFixed(2)
+                                }
+                            </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            {isOps ? 'Sales - (COGS + Ops Overhead)' : 'Revenue - All Costs (Paid & Owed)'}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Pending Orders Row */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -388,11 +351,6 @@ export default function AdminDashboard() {
                         <CardDescription>Latest client reports</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {/* Fetch feedback here or pass as prop if optimized. For now, we'll suggest using a separate component or just linking. 
-                 To keep it simple and clean, we will implement a mini-fetch or placeholder.
-                 Actually, let's just make it a call-to-action if we don't want to over-fetch in this component.
-                 But user asked for a widget. Let's add a Notification Center summary.
-             */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -468,7 +426,7 @@ export default function AdminDashboard() {
                 </Card>
             </div>
             <div className="text-center text-xs text-muted-foreground mt-8">
-                System Version: 2.1 (Inventory Fix Applied)
+                System Version: 2.2 (Financial Views)
             </div>
         </div>
     );
