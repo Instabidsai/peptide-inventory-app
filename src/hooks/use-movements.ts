@@ -396,32 +396,39 @@ export function useCreateMovement() {
       if (bottleError) throw bottleError;
 
       // 5. AUTO-COMMISSION: For 'sale' movements, create a sales_order + commissions for rep chain
+      console.log('[COMMISSION DEBUG] Step 5 entry — type:', input.type, 'contact_id:', input.contact_id);
       if (input.type === 'sale' && input.contact_id) {
         try {
           // 5a. Find the contact's assigned rep
-          const { data: contact } = await supabase
+          const { data: contact, error: contactErr } = await supabase
             .from('contacts')
             .select('assigned_rep_id, name')
             .eq('id', input.contact_id)
             .single();
 
-          if (contact?.assigned_rep_id) {
+          console.log('[COMMISSION DEBUG] 5a. Contact lookup:', JSON.stringify(contact), 'Error:', contactErr);
+
+          if ((contact as any)?.assigned_rep_id) {
             const totalSaleAmount = input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0);
             const commissionRate = 0.10; // 10% for each rep
             const commissionPerRep = totalSaleAmount * commissionRate;
 
+            console.log('[COMMISSION DEBUG] 5a. Sale amount:', totalSaleAmount, 'Commission per rep:', commissionPerRep);
+
             // 5b. Walk the upline chain to find all reps who get commission
             const repChain: { id: string; name: string }[] = [];
-            let currentRepId: string | null = contact.assigned_rep_id;
+            let currentRepId: string | null = (contact as any).assigned_rep_id;
             const visited = new Set<string>();
 
             while (currentRepId && !visited.has(currentRepId)) {
               visited.add(currentRepId);
-              const { data: repProfile } = await supabase
+              const { data: repProfile, error: repErr } = await supabase
                 .from('profiles')
                 .select('id, full_name, parent_rep_id')
                 .eq('id', currentRepId)
                 .single();
+
+              console.log('[COMMISSION DEBUG] 5b. Rep lookup for', currentRepId, ':', JSON.stringify(repProfile), 'Error:', repErr);
 
               if (repProfile) {
                 repChain.push({ id: repProfile.id, name: (repProfile as any).full_name || 'Unknown' });
@@ -430,6 +437,8 @@ export function useCreateMovement() {
                 break;
               }
             }
+
+            console.log('[COMMISSION DEBUG] 5b. Rep chain:', JSON.stringify(repChain));
 
             if (repChain.length > 0) {
               const totalCommission = commissionPerRep * repChain.length;
@@ -445,13 +454,15 @@ export function useCreateMovement() {
                   total_amount: totalSaleAmount,
                   commission_amount: totalCommission,
                   commission_status: 'auto_applied',
-                  notes: `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${contact.name || 'Unknown'}.`,
+                  notes: `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${(contact as any).name || 'Unknown'}.`,
                 })
                 .select()
                 .single();
 
+              console.log('[COMMISSION DEBUG] 5c. Sales order created:', JSON.stringify(salesOrder), 'Error:', soErr);
+
               if (soErr) {
-                console.error('Failed to create sales_order for commission:', soErr);
+                console.error('[COMMISSION DEBUG] Failed to create sales_order:', soErr);
               } else {
                 // 5d. For each rep in chain, apply 10% commission against their balance
                 const auditLines: string[] = [];
@@ -467,15 +478,19 @@ export function useCreateMovement() {
                   const oldBalance = Number((repBal as any)?.credit_balance) || 0;
                   const newBalance = oldBalance + commissionPerRep;
 
+                  console.log('[COMMISSION DEBUG] 5d. Rep', rep.name, '- oldBalance:', oldBalance, 'newBalance:', newBalance);
+
                   // Update credit_balance
-                  await supabase
+                  const { error: balErr } = await supabase
                     .from('profiles')
-                    .update({ credit_balance: newBalance })
+                    .update({ credit_balance: newBalance } as any)
                     .eq('id', rep.id);
+
+                  console.log('[COMMISSION DEBUG] 5d. Balance update error:', balErr);
 
                   // Insert into commissions table so it shows on Payouts tab
                   const commissionStatus = oldBalance < 0 ? 'applied_to_debt' : 'pending';
-                  await supabase
+                  const { error: commInsertErr } = await supabase
                     .from('commissions')
                     .insert({
                       partner_id: rep.id,
@@ -484,13 +499,14 @@ export function useCreateMovement() {
                       amount: commissionPerRep,
                       status: commissionStatus,
                       description: oldBalance < 0
-                        ? `Auto-applied to debt (debt: $${Math.abs(oldBalance).toFixed(2)} → $${newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00'}). From sale to ${contact.name || 'Unknown'}.`
-                        : `10% commission from sale to ${contact.name || 'Unknown'}. Balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)}.`,
-                    });
+                        ? `Auto-applied to debt (debt: $${Math.abs(oldBalance).toFixed(2)} → $${newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00'}). From sale to ${(contact as any).name || 'Unknown'}.`
+                        : `10% commission from sale to ${(contact as any).name || 'Unknown'}. Balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)}.`,
+                    } as any);
+
+                  console.log('[COMMISSION DEBUG] 5d. Commission insert error:', commInsertErr);
 
                   // Build audit trail
                   if (oldBalance < 0) {
-                    // They have debt — commission is offsetting it
                     const debtBefore = Math.abs(oldBalance).toFixed(2);
                     const debtAfter = newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00';
                     auditLines.push(
@@ -506,7 +522,7 @@ export function useCreateMovement() {
                 // 5e. Update the sales_order notes with full audit trail
                 const auditNote = [
                   `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}).`,
-                  `Client: ${contact.name || 'Unknown'}. Sale: $${totalSaleAmount.toFixed(2)}.`,
+                  `Client: ${(contact as any).name || 'Unknown'}. Sale: $${totalSaleAmount.toFixed(2)}.`,
                   `Commission: 10% × ${repChain.length} reps = $${totalCommission.toFixed(2)}.`,
                   `---`,
                   ...auditLines,
@@ -517,14 +533,20 @@ export function useCreateMovement() {
                   .update({ notes: auditNote })
                   .eq('id', salesOrder.id);
 
-                console.log('Auto-commission applied:', auditNote);
+                console.log('[COMMISSION DEBUG] ✅ Auto-commission COMPLETE:', auditNote);
               }
+            } else {
+              console.log('[COMMISSION DEBUG] ❌ No reps found in chain');
             }
+          } else {
+            console.log('[COMMISSION DEBUG] ❌ No assigned_rep_id on contact. Contact data:', JSON.stringify(contact));
           }
         } catch (commErr) {
           // Don't block the movement if commission fails
-          console.error('Auto-commission error (non-blocking):', commErr);
+          console.error('[COMMISSION DEBUG] ❌ EXCEPTION:', commErr);
         }
+      } else {
+        console.log('[COMMISSION DEBUG] ❌ Skipped — type:', input.type, 'contact_id:', input.contact_id);
       }
 
       return movement;
