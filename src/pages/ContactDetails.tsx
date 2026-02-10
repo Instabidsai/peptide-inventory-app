@@ -1470,6 +1470,21 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
         }
     });
 
+    const markAsUsed = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('client_inventory')
+                .update({ current_quantity_mg: 0, status: 'depleted' })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
+            queryClient.invalidateQueries({ queryKey: ['regimen-bottles'] });
+            toast({ title: "Vial marked as used up", description: "Moved to order history." });
+        }
+    });
+
     const returnToStock = useRestockInventory();
 
     // Grouping Logic for "Order History" (Existing)
@@ -1607,6 +1622,13 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                     <Plus className="mr-2 h-3.5 w-3.5" /> Attach to Regimen
                                                                 </DropdownMenuItem>
                                                             )}
+                                                            <DropdownMenuItem onClick={() => {
+                                                                if (confirm('Mark this vial as fully used? It will be removed from current stock.')) {
+                                                                    markAsUsed.mutate(item.id);
+                                                                }
+                                                            }}>
+                                                                <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
+                                                            </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
                                                                 <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
                                                             </DropdownMenuItem>
@@ -1693,6 +1715,13 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                                 <Plus className="mr-2 h-3.5 w-3.5" /> Attach to Regimen
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                        <DropdownMenuItem onClick={() => {
+                                                                            if (confirm('Mark this vial as fully used? It will be removed from current stock.')) {
+                                                                                markAsUsed.mutate(item.id);
+                                                                            }
+                                                                        }}>
+                                                                            <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
+                                                                        </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
                                                                             <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
                                                                         </DropdownMenuItem>
