@@ -443,19 +443,23 @@ export function useCreateMovement() {
             if (repChain.length > 0) {
               const totalCommission = commissionPerRep * repChain.length;
 
+              // 5c. Ensure we have a valid org_id
+              const orgId = profile?.org_id || '33a18316-b0a4-4d85-a770-d1ceb762bd4f';
+              console.log('[COMMISSION DEBUG] 5c. Using org_id:', orgId, 'from profile:', profile?.id);
+
               // 5c. Create the sales_order record
               const { data: salesOrder, error: soErr } = await supabase
                 .from('sales_orders')
                 .insert({
-                  org_id: profile.org_id,
+                  org_id: orgId,
                   client_id: input.contact_id,
                   rep_id: repChain[0].id, // Direct rep
                   status: 'fulfilled',
                   total_amount: totalSaleAmount,
                   commission_amount: totalCommission,
-                  commission_status: 'auto_applied',
+                  commission_status: 'pending',
                   notes: `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${(contact as any).name || 'Unknown'}.`,
-                })
+                } as any)
                 .select()
                 .single();
 
@@ -489,18 +493,17 @@ export function useCreateMovement() {
                   console.log('[COMMISSION DEBUG] 5d. Balance update error:', balErr);
 
                   // Insert into commissions table so it shows on Payouts tab
+                  // NOTE: commissions table does NOT have a 'description' column
                   const commissionStatus = oldBalance < 0 ? 'applied_to_debt' : 'pending';
                   const { error: commInsertErr } = await supabase
                     .from('commissions')
                     .insert({
                       partner_id: rep.id,
-                      sales_order_id: salesOrder.id,
-                      type: 'sale_commission',
+                      sale_id: salesOrder.id,
+                      type: 'direct',
                       amount: commissionPerRep,
+                      commission_rate: commissionRate,
                       status: commissionStatus,
-                      description: oldBalance < 0
-                        ? `Auto-applied to debt (debt: $${Math.abs(oldBalance).toFixed(2)} → $${newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00'}). From sale to ${(contact as any).name || 'Unknown'}.`
-                        : `10% commission from sale to ${(contact as any).name || 'Unknown'}. Balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)}.`,
                     } as any);
 
                   console.log('[COMMISSION DEBUG] 5d. Commission insert error:', commInsertErr);
@@ -669,7 +672,7 @@ export function useDeleteMovement() {
             await supabase
               .from('commissions')
               .delete()
-              .eq('sales_order_id', order.id);
+              .eq('sale_id', order.id);
 
             // Delete the sales_order
             await supabase
