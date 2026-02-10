@@ -11,7 +11,7 @@ import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected to default import
-import { usePartnerDownline, useCommissions, usePayCommission, useConvertCommission, PartnerNode } from '@/hooks/use-partner';
+import { usePartnerDownline, useCommissions, usePayCommission, PartnerNode } from '@/hooks/use-partner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -220,21 +220,9 @@ export default function PartnerDetail() {
 }
 
 function PayoutsTabContent({ repId }: { repId: string }) {
-    // We need to fetch commissions for THIS partner, not the logged in user.
-    // The hook useCommissions uses useAuth().user.id. 
-    // We need to refactor useCommissions or make a new query here.
-    // Let's make a quick specialized query here for now or update the hook?
-    // Updating the hook is cleaner.
-
-    // Actually, I'll update the hook in the NEXT step if needed, but for now let's assume I can pass an ID.
-    // Wait, useCommissions doesn't accept an ID. I should have checked that.
-    // I will use a direct query here for speed, or update the hook.
-    // Let's use direct query to avoid breaking the existing hook used by Dashboard.
-
     const { toast } = useToast();
-    const queryClient = useQueryClient(); // Need this context
+    const queryClient = useQueryClient();
     const payCommission = usePayCommission();
-    const convertCommission = useConvertCommission();
 
     const { data: commissions, isLoading } = useQuery({
         queryKey: ['admin_partner_commissions', repId],
@@ -252,32 +240,112 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     const handlePay = (id: string) => {
         payCommission.mutate(id, {
             onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions', repId] });
                 toast({ title: 'Commission Paid', description: 'Status updated to paid.' });
             }
         });
     };
 
-    const handleConvert = (id: string) => {
-        convertCommission.mutate(id, {
-            onSuccess: () => {
-                toast({ title: 'Converted to Credit', description: 'Commission added to partner wallet.' });
-            }
-        });
-    };
+    const handleApplyToBalance = async (commissionId: string, amount: number) => {
+        try {
+            // 1. Find the partner's contact record by matching email
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', repId)
+                .single();
 
-    /* 
-       Note: The usePayCommission hook invalidates ['commissions']. 
-       Our query key is ['admin_partner_commissions', repId].
-       So it won't auto-refresh. I should pass onSuccess to invalidate this key.
-       Or better, refactor useCommissions to accept ID.
-       
-       Let's stick to the inline query but add invalidation.
-    */
+            if (!profile?.email) {
+                toast({ title: 'Error', description: 'Could not find partner email.', variant: 'destructive' });
+                return;
+            }
+
+            const { data: contact } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('email', profile.email)
+                .single();
+
+            if (!contact) {
+                toast({ title: 'No Contact Record', description: 'This partner has no matching contact record to apply credit against.', variant: 'destructive' });
+                return;
+            }
+
+            // 2. Find unpaid movements for this contact and apply the amount
+            const { data: unpaidMovements } = await supabase
+                .from('movements')
+                .select('id, payment_status, amount_paid, movement_items(price_at_sale)')
+                .eq('contact_id', contact.id)
+                .neq('payment_status', 'paid')
+                .neq('status', 'returned')
+                .order('created_at', { ascending: true });
+
+            let remaining = amount;
+
+            if (unpaidMovements && unpaidMovements.length > 0) {
+                for (const movement of unpaidMovements) {
+                    if (remaining <= 0) break;
+
+                    const totalPrice = (movement as any).movement_items?.reduce(
+                        (sum: number, item: any) => sum + (item.price_at_sale || 0), 0
+                    ) || 0;
+                    const alreadyPaid = (movement as any).amount_paid || 0;
+                    const owedOnThis = totalPrice - alreadyPaid;
+
+                    if (owedOnThis <= 0) continue;
+
+                    const paymentOnThis = Math.min(remaining, owedOnThis);
+                    const newAmountPaid = alreadyPaid + paymentOnThis;
+                    const fullyPaid = newAmountPaid >= totalPrice;
+
+                    await supabase
+                        .from('movements')
+                        .update({
+                            amount_paid: newAmountPaid,
+                            payment_status: fullyPaid ? 'paid' : 'partial',
+                            payment_date: new Date().toISOString(),
+                            notes: `Commission credit applied: $${paymentOnThis.toFixed(2)}`
+                        } as any)
+                        .eq('id', movement.id);
+
+                    remaining -= paymentOnThis;
+                }
+            }
+
+            // 3. Mark the commission as 'available' (= applied to balance)
+            await supabase
+                .from('commissions')
+                .update({ status: 'available' } as any)
+                .eq('id', commissionId);
+
+            // 4. Refresh queries
+            queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions', repId] });
+            queryClient.invalidateQueries({ queryKey: ['movements'] });
+
+            const appliedAmount = amount - remaining;
+            toast({
+                title: 'Applied to Balance',
+                description: `$${appliedAmount.toFixed(2)} applied to outstanding balance.${remaining > 0 ? ` $${remaining.toFixed(2)} excess added to credit.` : ''}`
+            });
+        } catch (err: any) {
+            console.error('Apply to balance error:', err);
+            toast({ title: 'Error', description: err.message || 'Failed to apply commission to balance.', variant: 'destructive' });
+        }
+    };
 
     if (isLoading) return <div>Loading commissions...</div>;
 
-    const pending = commissions?.filter(c => c.status === 'pending') || [];
-    const history = commissions?.filter(c => c.status !== 'pending') || [];
+    const pending = commissions?.filter((c: any) => c.status === 'pending') || [];
+    const history = commissions?.filter((c: any) => c.status !== 'pending') || [];
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'paid': return { label: 'Paid', className: 'bg-emerald-900/20 text-emerald-400 border-emerald-500/40' };
+            case 'available': return { label: 'Applied to Balance', className: 'bg-blue-900/20 text-blue-400 border-blue-500/40' };
+            case 'void': return { label: 'Void', className: 'bg-red-900/20 text-red-400 border-red-500/40' };
+            default: return { label: status, className: '' };
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -303,26 +371,26 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                     <TableCell colSpan={5} className="text-center text-muted-foreground">No pending commissions</TableCell>
                                 </TableRow>
                             )}
-                            {pending.map(c => (
+                            {pending.map((c: any) => (
                                 <TableRow key={c.id}>
                                     <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
                                     <TableCell>{c.sales_orders?.order_number || 'N/A'}</TableCell>
-                                    <TableCell className="capitalize">{c.type.replace(/_/g, ' ')}</TableCell>
-                                    <TableCell className="font-medium">${c.amount.toFixed(2)}</TableCell>
+                                    <TableCell className="capitalize">{c.type?.replace(/_/g, ' ') || 'N/A'}</TableCell>
+                                    <TableCell className="font-medium">${Number(c.amount).toFixed(2)}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => handleConvert(c.id)}
-                                                disabled={convertCommission.isPending || payCommission.isPending}
+                                                className="border-blue-500/40 text-blue-400 hover:bg-blue-900/20"
+                                                onClick={() => handleApplyToBalance(c.id, Number(c.amount))}
                                             >
-                                                To Credit
+                                                Apply to Balance
                                             </Button>
                                             <Button
                                                 size="sm"
                                                 onClick={() => handlePay(c.id)}
-                                                disabled={payCommission.isPending || convertCommission.isPending}
+                                                disabled={payCommission.isPending}
                                             >
                                                 Mark Paid
                                             </Button>
@@ -356,15 +424,22 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                     <TableCell colSpan={5} className="text-center text-muted-foreground">No history found</TableCell>
                                 </TableRow>
                             )}
-                            {history.map(c => (
-                                <TableRow key={c.id}>
-                                    <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                                    <TableCell>{c.sales_orders?.order_number || 'N/A'}</TableCell>
-                                    <TableCell className="capitalize">{c.type.replace(/_/g, ' ')}</TableCell>
-                                    <TableCell>${c.amount.toFixed(2)}</TableCell>
-                                    <TableCell><Badge variant="outline">{c.status}</Badge></TableCell>
-                                </TableRow>
-                            ))}
+                            {history.map((c: any) => {
+                                const statusInfo = getStatusLabel(c.status);
+                                return (
+                                    <TableRow key={c.id}>
+                                        <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
+                                        <TableCell>{c.sales_orders?.order_number || 'N/A'}</TableCell>
+                                        <TableCell className="capitalize">{c.type?.replace(/_/g, ' ') || 'N/A'}</TableCell>
+                                        <TableCell>${Number(c.amount).toFixed(2)}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={statusInfo.className}>
+                                                {statusInfo.label}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>
