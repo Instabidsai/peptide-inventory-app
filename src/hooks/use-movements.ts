@@ -537,22 +537,107 @@ export function useDeleteMovement() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First get the movement items to restore bottle statuses
+      // FULL UNDO: Reverse everything — bottles, inventory, commissions, credit_balance, sales_order
+
+      // 0. Fetch the movement itself to know type and contact
+      const { data: movement } = await supabase
+        .from('movements')
+        .select('type, contact_id')
+        .eq('id', id)
+        .single();
+
+      // 1. Get movement items to restore bottle statuses
       const { data: items } = await supabase
         .from('movement_items')
-        .select('bottle_id')
+        .select('bottle_id, price_at_sale')
         .eq('movement_id', id);
 
       if (items && items.length > 0) {
-        // Restore bottles to in_stock
         const bottleIds = items.map(i => i.bottle_id);
+        // Restore bottles to in_stock
         await supabase
           .from('bottles')
           .update({ status: 'in_stock' })
           .in('id', bottleIds);
       }
 
-      // Delete the movement (cascade will delete items)
+      // 2. Delete client_inventory entries linked to this movement
+      const { error: invErr } = await supabase
+        .from('client_inventory')
+        .delete()
+        .eq('movement_id', id);
+      if (invErr) console.error('Failed to cleanup client_inventory:', invErr);
+
+      // 3. Reverse commissions if this was a sale
+      if (movement?.type === 'sale' && movement?.contact_id) {
+        try {
+          const movementShortId = id.slice(0, 8);
+
+          // Find the auto-generated sales_order by movement ID in notes
+          const { data: linkedOrders } = await supabase
+            .from('sales_orders')
+            .select('id, total_amount, rep_id, notes, commission_amount')
+            .ilike('notes', `%${movementShortId}%`);
+
+          for (const order of (linkedOrders || [])) {
+            // Walk the upline chain from the contact's assigned rep to reverse commissions
+            const { data: contact } = await supabase
+              .from('contacts')
+              .select('assigned_rep_id')
+              .eq('id', movement.contact_id)
+              .single();
+
+            if (contact?.assigned_rep_id) {
+              const commissionPerRep = (order.total_amount || 0) * 0.10;
+
+              // Walk chain exactly like we did when creating
+              let currentRepId: string | null = (contact as any).assigned_rep_id;
+              const visited = new Set<string>();
+              const reversalLog: string[] = [];
+
+              while (currentRepId && !visited.has(currentRepId)) {
+                visited.add(currentRepId);
+                const { data: repProfile } = await supabase
+                  .from('profiles')
+                  .select('id, full_name, parent_rep_id, credit_balance')
+                  .eq('id', currentRepId)
+                  .single();
+
+                if (repProfile) {
+                  const oldBalance = Number((repProfile as any)?.credit_balance) || 0;
+                  const newBalance = oldBalance - commissionPerRep;
+
+                  // Subtract the commission back
+                  await supabase
+                    .from('profiles')
+                    .update({ credit_balance: newBalance })
+                    .eq('id', repProfile.id);
+
+                  reversalLog.push(
+                    `${(repProfile as any).full_name}: -$${commissionPerRep.toFixed(2)} (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
+                  );
+
+                  currentRepId = (repProfile as any).parent_rep_id || null;
+                } else {
+                  break;
+                }
+              }
+
+              console.log('Commission reversal:', reversalLog.join(', '));
+            }
+
+            // Delete the sales_order
+            await supabase
+              .from('sales_orders')
+              .delete()
+              .eq('id', order.id);
+          }
+        } catch (commErr) {
+          console.error('Commission reversal error (non-blocking):', commErr);
+        }
+      }
+
+      // 4. Finally delete the movement (cascade deletes movement_items)
       const { error } = await supabase
         .from('movements')
         .delete()
@@ -563,10 +648,13 @@ export function useDeleteMovement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
-      toast({ title: 'Movement deleted, bottles restored to stock' });
+      queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+      toast({ title: 'Sale fully reversed — bottles, inventory, commissions all undone' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Failed to delete movement', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed to undo sale', description: error.message });
     },
   });
 }
