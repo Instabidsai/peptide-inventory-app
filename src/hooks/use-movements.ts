@@ -393,17 +393,133 @@ export function useCreateMovement() {
         .update({ status: newStatus })
         .in('id', bottleIds);
 
-      if (bottleError) throw bottleError; // Technically if this fails, we have inconsistency (movement but bottle in stock)
-      // But it's better than blocking the previous steps? 
-      // Ideally we'd use a transaction if Supabase JS supported it easily, or an RPC.
-      // For now, this order is safer for RLS visibility.
+      if (bottleError) throw bottleError;
+
+      // 5. AUTO-COMMISSION: For 'sale' movements, create a sales_order + commissions for rep chain
+      if (input.type === 'sale' && input.contact_id) {
+        try {
+          // 5a. Find the contact's assigned rep
+          const { data: contact } = await supabase
+            .from('contacts')
+            .select('assigned_rep_id, name')
+            .eq('id', input.contact_id)
+            .single();
+
+          if (contact?.assigned_rep_id) {
+            const totalSaleAmount = input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0);
+            const commissionRate = 0.10; // 10% for each rep
+            const commissionPerRep = totalSaleAmount * commissionRate;
+
+            // 5b. Walk the upline chain to find all reps who get commission
+            const repChain: { id: string; name: string }[] = [];
+            let currentRepId: string | null = contact.assigned_rep_id;
+            const visited = new Set<string>();
+
+            while (currentRepId && !visited.has(currentRepId)) {
+              visited.add(currentRepId);
+              const { data: repProfile } = await supabase
+                .from('profiles')
+                .select('id, full_name, parent_rep_id')
+                .eq('id', currentRepId)
+                .single();
+
+              if (repProfile) {
+                repChain.push({ id: repProfile.id, name: (repProfile as any).full_name || 'Unknown' });
+                currentRepId = (repProfile as any).parent_rep_id || null;
+              } else {
+                break;
+              }
+            }
+
+            if (repChain.length > 0) {
+              const totalCommission = commissionPerRep * repChain.length;
+
+              // 5c. Create the sales_order record
+              const { data: salesOrder, error: soErr } = await supabase
+                .from('sales_orders')
+                .insert({
+                  org_id: profile.org_id,
+                  client_id: input.contact_id,
+                  rep_id: repChain[0].id, // Direct rep
+                  status: 'fulfilled',
+                  total_amount: totalSaleAmount,
+                  commission_amount: totalCommission,
+                  commission_status: 'auto_applied',
+                  notes: `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${contact.name || 'Unknown'}.`,
+                })
+                .select()
+                .single();
+
+              if (soErr) {
+                console.error('Failed to create sales_order for commission:', soErr);
+              } else {
+                // 5d. For each rep in chain, apply 10% commission against their balance
+                const auditLines: string[] = [];
+
+                for (const rep of repChain) {
+                  // Fetch current credit_balance
+                  const { data: repBal } = await supabase
+                    .from('profiles')
+                    .select('credit_balance')
+                    .eq('id', rep.id)
+                    .single();
+
+                  const oldBalance = Number((repBal as any)?.credit_balance) || 0;
+                  const newBalance = oldBalance + commissionPerRep;
+
+                  // Update credit_balance
+                  await supabase
+                    .from('profiles')
+                    .update({ credit_balance: newBalance })
+                    .eq('id', rep.id);
+
+                  // Build audit trail
+                  if (oldBalance < 0) {
+                    // They have debt — commission is offsetting it
+                    const debtBefore = Math.abs(oldBalance).toFixed(2);
+                    const debtAfter = newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00';
+                    auditLines.push(
+                      `${rep.name}: $${commissionPerRep.toFixed(2)} commission → PARTIAL DEBT PAYMENT (debt: $${debtBefore} → $${debtAfter})`
+                    );
+                  } else {
+                    auditLines.push(
+                      `${rep.name}: $${commissionPerRep.toFixed(2)} commission → added to credit (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
+                    );
+                  }
+                }
+
+                // 5e. Update the sales_order notes with full audit trail
+                const auditNote = [
+                  `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}).`,
+                  `Client: ${contact.name || 'Unknown'}. Sale: $${totalSaleAmount.toFixed(2)}.`,
+                  `Commission: 10% × ${repChain.length} reps = $${totalCommission.toFixed(2)}.`,
+                  `---`,
+                  ...auditLines,
+                ].join('\n');
+
+                await supabase
+                  .from('sales_orders')
+                  .update({ notes: auditNote })
+                  .eq('id', salesOrder.id);
+
+                console.log('Auto-commission applied:', auditNote);
+              }
+            }
+          }
+        } catch (commErr) {
+          // Don't block the movement if commission fails
+          console.error('Auto-commission error (non-blocking):', commErr);
+        }
+      }
 
       return movement;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
-      queryClient.invalidateQueries({ queryKey: ['client-inventory'] }); // Invalidate client inventory cache
+      queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       toast({
         title: 'Movement recorded',
         description: `${variables.items.length} bottle(s) marked as ${movementTypeToBottleStatus[variables.type].replace('_', ' ')}`
