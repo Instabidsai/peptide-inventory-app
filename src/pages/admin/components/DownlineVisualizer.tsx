@@ -30,6 +30,11 @@ const tierColors: Record<string, { bg: string; text: string; border: string }> =
         text: 'text-slate-300',
         border: 'border-slate-600/40',
     },
+    client: {
+        bg: 'bg-blue-900/20',
+        text: 'text-blue-400',
+        border: 'border-blue-500/40',
+    },
 };
 
 function getTierStyle(tier: string) {
@@ -47,12 +52,23 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
     const [isExpanded, setIsExpanded] = React.useState(true);
     const navigate = useNavigate();
     const style = getTierStyle(node.partner_tier);
+    const isClient = node.isClient === true;
 
     // Find direct children
     const children = allNodes.filter(
         n => n.parent_rep_id === node.id
     );
     const hasChildren = children.length > 0;
+
+    const handleClick = () => {
+        if (isClient) {
+            // Extract real contact ID from "client-{uuid}" format
+            const contactId = node.id.replace('client-', '');
+            navigate(`/admin/contacts/${contactId}`);
+        } else {
+            navigate(`/admin/partners/${node.id}`);
+        }
+    };
 
     return (
         <div className="relative">
@@ -81,7 +97,7 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
                     style.bg,
                     level > 0 && "ml-8"
                 )}
-                onClick={() => navigate(`/admin/partners/${node.id}`)}
+                onClick={handleClick}
             >
                 {/* Expand/collapse toggle */}
                 <div
@@ -125,7 +141,7 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
                                 style.border,
                             )}
                         >
-                            {node.partner_tier || 'standard'}
+                            {isClient ? (node.contactType || 'customer') : (node.partner_tier || 'standard')}
                         </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground flex gap-3 mt-0.5">
@@ -133,24 +149,26 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center gap-4 text-xs">
-                    <div className="text-center">
-                        <div className="text-muted-foreground">Commission</div>
-                        <div className={cn("font-semibold", style.text)}>
-                            {((node.commission_rate || 0) * 100).toFixed(0)}%
-                        </div>
-                    </div>
-                    {hasChildren && (
+                {/* Stats - only show for reps */}
+                {!isClient && (
+                    <div className="flex items-center gap-4 text-xs">
                         <div className="text-center">
-                            <div className="text-muted-foreground">Downline</div>
-                            <div className="font-semibold flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {children.length}
+                            <div className="text-muted-foreground">Commission</div>
+                            <div className={cn("font-semibold", style.text)}>
+                                {((node.commission_rate || 0) * 100).toFixed(0)}%
                             </div>
                         </div>
-                    )}
-                </div>
+                        {hasChildren && (
+                            <div className="text-center">
+                                <div className="text-muted-foreground">Downline</div>
+                                <div className="font-semibold flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    {children.length}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Children */}

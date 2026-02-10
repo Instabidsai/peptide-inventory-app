@@ -11,7 +11,7 @@ import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected to default import
-import { usePartnerDownline, useCommissions, usePayCommission, useConvertCommission } from '@/hooks/use-partner';
+import { usePartnerDownline, useCommissions, usePayCommission, useConvertCommission, PartnerNode } from '@/hooks/use-partner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,19 +21,57 @@ import { useState } from 'react';
 
 // Helper for the Network Tab
 function NetworkTabContent({ repId }: { repId: string }) {
-    const { data: downline, isLoading } = usePartnerDownline(repId); // Uses the new hook logic
+    const { data: downline, isLoading } = usePartnerDownline(repId);
+
+    // Also fetch assigned clients/contacts for all reps in the downline
+    const repIds = React.useMemo(() => {
+        if (!downline) return [];
+        return downline.map(n => n.id);
+    }, [downline]);
+
+    const { data: clients } = useQuery({
+        queryKey: ['downline_clients', repId, repIds],
+        queryFn: async () => {
+            if (repIds.length === 0) return [];
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, assigned_rep_id')
+                .in('assigned_rep_id', repIds);
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: repIds.length > 0,
+    });
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading network data...</div>;
 
-    // Pass root partner details if needed, but Visualizer takes a list?
-    // The hook returns FlattenedPartnerNode[]. Visualizer expects that.
+    // Merge clients as leaf nodes into the partner tree
+    const clientNodes: PartnerNode[] = (clients || []).map(c => ({
+        id: `client-${c.id}`,
+        full_name: c.name,
+        email: c.email,
+        partner_tier: 'client',
+        commission_rate: 0,
+        total_sales: 0,
+        depth: 0,
+        path: [],
+        parent_rep_id: c.assigned_rep_id,
+        isClient: true,
+        contactType: c.type || 'customer',
+    }));
+
+    const allNodes = [...(downline || []), ...clientNodes];
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Network Strategy</h3>
-                <Badge variant="outline">Total Downline: {downline?.length || 0}</Badge>
+                <div className="flex gap-2">
+                    <Badge variant="outline">Reps: {downline?.length || 0}</Badge>
+                    <Badge variant="outline" className="border-blue-500/40 text-blue-400">Clients: {clientNodes.length}</Badge>
+                </div>
             </div>
-            <DownlineVisualizer data={downline || []} />
+            <DownlineVisualizer data={allNodes} />
         </div>
     );
 }

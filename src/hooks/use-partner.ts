@@ -13,6 +13,8 @@ export interface PartnerNode {
     depth: number;
     path: string[];
     parent_rep_id: string | null;
+    isClient?: boolean;
+    contactType?: string;
 }
 
 export interface Commission {
