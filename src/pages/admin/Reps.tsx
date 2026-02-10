@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
@@ -93,39 +93,62 @@ export default function Reps() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {reps?.map((rep) => (
-                                        <TableRow key={rep.id}>
-                                            <TableCell className="font-medium">{rep.full_name || 'Unnamed'}</TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
-                                            <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
-                                            <TableCell className="capitalize">
-                                                <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {rep.parent_rep_id
-                                                    ? <span className="text-sm">{repNameMap.get(rep.parent_rep_id) || '—'}</span>
-                                                    : <span className="text-muted-foreground text-xs">None</span>
-                                                }
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
-                                                        <Eye className="h-4 w-4 mr-2" /> View Details
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
-                                                        <Pencil className="h-4 w-4 mr-2" /> Edit
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {(!reps || reps.length === 0) && (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                No sales reps found. Invite or promote users to get started.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
+                                    {(() => {
+                                        if (!reps || reps.length === 0) {
+                                            return (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                        No sales reps found. Invite or promote users to get started.
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        }
+
+                                        // Build hierarchy: top-level first, then children under each
+                                        const repIds = new Set(reps.map(r => r.id));
+                                        const topLevel = reps.filter(r => !r.parent_rep_id || !repIds.has(r.parent_rep_id));
+                                        const childrenOf = (parentId: string) => reps.filter(r => r.parent_rep_id === parentId);
+
+                                        const renderRow = (rep: UserProfile, depth: number = 0): React.ReactNode[] => {
+                                            const children = childrenOf(rep.id);
+                                            return [
+                                                <TableRow key={rep.id} className={depth > 0 ? 'bg-muted/20' : ''}>
+                                                    <TableCell className="font-medium">
+                                                        <div className="flex items-center" style={{ paddingLeft: `${depth * 24}px` }}>
+                                                            {depth > 0 && (
+                                                                <span className="text-muted-foreground mr-2 font-mono text-xs">└─</span>
+                                                            )}
+                                                            <span>{rep.full_name || 'Unnamed'}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
+                                                    <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
+                                                    <TableCell className="capitalize">
+                                                        <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {rep.parent_rep_id
+                                                            ? <span className="text-sm">{repNameMap.get(rep.parent_rep_id) || '—'}</span>
+                                                            : <span className="text-muted-foreground text-xs">None</span>
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
+                                                                <Eye className="h-4 w-4 mr-2" /> View Details
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
+                                                                <Pencil className="h-4 w-4 mr-2" /> Edit
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>,
+                                                ...children.flatMap(child => renderRow(child, depth + 1))
+                                            ];
+                                        };
+
+                                        return topLevel.flatMap(rep => renderRow(rep));
+                                    })()}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -167,7 +190,7 @@ export default function Reps() {
                 open={isInviteOpen}
                 onOpenChange={setIsInviteOpen}
             />
-        </div>
+        </div >
     );
 }
 
