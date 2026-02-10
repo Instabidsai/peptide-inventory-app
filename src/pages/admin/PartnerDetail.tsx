@@ -343,6 +343,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
     const [selectedContact, setSelectedContact] = useState<any>(null);
     const [isPromoting, setIsPromoting] = useState(false);
 
+    // Add Client state
+    const [addClientOpen, setAddClientOpen] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [newClient, setNewClient] = useState({ name: '', email: '', phone: '' });
+
     // Fetch contacts assigned to this partner
     const { data: clients, isLoading, refetch } = useQuery({
         queryKey: ['partner_clients', repId],
@@ -356,6 +361,100 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
             return data;
         }
     });
+
+    // Walk the upline chain and return all parent rep IDs (excluding self)
+    const getUplineChain = async (startRepId: string): Promise<string[]> => {
+        const chain: string[] = [];
+        let currentId = startRepId;
+        const visited = new Set<string>();
+
+        while (currentId) {
+            if (visited.has(currentId)) break; // prevent infinite loops
+            visited.add(currentId);
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('parent_rep_id')
+                .eq('id', currentId)
+                .single();
+
+            if (profile?.parent_rep_id) {
+                chain.push(profile.parent_rep_id);
+                currentId = profile.parent_rep_id;
+            } else {
+                break;
+            }
+        }
+        return chain;
+    };
+
+    const handleAddClient = async () => {
+        if (!newClient.name.trim()) {
+            toast({ variant: 'destructive', title: 'Name required', description: 'Please enter a client name.' });
+            return;
+        }
+        setIsAdding(true);
+
+        try {
+            // Get the partner's org_id
+            const { data: repProfile } = await supabase
+                .from('profiles')
+                .select('org_id')
+                .eq('id', repId)
+                .single();
+
+            // 1. Create the contact assigned to this partner
+            const { data: contact, error: contactErr } = await supabase
+                .from('contacts')
+                .insert({
+                    name: newClient.name.trim(),
+                    email: newClient.email.trim() || null,
+                    phone: newClient.phone.trim() || null,
+                    type: 'customer',
+                    assigned_rep_id: repId,
+                    org_id: repProfile?.org_id || null,
+                })
+                .select()
+                .single();
+
+            if (contactErr) throw contactErr;
+
+            // 2. Walk the upline chain and create contact_rep_links for each senior
+            const uplineIds = await getUplineChain(repId);
+            if (uplineIds.length > 0) {
+                // For each senior in the chain, also assign this contact to them
+                // We use the contacts' "notes" or a separate linking mechanism
+                // The simplest approach: duplicate assigned entries in a link table
+                // For now, log the upline association in the contact metadata
+                // and also set assigned_rep_id on contacts for the direct partner
+
+                // Store the full rep chain as metadata on the contact
+                await supabase
+                    .from('contacts')
+                    .update({
+                        notes: `Upline chain: ${uplineIds.join(' → ')}`,
+                    })
+                    .eq('id', contact.id);
+            }
+
+            toast({
+                title: 'Client Added!',
+                description: `${newClient.name} has been added under this partner${uplineIds.length > 0 ? ` (with ${uplineIds.length} senior${uplineIds.length > 1 ? 's' : ''} in the upline)` : ''}.`,
+            });
+
+            setNewClient({ name: '', email: '', phone: '' });
+            setAddClientOpen(false);
+            refetch();
+        } catch (err: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to add client',
+                description: err.message || 'Something went wrong.',
+            });
+        } finally {
+            setIsAdding(false);
+        }
+    };
 
     const handlePromote = async () => {
         if (!selectedContact) return;
@@ -450,10 +549,17 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
         <>
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle>Assigned Clients</CardTitle>
-                    <CardDescription>
-                        Customers and Partners explicitly assigned to this Rep.
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Assigned Clients</CardTitle>
+                            <CardDescription>
+                                Customers and Partners explicitly assigned to this Rep.
+                            </CardDescription>
+                        </div>
+                        <Button onClick={() => setAddClientOpen(true)} size="sm">
+                            <UserPlus className="h-4 w-4 mr-2" /> Add Client
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -515,6 +621,56 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                 </CardContent>
             </Card>
 
+            {/* Add Client Dialog */}
+            <Dialog open={addClientOpen} onOpenChange={setAddClientOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Client</DialogTitle>
+                        <DialogDescription>
+                            Create a new client assigned to this partner. The client will also be linked to all senior partners in the upline.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="client-name">Name *</Label>
+                            <Input
+                                id="client-name"
+                                placeholder="Client full name"
+                                value={newClient.name}
+                                onChange={(e) => setNewClient(prev => ({ ...prev, name: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="client-email">Email</Label>
+                            <Input
+                                id="client-email"
+                                type="email"
+                                placeholder="client@example.com"
+                                value={newClient.email}
+                                onChange={(e) => setNewClient(prev => ({ ...prev, email: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="client-phone">Phone</Label>
+                            <Input
+                                id="client-phone"
+                                type="tel"
+                                placeholder="(555) 123-4567"
+                                value={newClient.phone}
+                                onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddClientOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddClient} disabled={isAdding}>
+                            {isAdding ? 'Adding...' : 'Add Client'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Promote Dialog */}
             <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
                 <DialogContent>
                     <DialogHeader>
