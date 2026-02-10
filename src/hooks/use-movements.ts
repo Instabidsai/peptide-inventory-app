@@ -473,6 +473,21 @@ export function useCreateMovement() {
                     .update({ credit_balance: newBalance })
                     .eq('id', rep.id);
 
+                  // Insert into commissions table so it shows on Payouts tab
+                  const commissionStatus = oldBalance < 0 ? 'applied_to_debt' : 'pending';
+                  await supabase
+                    .from('commissions')
+                    .insert({
+                      partner_id: rep.id,
+                      sales_order_id: salesOrder.id,
+                      type: 'sale_commission',
+                      amount: commissionPerRep,
+                      status: commissionStatus,
+                      description: oldBalance < 0
+                        ? `Auto-applied to debt (debt: $${Math.abs(oldBalance).toFixed(2)} → $${newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00'}). From sale to ${contact.name || 'Unknown'}.`
+                        : `10% commission from sale to ${contact.name || 'Unknown'}. Balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)}.`,
+                    });
+
                   // Build audit trail
                   if (oldBalance < 0) {
                     // They have debt — commission is offsetting it
@@ -520,6 +535,8 @@ export function useCreateMovement() {
       queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions'] });
       toast({
         title: 'Movement recorded',
         description: `${variables.items.length} bottle(s) marked as ${movementTypeToBottleStatus[variables.type].replace('_', ' ')}`
@@ -626,6 +643,12 @@ export function useDeleteMovement() {
               console.log('Commission reversal:', reversalLog.join(', '));
             }
 
+            // Delete commissions records linked to this sales_order
+            await supabase
+              .from('commissions')
+              .delete()
+              .eq('sales_order_id', order.id);
+
             // Delete the sales_order
             await supabase
               .from('sales_orders')
@@ -651,6 +674,8 @@ export function useDeleteMovement() {
       queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions'] });
       toast({ title: 'Sale fully reversed — bottles, inventory, commissions all undone' });
     },
     onError: (error: Error) => {
