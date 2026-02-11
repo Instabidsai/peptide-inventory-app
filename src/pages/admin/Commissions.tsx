@@ -22,35 +22,27 @@ interface CommissionRow {
 }
 
 export default function Commissions() {
-    // Fetch ALL commissions with order info (matches working pattern from use-partner.ts)
+    // Fetch ALL commissions — NO joins (Supabase FK resolution is unreliable)
     const { data: commissions, isLoading } = useQuery({
         queryKey: ['admin_commissions_full'],
         queryFn: async () => {
-            // 1. Fetch commissions + sales_orders (this join works)
+            // 1. Fetch flat commissions
             const { data: rawCommissions, error } = await (supabase as any)
                 .from('commissions')
-                .select(`
-                    id,
-                    created_at,
-                    partner_id,
-                    sale_id,
-                    type,
-                    amount,
-                    commission_rate,
-                    status,
-                    sales_orders:sale_id (
-                        id,
-                        order_number,
-                        total_amount,
-                        contact_id
-                    )
-                `)
+                .select('id, created_at, partner_id, sale_id, type, amount, commission_rate, status')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             if (!rawCommissions?.length) return [] as CommissionRow[];
 
-            // 2. Batch-fetch partner profiles
+            // 2. Batch-fetch sales orders
+            const saleIds = [...new Set(rawCommissions.map((c: any) => c.sale_id).filter(Boolean))] as string[];
+            const { data: orders } = saleIds.length
+                ? await (supabase as any).from('sales_orders').select('id, order_number, total_amount, contact_id').in('id', saleIds)
+                : { data: [] };
+            const orderMap = new Map((orders || []).map((o: any) => [o.id, o]));
+
+            // 3. Batch-fetch partner profiles
             const partnerIds = [...new Set(rawCommissions.map((c: any) => c.partner_id).filter(Boolean))] as string[];
             const { data: profiles } = await supabase
                 .from('profiles')
@@ -58,24 +50,24 @@ export default function Commissions() {
                 .in('id', partnerIds);
             const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
-            // 3. Batch-fetch customer contacts
-            const contactIds = [...new Set(rawCommissions.map((c: any) => c.sales_orders?.contact_id).filter(Boolean))] as string[];
+            // 4. Batch-fetch customer contacts
+            const contactIds = [...new Set((orders || []).map((o: any) => o.contact_id).filter(Boolean))] as string[];
             const { data: contacts } = contactIds.length
                 ? await supabase.from('contacts').select('id, name').in('id', contactIds)
                 : { data: [] };
             const contactMap = new Map((contacts || []).map(c => [c.id, c]));
 
-            // 4. Merge into final rows
-            return rawCommissions.map((c: any) => ({
-                ...c,
-                profiles: profileMap.get(c.partner_id) || null,
-                sales_orders: c.sales_orders
-                    ? {
-                        ...c.sales_orders,
-                        contacts: contactMap.get(c.sales_orders.contact_id) || null
-                    }
-                    : null
-            })) as CommissionRow[];
+            // 5. Merge into final rows
+            return rawCommissions.map((c: any) => {
+                const order = orderMap.get(c.sale_id) || null;
+                return {
+                    ...c,
+                    profiles: profileMap.get(c.partner_id) || null,
+                    sales_orders: order
+                        ? { ...order, contacts: contactMap.get(order.contact_id) || null }
+                        : null
+                };
+            }) as CommissionRow[];
         },
     });
 

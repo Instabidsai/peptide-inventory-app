@@ -154,7 +154,7 @@ export function useFinancialMetrics() {
                 });
 
                 // --- 5. Commission Costs ---
-                const { data: commissionRows, error: commError } = await supabase
+                const { data: commissionRows, error: commError } = await (supabase as any)
                     .from('commissions')
                     .select('amount, status');
 
