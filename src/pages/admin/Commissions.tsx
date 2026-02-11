@@ -38,7 +38,7 @@ export default function Commissions() {
             // 2. Batch-fetch sales orders
             const saleIds = [...new Set(rawCommissions.map((c: any) => c.sale_id).filter(Boolean))] as string[];
             const { data: orders } = saleIds.length
-                ? await (supabase as any).from('sales_orders').select('id, order_number, total_amount, contact_id').in('id', saleIds)
+                ? await (supabase as any).from('sales_orders').select('id, total_amount, client_id').in('id', saleIds)
                 : { data: [] };
             const orderMap = new Map((orders || []).map((o: any) => [o.id, o]));
 
@@ -51,7 +51,7 @@ export default function Commissions() {
             const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
             // 4. Batch-fetch customer contacts
-            const contactIds = [...new Set((orders || []).map((o: any) => o.contact_id).filter(Boolean))] as string[];
+            const contactIds = [...new Set((orders || []).map((o: any) => o.client_id).filter(Boolean))] as string[];
             const { data: contacts } = contactIds.length
                 ? await supabase.from('contacts').select('id, name').in('id', contactIds)
                 : { data: [] };
@@ -64,7 +64,7 @@ export default function Commissions() {
                     ...c,
                     profiles: profileMap.get(c.partner_id) || null,
                     sales_orders: order
-                        ? { ...order, contacts: contactMap.get(order.contact_id) || null }
+                        ? { ...order, contacts: contactMap.get(order.client_id) || null }
                         : null
                 };
             }) as CommissionRow[];
