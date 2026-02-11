@@ -9,15 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard } from 'lucide-react';
+import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useFinancialMetrics } from '@/hooks/use-financials';
 
 export default function Finance() {
     const { data: expenses, isLoading: expensesLoading } = useExpenses();
     const { data: orders, isLoading: ordersLoading } = useOrders();
+    const { data: financials } = useFinancialMetrics();
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -290,6 +292,25 @@ export default function Finance() {
                         </CardContent>
                     </Card>
                 ))}
+
+                {/* Commission Liability Card */}
+                <Card className="border-l-4 border-l-purple-500">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Commission Liability</CardTitle>
+                        <Users className="h-4 w-4 text-purple-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            ${((financials?.commissionsOwed ?? 0) + (financials?.commissionsApplied ?? 0)).toFixed(2)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Pending + applied commissions</p>
+                        {(financials?.commissionsPaid ?? 0) > 0 && (
+                            <p className="text-xs text-green-500 mt-1">
+                                ${(financials?.commissionsPaid ?? 0).toFixed(2)} already paid out
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Purchase Orders / Batches */}

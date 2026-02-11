@@ -10,6 +10,11 @@ export interface FinancialMetrics {
     inventoryPurchases: number;
     netProfit: number;
     operatingProfit: number;
+    // Commission metrics
+    commissionsPaid: number;    // Cash payouts (already in expenses)
+    commissionsOwed: number;    // Pending — not yet paid
+    commissionsApplied: number; // Applied to partner balance
+    commissionsTotal: number;   // Sum of all commissions ever
 }
 
 export function useFinancialMetrics() {
@@ -148,18 +153,49 @@ export function useFinancialMetrics() {
                     }
                 });
 
+                // --- 5. Commission Costs ---
+                const { data: commissionRows, error: commError } = await supabase
+                    .from('commissions')
+                    .select('amount, status');
+
+                if (commError) console.error('Commission query failed:', commError);
+
+                let commissionsPaid = 0;    // status = 'paid' (cash — already in expenses as category 'commission')
+                let commissionsOwed = 0;    // status = 'pending' (liability)
+                let commissionsApplied = 0; // status = 'available' (applied to partner balance)
+
+                commissionRows?.forEach(c => {
+                    const amt = Number(c.amount) || 0;
+                    switch (c.status) {
+                        case 'paid': commissionsPaid += amt; break;
+                        case 'pending': commissionsOwed += amt; break;
+                        case 'available': commissionsApplied += amt; break;
+                    }
+                });
+
+                const commissionsTotal = commissionsPaid + commissionsOwed + commissionsApplied;
+
+                // Pending + Applied commissions are real costs not yet in expenses table.
+                // Paid commissions are already recorded as expenses (category: 'commission'),
+                // so they're already inside operatingExpenses. Don't double-count them.
+                const unrealizedCommissionCost = commissionsOwed + commissionsApplied;
+
                 // Total Cash Outflow = Ops + Inventory
-                // Total Overhead (for Cash Flow) = Internal + Ops + Inventory
-                // Operational Overhead = Internal + Ops
+                // Total Overhead (for Cash Flow) = Internal + Ops + Inventory + Unrealized Commissions
+                // Operational Overhead = Internal + Ops + Unrealized Commissions
 
                 return {
                     inventoryValue,
                     salesRevenue,
                     cogs,
-                    overhead: internalOverhead + operatingExpenses, // Operational Overhead
-                    inventoryPurchases: inventoryExpenses, // New field
-                    netProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses), // True Net (Cash Flow)
-                    operatingProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses) // Operational Profit
+                    overhead: internalOverhead + operatingExpenses + unrealizedCommissionCost, // Operational Overhead (now includes commission liability)
+                    inventoryPurchases: inventoryExpenses,
+                    netProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses + unrealizedCommissionCost), // True Net (Cash Flow)
+                    operatingProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + unrealizedCommissionCost), // Operational Profit (includes commission liability)
+                    commissionsPaid,
+                    commissionsOwed,
+                    commissionsApplied,
+                    commissionsTotal
                 };
             } catch (err) {
                 console.error("Error calculating financials:", err);
@@ -168,7 +204,13 @@ export function useFinancialMetrics() {
                     salesRevenue: 0,
                     cogs: 0,
                     overhead: 0,
-                    netProfit: 0
+                    inventoryPurchases: 0,
+                    netProfit: 0,
+                    operatingProfit: 0,
+                    commissionsPaid: 0,
+                    commissionsOwed: 0,
+                    commissionsApplied: 0,
+                    commissionsTotal: 0
                 };
             }
         }

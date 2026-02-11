@@ -19,7 +19,8 @@ import {
     MessageSquare,
     DollarSign,
     PieChart,
-    ClipboardList
+    ClipboardList,
+    Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -147,7 +148,7 @@ export default function AdminDashboard() {
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {isOps ? 'Excludes inventory purchases' : 'Overhead + Inventory + Owed'}
+                            {isOps ? 'Incl. commissions owed' : 'Overhead + Inventory + Owed'}
                         </p>
                     </CardContent>
                 </Card>
@@ -163,7 +164,7 @@ export default function AdminDashboard() {
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
                             <div className={`text-2xl font-bold ${(isOps ? (financials?.operatingProfit ?? 0) : netPosition) >= 0
-                                    ? 'text-green-600' : 'text-red-500'
+                                ? 'text-green-600' : 'text-red-500'
                                 }`}>
                                 ${isOps
                                     ? (financials?.operatingProfit ?? 0).toFixed(2)
@@ -172,7 +173,7 @@ export default function AdminDashboard() {
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {isOps ? 'Sales - (COGS + Ops Overhead)' : 'Revenue - All Costs (Paid & Owed)'}
+                            {isOps ? 'Revenue - (COGS + Overhead + Commissions)' : 'Revenue - All Costs (Paid & Owed)'}
                         </p>
                     </CardContent>
                 </Card>
@@ -206,6 +207,41 @@ export default function AdminDashboard() {
                                 <div className="text-2xl font-bold">${(pendingFinancials?.totalValue ?? 0).toFixed(2)}</div>
                             )}
                             <p className="text-xs text-muted-foreground">Est. cost of pending orders</p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link to="/commissions">
+                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Commissions</CardTitle>
+                            <Users className="h-4 w-4 text-purple-500" />
+                        </CardHeader>
+                        <CardContent>
+                            {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
+                                <>
+                                    <div className="text-2xl font-bold">
+                                        ${(financials?.commissionsTotal ?? 0).toFixed(2)}
+                                    </div>
+                                    <div className="flex gap-2 mt-1">
+                                        {(financials?.commissionsOwed ?? 0) > 0 && (
+                                            <span className="text-xs text-amber-500">
+                                                ${(financials?.commissionsOwed ?? 0).toFixed(2)} owed
+                                            </span>
+                                        )}
+                                        {(financials?.commissionsPaid ?? 0) > 0 && (
+                                            <span className="text-xs text-green-500">
+                                                ${(financials?.commissionsPaid ?? 0).toFixed(2)} paid
+                                            </span>
+                                        )}
+                                        {(financials?.commissionsApplied ?? 0) > 0 && (
+                                            <span className="text-xs text-blue-500">
+                                                ${(financials?.commissionsApplied ?? 0).toFixed(2)} applied
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 </Link>
