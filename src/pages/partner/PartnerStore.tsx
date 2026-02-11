@@ -62,13 +62,14 @@ export default function PartnerStore() {
     const { data: peptides, isLoading } = useQuery({
         queryKey: ['partner_store_peptides'],
         queryFn: async () => {
-            const { data, error } = await supabase
+            // Use select('*') and cast — generated types are stale and don't include retail_price
+            const { data, error } = await (supabase as any)
                 .from('peptides')
-                .select('id, name, description, sku, retail_price, avg_cost')
+                .select('*')
                 .eq('active', true)
                 .order('name');
             if (error) throw error;
-            return data;
+            return data as any[];
         },
     });
 
