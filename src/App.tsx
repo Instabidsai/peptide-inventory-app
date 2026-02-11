@@ -50,6 +50,7 @@ import ClientSettings from "./pages/client/ClientSettings";
 import MacroTracker from "./pages/client/MacroTracker";
 import BodyComposition from "./pages/client/BodyComposition";
 import CommunityForum from "./pages/client/CommunityForum";
+import ClientStore from "./pages/client/ClientStore";
 
 console.log("App.tsx Module Loaded - Imports Valid (Block 4: Admin + Full)");
 const queryClient = new QueryClient();
@@ -82,6 +83,7 @@ const App = () => (
                             <Route path="/macro-tracker" element={<MacroTracker />} />
                             <Route path="/body-composition" element={<BodyComposition />} />
                             <Route path="/community" element={<CommunityForum />} />
+                            <Route path="/store" element={<ClientStore />} />
                         </Route>
 
                         <Route element={
