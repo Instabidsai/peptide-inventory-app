@@ -75,11 +75,10 @@ export default function MovementWizard() {
 
         if (toSelect.length > 0) {
           const selection = toSelect.map(b => {
-            const msrp = b.lots?.peptides?.retail_price;
             const cost = Number(b.lots?.cost_per_unit || 0);
             return {
               bottle: b,
-              price: msrp && msrp > 0 ? msrp : cost
+              price: cost + 4
             };
           });
           setSelectedBottles(selection);
@@ -126,11 +125,10 @@ export default function MovementWizard() {
     if (isBottleSelected(bottle.id)) {
       setSelectedBottles(selectedBottles.filter((sb) => sb.bottle.id !== bottle.id));
     } else {
-      const msrp = bottle.lots?.peptides?.retail_price;
       const cost = Number(bottle.lots?.cost_per_unit || 0);
       setSelectedBottles([
         ...selectedBottles,
-        { bottle, price: msrp && msrp > 0 ? msrp : cost },
+        { bottle, price: cost + 4 },
       ]);
     }
   };
@@ -151,8 +149,23 @@ export default function MovementWizard() {
     (sum, sb) => sum + Number(sb.bottle.lots?.cost_per_unit || 0),
     0
   );
+  const totalRetail = selectedBottles.reduce(
+    (sum, sb) => sum + Number(sb.bottle.lots?.peptides?.retail_price || 0),
+    0
+  );
   const extraPrice = extraItems.reduce((sum, item) => sum + item.price, 0);
   const totalPrice = selectedBottles.reduce((sum, sb) => sum + sb.price, 0) + extraPrice;
+
+  const setAllPrices = (mode: 'cost_plus_4' | 'retail') => {
+    setSelectedBottles(selectedBottles.map(sb => {
+      const cost = Number(sb.bottle.lots?.cost_per_unit || 0);
+      const retail = Number(sb.bottle.lots?.peptides?.retail_price || 0);
+      return {
+        ...sb,
+        price: mode === 'cost_plus_4' ? cost + 4 : (retail > 0 ? retail : cost)
+      };
+    }));
+  };
 
   const canProceedStep1 = movementType !== null;
   const canProceedStep2 = selectedBottles.length > 0 || extraItems.length > 0;
@@ -350,10 +363,18 @@ export default function MovementWizard() {
           <CardHeader>
             <CardTitle>Review & Set Prices</CardTitle>
             <CardDescription>
-              Set the sale price for each bottle (defaults to cost)
+              Sale price defaults to Cost + $4. Use buttons below to switch pricing.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex gap-2 pb-2">
+              <Button variant="outline" size="sm" onClick={() => setAllPrices('cost_plus_4')}>
+                Set All: Cost + $4
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setAllPrices('retail')}>
+                Set All: Retail
+              </Button>
+            </div>
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
@@ -361,6 +382,7 @@ export default function MovementWizard() {
                     <TableHead>UID</TableHead>
                     <TableHead>Peptide</TableHead>
                     <TableHead>Cost</TableHead>
+                    <TableHead>Retail</TableHead>
                     <TableHead>Sale Price</TableHead>
                     <TableHead>Link to Regimen</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -379,6 +401,7 @@ export default function MovementWizard() {
                         <TableCell className="font-mono text-sm">{sb.bottle.uid}</TableCell>
                         <TableCell>{sb.bottle.lots?.peptides?.name}</TableCell>
                         <TableCell>${Number(sb.bottle.lots?.cost_per_unit || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">${Number(sb.bottle.lots?.peptides?.retail_price || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
@@ -528,8 +551,12 @@ export default function MovementWizard() {
                 <p className="text-sm text-muted-foreground">Total Cost</p>
                 <p className="text-lg font-semibold">${totalCost.toFixed(2)}</p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Price</p>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Retail Value</p>
+                <p className="text-lg font-semibold text-muted-foreground">${totalRetail.toFixed(2)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Sale Price</p>
                 <p className="text-lg font-semibold">${totalPrice.toFixed(2)}</p>
               </div>
               <div className="text-right">
