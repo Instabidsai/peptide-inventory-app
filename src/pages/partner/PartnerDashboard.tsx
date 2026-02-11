@@ -1,15 +1,20 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { usePartnerDownline, useCommissions, useCommissionStats, PartnerNode } from '@/hooks/use-partner';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
     Users,
     DollarSign,
     TrendingUp,
     ChevronRight,
-    Network
+    Network,
+    ShoppingBag,
+    Percent
 } from 'lucide-react';
 import {
     Table,
@@ -22,22 +27,50 @@ import {
 import { format } from 'date-fns';
 
 export default function PartnerDashboard() {
+    const { profile: authProfile } = useAuth();
     const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
+
+    // Tier display config
+    const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
+        senior: { label: 'Senior Partner', discount: '50% off retail', emoji: '🥇' },
+        standard: { label: 'Standard Partner', discount: '35% off retail', emoji: '🥈' },
+        associate: { label: 'Associate Partner', discount: '25% off retail', emoji: '🥉' },
+        executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
+    };
+    const tier = (authProfile as any)?.partner_tier || 'standard';
+    const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
+    const commRate = Number((authProfile as any)?.commission_rate || 0) * 100;
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
-                    {/* Admin Switcher */}
-                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/#/'} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
-                        <DollarSign className="mr-2 h-4 w-4" />
-                        Return to Admin
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Link to="/partner/store">
+                            <Button variant="default" size="sm">
+                                <ShoppingBag className="mr-2 h-4 w-4" />
+                                Order Peptides
+                            </Button>
+                        </Link>
+                        <Button variant="outline" size="sm" onClick={() => window.location.href = '/#/'} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Return to Admin
+                        </Button>
+                    </div>
                 </div>
-                <p className="text-muted-foreground">Manage your team and track your earnings.</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-muted-foreground">Manage your team and track your earnings.</p>
+                    <Badge variant="outline" className="text-xs">
+                        {tierInfo.emoji} {tierInfo.label}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                        <Percent className="h-3 w-3 mr-1" />
+                        {tierInfo.discount} · {commRate.toFixed(1)}% commission
+                    </Badge>
+                </div>
             </div>
 
             {/* Stats Overview */}

@@ -46,7 +46,7 @@ export default function Commissions() {
             const partnerIds = [...new Set(rawCommissions.map((c: any) => c.partner_id).filter(Boolean))] as string[];
             const { data: profiles } = await supabase
                 .from('profiles')
-                .select('id, full_name, credit_balance')
+                .select('id, full_name, credit_balance, partner_tier')
                 .in('id', partnerIds);
             const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
@@ -236,7 +236,14 @@ export default function Commissions() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{partnerName}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-medium">{partnerName}</span>
+                                                        {(() => {
+                                                            const tier = (c.profiles as any)?.partner_tier;
+                                                            const tierEmoji = tier === 'senior' ? '🥇' : tier === 'associate' ? '🥉' : tier === 'executive' ? '⭐' : '🥈';
+                                                            return <span className="text-xs">{tierEmoji}</span>;
+                                                        })()}
+                                                    </div>
                                                     <span className="text-xs text-muted-foreground">
                                                         Balance: ${((c.profiles as any)?.credit_balance || 0).toFixed(2)}
                                                     </span>
@@ -249,9 +256,12 @@ export default function Commissions() {
                                                 ${Number(c.amount).toFixed(2)}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="secondary" className="text-xs capitalize">
-                                                    {c.type || 'direct'}
-                                                </Badge>
+                                                {(() => {
+                                                    const type = c.type || 'direct';
+                                                    const label = type === 'direct' ? 'Direct' : type === 'second_tier_override' ? '2nd Tier' : type === 'third_tier_override' ? '3rd Tier' : type;
+                                                    const color = type === 'direct' ? 'bg-blue-500/10 text-blue-500' : type === 'second_tier_override' ? 'bg-amber-500/10 text-amber-500' : 'bg-purple-500/10 text-purple-500';
+                                                    return <Badge variant="secondary" className={`text-xs ${color}`}>{label}</Badge>;
+                                                })()}
                                             </TableCell>
                                             <TableCell>{statusBadge(c.status)}</TableCell>
                                         </TableRow>

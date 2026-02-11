@@ -350,16 +350,53 @@ function EditRepDialog({
 }
 
 function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: any) => void }) {
+    // Tier → default commission rate and price multiplier
+    const TIER_DEFAULTS: Record<string, { commission: number; multiplier: number; label: string }> = {
+        senior: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },
+        standard: { commission: 7.5, multiplier: 0.65, label: '35% off retail · 7.5% commission' },
+        associate: { commission: 7.5, multiplier: 0.75, label: '25% off retail · 7.5% commission' },
+        executive: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },
+    };
+
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
     const [mult, setMult] = useState(rep.price_multiplier || 1.0);
     const [tier, setTier] = useState(rep.partner_tier || 'standard');
     const [parentRep, setParentRep] = useState(rep.parent_rep_id || '');
+
+    const handleTierChange = (newTier: string) => {
+        setTier(newTier);
+        const defaults = TIER_DEFAULTS[newTier];
+        if (defaults) {
+            setComm(defaults.commission);
+            setMult(defaults.multiplier);
+        }
+    };
 
     // Filter out the current rep from potential parents (can't be your own parent)
     const potentialParents = allReps.filter(r => r.id !== rep.id);
 
     return (
         <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Tier</Label>
+                <Select value={tier} onValueChange={handleTierChange}>
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="senior">🥇 Senior Partner</SelectItem>
+                        <SelectItem value="standard">🥈 Standard Partner</SelectItem>
+                        <SelectItem value="associate">🥉 Associate Partner</SelectItem>
+                        <SelectItem value="executive">⭐ Executive</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            {TIER_DEFAULTS[tier] && (
+                <p className="text-xs text-muted-foreground text-right">
+                    {TIER_DEFAULTS[tier].label}
+                </p>
+            )}
+
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Commission (%)</Label>
                 <Input
@@ -369,6 +406,10 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     onChange={e => setComm(parseFloat(e.target.value))}
                 />
             </div>
+            <p className="text-xs text-muted-foreground text-right">
+                Direct commission rate on sales. Override rate on downline sales.
+            </p>
+
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Price Multiplier</Label>
                 <Input
@@ -379,19 +420,9 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     onChange={e => setMult(parseFloat(e.target.value))}
                 />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Tier</Label>
-                <Select value={tier} onValueChange={setTier}>
-                    <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select tier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="senior">Senior</SelectItem>
-                        <SelectItem value="executive">Executive</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            <p className="text-xs text-muted-foreground text-right">
+                {mult < 1 ? `${((1 - mult) * 100).toFixed(0)}% discount off retail` : 'No discount (retail price)'}
+            </p>
 
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Upline</Label>
@@ -405,7 +436,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                         </SelectItem>
                         {potentialParents.map(p => (
                             <SelectItem key={p.id} value={p.id}>
-                                {p.full_name || 'Unnamed'} — {((p.commission_rate || 0) * 100).toFixed(0)}%
+                                {p.full_name || 'Unnamed'} — {p.partner_tier || 'standard'} · {((p.commission_rate || 0) * 100).toFixed(0)}%
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -428,3 +459,4 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
         </div>
     )
 }
+

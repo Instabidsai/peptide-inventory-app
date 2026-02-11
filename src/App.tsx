@@ -36,6 +36,7 @@ import Finance from "./pages/admin/Finance";
 import AdminSupplements from "./pages/admin/AdminSupplements";
 import PartnerDetail from "./pages/admin/PartnerDetail";
 import PartnerDashboard from "./pages/partner/PartnerDashboard";
+import PartnerStore from "./pages/partner/PartnerStore";
 import NotFound from "./pages/NotFound";
 
 // Client Portal
@@ -111,6 +112,7 @@ const App = () => (
                             <Route path="/admin/supplements" element={<AdminSupplements />} />
 
                             <Route path="/partner" element={<PartnerDashboard />} />
+                            <Route path="/partner/store" element={<PartnerStore />} />
 
                             <Route path="/bottles" element={<Bottles />} />
 

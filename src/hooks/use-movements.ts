@@ -396,6 +396,10 @@ export function useCreateMovement() {
       if (bottleError) throw bottleError;
 
       // 5. AUTO-COMMISSION: For 'sale' movements, create a sales_order + commissions for rep chain
+      // TIERED COMMISSION ENGINE: Each rep earns their own commission_rate from their profile.
+      // Rep #0 (direct seller) → type: 'direct'
+      // Rep #1 (upline)        → type: 'second_tier_override'
+      // Rep #2 (top-level)     → type: 'third_tier_override'
       console.log('[COMMISSION DEBUG] Step 5 entry — type:', input.type, 'contact_id:', input.contact_id);
       if (input.type === 'sale' && input.contact_id) {
         try {
@@ -410,28 +414,34 @@ export function useCreateMovement() {
 
           if ((contact as any)?.assigned_rep_id) {
             const totalSaleAmount = input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0);
-            const commissionRate = 0.10; // 10% for each rep
-            const commissionPerRep = totalSaleAmount * commissionRate;
 
-            console.log('[COMMISSION DEBUG] 5a. Sale amount:', totalSaleAmount, 'Commission per rep:', commissionPerRep);
+            console.log('[COMMISSION DEBUG] 5a. Sale amount:', totalSaleAmount);
 
-            // 5b. Walk the upline chain to find all reps who get commission
-            const repChain: { id: string; name: string }[] = [];
+            // 5b. Walk the upline chain — fetch each rep's commission_rate from profile
+            const COMMISSION_TYPES = ['direct', 'second_tier_override', 'third_tier_override'] as const;
+            const repChain: { id: string; name: string; rate: number; type: string }[] = [];
             let currentRepId: string | null = (contact as any).assigned_rep_id;
             const visited = new Set<string>();
 
-            while (currentRepId && !visited.has(currentRepId)) {
+            while (currentRepId && !visited.has(currentRepId) && repChain.length < 3) {
               visited.add(currentRepId);
               const { data: repProfile, error: repErr } = await supabase
                 .from('profiles')
-                .select('id, full_name, parent_rep_id')
+                .select('id, full_name, parent_rep_id, commission_rate')
                 .eq('id', currentRepId)
                 .single();
 
               console.log('[COMMISSION DEBUG] 5b. Rep lookup for', currentRepId, ':', JSON.stringify(repProfile), 'Error:', repErr);
 
               if (repProfile) {
-                repChain.push({ id: repProfile.id, name: (repProfile as any).full_name || 'Unknown' });
+                const repRate = Number((repProfile as any).commission_rate) || 0.10; // Default 10% if not set
+                const commType = COMMISSION_TYPES[repChain.length] || 'third_tier_override';
+                repChain.push({
+                  id: repProfile.id,
+                  name: (repProfile as any).full_name || 'Unknown',
+                  rate: repRate,
+                  type: commType,
+                });
                 currentRepId = (repProfile as any).parent_rep_id || null;
               } else {
                 break;
@@ -441,7 +451,11 @@ export function useCreateMovement() {
             console.log('[COMMISSION DEBUG] 5b. Rep chain:', JSON.stringify(repChain));
 
             if (repChain.length > 0) {
-              const totalCommission = commissionPerRep * repChain.length;
+              // Calculate total commission across all reps (each has their own rate)
+              let totalCommission = 0;
+              for (const rep of repChain) {
+                totalCommission += totalSaleAmount * rep.rate;
+              }
 
               // 5c. Ensure we have a valid org_id
               const orgId = profile?.org_id || '33a18316-b0a4-4d85-a770-d1ceb762bd4f';
@@ -468,10 +482,12 @@ export function useCreateMovement() {
               if (soErr) {
                 console.error('[COMMISSION DEBUG] Failed to create sales_order:', soErr);
               } else {
-                // 5d. For each rep in chain, apply 10% commission against their balance
+                // 5d. For each rep in chain, calculate THEIR commission and apply to balance
                 const auditLines: string[] = [];
 
                 for (const rep of repChain) {
+                  const commissionAmount = totalSaleAmount * rep.rate;
+
                   // Fetch current credit_balance
                   const { data: repBal } = await supabase
                     .from('profiles')
@@ -480,9 +496,9 @@ export function useCreateMovement() {
                     .single();
 
                   const oldBalance = Number((repBal as any)?.credit_balance) || 0;
-                  const newBalance = oldBalance + commissionPerRep;
+                  const newBalance = oldBalance + commissionAmount;
 
-                  console.log('[COMMISSION DEBUG] 5d. Rep', rep.name, '- oldBalance:', oldBalance, 'newBalance:', newBalance);
+                  console.log('[COMMISSION DEBUG] 5d. Rep', rep.name, `(${rep.type}, ${(rep.rate * 100).toFixed(1)}%)`, '- commission:', commissionAmount.toFixed(2), 'oldBalance:', oldBalance, 'newBalance:', newBalance);
 
                   // Update credit_balance
                   const { error: balErr } = await supabase
@@ -492,41 +508,42 @@ export function useCreateMovement() {
 
                   console.log('[COMMISSION DEBUG] 5d. Balance update error:', balErr);
 
-                  // Insert into commissions table so it shows on Payouts tab
-                  // NOTE: commissions table does NOT have a 'description' column
+                  // Insert into commissions table with correct type
                   const commissionStatus = oldBalance < 0 ? 'applied_to_debt' : 'pending';
                   const { error: commInsertErr } = await supabase
                     .from('commissions')
                     .insert({
                       partner_id: rep.id,
                       sale_id: salesOrder.id,
-                      type: 'direct',
-                      amount: commissionPerRep,
-                      commission_rate: commissionRate,
+                      type: rep.type,
+                      amount: commissionAmount,
+                      commission_rate: rep.rate,
                       status: commissionStatus,
                     } as any);
 
                   console.log('[COMMISSION DEBUG] 5d. Commission insert error:', commInsertErr);
 
                   // Build audit trail
+                  const typeLabel = rep.type === 'direct' ? 'DIRECT' : rep.type === 'second_tier_override' ? '2ND-TIER' : '3RD-TIER';
                   if (oldBalance < 0) {
                     const debtBefore = Math.abs(oldBalance).toFixed(2);
                     const debtAfter = newBalance < 0 ? Math.abs(newBalance).toFixed(2) : '0.00';
                     auditLines.push(
-                      `${rep.name}: $${commissionPerRep.toFixed(2)} commission → PARTIAL DEBT PAYMENT (debt: $${debtBefore} → $${debtAfter})`
+                      `${rep.name} [${typeLabel}]: $${commissionAmount.toFixed(2)} (${(rep.rate * 100).toFixed(1)}%) → PARTIAL DEBT PAYMENT (debt: $${debtBefore} → $${debtAfter})`
                     );
                   } else {
                     auditLines.push(
-                      `${rep.name}: $${commissionPerRep.toFixed(2)} commission → added to credit (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
+                      `${rep.name} [${typeLabel}]: $${commissionAmount.toFixed(2)} (${(rep.rate * 100).toFixed(1)}%) → added to credit (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
                     );
                   }
                 }
 
                 // 5e. Update the sales_order notes with full audit trail
+                const rateBreakdown = repChain.map(r => `${r.name} ${(r.rate * 100).toFixed(1)}%`).join(' + ');
                 const auditNote = [
                   `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}).`,
                   `Client: ${(contact as any).name || 'Unknown'}. Sale: $${totalSaleAmount.toFixed(2)}.`,
-                  `Commission: 10% × ${repChain.length} reps = $${totalCommission.toFixed(2)}.`,
+                  `Commission breakdown: ${rateBreakdown} = $${totalCommission.toFixed(2)} total.`,
                   `---`,
                   ...auditLines,
                 ].join('\n');

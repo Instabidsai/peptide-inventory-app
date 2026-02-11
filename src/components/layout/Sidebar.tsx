@@ -37,6 +37,7 @@ const navigation = [
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
+  { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
