@@ -94,12 +94,9 @@ export function AssignInventoryForm({
         const totalMSRP = selectedBottles.reduce((acc, b) => acc + (b.lots?.peptides?.retail_price || 0), 0);
 
         // Auto-update price only if the user hasn't manually edited it
+        // Default to cost + $4/bottle fee (family/internal pricing)
         if (!isPriceDirty) {
-            if (totalMSRP > 0) {
-                setPrice(totalMSRP.toString());
-            } else {
-                setPrice(totalWithFee.toString());
-            }
+            setPrice(totalWithFee.toFixed(2));
         }
     }, [selectedBottles.length, totalCost, movementType, isPriceDirty, JSON.stringify(selectedBottles.map(b => b.lots?.peptides?.retail_price))]);
 
