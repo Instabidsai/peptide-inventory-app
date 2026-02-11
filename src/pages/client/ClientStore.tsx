@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
-import { useToast } from '@/hooks/use-toast';
+import { useCheckout } from '@/hooks/use-checkout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import {
     Package,
     Plus,
     Minus,
-    CheckCircle2,
+    CreditCard,
     Loader2,
     Search,
     Info,
@@ -31,8 +31,7 @@ interface CartItem {
 export default function ClientStore() {
     const { user } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
+    const checkout = useCheckout();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
@@ -110,73 +109,39 @@ export default function ClientStore() {
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    // Submit order mutation
-    const placeOrder = useMutation({
-        mutationFn: async () => {
-            if (!user?.id) throw new Error('Not authenticated');
-            if (cart.length === 0) throw new Error('Cart is empty');
+    // Checkout handler — creates order + redirects to PsiFi payment
+    const handleCheckout = async () => {
+        if (!user?.id) return;
+        if (cart.length === 0) return;
 
-            // Get the user's org_id from their profile
-            const { data: userProfile } = await supabase
-                .from('profiles')
-                .select('id, org_id')
-                .eq('user_id', user.id)
-                .single();
+        // Get org_id from profile
+        const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('id, org_id')
+            .eq('user_id', user.id)
+            .single();
 
-            if (!userProfile) throw new Error('Profile not found');
+        if (!userProfile) return;
+        const orgId = (userProfile as any).org_id;
+        if (!orgId) return;
 
-            const orgId = (userProfile as any).org_id;
-            if (!orgId) throw new Error('No organization found');
+        const repId = assignedRep ? (assignedRep as any).id : null;
 
-            // Create sales order
-            const repId = assignedRep ? (assignedRep as any).id : null;
-            const { data: order, error: orderError } = await (supabase as any)
-                .from('sales_orders')
-                .insert({
-                    org_id: orgId,
-                    client_id: contact?.id || null,
-                    rep_id: repId,
-                    status: 'pending',
-                    total_amount: cartTotal,
-                    commission_amount: 0, // Will be calculated by the system
-                    shipping_address: shippingAddress || null,
-                    notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
-                })
-                .select()
-                .single();
-
-            if (orderError) throw orderError;
-
-            // Create order items
-            const items = cart.map(i => ({
-                sales_order_id: order.id,
+        checkout.mutate({
+            org_id: orgId,
+            client_id: contact?.id || null,
+            rep_id: repId,
+            total_amount: cartTotal,
+            shipping_address: shippingAddress || undefined,
+            notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
+            items: cart.map(i => ({
                 peptide_id: i.peptide_id,
+                name: i.name,
                 quantity: i.quantity,
                 unit_price: i.price,
-            }));
-
-            const { error: itemsError } = await (supabase as any)
-                .from('sales_order_items')
-                .insert(items);
-
-            if (itemsError) throw itemsError;
-
-            return order;
-        },
-        onSuccess: () => {
-            toast({
-                title: '🎉 Order placed!',
-                description: `Your order for $${cartTotal.toFixed(2)} has been submitted. Your rep will process it shortly.`
-            });
-            setCart([]);
-            setNotes('');
-            setShippingAddress('');
-            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
-        },
-        onError: (error: Error) => {
-            toast({ variant: 'destructive', title: 'Failed to place order', description: error.message });
-        },
-    });
+            })),
+        });
+    };
 
     if (isLoadingContact) {
         return (
@@ -362,19 +327,19 @@ export default function ClientStore() {
                             />
                         </div>
 
-                        {/* Place Order */}
+                        {/* Checkout with Payment */}
                         <Button
                             className="w-full"
                             size="lg"
-                            onClick={() => placeOrder.mutate()}
-                            disabled={placeOrder.isPending || cart.length === 0}
+                            onClick={handleCheckout}
+                            disabled={checkout.isPending || cart.length === 0}
                         >
-                            {placeOrder.isPending ? (
+                            {checkout.isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                <CreditCard className="h-4 w-4 mr-2" />
                             )}
-                            Place Order — ${cartTotal.toFixed(2)}
+                            Checkout — ${cartTotal.toFixed(2)}
                         </Button>
                     </CardContent>
                 </GlassCard>
@@ -386,8 +351,8 @@ export default function ClientStore() {
                     <div className="flex items-start gap-3">
                         <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <p className="text-xs text-muted-foreground">
-                            Orders are submitted to your assigned representative for processing.
-                            You'll receive a notification once your order is confirmed and shipped.
+                            You'll be redirected to our secure payment processor to complete your order.
+                            Once payment is confirmed, your order will be processed and shipped.
                         </p>
                     </div>
                 </CardContent>

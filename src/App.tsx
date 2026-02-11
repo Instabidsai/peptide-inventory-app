@@ -53,6 +53,8 @@ import BodyComposition from "./pages/client/BodyComposition";
 import CommunityForum from "./pages/client/CommunityForum";
 import ClientStore from "./pages/client/ClientStore";
 import ClientOrders from "./pages/client/ClientOrders";
+import CheckoutSuccess from "./pages/checkout/CheckoutSuccess";
+import CheckoutCancel from "./pages/checkout/CheckoutCancel";
 
 console.log("App.tsx Module Loaded - Imports Valid (Block 4: Admin + Full)");
 const queryClient = new QueryClient();
@@ -87,6 +89,8 @@ const App = () => (
                             <Route path="/community" element={<CommunityForum />} />
                             <Route path="/store" element={<ClientStore />} />
                             <Route path="/my-orders" element={<ClientOrders />} />
+                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
                         </Route>
 
                         <Route element={
@@ -130,6 +134,8 @@ const App = () => (
                             <Route path="/movements" element={<Movements />} />
                             <Route path="/movements/new" element={<MovementWizard />} />
                             <Route path="/settings" element={<Settings />} />
+                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 
                         </Route>
                         <Route path="*" element={<NotFound />} />
