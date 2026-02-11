@@ -229,7 +229,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('commissions')
-                .select('*')
+                .select('*, sales_orders(total_amount, contacts(name))')
                 .eq('partner_id', repId)
                 .order('created_at', { ascending: false });
             if (error) throw error;
@@ -359,23 +359,23 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Order</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Amount</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Order Total</TableHead>
+                                <TableHead>Commission</TableHead>
                                 <TableHead>Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {pending.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">No pending commissions</TableCell>
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">No pending commissions</TableCell>
                                 </TableRow>
                             )}
                             {pending.map((c: any) => (
                                 <TableRow key={c.id}>
                                     <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                                    <TableCell>{c.sales_orders?.order_number || 'N/A'}</TableCell>
-                                    <TableCell className="capitalize">{c.type?.replace(/_/g, ' ') || 'N/A'}</TableCell>
+                                    <TableCell className="font-medium">{c.sales_orders?.contacts?.name || 'N/A'}</TableCell>
+                                    <TableCell>${Number(c.sales_orders?.total_amount || 0).toFixed(2)}</TableCell>
                                     <TableCell className="font-medium">${Number(c.amount).toFixed(2)}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
@@ -412,16 +412,16 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Order</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Amount</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Order Total</TableHead>
+                                <TableHead>Commission</TableHead>
                                 <TableHead>Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {history.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">No history found</TableCell>
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">No history found</TableCell>
                                 </TableRow>
                             )}
                             {history.map((c: any) => {
@@ -429,8 +429,8 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                 return (
                                     <TableRow key={c.id}>
                                         <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                                        <TableCell>{c.sales_orders?.order_number || 'N/A'}</TableCell>
-                                        <TableCell className="capitalize">{c.type?.replace(/_/g, ' ') || 'N/A'}</TableCell>
+                                        <TableCell className="font-medium">{c.sales_orders?.contacts?.name || 'N/A'}</TableCell>
+                                        <TableCell>${Number(c.sales_orders?.total_amount || 0).toFixed(2)}</TableCell>
                                         <TableCell>${Number(c.amount).toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className={statusInfo.className}>
