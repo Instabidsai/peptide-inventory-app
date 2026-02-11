@@ -37,6 +37,7 @@ import AdminSupplements from "./pages/admin/AdminSupplements";
 import PartnerDetail from "./pages/admin/PartnerDetail";
 import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import PartnerStore from "./pages/partner/PartnerStore";
+import PartnerOrders from "./pages/partner/PartnerOrders";
 import NotFound from "./pages/NotFound";
 
 // Client Portal
@@ -51,6 +52,7 @@ import MacroTracker from "./pages/client/MacroTracker";
 import BodyComposition from "./pages/client/BodyComposition";
 import CommunityForum from "./pages/client/CommunityForum";
 import ClientStore from "./pages/client/ClientStore";
+import ClientOrders from "./pages/client/ClientOrders";
 
 console.log("App.tsx Module Loaded - Imports Valid (Block 4: Admin + Full)");
 const queryClient = new QueryClient();
@@ -84,6 +86,7 @@ const App = () => (
                             <Route path="/body-composition" element={<BodyComposition />} />
                             <Route path="/community" element={<CommunityForum />} />
                             <Route path="/store" element={<ClientStore />} />
+                            <Route path="/my-orders" element={<ClientOrders />} />
                         </Route>
 
                         <Route element={
@@ -115,6 +118,7 @@ const App = () => (
 
                             <Route path="/partner" element={<PartnerDashboard />} />
                             <Route path="/partner/store" element={<PartnerStore />} />
+                            <Route path="/partner/orders" element={<PartnerOrders />} />
 
                             <Route path="/bottles" element={<Bottles />} />
 

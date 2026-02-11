@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard, ShoppingBag } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard, ShoppingBag, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -55,6 +55,7 @@ export function ClientLayout() {
     const navItems = [
         { label: 'Home', icon: Home, path: '/dashboard' },
         { label: 'Store', icon: ShoppingBag, path: '/store' },
+        { label: 'Orders', icon: Package, path: '/my-orders' },
         { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: unreadFeedback && unreadFeedback > 0 },
         { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Body', icon: Scale, path: '/body-composition' },
