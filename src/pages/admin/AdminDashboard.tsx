@@ -211,7 +211,7 @@ export default function AdminDashboard() {
                     </Card>
                 </Link>
 
-                <Link to="/commissions">
+                <Link to="/admin/commissions">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Commissions</CardTitle>
