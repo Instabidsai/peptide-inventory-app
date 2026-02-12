@@ -12,13 +12,14 @@ export interface Contact {
   phone: string | null;
   type: ContactType;
   company: string | null;
+  address: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
   linked_user_id?: string | null;
   tier?: 'family' | 'network' | 'public';
   invite_link?: string | null;
-  assigned_rep_id?: string | null; // New field
+  assigned_rep_id?: string | null;
 }
 
 export interface CreateContactInput {
@@ -27,10 +28,11 @@ export interface CreateContactInput {
   phone?: string;
   type?: ContactType;
   company?: string;
+  address?: string;
   notes?: string;
   linked_user_id?: string | null;
   tier?: 'family' | 'network' | 'public';
-  assigned_rep_id?: string | null; // New field
+  assigned_rep_id?: string | null;
 }
 
 export function useContacts(type?: ContactType) {

@@ -111,6 +111,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          address: string | null
           company: string | null
           created_at: string
           email: string | null
@@ -125,6 +126,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -155,6 +158,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contacts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_notes: {
+        Row: {
+          id: string
+          contact_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          org_id: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          org_id: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_notes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"

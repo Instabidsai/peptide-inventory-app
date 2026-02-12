@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useContact, useUpdateContact } from '@/hooks/use-contacts';
+import { useContactNotes, useCreateContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes';
 import { useProtocols } from '@/hooks/use-protocols';
 import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
@@ -12,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -52,6 +53,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
+import { Textarea } from '@/components/ui/textarea';
 
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
@@ -71,6 +73,12 @@ export default function ContactDetails() {
     const { data: peptides } = usePeptides();
     const queryClient = useQueryClient(); // Add queryClient
     const { data: movements } = useMovements(id);
+
+    // Contact Notes
+    const { data: contactNotes, isLoading: isLoadingNotes } = useContactNotes(id);
+    const createNote = useCreateContactNote();
+    const deleteNote = useDeleteContactNote();
+    const [newNoteContent, setNewNoteContent] = useState('');
 
     // Add/Edit Peptide State
     const [isAddPeptideOpen, setIsAddPeptideOpen] = useState(false);
@@ -108,7 +116,7 @@ export default function ContactDetails() {
 
     // Edit Details State
     const [isEditingDetails, setIsEditingDetails] = useState(false);
-    const [editForm, setEditForm] = useState({ email: '', phone: '', company: '' });
+    const [editForm, setEditForm] = useState({ email: '', phone: '', company: '', address: '' });
 
     const handleLinkUser = async () => {
         if (!linkEmail) return;
@@ -425,7 +433,8 @@ export default function ContactDetails() {
                                             id: id!,
                                             email: editForm.email,
                                             phone: editForm.phone,
-                                            company: editForm.company
+                                            company: editForm.company,
+                                            address: editForm.address
                                         });
                                         setIsEditingDetails(false);
                                     }}>Save</Button>
@@ -435,7 +444,8 @@ export default function ContactDetails() {
                                     setEditForm({
                                         email: contact.email || '',
                                         phone: contact.phone || '',
-                                        company: contact.company || ''
+                                        company: contact.company || '',
+                                        address: (contact as any).address || ''
                                     });
                                     setIsEditingDetails(true);
                                 }} />
@@ -457,6 +467,10 @@ export default function ContactDetails() {
                                     <Label>Company</Label>
                                     <Input value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
                                 </div>
+                                <div className="grid gap-1">
+                                    <Label>Address</Label>
+                                    <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="Enter address..." />
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -471,6 +485,10 @@ export default function ContactDetails() {
                                 <div className="flex items-center gap-3 text-muted-foreground">
                                     <span className="font-semibold text-foreground">Company:</span>
                                     {contact.company || 'N/A'}
+                                </div>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                    <span className="font-semibold text-foreground">Address:</span>
+                                    {(contact as any).address || 'N/A'}
                                 </div>
                             </>
                         )}
@@ -797,6 +815,83 @@ export default function ContactDetails() {
                                 </div>
                             )
                         }
+                    </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="notes" className="border rounded-lg bg-card px-4">
+                    <AccordionTrigger className="hover:no-underline py-4">
+                        <div className="flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-semibold text-lg">Notes</span>
+                            {contactNotes && contactNotes.length > 0 && (
+                                <Badge variant="secondary" className="ml-2">{contactNotes.length}</Badge>
+                            )}
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                        {/* Add Note Input */}
+                        <div className="flex gap-2 mb-4">
+                            <Textarea
+                                placeholder="Type a note..."
+                                value={newNoteContent}
+                                onChange={(e) => setNewNoteContent(e.target.value)}
+                                className="min-h-[60px] resize-none"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey && newNoteContent.trim()) {
+                                        e.preventDefault();
+                                        createNote.mutate({ contact_id: id!, content: newNoteContent.trim() });
+                                        setNewNoteContent('');
+                                    }
+                                }}
+                            />
+                            <Button
+                                size="sm"
+                                className="self-end"
+                                disabled={!newNoteContent.trim() || createNote.isPending}
+                                onClick={() => {
+                                    if (newNoteContent.trim()) {
+                                        createNote.mutate({ contact_id: id!, content: newNoteContent.trim() });
+                                        setNewNoteContent('');
+                                    }
+                                }}
+                            >
+                                {createNote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            </Button>
+                        </div>
+
+                        {/* Notes List */}
+                        {isLoadingNotes ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        ) : contactNotes && contactNotes.length > 0 ? (
+                            <div className="space-y-3">
+                                {contactNotes.map((note) => (
+                                    <div key={note.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {format(new Date(note.created_at), 'MMM d, yyyy • h:mm a')}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-muted-foreground hover:text-destructive shrink-0 h-7 w-7 p-0"
+                                            onClick={() => deleteNote.mutate({ id: note.id, contact_id: id! })}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                                <p className="text-sm">No notes yet. Add your first note above.</p>
+                            </div>
+                        )}
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
