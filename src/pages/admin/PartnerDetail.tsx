@@ -622,7 +622,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                         email: contactEmail,
                         contact_id: selectedContact.id,
                         role: 'sales_rep',
-                        tier: 'standard',
+                        tier: 'family',
                         parent_rep_id: repId,
                     }
                 });

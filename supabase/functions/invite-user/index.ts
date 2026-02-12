@@ -51,9 +51,8 @@ serve(async (req) => {
             .eq('id', contact_id);
 
         if (updateError) {
-            // If this fails, it's likely the Migration hasn't been run yet.
-            console.error('Update Claim Token Failed:', updateError);
-            throw new Error('Database Schema Mismatch: Please run migration 20260121111500_add_claim_token.sql');
+            // Non-fatal: claim token is for invite links, not critical for user creation
+            console.warn('Claim token update failed (non-fatal):', JSON.stringify(updateError));
         }
 
         // We also want to ensure the user exists in Auth, even if we don't log them in yet.
