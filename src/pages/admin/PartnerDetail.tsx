@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users, UserPlus } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users, UserPlus, ShoppingCart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected to default import
@@ -691,6 +691,9 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                                     ✓ Partner
                                                 </Badge>
                                             )}
+                                            <Button size="sm" variant="outline" onClick={() => navigate(`/sales/new?contact_id=${client.id}`)}>
+                                                <ShoppingCart className="h-3 w-3 mr-1" /> Order
+                                            </Button>
                                             <Button size="sm" variant="ghost" onClick={() => navigate(`/contacts/${client.id}`)}>
                                                 View
                                             </Button>

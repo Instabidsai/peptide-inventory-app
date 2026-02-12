@@ -69,6 +69,15 @@ export default function NewOrder() {
 
     const location = useLocation();
 
+    // Auto-select contact if passed via ?contact_id= query param
+    const prefillContactId = searchParams.get('contact_id');
+    useEffect(() => {
+        if (prefillContactId && contacts && !selectedContactId) {
+            const match = contacts.find(c => c.id === prefillContactId);
+            if (match) setSelectedContactId(match.id);
+        }
+    }, [prefillContactId, contacts]);
+
     // Helper to get consistent Base Cost
     const getBaseCost = (peptide: Peptide, profile: any) => {
         // Inventory Avg Cost + Overhead
