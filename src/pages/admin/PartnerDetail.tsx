@@ -571,75 +571,29 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
     const handlePromote = async () => {
         if (!selectedContact) return;
-        const contactEmail = selectedContact.email || promoteEmail.trim();
-        if (!contactEmail) {
-            toast({ variant: 'destructive', title: 'Email Required', description: 'An email address is required to create a partner account.' });
-            return;
-        }
         setIsPromoting(true);
 
         try {
-            // 1. Update the contact's type to 'partner' and set email if missing
-            const contactUpdates: Record<string, any> = { type: 'partner' };
-            if (!selectedContact.email && contactEmail) {
-                contactUpdates.email = contactEmail;
-            }
-            const { error: contactError } = await supabase
-                .from('contacts')
-                .update(contactUpdates)
-                .eq('id', selectedContact.id);
-
-            if (contactError) throw contactError;
-
-            // 2. If contact already has a linked user profile, just update role + parent
-            if (selectedContact.linked_user_id) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('user_id', selectedContact.linked_user_id)
-                    .single();
-
-                if (profile) {
-                    await supabase
-                        .from('profiles')
-                        .update({
-                            role: 'sales_rep',
-                            parent_rep_id: repId,
-                            commission_rate: 0.10,
-                            partner_tier: 'standard',
-                        })
-                        .eq('id', profile.id);
+            // Call promote-contact Edge Function — immediately creates auth user + profile + links contact
+            const { data, error: invokeError } = await supabase.functions.invoke('promote-contact', {
+                body: {
+                    contact_id: selectedContact.id,
+                    contact_name: selectedContact.name,
+                    contact_email: selectedContact.email,
+                    parent_rep_id: repId,
                 }
+            });
 
-                toast({
-                    title: "Promoted!",
-                    description: `${selectedContact.name} is now a Partner under this rep.`
-                });
-            } else {
-                // 3. No linked user → call invite-user to create account + link parent
-                const { data, error: invokeError } = await supabase.functions.invoke('invite-user', {
-                    body: {
-                        email: contactEmail,
-                        contact_id: selectedContact.id,
-                        role: 'sales_rep',
-                        tier: 'family',
-                        parent_rep_id: repId,
-                    }
-                });
+            if (invokeError) throw invokeError;
 
-                if (invokeError) throw invokeError;
+            const result = typeof data === 'string' ? JSON.parse(data) : data;
+            if (!result?.success) throw new Error(result?.error || 'Promotion failed');
 
-                // Check response
-                const result = typeof data === 'string' ? JSON.parse(data) : data;
-                if (!result?.success) throw new Error(result?.error || 'Invite failed');
+            toast({
+                title: "Partner Added!",
+                description: `${selectedContact.name} is now a Partner in the hierarchy. They'll appear in the Partners list.`
+            });
 
-                toast({
-                    title: "Promoted!",
-                    description: `${selectedContact.name} has been set up as a Partner. They'll get an invite link to activate their account.`
-                });
-            }
-
-            setPromoteEmail('');
             setPromoteOpen(false);
             refetch();
         } catch (err: any) {
@@ -797,9 +751,9 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
             <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Promote to Partner</DialogTitle>
+                        <DialogTitle>Make Partner</DialogTitle>
                         <DialogDescription>
-                            This will promote <strong>{selectedContact?.name}</strong> to a Sales Partner
+                            This will immediately add <strong>{selectedContact?.name}</strong> as a Sales Partner
                             under this Rep's downline. They'll start at 10% commission, Standard tier.
                         </DialogDescription>
                     </DialogHeader>
@@ -808,29 +762,17 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                             <span className="text-muted-foreground">Name:</span>
                             <span className="font-medium">{selectedContact?.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="text-muted-foreground">Email:</span>
-                            <span>{selectedContact?.email || 'No email'}</span>
-                        </div>
-                        {!selectedContact?.email && (
-                            <div className="space-y-2 pt-2 border-t">
-                                <Label>Email Address (required for account) *</Label>
-                                <Input
-                                    type="email"
-                                    placeholder="partner@example.com"
-                                    value={promoteEmail}
-                                    onChange={(e) => setPromoteEmail(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    An email is needed to create a login account for this partner.
-                                </p>
+                        {selectedContact?.email && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-muted-foreground">Email:</span>
+                                <span>{selectedContact.email}</span>
                             </div>
                         )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>
                         <Button onClick={handlePromote} disabled={isPromoting}>
-                            {isPromoting ? 'Promoting...' : 'Promote Now'}
+                            {isPromoting ? 'Setting up...' : 'Make Partner'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
