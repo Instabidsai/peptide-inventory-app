@@ -56,13 +56,13 @@ export default function ClientStore() {
         queryKey: ['client_assigned_rep', contact?.id],
         queryFn: async () => {
             if (!contact?.id) return null;
-            // The contact's assigned_to field links to a profile
+            // The contact's assigned_rep_id field links to a profile
             const contactData = contact as any;
-            if (!contactData.assigned_to) return null;
+            if (!contactData.assigned_rep_id) return null;
             const { data } = await supabase
                 .from('profiles')
                 .select('id, full_name, commission_rate, price_multiplier, partner_tier')
-                .eq('id', contactData.assigned_to)
+                .eq('id', contactData.assigned_rep_id)
                 .single();
             return data;
         },

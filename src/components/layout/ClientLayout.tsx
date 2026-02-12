@@ -13,50 +13,52 @@ import { PageTransition } from '@/components/ui/PageTransition';
 export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { userRole } = useAuth();
+    const { userRole, user } = useAuth();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
 
     const { data: unreadFeedback } = useQuery({
-        queryKey: ['unread-feedback'],
+        queryKey: ['unread-feedback', user?.id],
         queryFn: async () => {
+            if (!user?.id) return 0;
             const { count, error } = await supabase
                 .from('protocol_feedback')
                 .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
                 .eq('is_read_by_client', false)
                 .not('admin_response', 'is', null);
             if (error) return 0;
             return count || 0;
         },
+        enabled: !!user?.id,
         refetchInterval: 30000,
     });
 
     const { data: unreadNotifications } = useQuery({
-        queryKey: ['unread-notifications'],
+        queryKey: ['unread-notifications', user?.id],
         queryFn: async () => {
-            // Defensive: check if table exists first? No, just run query and catch error
+            if (!user?.id) return 0;
             try {
                 const { count, error } = await supabase
                     .from('notifications')
                     .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
                     .eq('is_read', false);
 
-                if (error) {
-                    console.warn("Notifications query error:", error);
-                    return 0;
-                }
+                if (error) return 0;
                 return count || 0;
             } catch (e) {
                 return 0;
             }
         },
-        refetchInterval: 15000, // Poll faster
+        enabled: !!user?.id,
+        refetchInterval: 15000,
     });
 
-    const navItems = [
+    const navItems: Array<{ label: string; icon: typeof Home; path: string; hasBadge?: boolean }> = [
         { label: 'Home', icon: Home, path: '/dashboard' },
         { label: 'Store', icon: ShoppingBag, path: '/store' },
         { label: 'Orders', icon: Package, path: '/my-orders' },
-        { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: unreadFeedback && unreadFeedback > 0 },
+        { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: !!(unreadFeedback && unreadFeedback > 0) },
         { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
         { label: 'Body', icon: Scale, path: '/body-composition' },
         { label: 'Resources', icon: BookOpen, path: '/resources' },
@@ -112,7 +114,6 @@ export function ClientLayout() {
                             >
                                 <div className="relative">
                                     <item.icon className={cn("h-5 w-5", isActive && "fill-current")} />
-                                    {/* @ts-expect-error - hasBadge is valid on item object definition */}
                                     {item.hasBadge && (
                                         <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
                                     )}

@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight, Loader2, CheckCircle2, Clock, Sparkles } from "lucide-react";
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
+import { Calendar, Scale, Activity, Utensils, TrendingUp, TrendingDown, Zap, ChevronRight, Loader2, CheckCircle2, Clock, Sparkles, User } from "lucide-react";
+import { format, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { MACRO_COLORS, MACRO_COLORS_LIGHT } from '@/lib/colors'; // Added start/endOfDay
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query'; // Ensure this is imported

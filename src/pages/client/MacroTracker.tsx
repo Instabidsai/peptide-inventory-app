@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -99,12 +99,12 @@ export default function MacroTracker() {
     });
 
     // Load initial goals
-    useState(() => {
+    useEffect(() => {
         const fetchGoals = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('daily_macro_goals')
                 .select('*')
                 .eq('user_id', session.user.id)
@@ -120,7 +120,7 @@ export default function MacroTracker() {
             }
         };
         fetchGoals();
-    });
+    }, []);
 
     const saveGoals = async () => {
         const { data: { session } } = await supabase.auth.getSession();

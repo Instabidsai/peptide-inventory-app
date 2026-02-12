@@ -27,8 +27,9 @@ export interface Commission {
     status: 'pending' | 'available' | 'paid' | 'void';
     created_at: string;
     sales_orders?: {
+        id: string;
         order_number: string;
-        order_number: string;
+        total_amount: number;
     }
 }
 
@@ -60,7 +61,15 @@ export function useCommissions() {
         queryFn: async () => {
             if (!user?.id) return [];
 
-            // We want to join with sales_orders to get context about the sale
+            // Look up profile ID from auth user ID
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+
+            if (!profile?.id) return [];
+
             const { data, error } = await supabase
                 .from('commissions')
                 .select(`
@@ -71,7 +80,7 @@ export function useCommissions() {
                         total_amount
                     )
                 `)
-                .eq('partner_id', user.id)
+                .eq('partner_id', profile.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

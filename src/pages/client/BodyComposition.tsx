@@ -224,13 +224,13 @@ export default function BodyComposition() {
                     </GlassCard>
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
-                            <div className="text-2xl font-bold text-blue-600">{latestLog.body_fat_percentage}%</div>
+                            <div className="text-2xl font-bold text-blue-600">{latestLog.body_fat_percentage != null ? `${latestLog.body_fat_percentage}%` : '—'}</div>
                             <div className="text-xs text-muted-foreground uppercase">Body Fat</div>
                         </CardContent>
                     </GlassCard>
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
-                            <div className="text-2xl font-bold text-green-600">{latestLog.muscle_mass}</div>
+                            <div className="text-2xl font-bold text-green-600">{latestLog.muscle_mass ?? '—'}</div>
                             <div className="text-xs text-muted-foreground uppercase">Muscle</div>
                         </CardContent>
                     </GlassCard>
