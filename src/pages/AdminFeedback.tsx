@@ -44,12 +44,9 @@ export default function AdminFeedback() {
                 .from('protocol_feedback')
                 .select(`
                     *,
-                    protocols (name, contact_id),
-                    // We can't easily join to contact name via protocols -> contacts in one go without flattened query or custom view
-                    // But we can try nested, or just fetch contacts separately. 
-                    // Let's rely on protocols containing contact_id and match client side or do deep select
                     protocols (
                         name,
+                        contact_id,
                         contacts (name, email)
                     )
                 `)

@@ -173,7 +173,7 @@ export default function ContactDetails() {
                 });
             } else {
                 // Create new protocol
-                await createProtocol.mutateAsync({
+                const createdProtocol = await createProtocol.mutateAsync({
                     name: `Regimen: ${peptide.name}`,
                     description: `Single peptide regimen for ${contact.name}`,
                     contact_id: id,
@@ -186,28 +186,24 @@ export default function ContactDetails() {
                         cost_multiplier: parseFloat(costMultiplier)
                     }]
                 });
+
+                // Check for suggestions after creating
+                if (selectedPeptideId) {
+                    const suggestions = await supabase
+                        .from('peptide_suggested_supplements')
+                        .select('*, supplements(*)')
+                        .eq('peptide_id', selectedPeptideId);
+
+                    if (suggestions.data && suggestions.data.length > 0) {
+                        setFoundSuggestions(suggestions.data);
+                        setIsSuggestionDialogOpen(true);
+                        setRelatedProtocolId(createdProtocol?.id || null);
+                    }
+                }
             }
 
             setIsAddPeptideOpen(false);
             resetCalculator();
-
-            // Check for suggestions
-            if (selectedPeptideId) {
-                const suggestions = await supabase
-                    .from('peptide_suggested_supplements')
-                    .select('*, supplements(*)')
-                    .eq('peptide_id', selectedPeptideId);
-
-                if (suggestions.data && suggestions.data.length > 0) {
-                    setFoundSuggestions(suggestions.data);
-                    setIsSuggestionDialogOpen(true);
-                    setRelatedProtocolId(data?.id); // We need the ID of the protocol we just created... 
-                    // Wait, createProtocol.mutateAsync returns the result?
-                    // useCreateProtocol usually invalidates. 
-                    // I might need to fetch the latest protocol for this peptide or rely on the return.
-                    // Let's assume createProtocol returns the data.
-                }
-            }
 
             if (autoAssignInventory && selectedPeptideId) {
                 setTempPeptideIdForAssign(selectedPeptideId);

@@ -52,7 +52,7 @@ const peptideSchema = z.object({
 type PeptideFormData = z.infer<typeof peptideSchema>;
 
 export default function Peptides() {
-  const { userRole, user, profile } = useAuth(); // Destructure user and profile
+  const { userRole, profile } = useAuth();
   const { data: peptides, isLoading } = usePeptides();
   const { data: pendingByPeptide } = usePendingOrdersByPeptide();
   const createPeptide = useCreatePeptide();
@@ -65,12 +65,10 @@ export default function Peptides() {
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
 
-  const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
-  // Use profile.role for more robust detection (especially for partners like Sofia)
-  const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || isThompsonOverride;
+  const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
 
-  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
-  const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isThompsonOverride && !isPartner;
+  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isPartner;
+  const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isPartner;
 
   // Protect Route: If Sales Rep but NOT Senior, Redirect to Home
   // (Sidebar hides it, but this prevents direct link access)

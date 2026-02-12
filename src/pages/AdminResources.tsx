@@ -50,8 +50,22 @@ type Resource = {
     duration?: number | null;
 };
 
+type Theme = {
+    id: string;
+    name: string;
+    description: string | null;
+    is_general?: boolean;
+};
 
 export default function AdminResources() {
+
+    const [viewMode, setViewMode] = useState<'themes' | 'list'>('themes');
+    const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
+    const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+    const [isResourceDialogOpen, setIsResourceDialogOpen] = useState(false);
+    const [editingTheme, setEditingTheme] = useState<Theme | null>(null);
+    const [editingResource, setEditingResource] = useState<Resource | null>(null);
+    const [deletingItem, setDeletingItem] = useState<{ id: string; name: string; type: 'theme' | 'resource' } | null>(null);
 
     const [resourceForm, setResourceForm] = useState({
         title: "",

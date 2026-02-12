@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useBottles, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
+import { useBottles, useDeleteBottle, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -149,7 +149,6 @@ export default function Bottles() {
                     <TableHead>Peptide</TableHead>
                     <TableHead>Lot</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Cost</TableHead>
                     <TableHead>Cost</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-[70px]"></TableHead>

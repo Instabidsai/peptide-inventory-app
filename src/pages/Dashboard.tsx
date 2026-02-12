@@ -5,13 +5,11 @@ import PartnerDashboard from './partner/PartnerDashboard';
 import AdminDashboard from './admin/AdminDashboard'; // Assuming we created this in the previous step
 
 export default function Dashboard() {
-  const { user, userRole, profile } = useAuth();
+  const { userRole, profile } = useAuth();
   const [searchParams] = useSearchParams();
   const previewRole = searchParams.get('preview_role');
 
-  const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
-
-  if (userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || previewRole === 'sales_rep' || isThompsonOverride) {
+  if (userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || previewRole === 'sales_rep') {
     return <PartnerDashboard />;
   }
 

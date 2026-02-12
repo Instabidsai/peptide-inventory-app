@@ -46,10 +46,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const [searchParams] = useSearchParams();
   const previewRole = searchParams.get('preview_role');
 
-  const isThompsonOverride = user?.email === 'thompsonfamv@gmail.com';
   const effectiveRole = previewRole || (
-    isThompsonOverride ? 'sales_rep' :
-      (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep' ? 'sales_rep' : userRole?.role)
+    (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep' : userRole?.role
   );
 
   // Fetch verified profile data for balance
