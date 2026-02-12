@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 
 // Helper for the Network Tab
@@ -458,7 +459,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
     const [addClientOpen, setAddClientOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [newClient, setNewClient] = useState({ name: '', email: '', phone: '' });
+    const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
     const [promoteEmail, setPromoteEmail] = useState('');
 
     // Fetch contacts assigned to this partner
@@ -523,6 +524,8 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     name: newClient.name.trim(),
                     email: newClient.email.trim() || null,
                     phone: newClient.phone.trim() || null,
+                    address: newClient.address.trim() || null,
+                    notes: newClient.notes.trim() || null,
                     type: 'customer',
                     assigned_rep_id: repId,
                     org_id: repProfile?.org_id || null,
@@ -542,10 +545,12 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                 // and also set assigned_rep_id on contacts for the direct partner
 
                 // Store the full rep chain as metadata on the contact
+                const existingNotes = newClient.notes.trim();
+                const uplineNote = `Upline chain: ${uplineIds.join(' → ')}`;
                 await supabase
                     .from('contacts')
                     .update({
-                        notes: `Upline chain: ${uplineIds.join(' → ')}`,
+                        notes: existingNotes ? `${existingNotes}\n\n${uplineNote}` : uplineNote,
                     })
                     .eq('id', contact.id);
             }
@@ -555,7 +560,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                 description: `${newClient.name} has been added under this partner${uplineIds.length > 0 ? ` (with ${uplineIds.length} senior${uplineIds.length > 1 ? 's' : ''} in the upline)` : ''}.`,
             });
 
-            setNewClient({ name: '', email: '', phone: '' });
+            setNewClient({ name: '', email: '', phone: '', address: '', notes: '' });
             setAddClientOpen(false);
             refetch();
         } catch (err: any) {
@@ -735,6 +740,25 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                 placeholder="(555) 123-4567"
                                 value={newClient.phone}
                                 onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="client-address">Address</Label>
+                            <Input
+                                id="client-address"
+                                placeholder="123 Main St, City, State ZIP"
+                                value={newClient.address}
+                                onChange={(e) => setNewClient(prev => ({ ...prev, address: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="client-notes">Notes</Label>
+                            <Textarea
+                                id="client-notes"
+                                placeholder="Any notes about this client..."
+                                rows={3}
+                                value={newClient.notes}
+                                onChange={(e) => setNewClient(prev => ({ ...prev, notes: e.target.value }))}
                             />
                         </div>
                     </div>
