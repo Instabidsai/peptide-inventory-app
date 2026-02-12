@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,7 +122,7 @@ export function useCheckout() {
  * Hook to check the payment status of an order (used on success/cancel pages)
  */
 export function useOrderPaymentStatus(orderId: string | null) {
-    return {
+    return useQuery({
         queryKey: ['order_payment_status', orderId],
         queryFn: async () => {
             if (!orderId) return null;
@@ -136,5 +136,5 @@ export function useOrderPaymentStatus(orderId: string | null) {
         },
         enabled: !!orderId,
         refetchInterval: 3000, // Poll every 3 seconds to catch webhook updates
-    };
+    });
 }

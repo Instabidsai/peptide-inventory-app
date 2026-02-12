@@ -93,26 +93,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthProvider: Mounting...");
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        console.log("AuthProvider: Auth State Change", event, currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         // Defer Supabase calls with setTimeout
         if (currentSession?.user) {
           setTimeout(() => {
-            console.log("AuthProvider: Fetching User Data (Deferred)...");
             fetchUserData(currentSession.user.id);
           }, 0);
         } else {
-          console.log("AuthProvider: No User in Session. Clearing Profile.");
           setProfile(null);
           setUserRole(null);
           setOrganization(null);
-          setLoading(false); // Ensure loading is false if no user
+          setLoading(false);
         }
       }
     );
@@ -120,21 +116,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession }, error }) => {
       if (error) console.error("AuthProvider: GetSession Error", error);
-      console.log("AuthProvider: Initial Session Retrieved", existingSession?.user?.id);
 
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
 
       if (existingSession?.user) {
         fetchUserData(existingSession.user.id)
-          .then(() => console.log("AuthProvider: User Data Fetch Complete"))
           .catch(e => console.error("AuthProvider: User Data Fetch Failed", e))
           .finally(() => {
-            console.log("AuthProvider: Setting Loading False");
             setLoading(false);
           });
       } else {
-        console.log("AuthProvider: No Initial Session. Setting Loading False.");
         setLoading(false);
       }
     });
