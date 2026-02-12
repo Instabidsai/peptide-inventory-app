@@ -105,9 +105,6 @@ export function PeptideHistoryDialog({
                 contact: `Lot: ${lot.lot_number}`,
                 quantity: lot.quantity_received,
                 price: lot.cost_per_unit,
-                contact: `Lot: ${lot.lot_number}`,
-                quantity: lot.quantity_received,
-                price: lot.cost_per_unit,
                 notes: lot.notes,
                 paymentStatus: lot.payment_status // Pass it through
             })) || [];
