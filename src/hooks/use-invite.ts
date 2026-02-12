@@ -4,7 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 
 interface InviteRepInput {
     email: string;
-    fullName: string; // We might want to update profile after invite?
+    fullName: string;
+    parentRepId?: string;
 }
 
 export function useInviteRep() {
@@ -12,7 +13,7 @@ export function useInviteRep() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ email, fullName }: InviteRepInput) => {
+        mutationFn: async ({ email, fullName, parentRepId }: InviteRepInput) => {
             // 1. Call Edge Function to create/invite user
             const { data, error } = await supabase.functions.invoke('invite-user', {
                 body: {
@@ -25,14 +26,18 @@ export function useInviteRep() {
             if (error) throw error;
             if (!data.success) throw new Error(data.error || 'Failed to invite user');
 
-            // 2. If user created/linked, we might want to update their profile name immediately
-            // The trigger creates a profile, but maybe with empty name.
-            // We can try to update it if we have text.
-            if (data.user_id && fullName) {
-                await supabase
-                    .from('profiles')
-                    .update({ full_name: fullName })
-                    .eq('user_id', data.user_id);
+            // 2. Update profile with name and parent_rep_id
+            if (data.user_id) {
+                const updates: Record<string, any> = {};
+                if (fullName) updates.full_name = fullName;
+                if (parentRepId) updates.parent_rep_id = parentRepId;
+
+                if (Object.keys(updates).length > 0) {
+                    await supabase
+                        .from('profiles')
+                        .update(updates)
+                        .eq('user_id', data.user_id);
+                }
             }
 
             return data;

@@ -112,7 +112,18 @@ export function AssignInventoryForm({
         if (selectedBottleIds.length === 0) return;
 
         try {
-            const pricePerItem = parseFloat(price) / selectedBottleIds.length;
+            // Build per-bottle prices based on individual cost + $4 fee
+            const bottlePriceMap = new Map<string, number>();
+            const autoTotal = selectedBottles.reduce((acc, b) => {
+                const individual = (b.lots?.cost_per_unit || 0) + 4;
+                bottlePriceMap.set(b.id, individual);
+                return acc + individual;
+            }, 0);
+
+            const userTotal = parseFloat(price) || 0;
+
+            // If user manually adjusted total, scale each bottle proportionally
+            const scale = autoTotal > 0 ? userTotal / autoTotal : 1;
 
             await createMovement.mutateAsync({
                 type: movementType,
@@ -120,7 +131,7 @@ export function AssignInventoryForm({
                 movement_date: new Date().toISOString(),
                 items: selectedBottleIds.map(id => ({
                     bottle_id: id,
-                    price_at_sale: pricePerItem || 0,
+                    price_at_sale: (bottlePriceMap.get(id) || 0) * scale,
                     protocol_item_id: protocolItemId
                 })),
                 payment_status: paymentStatus as any,

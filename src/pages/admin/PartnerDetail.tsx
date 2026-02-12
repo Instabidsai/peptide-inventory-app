@@ -456,10 +456,10 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
     const [selectedContact, setSelectedContact] = useState<any>(null);
     const [isPromoting, setIsPromoting] = useState(false);
 
-    // Add Client state
     const [addClientOpen, setAddClientOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [newClient, setNewClient] = useState({ name: '', email: '', phone: '' });
+    const [promoteEmail, setPromoteEmail] = useState('');
 
     // Fetch contacts assigned to this partner
     const { data: clients, isLoading, refetch } = useQuery({
@@ -571,13 +571,22 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
     const handlePromote = async () => {
         if (!selectedContact) return;
+        const contactEmail = selectedContact.email || promoteEmail.trim();
+        if (!contactEmail) {
+            toast({ variant: 'destructive', title: 'Email Required', description: 'An email address is required to create a partner account.' });
+            return;
+        }
         setIsPromoting(true);
 
         try {
-            // 1. Update the contact's type to 'partner'
+            // 1. Update the contact's type to 'partner' and set email if missing
+            const contactUpdates: Record<string, any> = { type: 'partner' };
+            if (!selectedContact.email && contactEmail) {
+                contactUpdates.email = contactEmail;
+            }
             const { error: contactError } = await supabase
                 .from('contacts')
-                .update({ type: 'partner' })
+                .update(contactUpdates)
                 .eq('id', selectedContact.id);
 
             if (contactError) throw contactError;
@@ -606,11 +615,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     title: "Promoted!",
                     description: `${selectedContact.name} is now a Partner under this rep.`
                 });
-            } else if (selectedContact.email) {
+            } else {
                 // 3. No linked user → call invite-user to create account + link parent
                 const { data, error: invokeError } = await supabase.functions.invoke('invite-user', {
                     body: {
-                        email: selectedContact.email,
+                        email: contactEmail,
                         contact_id: selectedContact.id,
                         role: 'sales_rep',
                         tier: 'standard',
@@ -628,14 +637,9 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     title: "Promoted!",
                     description: `${selectedContact.name} has been set up as a Partner. They'll get an invite link to activate their account.`
                 });
-            } else {
-                // No email, no linked user — just mark as partner in contacts
-                toast({
-                    title: "Marked as Partner",
-                    description: `${selectedContact.name} is now tagged as a Partner. Add an email to give them login access.`
-                });
             }
 
+            setPromoteEmail('');
             setPromoteOpen(false);
             refetch();
         } catch (err: any) {
@@ -651,6 +655,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
     const openPromote = (contact: any) => {
         setSelectedContact(contact);
+        setPromoteEmail('');
         setPromoteOpen(true);
     }
 
@@ -717,7 +722,12 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                                     <UserPlus className="h-3 w-3 mr-1" /> Promote
                                                 </Button>
                                             )}
-                                            {client.type === 'partner' && (
+                                            {client.type === 'partner' && !client.linked_user_id && (
+                                                <Button size="sm" variant="outline" className="border-amber-500/40 text-amber-400" onClick={() => openPromote(client)}>
+                                                    <UserPlus className="h-3 w-3 mr-1" /> Set Up Account
+                                                </Button>
+                                            )}
+                                            {client.type === 'partner' && client.linked_user_id && (
                                                 <Badge variant="outline" className="text-emerald-500 border-emerald-500">
                                                     ✓ Partner
                                                 </Badge>
@@ -793,7 +803,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                             under this Rep's downline. They'll start at 10% commission, Standard tier.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-2">
+                    <div className="py-4 space-y-3">
                         <div className="flex items-center gap-2 text-sm">
                             <span className="text-muted-foreground">Name:</span>
                             <span className="font-medium">{selectedContact?.name}</span>
@@ -802,6 +812,20 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                             <span className="text-muted-foreground">Email:</span>
                             <span>{selectedContact?.email || 'No email'}</span>
                         </div>
+                        {!selectedContact?.email && (
+                            <div className="space-y-2 pt-2 border-t">
+                                <Label>Email Address (required for account) *</Label>
+                                <Input
+                                    type="email"
+                                    placeholder="partner@example.com"
+                                    value={promoteEmail}
+                                    onChange={(e) => setPromoteEmail(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    An email is needed to create a login account for this partner.
+                                </p>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>

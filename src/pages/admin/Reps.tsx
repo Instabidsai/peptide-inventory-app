@@ -189,12 +189,13 @@ export default function Reps() {
             <AddRepDialog
                 open={isInviteOpen}
                 onOpenChange={setIsInviteOpen}
+                allReps={reps || []}
             />
         </div >
     );
 }
 
-function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenChange: (open: boolean) => void, allReps: UserProfile[] }) {
     const inviteRep = useInviteRep();
     const updateProfile = useUpdateProfile();
     const { data: candidates } = useTeamMembers();
@@ -203,15 +204,17 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
+    const [parentRepId, setParentRepId] = useState('');
     const [activeTab, setActiveTab] = useState('promote');
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        inviteRep.mutate({ email, fullName: name }, {
+        inviteRep.mutate({ email, fullName: name, parentRepId: parentRepId || undefined }, {
             onSuccess: () => {
                 onOpenChange(false);
                 setEmail('');
                 setName('');
+                setParentRepId('');
             }
         });
     };
@@ -224,11 +227,13 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
             role: 'sales_rep',
             commission_rate: 0,
             price_multiplier: 1.0,
+            parent_rep_id: parentRepId || null,
         }, {
             onSuccess: () => {
                 toast({ title: "User Promoted", description: "Role updated to Sales Rep." });
                 onOpenChange(false);
                 setSelectedUserId('');
+                setParentRepId('');
             }
         });
     };
@@ -271,6 +276,28 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
                                 Looking for users with role 'client' or 'staff'.
                             </p>
                         </div>
+                        {/* Upline Selector (shared for Promote) */}
+                        <div className="space-y-2">
+                            <Label>Assign Upline (optional)</Label>
+                            <Select value={parentRepId || '__none__'} onValueChange={(v) => setParentRepId(v === '__none__' ? '' : v)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select upline partner..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">
+                                        <span className="text-muted-foreground">No Upline (Top-Level)</span>
+                                    </SelectItem>
+                                    {allReps.filter(r => r.id !== selectedUserId).map(r => (
+                                        <SelectItem key={r.id} value={r.id}>
+                                            {r.full_name || 'Unnamed'} — {r.partner_tier || 'standard'}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Place this partner under an existing partner in the hierarchy.
+                            </p>
+                        </div>
                         <DialogFooter>
                             <Button onClick={handlePromote} disabled={!selectedUserId || updateProfile.isPending} className="w-full">
                                 {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -299,6 +326,28 @@ function AddRepDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (op
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                 />
+                            </div>
+                            {/* Upline Selector (shared for Invite) */}
+                            <div className="space-y-2">
+                                <Label>Assign Upline (optional)</Label>
+                                <Select value={parentRepId || '__none__'} onValueChange={(v) => setParentRepId(v === '__none__' ? '' : v)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select upline partner..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">
+                                            <span className="text-muted-foreground">No Upline (Top-Level)</span>
+                                        </SelectItem>
+                                        {allReps.map(r => (
+                                            <SelectItem key={r.id} value={r.id}>
+                                                {r.full_name || 'Unnamed'} — {r.partner_tier || 'standard'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    Place this partner under an existing partner in the hierarchy.
+                                </p>
                             </div>
                             <DialogFooter>
                                 <Button type="submit" disabled={inviteRep.isPending} className="w-full">
