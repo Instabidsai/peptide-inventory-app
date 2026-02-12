@@ -34,6 +34,14 @@ export interface SalesOrder {
     notes: string | null;
     created_at: string;
     updated_at: string;
+    // Shipping fields (from 20260213 migration)
+    tracking_number?: string | null;
+    carrier?: string | null;
+    shipping_status?: string | null;
+    ship_date?: string | null;
+    shipping_cost?: number | null;
+    label_url?: string | null;
+    shipping_error?: string | null;
     contacts?: {
         id: string;
         name: string;
@@ -422,6 +430,45 @@ export function usePayWithCredit() {
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Payment Failed', description: error.message });
+        },
+    });
+}
+
+export function useCreateShippingLabel() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (orderId: string) => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Not authenticated');
+
+            const res = await fetch('/api/shipping/create-label', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ orderId }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `Shipping failed (${res.status})`);
+            }
+
+            return res.json();
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            toast({
+                title: 'Shipping Label Created',
+                description: `Tracking: ${data.tracking_number} via ${data.carrier}`,
+            });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Shipping Failed', description: error.message });
         },
     });
 }

@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, type SalesOrder } from '@/hooks/use-sales-orders';
+import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,6 +25,7 @@ export default function OrderDetails() {
     const updateOrder = useUpdateSalesOrder();
     const fulfillOrder = useFulfillOrder();
     const payWithCredit = usePayWithCredit();
+    const shipLabel = useCreateShippingLabel();
     const { toast } = useToast();
 
     const order = salesOrders?.find(o => o.id === id);
@@ -209,6 +210,95 @@ export default function OrderDetails() {
                                 <p className="text-xs text-center text-muted-foreground mt-2">
                                     Inventory has been deducted.
                                 </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Shipping Status Card */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
+                                <Truck className="h-4 w-4" /> Shipping
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm">Status</span>
+                                <Badge variant="outline" className={
+                                    order.shipping_status === 'label_created' ? 'bg-blue-900/20 text-blue-400 border-blue-500/40' :
+                                    order.shipping_status === 'in_transit' ? 'bg-amber-900/20 text-amber-400 border-amber-500/40' :
+                                    order.shipping_status === 'delivered' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-500/40' :
+                                    order.shipping_status === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/40' :
+                                    ''
+                                }>
+                                    {(order.shipping_status || 'pending').replace('_', ' ').toUpperCase()}
+                                </Badge>
+                            </div>
+
+                            {order.tracking_number && (
+                                <div className="space-y-1">
+                                    <span className="text-xs text-muted-foreground">Tracking</span>
+                                    <div className="flex items-center gap-2">
+                                        <code className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1 truncate">
+                                            {order.tracking_number}
+                                        </code>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(order.tracking_number);
+                                                toast({ title: 'Copied tracking number' });
+                                            }}>
+                                            <Copy className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                        via {order.carrier || 'Unknown'}
+                                        {order.ship_date && ` — ${format(new Date(order.ship_date), 'MMM d')}`}
+                                    </span>
+                                </div>
+                            )}
+
+                            {order.label_url && (
+                                <Button variant="outline" size="sm" className="w-full" asChild>
+                                    <a href={order.label_url} target="_blank" rel="noopener noreferrer">
+                                        <FileDown className="mr-2 h-4 w-4" /> Download Label (PDF)
+                                    </a>
+                                </Button>
+                            )}
+
+                            {order.shipping_cost > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                    Label cost: ${Number(order.shipping_cost).toFixed(2)}
+                                </div>
+                            )}
+
+                            {order.shipping_status === 'error' && (
+                                <div className="bg-red-900/20 border border-red-500/40 p-2 rounded text-xs text-red-400">
+                                    {order.shipping_error || 'Unknown shipping error'}
+                                </div>
+                            )}
+
+                            {order.status === 'fulfilled' && !order.tracking_number && order.shipping_status !== 'error' && (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    className="w-full"
+                                    disabled={shipLabel.isPending}
+                                    onClick={() => shipLabel.mutate(order.id)}
+                                >
+                                    {shipLabel.isPending ? 'Creating Label...' : 'Create Shipping Label'}
+                                </Button>
+                            )}
+
+                            {order.shipping_status === 'error' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-amber-500/40 text-amber-400"
+                                    disabled={shipLabel.isPending}
+                                    onClick={() => shipLabel.mutate(order.id)}
+                                >
+                                    {shipLabel.isPending ? 'Retrying...' : 'Retry Shipping'}
+                                </Button>
                             )}
                         </CardContent>
                     </Card>

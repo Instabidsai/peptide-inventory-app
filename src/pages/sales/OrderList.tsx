@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2 } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -70,6 +70,16 @@ export default function OrderList() {
         }
     };
 
+    const getShippingColor = (status: string | null | undefined) => {
+        switch (status) {
+            case 'label_created': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'in_transit': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'delivered': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'error': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-gray-100 text-gray-600 border-gray-200';
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -111,6 +121,7 @@ export default function OrderList() {
                                 {!isRep && <TableHead>Rep</TableHead>}
                                 <TableHead>Status</TableHead>
                                 <TableHead>Payment</TableHead>
+                                <TableHead>Shipping</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                                 {isRep && <TableHead className="text-right">Commission</TableHead>}
                                 <TableHead className="text-right">Actions</TableHead>
@@ -149,6 +160,23 @@ export default function OrderList() {
                                                 {order.payment_status}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>
+                                            {order.status === 'fulfilled' || order.tracking_number ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Badge variant="outline" className={getShippingColor(order.shipping_status)}>
+                                                        <Truck className="h-3 w-3 mr-1" />
+                                                        {(order.shipping_status || 'pending').replace('_', ' ')}
+                                                    </Badge>
+                                                    {order.tracking_number && (
+                                                        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
+                                                            {order.tracking_number.slice(0, 14)}...
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="text-right font-medium">
                                             ${order.total_amount.toFixed(2)}
                                         </TableCell>
@@ -178,7 +206,7 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={isRep ? 8 : 9} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={isRep ? 9 : 10} className="h-24 text-center text-muted-foreground">
                                         No orders found.
                                     </TableCell>
                                 </TableRow>
