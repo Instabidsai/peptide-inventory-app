@@ -276,7 +276,7 @@ export default function ClientRegimen() {
                         tasks={tasks}
                         onToggle={handleTaskToggle}
                         hydration={dailyLogs[0]?.water_intake_oz || 0}
-                        onAddWater={() => console.log('Add water')}
+                        onAddWater={() => toast({ title: 'Water tracking coming soon' })}
                     />
                 </div>
 
@@ -286,7 +286,7 @@ export default function ClientRegimen() {
                         inventory={inventory}
                         protocols={protocols}
                         onAddVial={handleAddVial}
-                        onReconstitute={() => { }}
+                        onReconstitute={() => toast({ title: 'Reconstitution guide coming soon' })}
                         onDelete={handleDeleteVial}
                         onRequestRefill={(peptide) => {
                             setSelectedRefillPeptide({ id: peptide.id, name: peptide.name });

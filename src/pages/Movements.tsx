@@ -179,6 +179,8 @@ export default function Movements() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [viewingMovement, setViewingMovement] = useState<Movement | null>(null);
+  const [deletingMovement, setDeletingMovement] = useState<Movement | null>(null);
 
   const handleUpdate = async (id: string, updates: any) => {
     const { error } = await supabase
@@ -195,9 +197,6 @@ export default function Movements() {
     queryClient.invalidateQueries({ queryKey: ['movements'] });
     setViewingMovement(null);
   };
-
-  const [viewingMovement, setViewingMovement] = useState<Movement | null>(null);
-  const [deletingMovement, setDeletingMovement] = useState<Movement | null>(null);
 
   const canDelete = userRole?.role === 'admin';
 

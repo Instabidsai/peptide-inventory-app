@@ -36,6 +36,7 @@ type Message = {
     content: string;
     parent_id: string | null;
     created_at: string;
+    profiles?: { full_name: string | null } | null;
 };
 
 export default function CommunityForum() {
@@ -71,7 +72,7 @@ export default function CommunityForum() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('discussion_messages')
-                .select('*')
+                .select('*, profiles:user_id(full_name)')
                 .eq('topic_id', selectedTopic!.id)
                 .order('created_at', { ascending: true });
             if (error) throw error;
@@ -325,7 +326,7 @@ export default function CommunityForum() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-medium">Community Member</span>
+                                                    <span className="text-sm font-medium">{(message as any).profiles?.full_name || 'Community Member'}</span>
                                                     <span className="text-xs text-muted-foreground">
                                                         {formatTimeAgo(message.created_at)}
                                                     </span>

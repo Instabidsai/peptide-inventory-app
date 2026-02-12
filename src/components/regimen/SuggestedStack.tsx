@@ -50,7 +50,7 @@ export function SuggestedStack({ activePeptideIds, existingSupplementIds }: { ac
                 {uniqueSuggestions.map((item) => (
                     <div key={item.id} className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-amber-500/10 via-background to-background p-4 transition-all hover:border-amber-500/50">
                         <div className="flex gap-4">
-                            {item.supplements.image_url ? (
+                            {item.supplements?.image_url ? (
                                 <img src={item.supplements.image_url} alt="" className="h-12 w-12 rounded-lg object-cover" />
                             ) : (
                                 <div className="h-12 w-12 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
@@ -58,7 +58,7 @@ export function SuggestedStack({ activePeptideIds, existingSupplementIds }: { ac
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold truncate">{item.supplements.name}</h4>
+                                <h4 className="font-semibold truncate">{item.supplements?.name}</h4>
                                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                                     {item.reasoning || "Recommended pairing for your protocol."}
                                 </p>
@@ -66,8 +66,8 @@ export function SuggestedStack({ activePeptideIds, existingSupplementIds }: { ac
                         </div>
 
                         <div className="mt-4 flex gap-2">
-                            {item.supplements.purchase_link && (
-                                <Button size="sm" variant="outline" className="h-8 flex-1 text-xs" onClick={() => window.open(item.supplements.purchase_link, '_blank')}>
+                            {item.supplements?.purchase_link && (
+                                <Button size="sm" variant="outline" className="h-8 flex-1 text-xs" onClick={() => window.open(item.supplements?.purchase_link, '_blank')}>
                                     Buy Now <ExternalLink className="ml-1 h-3 w-3" />
                                 </Button>
                             )}

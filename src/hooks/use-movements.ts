@@ -125,7 +125,7 @@ export function useMovements(contactId?: string) {
       if (itemsError) throw itemsError;
 
       // 3. Fetch Bottles
-      const bottleIds = [...new Set(items?.map(i => i.bottle_id) || [])];
+      const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
       let bottles: any[] = [];
       if (bottleIds.length > 0) {
         const { data: bData, error: bError } = await supabase
@@ -196,7 +196,7 @@ export function useMovement(id: string) {
       if (itemsError) throw itemsError;
 
       // Fetch Bottles/Lots same way
-      const bottleIds = [...new Set(items?.map(i => i.bottle_id) || [])];
+      const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
       let bottles: any[] = [];
       if (bottleIds.length > 0) {
         const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
@@ -237,7 +237,7 @@ export function useMovementItems(movementId: string) {
       if (itemsError) throw itemsError;
 
       // Manual join again...
-      const bottleIds = items.map(i => i.bottle_id);
+      const bottleIds = items.map(i => i.bottle_id).filter(Boolean);
       let bottles: any[] = [];
       if (bottleIds.length > 0) {
         const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
@@ -400,7 +400,6 @@ export function useCreateMovement() {
       // Rep #0 (direct seller) → type: 'direct'
       // Rep #1 (upline)        → type: 'second_tier_override'
       // Rep #2 (top-level)     → type: 'third_tier_override'
-      console.log('[COMMISSION DEBUG] Step 5 entry — type:', input.type, 'contact_id:', input.contact_id);
       if (input.type === 'sale' && input.contact_id) {
         try {
           // 5a. Find the contact's assigned rep
@@ -410,12 +409,8 @@ export function useCreateMovement() {
             .eq('id', input.contact_id)
             .single();
 
-          console.log('[COMMISSION DEBUG] 5a. Contact lookup:', JSON.stringify(contact), 'Error:', contactErr);
-
           if ((contact as any)?.assigned_rep_id) {
             const totalSaleAmount = input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0);
-
-            console.log('[COMMISSION DEBUG] 5a. Sale amount:', totalSaleAmount);
 
             // 5b. Walk the upline chain — fetch each rep's commission_rate from profile
             const COMMISSION_TYPES = ['direct', 'second_tier_override', 'third_tier_override'] as const;
@@ -430,8 +425,6 @@ export function useCreateMovement() {
                 .select('id, full_name, parent_rep_id, commission_rate')
                 .eq('id', currentRepId)
                 .single();
-
-              console.log('[COMMISSION DEBUG] 5b. Rep lookup for', currentRepId, ':', JSON.stringify(repProfile), 'Error:', repErr);
 
               if (repProfile) {
                 const repRate = Number((repProfile as any).commission_rate) || 0.10; // Default 10% if not set
@@ -448,8 +441,6 @@ export function useCreateMovement() {
               }
             }
 
-            console.log('[COMMISSION DEBUG] 5b. Rep chain:', JSON.stringify(repChain));
-
             if (repChain.length > 0) {
               // Calculate total commission across all reps (each has their own rate)
               let totalCommission = 0;
@@ -457,9 +448,8 @@ export function useCreateMovement() {
                 totalCommission += totalSaleAmount * rep.rate;
               }
 
-              // 5c. Ensure we have a valid org_id
-              const orgId = profile?.org_id || '33a18316-b0a4-4d85-a770-d1ceb762bd4f';
-              console.log('[COMMISSION DEBUG] 5c. Using org_id:', orgId, 'from profile:', profile?.id);
+              // 5c. Use the validated org_id from profile (checked at line 280)
+              const orgId = profile!.org_id;
 
               // 5c. Create the sales_order record
               const { data: salesOrder, error: soErr } = await supabase
@@ -477,10 +467,8 @@ export function useCreateMovement() {
                 .select()
                 .single();
 
-              console.log('[COMMISSION DEBUG] 5c. Sales order created:', JSON.stringify(salesOrder), 'Error:', soErr);
-
               if (soErr) {
-                console.error('[COMMISSION DEBUG] Failed to create sales_order:', soErr);
+                console.error('Failed to create sales_order:', soErr);
               } else {
                 // 5d. For each rep in chain, calculate THEIR commission and apply to balance
                 const auditLines: string[] = [];
@@ -498,15 +486,11 @@ export function useCreateMovement() {
                   const oldBalance = Number((repBal as any)?.credit_balance) || 0;
                   const newBalance = oldBalance + commissionAmount;
 
-                  console.log('[COMMISSION DEBUG] 5d. Rep', rep.name, `(${rep.type}, ${(rep.rate * 100).toFixed(1)}%)`, '- commission:', commissionAmount.toFixed(2), 'oldBalance:', oldBalance, 'newBalance:', newBalance);
-
                   // Update credit_balance
                   const { error: balErr } = await supabase
                     .from('profiles')
                     .update({ credit_balance: newBalance } as any)
                     .eq('id', rep.id);
-
-                  console.log('[COMMISSION DEBUG] 5d. Balance update error:', balErr);
 
                   // Insert into commissions table with correct type
                   const commissionStatus = oldBalance < 0 ? 'applied_to_debt' : 'pending';
@@ -520,8 +504,6 @@ export function useCreateMovement() {
                       commission_rate: rep.rate,
                       status: commissionStatus,
                     } as any);
-
-                  console.log('[COMMISSION DEBUG] 5d. Commission insert error:', commInsertErr);
 
                   // Build audit trail
                   const typeLabel = rep.type === 'direct' ? 'DIRECT' : rep.type === 'second_tier_override' ? '2ND-TIER' : '3RD-TIER';
@@ -553,20 +535,13 @@ export function useCreateMovement() {
                   .update({ notes: auditNote })
                   .eq('id', salesOrder.id);
 
-                console.log('[COMMISSION DEBUG] ✅ Auto-commission COMPLETE:', auditNote);
               }
-            } else {
-              console.log('[COMMISSION DEBUG] ❌ No reps found in chain');
             }
-          } else {
-            console.log('[COMMISSION DEBUG] ❌ No assigned_rep_id on contact. Contact data:', JSON.stringify(contact));
           }
         } catch (commErr) {
           // Don't block the movement if commission fails
-          console.error('[COMMISSION DEBUG] ❌ EXCEPTION:', commErr);
+          console.error('Auto-commission failed (non-blocking):', commErr);
         }
-      } else {
-        console.log('[COMMISSION DEBUG] ❌ Skipped — type:', input.type, 'contact_id:', input.contact_id);
       }
 
       return movement;

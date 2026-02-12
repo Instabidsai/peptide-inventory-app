@@ -60,6 +60,8 @@ export default function BodyComposition() {
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // Clean up previous preview URL to avoid memory leak
+            if (imagePreview) URL.revokeObjectURL(imagePreview);
             setSelectedImage(file);
             setImagePreview(URL.createObjectURL(file));
         }
@@ -112,16 +114,18 @@ export default function BodyComposition() {
                 String(today.getMonth() + 1).padStart(2, '0') + '-' +
                 String(today.getDate()).padStart(2, '0');
 
+            const parseNum = (v: string) => v.trim() === '' ? null : parseFloat(v);
+
             const { error } = await supabase.from('body_composition_logs').insert({
                 user_id: user.id,
                 date: localDate, // YYYY-MM-DD in local time
-                weight: parseFloat(formData.weight) || null,
-                body_fat_percentage: parseFloat(formData.body_fat) || null,
-                muscle_mass: parseFloat(formData.muscle_mass) || null,
-                visceral_fat: parseFloat(formData.visceral_fat) || null,
-                water_percentage: parseFloat(formData.water_pct) || null,
-                bmi: parseFloat(formData.bmi) || null,
-                bmr: parseFloat(formData.bmr) || null,
+                weight: parseNum(formData.weight),
+                body_fat_percentage: parseNum(formData.body_fat),
+                muscle_mass: parseNum(formData.muscle_mass),
+                visceral_fat: parseNum(formData.visceral_fat),
+                water_percentage: parseNum(formData.water_pct),
+                bmi: parseNum(formData.bmi),
+                bmr: parseNum(formData.bmr),
                 photo_url: photoUrl
             });
 

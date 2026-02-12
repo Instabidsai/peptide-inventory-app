@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePartnerDownline, useCommissions, useCommissionStats, PartnerNode } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,7 @@ import {
 import { format } from 'date-fns';
 
 export default function PartnerDashboard() {
+    const navigate = useNavigate();
     const { profile: authProfile } = useAuth();
     const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
@@ -57,7 +58,7 @@ export default function PartnerDashboard() {
                                 Order Peptides
                             </Button>
                         </Link>
-                        <Button variant="outline" size="sm" onClick={() => window.location.href = '/#/'} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                        <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                             <DollarSign className="mr-2 h-4 w-4" />
                             Return to Admin
                         </Button>

@@ -168,8 +168,8 @@ export default function Finance() {
             if (remainingAmount <= 0) break;
 
             const cost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
-            const aleadyPaid = order.amount_paid || 0;
-            const due = cost - aleadyPaid;
+            const alreadyPaid = order.amount_paid || 0;
+            const due = cost - alreadyPaid;
 
             const payAmount = Math.min(remainingAmount, due);
 
@@ -284,7 +284,7 @@ export default function Finance() {
                 {Object.entries(categoryTotals || {}).slice(0, 2).map(([cat, amount]) => (
                     <Card key={cat}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium capitalise">{cat}</CardTitle>
+                            <CardTitle className="text-sm font-medium capitalize">{cat}</CardTitle>
                             <PieChart className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>

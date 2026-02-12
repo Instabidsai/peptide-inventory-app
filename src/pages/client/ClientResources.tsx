@@ -149,15 +149,26 @@ export default function ClientResources() {
         return resources.find(r => r.is_featured) || resources.find(r => r.type === 'video') || resources[0];
     }, [resources]);
 
-    const popularResources = useMemo(() => {
+    // Filter resources by search query
+    const filteredResources = useMemo(() => {
         if (!resources) return [];
-        return [...resources].sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
-    }, [resources]);
+        if (!searchQuery.trim()) return resources;
+        const q = searchQuery.toLowerCase();
+        return resources.filter(r =>
+            r.title.toLowerCase().includes(q) ||
+            (r.description && r.description.toLowerCase().includes(q))
+        );
+    }, [resources, searchQuery]);
+
+    const popularResources = useMemo(() => {
+        if (!filteredResources.length) return [];
+        return [...filteredResources].sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+    }, [filteredResources]);
 
 
     const getLatestByType = (type: string) => {
-        if (!resources) return [];
-        return resources.filter(r => r.type === type);
+        if (!filteredResources.length) return [];
+        return filteredResources.filter(r => r.type === type);
     };
 
     const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -212,10 +223,10 @@ export default function ClientResources() {
                                 <div className="p-6 md:p-8 flex flex-col justify-center">
                                     <p className="text-emerald-400 text-sm font-medium mb-2">Featured Research</p>
                                     <h2 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
-                                        {featuredResource.title || "The Healing Potential of BPC-157"}
+                                        {featuredResource.title}
                                     </h2>
                                     <p className="text-gray-400 text-sm mb-5 line-clamp-2">
-                                        {featuredResource.description || "Explore the latest clinical studies and video analyses on regenerative peptides."}
+                                        {featuredResource.description || "Tap to view this resource."}
                                     </p>
                                     <button className="w-fit px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-full text-sm transition-colors">
                                         Watch Now
@@ -229,11 +240,6 @@ export default function ClientResources() {
                                             <Play className="h-10 w-10 text-white ml-1" />
                                         </div>
                                     )}
-                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                                        {[0, 1, 2, 3, 4].map(i => (
-                                            <div key={i} className={`h-2 rounded-full transition-all ${i === 0 ? 'w-6 bg-emerald-400' : 'w-2 bg-white/30'}`} />
-                                        ))}
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -333,13 +339,7 @@ export default function ClientResources() {
                         </div>
                         <ScrollArea className="w-full">
                             <div className={`flex gap-4 pb-4 ${showAllPopular ? 'flex-wrap' : ''}`}>
-                                {(popularResources.length > 0 ? (showAllPopular ? popularResources : popularResources.slice(0, 4)) : [
-                                    // Placeholders matching mockup if no data
-                                    { id: 'p1', title: 'BPC-157 Mechanism of Action', type: 'video', view_count: 1250 },
-                                    { id: 'p2', title: 'TB-500 Clinical Trials Review', type: 'article', view_count: 980 },
-                                    { id: 'p3', title: 'Peptide Dosage Guide 2024', type: 'pdf', view_count: 850 },
-                                    { id: 'p4', title: 'Peptide Comparison Chart', type: 'guide', view_count: 720 }
-                                ]).map((resource) => (
+                                {(popularResources.length > 0 ? (showAllPopular ? popularResources : popularResources.slice(0, 4)) : []).map((resource) => (
                                     <div
                                         key={resource.id}
                                         onClick={() => popularResources.length > 0 && setSelectedResource(resource as Resource)}
@@ -474,31 +474,7 @@ export default function ClientResources() {
                                             </button>
                                         ))
                                     ) : (
-                                        <>
-                                            {/* Placeholder topics matching mockup */}
-                                            {[
-                                                { title: "BPC-157 Dosage Questions", replies: 3 },
-                                                { title: "TB-500 and Injury Recovery Experiences", replies: 5 },
-                                                { title: "GHK-Cu for Hair Growth Results", replies: 3 }
-                                            ].map((topic, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => navigate('/community')}
-                                                    className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800/50 transition-colors text-left group"
-                                                >
-                                                    <div className="p-1.5 rounded-lg bg-emerald-500/20">
-                                                        <MessageSquare className="h-3 w-3 text-emerald-400" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-white truncate">{topic.title}</p>
-                                                        <p className="text-[11px] text-gray-500">
-                                                            {topic.replies} replies • 1 min ago
-                                                        </p>
-                                                    </div>
-                                                    <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-emerald-400 transition-colors" />
-                                                </button>
-                                            ))}
-                                        </>
+                                        <p className="text-sm text-gray-500 py-4 text-center">No discussions yet. Start one in the Community Forum!</p>
                                     )}
                                 </div>
                             </div>
