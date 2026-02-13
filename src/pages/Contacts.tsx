@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,6 +136,28 @@ export default function Contacts() {
     });
   };
 
+  const exportContactsCSV = () => {
+    if (!filteredContacts || filteredContacts.length === 0) return;
+    const headers = ['Name', 'Type', 'Email', 'Phone', 'Company', 'Assigned Rep', 'Notes'];
+    const rows = filteredContacts.map(c => [
+      (c.name || '').replace(/,/g, ''),
+      c.type,
+      c.email || '',
+      c.phone || '',
+      (c.company || '').replace(/,/g, ''),
+      (c as any).assigned_rep?.full_name || '',
+      (c.notes || '').replace(/,/g, ' ').replace(/\n/g, ' '),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -143,6 +165,12 @@ export default function Contacts() {
           <h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
           <p className="text-muted-foreground">Manage customers and partners</p>
         </div>
+        <div className="flex gap-2">
+          {filteredContacts && filteredContacts.length > 0 && (
+            <Button variant="outline" onClick={exportContactsCSV}>
+              <Download className="mr-2 h-4 w-4" /> Export CSV
+            </Button>
+          )}
         {canEdit && (
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -285,6 +313,7 @@ export default function Contacts() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <Card className="bg-card border-border">

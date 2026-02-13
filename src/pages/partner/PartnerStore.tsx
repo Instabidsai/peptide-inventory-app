@@ -17,6 +17,7 @@ import {
     Minus,
     CreditCard,
     Loader2,
+    Search,
 } from 'lucide-react';
 
 // Tier config for display
@@ -41,6 +42,7 @@ export default function PartnerStore() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Get partner's profile with pricing info
     const { data: partnerProfile } = useQuery({
@@ -169,13 +171,27 @@ export default function PartnerStore() {
                         Available Peptides
                     </h2>
 
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search peptides..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+
                     {isLoading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {peptides?.map(peptide => {
+                            {peptides?.filter((p: any) => {
+                                if (!searchQuery) return true;
+                                const q = searchQuery.toLowerCase();
+                                return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
+                            }).map(peptide => {
                                 const retail = Number((peptide as any).retail_price || (peptide as any).avg_cost || 0);
                                 const yourPrice = getPartnerPrice(peptide);
                                 const savings = retail - yourPrice;

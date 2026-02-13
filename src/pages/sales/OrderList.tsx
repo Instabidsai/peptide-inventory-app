@@ -8,6 +8,7 @@ import {
     Table,
     TableBody,
     TableCell,
+    TableFooter,
     TableHead,
     TableHeader,
     TableRow,
@@ -292,6 +293,38 @@ export default function OrderList() {
                                 </TableRow>
                             )}
                         </TableBody>
+                        {orders && orders.length > 0 && (() => {
+                            const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+                            const totalProfit = orders.reduce((s, o) => s + (o.profit_amount || 0), 0);
+                            const totalCommission = orders.reduce((s, o) => s + (o.commission_amount || 0), 0);
+                            return (
+                                <TableFooter>
+                                    <TableRow className="bg-muted/50 font-semibold">
+                                        <TableCell colSpan={isRep ? 5 : 6} className="text-xs text-muted-foreground">
+                                            {orders.length} order{orders.length !== 1 ? 's' : ''}
+                                            {(filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all') && ' (filtered)'}
+                                        </TableCell>
+                                        <TableCell />
+                                        <TableCell className="text-right">
+                                            ${totalRevenue.toFixed(2)}
+                                        </TableCell>
+                                        {isRep && (
+                                            <TableCell className="text-right text-green-600">
+                                                ${totalCommission.toFixed(2)}
+                                            </TableCell>
+                                        )}
+                                        {!isRep && (
+                                            <TableCell className="text-right">
+                                                <span className={totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                    ${totalProfit.toFixed(2)}
+                                                </span>
+                                            </TableCell>
+                                        )}
+                                        <TableCell />
+                                    </TableRow>
+                                </TableFooter>
+                            );
+                        })()}
                     </Table>
                 </CardContent>
             </Card>

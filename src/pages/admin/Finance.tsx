@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users } from 'lucide-react';
+import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
@@ -312,6 +312,63 @@ export default function Finance() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Sales P&L Section */}
+            {financials && (financials.orderBasedProfit !== 0 || financials.merchantFees !== 0 || financials.orderBasedCogs !== 0) && (
+                <div>
+                    <h2 className="text-xl font-semibold mb-4">Sales Order P&L</h2>
+                    <div className="grid gap-4 md:grid-cols-4">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Order COGS</CardTitle>
+                                <Receipt className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">${financials.orderBasedCogs.toFixed(2)}</div>
+                                <p className="text-xs text-muted-foreground">Cost of goods (order-level)</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Merchant Fees</CardTitle>
+                                <Banknote className="h-4 w-4 text-amber-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">${financials.merchantFees.toFixed(2)}</div>
+                                <p className="text-xs text-muted-foreground">5% payment processing</p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Commissions Total</CardTitle>
+                                <Users className="h-4 w-4 text-purple-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">${financials.commissionsTotal.toFixed(2)}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    Paid: ${financials.commissionsPaid.toFixed(2)} · Owed: ${financials.commissionsOwed.toFixed(2)}
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card className={financials.orderBasedProfit >= 0 ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Order Net Profit</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-bold ${financials.orderBasedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    ${financials.orderBasedProfit.toFixed(2)}
+                                </div>
+                                {financials.salesRevenue > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {((financials.orderBasedProfit / financials.salesRevenue) * 100).toFixed(1)}% margin
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
 
             {/* Purchase Orders / Batches */}
             <h2 className="text-xl font-semibold mt-8 mb-4">Purchase Orders</h2>

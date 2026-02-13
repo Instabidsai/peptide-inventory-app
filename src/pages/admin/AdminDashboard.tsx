@@ -64,6 +64,28 @@ export default function AdminDashboard() {
         },
     });
 
+    // Top sellers by quantity
+    const { data: topSellers } = useQuery({
+        queryKey: ['top_sellers'],
+        queryFn: async () => {
+            const { data, error } = await (supabase as any)
+                .from('sales_order_items')
+                .select('peptide_id, quantity, peptides (name)')
+                .not('peptide_id', 'is', null);
+            if (error) throw error;
+            // Aggregate by peptide
+            const agg = new Map<string, { name: string; qty: number; revenue: number }>();
+            (data || []).forEach((item: any) => {
+                const key = item.peptide_id;
+                const existing = agg.get(key) || { name: item.peptides?.name || 'Unknown', qty: 0, revenue: 0 };
+                existing.qty += Number(item.quantity || 0);
+                existing.revenue += Number(item.unit_price || 0) * Number(item.quantity || 0);
+                agg.set(key, existing);
+            });
+            return [...agg.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+        },
+    });
+
     if (financialsError) {
         console.error("Financials Error:", financialsError);
     }
@@ -536,6 +558,34 @@ export default function AdminDashboard() {
                     );
                 })()}
 
+                {/* Top Sellers */}
+                {topSellers && topSellers.length > 0 && (
+                    <Card className="md:col-span-1 bg-card border-border">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                                Top Sellers
+                            </CardTitle>
+                            <CardDescription>By units sold (all orders)</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {topSellers.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                                            <span className="truncate">{item.name}</span>
+                                        </div>
+                                        <span className="font-mono font-medium text-primary shrink-0 ml-2">
+                                            {item.qty}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 <Card className="md:col-span-2 bg-card border-border">
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -594,7 +644,7 @@ export default function AdminDashboard() {
                 </Card>
             </div>
             <div className="text-center text-xs text-muted-foreground mt-8">
-                System Version: 2.3 (Profit Pipeline + WooCommerce)
+                System Version: 2.4 (Profit Pipeline + WooCommerce + Partner Enhancements)
             </div>
         </div>
     );

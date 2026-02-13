@@ -78,6 +78,16 @@ export default function NewOrder() {
         }
     }, [prefillContactId, contacts]);
 
+    // Auto-fill shipping address from selected contact
+    useEffect(() => {
+        if (selectedContactId && contacts) {
+            const contact = contacts.find(c => c.id === selectedContactId);
+            if (contact?.address && !shippingAddress) {
+                setShippingAddress(contact.address);
+            }
+        }
+    }, [selectedContactId, contacts]);
+
     // Helper to get consistent Base Cost
     const getBaseCost = (peptide: Peptide, profile: any) => {
         // Inventory Avg Cost + Overhead
