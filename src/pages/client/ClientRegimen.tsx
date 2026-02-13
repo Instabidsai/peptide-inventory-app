@@ -224,7 +224,6 @@ export default function ClientRegimen() {
             {contact && <FinancialOverview contactId={contact.id} />}
 
             {/* Supplements Stack */}
-            {/* Supplements Stack */}
             {(() => {
                 try {
                     const supplementItems: SupplementItem[] = protocols?.flatMap(p =>

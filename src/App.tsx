@@ -55,6 +55,7 @@ import ClientStore from "./pages/client/ClientStore";
 import ClientOrders from "./pages/client/ClientOrders";
 import CheckoutSuccess from "./pages/checkout/CheckoutSuccess";
 import CheckoutCancel from "./pages/checkout/CheckoutCancel";
+import UpdatePassword from "./pages/auth/UpdatePassword";
 
 console.log("App.tsx Module Loaded - Imports Valid (Block 4: Admin + Full)");
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
                         <Route path="/debug-auth" element={<Auth />} />
                         <Route path="/join" element={<Join />} />
                         <Route path="/onboarding" element={<Onboarding />} />
+                        <Route path="/update-password" element={<UpdatePassword />} />
                         <Route element={
                             <ProtectedRoute>
                                 <RoleBasedRedirect allowedRoles={['customer']}>
