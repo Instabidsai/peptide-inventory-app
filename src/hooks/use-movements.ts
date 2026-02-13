@@ -655,7 +655,7 @@ export function useDeleteMovement() {
                 }
               }
 
-              console.log('Commission reversal:', reversalLog.join(', '));
+              // Commission reversal complete
             }
 
             // Delete commissions records linked to this sales_order

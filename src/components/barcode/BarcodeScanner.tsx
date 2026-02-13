@@ -64,8 +64,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     };
 
     const onScanSuccess = (decodedText: string) => {
-        console.log('Barcode scanned:', decodedText);
-
         // Show success animation
         setScanSuccess(true);
 

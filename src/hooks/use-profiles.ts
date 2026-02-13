@@ -98,8 +98,6 @@ export function useUpdateProfile() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<UserProfile> & { id: string }) => {
-            console.log('[useUpdateProfile] Updating profile:', id, updates);
-
             const { data, error } = await supabase
                 .from('profiles')
                 .update(updates)
@@ -110,8 +108,6 @@ export function useUpdateProfile() {
                 console.error('[useUpdateProfile] Error:', error);
                 throw error;
             }
-
-            console.log('[useUpdateProfile] Result:', data);
 
             // If no rows returned, RLS silently blocked the update
             if (!data || data.length === 0) {

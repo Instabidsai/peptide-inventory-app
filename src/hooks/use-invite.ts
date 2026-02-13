@@ -51,8 +51,6 @@ export function useInviteRep() {
             // For now, let's assume the edge function logs it or we rely on the toast.
             // Actually, for "Add Rep", gaining the link is useful.
             if (data.action_link) {
-                console.log("Invite Link:", data.action_link);
-                // Optionally copy to clipboard?
                 navigator.clipboard.writeText(data.action_link);
                 toast({ title: "Link Copied", description: "Invite link copied to clipboard!" });
             }

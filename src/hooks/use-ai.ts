@@ -32,7 +32,6 @@ export const useAI = () => {
         setIsLoading(true);
 
         try {
-            console.log('🧠 Sending to AI...');
             const { data, error } = await supabase.functions.invoke('chat-with-ai', {
                 body: { message: content }
             });

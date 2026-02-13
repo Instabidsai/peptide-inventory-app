@@ -1,19 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 
 export default function Join() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const [debugUrl, setDebugUrl] = useState<string | null>(null);
-    const [debugInfo, setDebugInfo] = useState<{ base?: string, redirect?: string }>({});
 
     const handleAccess = async () => {
         if (!token) return;
@@ -29,33 +25,24 @@ export default function Join() {
             if (data.error) throw new Error(data.error);
 
             if (data.url) {
-                // STOP: Don't redirect automatically.
-                setDebugUrl(data.url);
-                setDebugInfo({
-                    base: data.debug_base_url,
-                    redirect: data.debug_computed_redirect
-                });
+                window.location.href = data.url;
             } else {
                 throw new Error("No redirect URL returned");
             }
         } catch (err: any) {
-            // ... (keep existing error handling)
-            console.error(err);
+            setError(err.message || "Something went wrong. Please try again or contact support.");
+            console.error("Join token exchange error:", err);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // ... (rest of the file)
-
-
-
     if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
                 <Card className="max-w-md w-full text-center">
                     <CardHeader>
-                        <CardTitle className="text-red-500">Invalid Link</CardTitle>
+                        <CardTitle className="text-destructive">Invalid Link</CardTitle>
                         <CardDescription>This invite link is missing a valid token.</CardDescription>
                     </CardHeader>
                 </Card>
@@ -82,40 +69,23 @@ export default function Join() {
                         </div>
                     )}
 
-                    {debugUrl ? (
-                        <div className="space-y-4">
-                            <div className="p-3 bg-slate-950 rounded border border-slate-700">
-                                <label className="text-xs text-slate-400 block mb-1">Generated Magic Link:</label>
-                                <code className="text-[10px] break-all text-green-400 bg-black p-2 rounded block">
-                                    {debugUrl}
-                                </code>
-                            </div>
-                            <p className="text-xs text-yellow-500 text-center">
-                                🛑 STOP! Check the URL above. <br />Does it end in "/join"? If so, that's the bug.
-                            </p>
-                            <Button size="lg" className="w-full bg-green-600 hover:bg-green-700" onClick={() => window.location.href = debugUrl}>
-                                Proceed (Manually) <ArrowRight className="ml-2 h-5 w-5" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button
-                            size="lg"
-                            className="w-full font-semibold text-lg h-12"
-                            onClick={handleAccess}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Verifying...
-                                </>
-                            ) : (
-                                <>
-                                    Access Portal <ArrowRight className="ml-2 h-5 w-5" />
-                                </>
-                            )}
-                        </Button>
-                    )}
+                    <Button
+                        size="lg"
+                        className="w-full font-semibold text-lg h-12"
+                        onClick={handleAccess}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Verifying...
+                            </>
+                        ) : (
+                            <>
+                                Access Portal <ArrowRight className="ml-2 h-5 w-5" />
+                            </>
+                        )}
+                    </Button>
                     <p className="text-xs text-center text-slate-500 mt-4">
                         This extra step protects your one-time link from email scanners.
                     </p>

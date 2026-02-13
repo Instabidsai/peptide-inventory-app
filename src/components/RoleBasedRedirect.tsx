@@ -12,7 +12,7 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
     const [searchParams] = useSearchParams();
 
     if (loading) {
-        return <div className="h-screen flex items-center justify-center bg-gray-100 text-gray-800">
+        return <div className="h-screen flex items-center justify-center bg-background text-foreground">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin h-8 w-8 text-primary" />
                 <p>Verifying Access...</p>

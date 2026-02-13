@@ -55,7 +55,6 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400">
-                            <img src="/icons/fridge.svg" className="w-5 h-5 text-emerald-400" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
                             <Droplets className="w-5 h-5" />
                         </div>
                         Digital Fridge
