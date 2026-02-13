@@ -266,7 +266,6 @@ export default function BodyComposition() {
             )}
 
             {/* Charts */}
-            {/* Charts */}
             {logs && logs.length > 1 && (
                 <div className="space-y-6">
                     <GlassCard>
@@ -300,7 +299,7 @@ export default function BodyComposition() {
                                     />
                                     <Tooltip
                                         labelFormatter={label => format(new Date(label), 'MMM d, yyyy')}
-                                        contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                     />
                                     <Legend />
                                     <Area type="monotone" dataKey="weight" stroke="#93c5fd" fillOpacity={1} fill="url(#colorWeight)" strokeWidth={2} activeDot={{ r: 5 }} />
@@ -341,7 +340,7 @@ export default function BodyComposition() {
                                     />
                                     <Tooltip
                                         labelFormatter={label => format(new Date(label), 'MMM d, yyyy')}
-                                        contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                                     />
                                     <Legend />
                                     <Area type="monotone" dataKey="body_fat_percentage" stroke="#fca5a5" fillOpacity={1} fill="url(#colorFat)" strokeWidth={2} activeDot={{ r: 5 }} />

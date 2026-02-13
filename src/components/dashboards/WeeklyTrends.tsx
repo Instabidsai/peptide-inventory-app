@@ -148,8 +148,8 @@ export function WeeklyTrends() {
                             <YAxis tick={{ fontSize: 12 }} />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                    border: '1px solid #ddd',
+                                    backgroundColor: 'hsl(var(--background))',
+                                    border: '1px solid hsl(var(--border))',
                                     borderRadius: '8px',
                                     padding: '8px'
                                 }}
