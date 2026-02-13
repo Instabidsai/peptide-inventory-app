@@ -257,6 +257,10 @@ export function useCreateSalesOrder() {
 
             if (itemsError) throw itemsError;
 
+            // Process commission records (direct + override for upline)
+            const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
+            if (rpcError) console.error("Commission processing failed:", rpcError);
+
             // Calculate COGS + profit (merchant fee = 0 since unpaid)
             await recalculateOrderProfit(order.id);
 
@@ -403,7 +407,11 @@ export function useFulfillOrder() {
 
             if (updateError) throw updateError;
 
-            // 5. Recalculate COGS + profit with current data
+            // 5. Process commission records (idempotent — skips if already created)
+            const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
+            if (rpcError) console.error("Commission processing on fulfill failed:", rpcError);
+
+            // 6. Recalculate COGS + profit with current data
             await recalculateOrderProfit(orderId);
         },
         onSuccess: () => {

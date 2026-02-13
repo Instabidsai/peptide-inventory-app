@@ -47,18 +47,24 @@ export default function Reps() {
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-    // Fetch per-rep performance: sales volume + commission earned
+    // Fetch per-rep performance: sales volume + commission earned (from commissions table, not orders)
     const { data: repStats } = useQuery({
         queryKey: ['rep_performance', reps?.map(r => r.id)],
         queryFn: async () => {
             if (!reps || reps.length === 0) return new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
 
-            // Get sales stats per rep
+            // Get sales stats per rep (volume = orders where they're the rep)
             const { data: orders } = await (supabase as any)
                 .from('sales_orders')
-                .select('rep_id, total_amount, commission_amount')
+                .select('rep_id, total_amount')
                 .not('rep_id', 'is', null)
                 .neq('status', 'cancelled');
+
+            // Get commission earned from commissions table (includes overrides!)
+            const { data: commissions } = await (supabase as any)
+                .from('commissions')
+                .select('partner_id, amount')
+                .neq('status', 'void');
 
             // Get customer counts per rep
             const { data: contacts } = await (supabase as any)
@@ -68,13 +74,19 @@ export default function Reps() {
 
             const stats = new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
 
-            // Aggregate orders
+            // Aggregate order volume by rep
             (orders || []).forEach((o: any) => {
                 const existing = stats.get(o.rep_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
                 existing.volume += Number(o.total_amount || 0);
-                existing.commission += Number(o.commission_amount || 0);
                 existing.orders += 1;
                 stats.set(o.rep_id, existing);
+            });
+
+            // Aggregate commission earned from commissions table (direct + overrides)
+            (commissions || []).forEach((c: any) => {
+                const existing = stats.get(c.partner_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
+                existing.commission += Number(c.amount || 0);
+                stats.set(c.partner_id, existing);
             });
 
             // Count customers
@@ -85,6 +97,26 @@ export default function Reps() {
             });
 
             return stats;
+        },
+        enabled: !!reps && reps.length > 0,
+    });
+
+    // Fetch customer contacts for the 3rd-level tree in list view
+    const { data: customerContacts } = useQuery({
+        queryKey: ['rep_customers_list', reps?.map(r => r.id)],
+        queryFn: async () => {
+            if (!reps || reps.length === 0) return [];
+            const repIds = reps.map(r => r.id);
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, assigned_rep_id')
+                .in('assigned_rep_id', repIds)
+                .eq('type', 'customer')
+                .order('name');
+            if (error) throw error;
+            // Exclude contacts who share a name with a partner (they're already shown as partners)
+            const partnerNames = new Set(reps.map(r => r.full_name?.toLowerCase()));
+            return (data || []).filter(c => !partnerNames.has(c.name?.toLowerCase()));
         },
         enabled: !!reps && reps.length > 0,
     });
@@ -156,8 +188,13 @@ export default function Reps() {
                                         const topLevel = reps.filter(r => !r.parent_rep_id || !repIds.has(r.parent_rep_id));
                                         const childrenOf = (parentId: string) => reps.filter(r => r.parent_rep_id === parentId);
 
+                                        // Get customer contacts for a given rep
+                                        const clientsOf = (repId: string) =>
+                                            (customerContacts || []).filter(c => c.assigned_rep_id === repId);
+
                                         const renderRow = (rep: UserProfile, depth: number = 0): React.ReactNode[] => {
                                             const children = childrenOf(rep.id);
+                                            const clients = clientsOf(rep.id);
                                             return [
                                                 <TableRow key={rep.id} className={depth > 0 ? 'bg-muted/20' : ''}>
                                                     <TableCell className="font-medium">
@@ -204,7 +241,32 @@ export default function Reps() {
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>,
-                                                ...children.flatMap(child => renderRow(child, depth + 1))
+                                                ...children.flatMap(child => renderRow(child, depth + 1)),
+                                                // Render customer contacts as leaf nodes under this partner
+                                                ...clients.map(client => (
+                                                    <TableRow key={`client-${client.id}`} className="bg-blue-50/30 dark:bg-blue-950/10">
+                                                        <TableCell className="font-medium">
+                                                            <div className="flex items-center" style={{ paddingLeft: `${(depth + 1) * 24}px` }}>
+                                                                <span className="text-muted-foreground mr-2 font-mono text-xs">└─</span>
+                                                                <span className="text-blue-600 dark:text-blue-400">{client.name}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground text-sm">{client.email || '—'}</TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs">—</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className="text-blue-600 border-blue-300">customer</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
+                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
+                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
+                                                        <TableCell className="text-sm">{rep.full_name}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/contacts`)}>
+                                                                <Eye className="h-4 w-4 mr-2" /> View
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
                                             ];
                                         };
 
