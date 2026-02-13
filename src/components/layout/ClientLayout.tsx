@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard, ShoppingBag, Package } from 'lucide-react';
+import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -14,8 +14,10 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { userRole, user } = useAuth();
+    const { userRole, user, profile } = useAuth();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
+    const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
+    const canGoBack = isAdmin || isSalesRep;
 
     const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback', user?.id],
@@ -68,10 +70,15 @@ export function ClientLayout() {
     ];
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-50 via-background to-background dark:from-slate-950 dark:via-background dark:to-background flex flex-col">
-            {/* Top Bar (Simplified) */}
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 justify-between">
-                <div className="font-semibold text-lg">Family Hub</div>
+        <div className="min-h-screen bg-background flex flex-col">
+            {/* Top Bar */}
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/50 bg-card/80 backdrop-blur-xl px-4 justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                        <Home className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="font-semibold text-lg text-foreground">Family Hub</span>
+                </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
                     <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
@@ -84,7 +91,13 @@ export function ClientLayout() {
                     {isAdmin && (
                         <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                             <LayoutDashboard className="mr-2 h-4 w-4" />
-                            Return to Admin
+                            Admin
+                        </Button>
+                    )}
+                    {isSalesRep && !isAdmin && (
+                        <Button variant="outline" size="sm" onClick={() => navigate('/partner')} className="border-emerald-500/20 hover:bg-emerald-500/10 hover:text-emerald-400">
+                            <Briefcase className="mr-2 h-4 w-4" />
+                            Partner Portal
                         </Button>
                     )}
                 </div>
@@ -102,7 +115,7 @@ export function ClientLayout() {
             </main>
 
             {/* Bottom Navigation (Mobile First) */}
-            <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-40 pb-safe">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card/80 backdrop-blur-xl z-40 pb-safe">
                 <nav className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
