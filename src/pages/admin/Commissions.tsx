@@ -18,7 +18,7 @@ interface CommissionRow {
     commission_rate: number;
     status: string;
     profiles: { full_name: string; credit_balance: number } | null;
-    sales_orders: { id: string; order_number: string; total_amount: number; contacts: { name: string } | null } | null;
+    sales_orders: { id: string; total_amount: number; contacts: { name: string } | null } | null;
 }
 
 export default function Commissions() {

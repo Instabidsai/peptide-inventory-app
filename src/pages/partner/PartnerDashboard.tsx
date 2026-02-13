@@ -317,7 +317,7 @@ export default function PartnerDashboard() {
                                         <TableRow key={comm.id}>
                                             <TableCell>{format(new Date(comm.created_at), 'MMM d')}</TableCell>
                                             <TableCell className="font-medium">
-                                                Order #{comm.sales_orders?.order_number || 'N/A'}
+                                                Order #{comm.sale_id?.slice(0, 8) || 'N/A'}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className="capitalize text-[10px]">
@@ -464,7 +464,7 @@ export default function PartnerDashboard() {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
                                                 <p className="text-sm font-medium truncate">
-                                                    Order #{comm.sales_orders?.order_number || 'N/A'}
+                                                    Order #{comm.sale_id?.slice(0, 8) || 'N/A'}
                                                 </p>
                                                 <Badge variant="outline" className="capitalize text-[10px] shrink-0">
                                                     {comm.type.replace(/_/g, ' ')}

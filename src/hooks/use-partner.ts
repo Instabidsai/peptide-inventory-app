@@ -28,7 +28,6 @@ export interface Commission {
     created_at: string;
     sales_orders?: {
         id: string;
-        order_number: string;
         total_amount: number;
     }
 }
@@ -70,13 +69,12 @@ export function useCommissions() {
 
             if (!profile?.id) return [];
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('commissions')
                 .select(`
                     *,
                     sales_orders (
                         id,
-                        order_number,
                         total_amount
                     )
                 `)
