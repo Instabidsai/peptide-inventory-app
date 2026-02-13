@@ -172,11 +172,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         ))}
 
 
-        {/* Partner Portal Switcher (Admin Only) */}
-        {userRole?.role === 'admin' && (
+        {/* Partner Portal Switcher */}
+        {(userRole?.role === 'admin' || userRole?.role === 'sales_rep') && (
           <div className="mt-2 px-3">
             <NavLink
-              to="/partner?preview_role=sales_rep"
+              to="/partner"
               onClick={onClose}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
             >
