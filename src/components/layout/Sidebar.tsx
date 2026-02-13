@@ -60,6 +60,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     enabled: !!user
   });
 
+  // Fetch pending request count for badge
+  const { data: pendingRequestCount } = useQuery({
+    queryKey: ['pending_request_count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('client_requests')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['pending']);
+      return count || 0;
+    },
+    enabled: effectiveRole === 'admin' || effectiveRole === 'staff',
+    refetchInterval: 60000, // Refresh every minute
+  });
+
   return (
     <aside
       className={cn(
@@ -83,15 +97,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             {effectiveRole === 'sales_rep' && (
               <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/50 rounded text-xs font-medium text-emerald-700 dark:text-emerald-400">
                 <DollarSign className="h-3 w-3" />
-                <span>Wallet: ${(organization as any)?.credit_balance || (user as any)?.credit_balance || '0.00'}</span>
-                {/* Note: The 'organization' or 'user' context might not have credit_balance directly.
-                        We usually fetch profile in Sidebar or rely on AuthContext.
-                        Let's check useAuth / profile loading.
-                        AuthContext usually loads profile. Let's check if it exposes it adequately.
-                        If not, we might need a separate fetch here or rely on the profile context if available.
-                        For now, I'll assume I need to fetch it or finding it on the user object if I added it to session claims (unlikely).
-                        Better approach: Fetch profile in `Sidebar` if rep.
-                    */}
+                <span>Wallet: ${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>
             )}
 
@@ -150,6 +156,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <>
                 <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
                 <span className="flex-1">{item.name}</span>
+                {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {pendingRequestCount}
+                  </span>
+                )}
                 {isActive && <ChevronRight className="h-4 w-4 text-primary" />}
               </>
             )}
