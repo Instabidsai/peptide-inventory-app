@@ -200,15 +200,18 @@ export default function PartnerDashboard() {
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
                 <Card
                     className="border-green-500/20 bg-green-500/5 cursor-pointer hover:bg-green-500/10 transition-colors"
-                    onClick={() => setActiveSheet('balance')}
+                    onClick={() => setActiveSheet('commissions')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
+                        <CardTitle className="text-sm font-medium">Available Commission</CardTitle>
                         <Wallet className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-500">${creditBalance.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">Store credit <ChevronRight className="h-3 w-3" /></p>
+                        <div className="text-2xl font-bold text-green-500">${(stats.available + creditBalance).toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            {creditBalance > 0 ? `$${creditBalance.toFixed(2)} credit + $${stats.available.toFixed(2)} earned` : 'Earned & ready'}
+                            <ChevronRight className="h-3 w-3" />
+                        </p>
                     </CardContent>
                 </Card>
                 <Card
@@ -221,7 +224,7 @@ export default function PartnerDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-amber-500">${stats.pending.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">Tap to manage <ChevronRight className="h-3 w-3" /></p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">Awaiting payment <ChevronRight className="h-3 w-3" /></p>
                     </CardContent>
                 </Card>
                 <Card
@@ -266,15 +269,15 @@ export default function PartnerDashboard() {
                 </Card>
             </div>
 
-            {/* Apply Commission Banner — shown when both pending commissions and owed exist */}
-            {stats.pending > 0 && totalOwed > 0 && (
+            {/* Apply Commission Banner — shown when available commissions AND owed exist */}
+            {(stats.available + creditBalance) > 0 && totalOwed > 0 && (
                 <Card className="border-primary/30 bg-primary/5">
                     <CardContent className="flex items-center justify-between py-4">
                         <div className="flex items-center gap-3">
                             <ArrowRightLeft className="h-5 w-5 text-primary" />
                             <div>
-                                <p className="text-sm font-medium">Apply ${stats.pending.toFixed(2)} in commissions to your ${totalOwed.toFixed(2)} balance?</p>
-                                <p className="text-xs text-muted-foreground">Commissions will pay off oldest invoices first. Any surplus goes to store credit.</p>
+                                <p className="text-sm font-medium">Apply ${(stats.available + creditBalance).toFixed(2)} in earned commissions to your ${totalOwed.toFixed(2)} balance?</p>
+                                <p className="text-xs text-muted-foreground">Pays off oldest invoices first. Any surplus goes to store credit.</p>
                             </div>
                         </div>
                         <Button
@@ -445,14 +448,14 @@ export default function PartnerDashboard() {
                         </div>
 
                         {/* Apply to owed button */}
-                        {stats.pending > 0 && totalOwed > 0 && (
+                        {stats.available > 0 && totalOwed > 0 && (
                             <Button
                                 className="w-full"
                                 onClick={() => applyCommissions.mutate()}
                                 disabled={applyCommissions.isPending}
                             >
                                 {applyCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
-                                Apply ${stats.pending.toFixed(2)} to Amount Owed (${totalOwed.toFixed(2)})
+                                Apply ${stats.available.toFixed(2)} to Amount Owed (${totalOwed.toFixed(2)})
                             </Button>
                         )}
 
@@ -511,14 +514,14 @@ export default function PartnerDashboard() {
                             </p>
                         </div>
 
-                        {stats.pending > 0 && totalOwed > 0 && (
+                        {stats.available > 0 && totalOwed > 0 && (
                             <Button
                                 className="w-full"
                                 onClick={() => applyCommissions.mutate()}
                                 disabled={applyCommissions.isPending}
                             >
                                 {applyCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
-                                Apply ${stats.pending.toFixed(2)} Commissions Here
+                                Apply ${stats.available.toFixed(2)} Commissions Here
                             </Button>
                         )}
 

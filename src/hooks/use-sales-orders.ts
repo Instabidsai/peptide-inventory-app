@@ -205,60 +205,17 @@ export function useCreateSalesOrder() {
                 repCostPlusMarkup = Number((profile as any).cost_plus_markup) || 0;
             }
 
-            // If cost_plus pricing, fetch avg lot costs for commission calculation
-            let avgLotCosts: Record<string, number> = {};
-            if (repPricingMode === 'cost_plus') {
-                const { data: lots } = await (supabase as any)
-                    .from('lots')
-                    .select('peptide_id, cost_per_unit')
-                    .gt('cost_per_unit', 0);
-                if (lots) {
-                    const costMap: Record<string, { total: number; count: number }> = {};
-                    lots.forEach((l: any) => {
-                        const pid = l.peptide_id;
-                        if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
-                        costMap[pid].total += Number(l.cost_per_unit);
-                        costMap[pid].count += 1;
-                    });
-                    Object.entries(costMap).forEach(([pid, { total, count }]) => {
-                        avgLotCosts[pid] = total / count;
-                    });
-                }
-            }
-
-            // Calculate totals and commission
+            // Calculate totals — commission is revenue-based (rate × sale amount)
+            // The actual commission records (with paid/unpaid split) are created
+            // by the process_sale_commission RPC after insert.
+            // This is just a preview for the order's commission_amount field.
             let totalAmount = 0;
-            let totalCommission = 0;
-
-            // Fetch peptide costs for commission calculation
-            const peptideIds = input.items.map(i => i.peptide_id);
-            const { data: peptides } = await supabase
-                .from('peptides')
-                .select('id, retail_price, avg_cost')
-                .in('id', peptideIds);
-
-            const peptideMap = new Map(peptides?.map(p => [p.id, p]));
 
             for (const item of input.items) {
-                const itemTotal = item.quantity * item.unit_price;
-                totalAmount += itemTotal;
-
-                // Commission = (SalePrice - PartnerCost) × commission_rate
-                const peptide = peptideMap.get(item.peptide_id);
-                const retailPrice = (peptide as any)?.retail_price || (peptide as any)?.avg_cost || 0;
-
-                let partnerCost: number;
-                if (repPricingMode === 'cost_plus' && avgLotCosts[item.peptide_id]) {
-                    partnerCost = avgLotCosts[item.peptide_id] + repCostPlusMarkup;
-                } else {
-                    partnerCost = retailPrice * priceMultiplier;
-                }
-
-                const marginPerUnit = item.unit_price - partnerCost;
-                if (marginPerUnit > 0) {
-                    totalCommission += (marginPerUnit * item.quantity) * repCommissionRate;
-                }
+                totalAmount += item.quantity * item.unit_price;
             }
+
+            const totalCommission = totalAmount * repCommissionRate;
 
             const commissionAmount = Math.max(0, totalCommission); // Ensure non-negative
 
