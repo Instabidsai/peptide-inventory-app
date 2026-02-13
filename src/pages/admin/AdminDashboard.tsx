@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFinancialMetrics } from '@/hooks/use-financials';
 import { usePendingOrdersCount, usePendingOrderFinancials } from '@/hooks/use-orders';
 import { supabase } from '@/integrations/sb_client/client';
+import { useQuery } from '@tanstack/react-query';
 import {
     Package,
     TrendingUp,
@@ -37,6 +38,31 @@ export default function AdminDashboard() {
     const { data: financials, isLoading: financialsLoading, error: financialsError } = useFinancialMetrics();
     const { data: pendingOrdersCount, isLoading: pendingCountLoading } = usePendingOrdersCount();
     const { data: pendingFinancials, isLoading: pendingValueLoading } = usePendingOrderFinancials();
+
+    // WooCommerce sync status
+    const { data: lastWooOrder } = useQuery({
+        queryKey: ['last_woo_order'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('sales_orders')
+                .select('created_at, woo_order_id')
+                .eq('order_source', 'woocommerce')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            return data;
+        },
+    });
+    const wooOrderCount = useQuery({
+        queryKey: ['woo_order_count'],
+        queryFn: async () => {
+            const { count } = await supabase
+                .from('sales_orders')
+                .select('id', { count: 'exact', head: true })
+                .eq('order_source', 'woocommerce');
+            return count || 0;
+        },
+    });
 
     if (financialsError) {
         console.error("Financials Error:", financialsError);
@@ -242,6 +268,23 @@ export default function AdminDashboard() {
                                     </div>
                                 </>
                             )}
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link to="/sales?source=woocommerce">
+                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">WooCommerce</CardTitle>
+                            <ShoppingCart className="h-4 w-4 text-purple-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{wooOrderCount.data || 0}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {lastWooOrder?.created_at
+                                    ? `Last sync: ${format(new Date(lastWooOrder.created_at), 'MMM d, h:mm a')}`
+                                    : 'No orders synced yet'}
+                            </p>
                         </CardContent>
                     </Card>
                 </Link>

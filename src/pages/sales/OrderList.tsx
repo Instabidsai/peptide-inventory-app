@@ -38,6 +38,7 @@ export default function OrderList() {
     const navigate = useNavigate();
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
     const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
+    const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
 
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
     const isRep = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
@@ -48,9 +49,9 @@ export default function OrderList() {
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
     const rawOrders = isRep ? myOrders : allOrders;
-    const orders = filterSource === 'all'
-        ? rawOrders
-        : rawOrders?.filter(o => (o.order_source || 'app') === filterSource);
+    const orders = rawOrders
+        ?.filter(o => filterSource === 'all' || (o.order_source || 'app') === filterSource)
+        ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment);
     const isLoading = isRep ? myLoading : allLoading;
 
     if (isLoading) return <div className="p-8 text-center">Loading orders...</div>;
@@ -140,6 +141,17 @@ export default function OrderList() {
                         <SelectItem value="submitted">Submitted</SelectItem>
                         <SelectItem value="fulfilled">Fulfilled</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={filterPayment} onValueChange={(v: any) => setFilterPayment(v)}>
+                    <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Payment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Payments</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
                     </SelectContent>
                 </Select>
                 {!isRep && (
@@ -271,7 +283,7 @@ export default function OrderList() {
                                             <Truck className="mx-auto h-10 w-10 mb-3 opacity-50" />
                                             <p className="text-lg font-medium">No orders found</p>
                                             <p className="text-sm mt-1">
-                                                {filterStatus !== 'all' || filterSource !== 'all'
+                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all'
                                                     ? 'Try adjusting your filters'
                                                     : 'Create your first sales order to get started'}
                                             </p>

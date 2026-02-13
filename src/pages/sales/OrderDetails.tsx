@@ -6,7 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -39,6 +54,8 @@ export default function OrderDetails() {
     const shipLabel = useCreateShippingLabel();
     const { toast } = useToast();
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -49,13 +66,21 @@ export default function OrderDetails() {
         updateOrder.mutate({ id: order.id, status });
     };
 
-    const handlePaymentStatusChange = (status: SalesOrder['payment_status']) => {
+    const handlePaymentStatusChange = (status: SalesOrder['payment_status'], paymentMethod?: string) => {
         updateOrder.mutate({
             id: order.id,
             payment_status: status,
             // If paid, set amount_paid to total if currently 0
-            amount_paid: status === 'paid' && order.amount_paid === 0 ? order.total_amount : order.amount_paid
+            amount_paid: status === 'paid' && order.amount_paid === 0 ? order.total_amount : order.amount_paid,
+            ...(paymentMethod ? { payment_method: paymentMethod } : {}),
         });
+    };
+
+    const handleMarkAsPaid = () => {
+        const method = selectedPaymentMethod === 'processor' ? null : selectedPaymentMethod;
+        handlePaymentStatusChange('paid', method || undefined);
+        setShowPaymentDialog(false);
+        setSelectedPaymentMethod('processor');
     };
 
     const handlePayWithCredit = () => {
@@ -121,6 +146,12 @@ export default function OrderDetails() {
                                     <h3 className="font-semibold text-muted-foreground">Sales Rep</h3>
                                     <p className="text-lg">{order.profiles?.full_name || 'N/A'}</p>
                                 </div>
+                                {order.payment_method && (
+                                    <div>
+                                        <h3 className="font-semibold text-muted-foreground">Payment Method</h3>
+                                        <p className="text-lg capitalize">{order.payment_method}</p>
+                                    </div>
+                                )}
                             </div>
 
                             <Separator />
@@ -177,7 +208,7 @@ export default function OrderDetails() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('unpaid')}>Unpaid</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handlePaymentStatusChange('paid')}>Paid (Full)</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setShowPaymentDialog(true)}>Paid (Full)</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('partial')}>Partial</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('refunded')}>Refunded</DropdownMenuItem>
                                         {(profile?.credit_balance || 0) > 0 && (
@@ -405,6 +436,44 @@ export default function OrderDetails() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Payment Method Dialog */}
+            <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Mark as Paid</DialogTitle>
+                        <DialogDescription>
+                            Select how this ${order.total_amount.toFixed(2)} payment was received.
+                            A 5% merchant fee applies for processor payments.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Payment method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="processor">Payment Processor (5% fee)</SelectItem>
+                                <SelectItem value="cash">Cash (no fee)</SelectItem>
+                                <SelectItem value="wire">Wire Transfer (no fee)</SelectItem>
+                                <SelectItem value="credit">Store Credit (no fee)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {selectedPaymentMethod === 'processor' && (
+                            <p className="text-xs text-amber-500 flex items-center gap-1">
+                                <Banknote className="h-3 w-3" />
+                                Merchant fee: ${(order.total_amount * 0.05).toFixed(2)}
+                            </p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+                        <Button onClick={handleMarkAsPaid} className="bg-green-600 hover:bg-green-700">
+                            Confirm Payment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
