@@ -642,6 +642,10 @@ export default function Movements() {
                   ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
                   : '-';
 
+                const mobileSubtotal = movement.movement_items?.reduce((s, item: any) => s + (Number(item.price_at_sale) || 0), 0) || 0;
+                const mobileDiscount = Number(movement.discount_amount) || 0;
+                const mobileOwed = Math.max(0, mobileSubtotal - mobileDiscount - (Number(movement.amount_paid) || 0));
+
                 return (
                   <motion.div
                     key={movement.id}
@@ -666,6 +670,9 @@ export default function Movements() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-sm">${(movement.amount_paid || 0).toFixed(2)}</p>
+                            {mobileOwed > 0 && (
+                              <p className="text-xs text-red-500">Owes ${mobileOwed.toFixed(2)}</p>
+                            )}
                             <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className="text-xs capitalize mt-1">
                               {movement.payment_status}
                             </Badge>
@@ -690,6 +697,7 @@ export default function Movements() {
                   <TableHead>Payment</TableHead>
                   <TableHead>Cost</TableHead>
                   <TableHead>Amount Paid</TableHead>
+                  <TableHead>Owed</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -710,6 +718,11 @@ export default function Movements() {
                   const itemsDisplay = itemsSummary
                     ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
                     : '-';
+
+                  const moveSubtotal = movement.movement_items?.reduce((s, item: any) => s + (Number(item.price_at_sale) || 0), 0) || 0;
+                  const moveDiscount = Number(movement.discount_amount) || 0;
+                  const moveTotal = moveSubtotal - moveDiscount;
+                  const moveOwed = Math.max(0, moveTotal - (Number(movement.amount_paid) || 0));
 
                   return (
                     <motion.tr key={movement.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
@@ -738,6 +751,13 @@ export default function Movements() {
                         <span className="font-medium">
                           ${(movement.amount_paid || 0).toFixed(2)}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {moveOwed > 0 ? (
+                          <span className="font-medium text-red-500">${moveOwed.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-green-600">$0.00</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {movement.contacts?.name || '-'}
