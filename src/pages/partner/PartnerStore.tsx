@@ -216,7 +216,7 @@ export default function PartnerStore() {
                     </Badge>
                     <Badge variant="secondary" className="text-sm px-3 py-1">
                         <Percent className="h-3 w-3 mr-1" />
-                        {tierInfo.discount}
+                        {Math.round((1 - priceMultiplier) * 100)}% off retail
                     </Badge>
                 </div>
             </div>
@@ -574,10 +574,7 @@ export default function PartnerStore() {
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 As a <span className={tierInfo.color}>{partnerTier}</span> partner, you get
-                                <span className="font-semibold"> {tierInfo.discount}</span> all items.
-                                {priceMultiplier < 1 && (
-                                    <span> (Price multiplier: {priceMultiplier}×)</span>
-                                )}
+                                <span className="font-semibold"> {Math.round((1 - priceMultiplier) * 100)}% off</span> all items.
                             </p>
                         </CardContent>
                     </Card>

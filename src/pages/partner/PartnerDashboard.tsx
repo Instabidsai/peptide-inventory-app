@@ -17,7 +17,10 @@ import {
     Network,
     ShoppingBag,
     Percent,
-    User
+    User,
+    AlertTriangle,
+    Wallet,
+    Clock
 } from 'lucide-react';
 import {
     Table,
@@ -31,7 +34,7 @@ import { format } from 'date-fns';
 
 // Tier display config
 const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
-    senior: { label: 'Senior Partner', discount: '50% off retail', emoji: '🥇' },
+    senior: { label: 'Senior Partner', discount: '70% off retail', emoji: '🥇' },
     standard: { label: 'Standard Partner', discount: '35% off retail', emoji: '🥈' },
     associate: { label: 'Associate Partner', discount: '25% off retail', emoji: '🥉' },
     executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
@@ -39,7 +42,7 @@ const TIER_INFO: Record<string, { label: string; discount: string; emoji: string
 
 export default function PartnerDashboard() {
     const navigate = useNavigate();
-    const { profile: authProfile, userRole } = useAuth();
+    const { profile: authProfile, userRole, user } = useAuth();
     const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
@@ -47,6 +50,11 @@ export default function PartnerDashboard() {
     const tier = (authProfile as any)?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
     const commRate = Number((authProfile as any)?.commission_rate || 0) * 100;
+    const creditBalance = Number((authProfile as any)?.credit_balance || 0);
+
+    // Compute actual discount % from price_multiplier
+    const priceMultiplier = Number((authProfile as any)?.price_multiplier || 1);
+    const discountPct = Math.round((1 - priceMultiplier) * 100);
 
     // Fetch clients assigned to all reps in the network
     const myProfileId = (authProfile as any)?.id as string | undefined;
@@ -55,6 +63,42 @@ export default function PartnerDashboard() {
         ...(downline?.map(d => d.id) || [])
     ];
     const { data: clients } = useDownlineClients(allRepIds);
+
+    // Fetch amount owed for peptides (movements not fully paid)
+    const { data: amountOwed } = useQuery({
+        queryKey: ['partner_amount_owed', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return 0;
+
+            // Find the contact linked to this user
+            const { data: contact } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('linked_user_id', user.id)
+                .maybeSingle();
+
+            if (!contact?.id) return 0;
+
+            // Get all movements with items for this contact
+            const { data: movements } = await (supabase as any)
+                .from('movements')
+                .select('id, amount_paid, payment_status, discount_amount, movement_items(price_at_sale)')
+                .eq('contact_id', contact.id)
+                .neq('payment_status', 'paid');
+
+            if (!movements) return 0;
+
+            let totalOwed = 0;
+            for (const m of movements) {
+                const subtotal = (m.movement_items || []).reduce((s: number, i: any) => s + (Number(i.price_at_sale) || 0), 0);
+                const discount = Number(m.discount_amount) || 0;
+                const paid = Number(m.amount_paid) || 0;
+                totalOwed += Math.max(0, subtotal - discount - paid);
+            }
+            return totalOwed;
+        },
+        enabled: !!user?.id,
+    });
 
     return (
         <div className="space-y-6">
@@ -83,31 +127,43 @@ export default function PartnerDashboard() {
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
                         <Percent className="h-3 w-3 mr-1" />
-                        {tierInfo.discount} · {commRate.toFixed(1)}% commission
+                        {discountPct}% off retail · {commRate.toFixed(1)}% commission
                     </Badge>
                 </div>
             </div>
 
             {/* Stats Overview */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+                <Card className="border-green-500/20 bg-green-500/5">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
-                        <DollarSign className="h-4 w-4 text-green-500" />
+                        <Wallet className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">${stats.available.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Ready for payout</p>
+                        <div className="text-2xl font-bold text-green-500">${creditBalance.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">Store credit</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-amber-500/20 bg-amber-500/5">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Pending Commissions</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-amber-500" />
+                        <Clock className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${stats.pending.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-amber-500">${stats.pending.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground">Clearing in 30 days</p>
+                    </CardContent>
+                </Card>
+                <Card className={`${(amountOwed || 0) > 0 ? 'border-red-500/20 bg-red-500/5' : 'border-border'}`}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Amount Owed</CardTitle>
+                        <AlertTriangle className={`h-4 w-4 ${(amountOwed || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${(amountOwed || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            ${(amountOwed || 0).toFixed(2)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">For peptides received</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -127,7 +183,7 @@ export default function PartnerDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{downline?.length || 0}</div>
-                        <p className="text-xs text-muted-foreground">Active partners in network</p>
+                        <p className="text-xs text-muted-foreground">Active partners</p>
                     </CardContent>
                 </Card>
             </div>
