@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
 import { usePendingOrdersByPeptide } from '@/hooks/use-orders';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,7 @@ type PeptideFormData = z.infer<typeof peptideSchema>;
 
 export default function Peptides() {
   const { userRole, profile } = useAuth();
+  const isMobile = useIsMobile();
   const { data: peptides, isLoading } = usePeptides();
   const { data: pendingByPeptide } = usePendingOrdersByPeptide();
   const createPeptide = useCreatePeptide();
@@ -276,6 +278,45 @@ export default function Peptides() {
               <p className="text-lg font-medium">No peptides found</p>
               <p className="text-sm">Get started by adding your first peptide</p>
             </div>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {filteredPeptides?.map((peptide, index) => (
+                <motion.div
+                  key={peptide.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.04 }}
+                >
+                  <Card
+                    className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => openEditDialog(peptide)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-medium">{peptide.name}</p>
+                          <p className="text-xs text-muted-foreground">{peptide.sku || 'No SKU'}</p>
+                        </div>
+                        <Badge variant={peptide.active ? 'default' : 'secondary'} className="text-xs">
+                          {peptide.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Badge variant="outline" className={
+                          (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
+                          (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
+                        }>
+                          {peptide.stock_count || 0} Vials
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          ${((peptide as any).retail_price || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -372,6 +413,7 @@ export default function Peptides() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Edit peptide"
                             onClick={() => openEditDialog(peptide)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -381,6 +423,7 @@ export default function Peptides() {
                           variant="ghost"
                           size="icon"
                           title="View Sales History"
+                          aria-label="View history"
                           onClick={() => setHistoryPeptide(peptide)}
                         >
                           <History className="h-4 w-4" />
@@ -390,6 +433,7 @@ export default function Peptides() {
                             variant="ghost"
                             size="icon"
                             className="text-destructive hover:text-destructive"
+                            aria-label="Delete peptide"
                             onClick={() => setDeletingPeptide(peptide)}
                           >
                             <Trash2 className="h-4 w-4" />

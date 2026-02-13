@@ -146,7 +146,7 @@ export default function AdminFeedback() {
                                     </TableCell>
                                     <TableCell>
                                         {fb.admin_response ? (
-                                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
                                                 <CheckCircle2 className="h-3 w-3 mr-1" /> Replied
                                             </Badge>
                                         ) : isNegative ? (

@@ -491,6 +491,7 @@ export default function Contacts() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Edit contact"
                             onClick={() => openEditDialog(contact)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -501,6 +502,7 @@ export default function Contacts() {
                             variant="ghost"
                             size="icon"
                             className="text-destructive hover:text-destructive"
+                            aria-label="Delete contact"
                             onClick={() => setDeletingContact(contact)}
                           >
                             <Trash2 className="h-4 w-4" />

@@ -217,7 +217,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                 )}
 
                 {req.peptide && (
-                    <div className="flex items-center gap-2 text-xs bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-purple-700 dark:text-purple-300">
+                    <div className="flex items-center gap-2 text-xs bg-purple-500/10 p-2 rounded text-purple-400">
                         <ShoppingBag className="h-3 w-3" />
                         Requested: <span className="font-bold">{req.requested_quantity}x {req.peptide.name}</span>
                     </div>
@@ -246,7 +246,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     title="Reject"
                     onClick={() => onUpdate(req.id, 'rejected', notes, voiceBlob)}
                     disabled={processing}

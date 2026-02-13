@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Select,
     SelectContent,
@@ -59,7 +60,16 @@ export default function OrderDetails() {
 
     const order = salesOrders?.find(o => o.id === id);
 
-    if (isLoading) return <div className="p-8 text-center">Loading...</div>;
+    if (isLoading) return (
+        <div className="space-y-6 p-4">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-40 w-full" />
+            </div>
+            <Skeleton className="h-60 w-full" />
+        </div>
+    );
     if (!order) return <div className="p-8 text-center">Order not found</div>;
 
     const handleStatusChange = (status: SalesOrder['status']) => {
@@ -198,7 +208,7 @@ export default function OrderDetails() {
                             </div>
                             <div className="flex gap-2">
                                 {order.order_source === 'woocommerce' && (
-                                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 py-1 px-3">
+                                    <Badge variant="outline" className="bg-purple-500/15 text-purple-400 border-purple-500/30 py-1 px-3">
                                         WooCommerce
                                     </Badge>
                                 )}
@@ -252,9 +262,9 @@ export default function OrderDetails() {
 
                             {/* Notes Section */}
                             {order.notes && (
-                                <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
-                                    <h4 className="font-semibold text-amber-800 text-sm mb-1">Notes</h4>
-                                    <p className="text-sm text-amber-700">{order.notes}</p>
+                                <div className="bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
+                                    <h4 className="font-semibold text-amber-400 text-sm mb-1">Notes</h4>
+                                    <p className="text-sm text-amber-400/90">{order.notes}</p>
                                 </div>
                             )}
                         </CardContent>

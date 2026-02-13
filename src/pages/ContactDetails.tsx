@@ -967,7 +967,7 @@ export default function ContactDetails() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         Client Portal Access
-                        <Badge variant={contact.linked_user_id ? 'secondary' : 'outline'} className={contact.linked_user_id ? 'bg-green-100 text-green-800' : ''}>
+                        <Badge variant={contact.linked_user_id ? 'outline' : 'outline'} className={contact.linked_user_id ? 'bg-green-500/15 text-green-500 border-green-500/30' : ''}>
                             {contact.linked_user_id ? 'Active (Linked)' : 'Not Active'}
                         </Badge>
                     </CardTitle>
@@ -1112,12 +1112,12 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
         let label = latest.payment_status;
 
         if (latest.type === 'giveaway') {
-            color = 'bg-purple-100 text-purple-800 border-purple-200';
+            color = 'bg-purple-500/15 text-purple-400 border-purple-500/30';
             label = 'Giveaway';
         } else {
-            if (latest.payment_status === 'paid') color = 'bg-green-100 text-green-800 border-green-200';
-            if (latest.payment_status === 'unpaid') color = 'bg-amber-100 text-amber-800 border-amber-200';
-            if (latest.payment_status === 'partial') color = 'bg-blue-100 text-blue-800 border-blue-200';
+            if (latest.payment_status === 'paid') color = 'bg-green-500/15 text-green-500 border-green-500/30';
+            if (latest.payment_status === 'unpaid') color = 'bg-amber-500/15 text-amber-500 border-amber-500/30';
+            if (latest.payment_status === 'partial') color = 'bg-blue-500/15 text-blue-500 border-blue-500/30';
         }
 
         return { latestMovement: latest, statusColor: color, statusLabel: label };
@@ -1389,12 +1389,12 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-amber-50 p-3 rounded border border-amber-200 text-sm flex justify-between items-center">
-                            <div className="text-amber-800">
+                        <div className="bg-amber-500/10 p-3 rounded border border-amber-500/20 text-sm flex justify-between items-center">
+                            <div className="text-amber-400">
                                 <p className="font-semibold text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" /> No Billing Record</p>
                                 <p className="text-[10px] opacity-80">Inventory not yet assigned.</p>
                             </div>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 bg-card hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-900 dark:text-amber-200" onClick={(e) => {
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-500/30 bg-card hover:bg-amber-500/10 text-amber-400" onClick={(e) => {
                                 e.stopPropagation();
                                 const item = protocol.protocol_items?.[0];
                                 if (item) onAssignInventory(item.peptide_id, item.id);
@@ -1857,7 +1857,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-white/50 backdrop-blur-sm hover:bg-white/80">
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-card/50 backdrop-blur-sm hover:bg-card/80">
                                                                             <MoreVertical className="h-3.5 w-3.5" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
@@ -1979,7 +1979,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
 
                             {/* If no matching protocol items found */}
                             {(!assignedProtocols || assignedProtocols.every(p => !p.protocol_items?.some((i: any) => i.peptide_id === linkingItem?.peptide_id))) && (
-                                <div className="text-sm text-amber-600 bg-amber-50 p-4 rounded-md border border-amber-200">
+                                <div className="text-sm text-amber-400 bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
                                     No active regimen found for <strong>{linkingItem?.peptide?.name}</strong>.
                                     Please create a regimen for this peptide first.
                                 </div>

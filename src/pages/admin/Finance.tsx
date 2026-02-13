@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -150,7 +151,17 @@ export default function Finance() {
             .slice(-6);
     }, [expenses]);
 
-    if (expensesLoading || ordersLoading) return <div className="p-8">Loading financials...</div>;
+    if (expensesLoading || ordersLoading) return (
+        <div className="space-y-6 p-4">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 md:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-28 w-full" />
+                ))}
+            </div>
+            <Skeleton className="h-60 w-full" />
+        </div>
+    );
 
     // Calc Expenses
     const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
@@ -714,7 +725,7 @@ export default function Finance() {
                                         ${expense.amount.toFixed(2)}
                                     </TableCell>
                                     <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteExpense.mutate(expense.id)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="Delete expense" onClick={() => deleteExpense.mutate(expense.id)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </TableCell>

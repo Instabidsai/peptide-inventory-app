@@ -238,12 +238,12 @@ export default function NewOrder() {
         <div className="flex flex-col h-[calc(100vh-4rem)] lg:flex-row gap-6">
             {isPreviewMode && (
                 <div className="absolute top-16 left-0 right-0 z-50 px-6 pointer-events-none">
-                    <Alert className="bg-amber-100 border-amber-300 text-amber-900 pointer-events-auto shadow-md max-w-2xl mx-auto">
+                    <Alert className="bg-amber-500/15 border-amber-500/30 text-amber-400 pointer-events-auto shadow-md max-w-2xl mx-auto">
                         <Eye className="h-4 w-4" />
                         <AlertTitle>Admin Preview Mode</AlertTitle>
                         <AlertDescription>
                             Viewing as <strong>{activeProfile?.full_name}</strong>. Prices reflect their specific multiplier (x{activeProfile?.price_multiplier || 1}).
-                            <Button variant="link" size="sm" className="px-2 h-auto text-amber-900 underline" onClick={() => navigate('/admin/reps')}>
+                            <Button variant="link" size="sm" className="px-2 h-auto text-amber-400 underline" onClick={() => navigate('/admin/reps')}>
                                 Exit Preview
                             </Button>
                         </AlertDescription>
@@ -412,9 +412,9 @@ export default function NewOrder() {
 
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center border rounded-md">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
                                             </div>
 
                                             <div className="flex-1">

@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Eye, Trash2, Truck, Download, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -70,7 +71,13 @@ export default function OrderList() {
         });
     const isLoading = isRep ? myLoading : allLoading;
 
-    if (isLoading) return <div className="p-8 text-center">Loading orders...</div>;
+    if (isLoading) return (
+        <div className="space-y-3 p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+            ))}
+        </div>
+    );
 
     const exportCSV = () => {
         if (!orders || orders.length === 0) return;
@@ -110,19 +117,19 @@ export default function OrderList() {
 
     const getPaymentColor = (status: string) => {
         switch (status) {
-            case 'paid': return 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200';
-            case 'partial': return 'bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200';
-            case 'unpaid': return 'bg-red-100 text-red-800 hover:bg-red-100 border-red-200';
+            case 'paid': return 'bg-green-500/15 text-green-500 hover:bg-green-500/15 border-green-500/30';
+            case 'partial': return 'bg-amber-500/15 text-amber-500 hover:bg-amber-500/15 border-amber-500/30';
+            case 'unpaid': return 'bg-red-500/15 text-red-500 hover:bg-red-500/15 border-red-500/30';
             default: return 'secondary';
         }
     };
 
     const getShippingColor = (status: string | null | undefined) => {
         switch (status) {
-            case 'label_created': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'in_transit': return 'bg-amber-100 text-amber-800 border-amber-200';
-            case 'delivered': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-            case 'error': return 'bg-red-100 text-red-800 border-red-200';
+            case 'label_created': return 'bg-blue-500/15 text-blue-500 border-blue-500/30';
+            case 'in_transit': return 'bg-amber-500/15 text-amber-500 border-amber-500/30';
+            case 'delivered': return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30';
+            case 'error': return 'bg-red-500/15 text-red-500 border-red-500/30';
             default: return 'bg-muted text-muted-foreground border-border';
         }
     };
@@ -219,7 +226,7 @@ export default function OrderList() {
                                         <Badge variant={getStatusColor(order.status) as any} className="text-xs">{order.status}</Badge>
                                         <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
                                         {order.order_source === 'woocommerce' && (
-                                            <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">WC</Badge>
+                                            <Badge variant="outline" className="text-[10px] bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                         )}
                                         {!isRep && (
                                             <span className={`ml-auto text-sm font-medium ${(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -263,7 +270,7 @@ export default function OrderList() {
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
-                                                <Badge variant="outline" className="ml-1 text-[10px] py-0 bg-purple-50 text-purple-700 border-purple-200">WC</Badge>
+                                                <Badge variant="outline" className="ml-1 text-[10px] py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell>

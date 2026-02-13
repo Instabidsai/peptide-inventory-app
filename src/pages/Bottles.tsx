@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useBottles, useDeleteBottle, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -54,6 +55,7 @@ const statusLabels: Record<BottleStatus, string> = {
 export default function Bottles() {
   const [searchParams] = useSearchParams();
   const { userRole } = useAuth();
+  const isMobile = useIsMobile();
   const { data: peptides } = usePeptides();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +169,34 @@ export default function Bottles() {
               <p className="text-lg font-medium">No bottles found</p>
               <p className="text-sm">Bottles are auto-created when you receive lots</p>
             </div>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {filteredBottles?.map((bottle, index) => (
+                <motion.div
+                  key={bottle.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.04 }}
+                >
+                  <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-mono text-sm font-medium">{bottle.uid}</p>
+                          <p className="text-sm font-medium">{bottle.lots?.peptides?.name || 'Unknown'}</p>
+                        </div>
+                        <Badge variant={statusColors[bottle.status]} className="text-xs">
+                          {statusLabels[bottle.status]}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>Lot: {bottle.lots?.lot_number || '-'}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -232,7 +262,7 @@ export default function Bottles() {
               </Table>
             </div>
           )}
-          {filteredBottles && filteredBottles.length > 0 && (
+          {filteredBottles && filteredBottles.length > 0 && !isMobile && (
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>Showing {filteredBottles.length} bottles</span>
               <span className="text-muted-foreground/50">|</span>

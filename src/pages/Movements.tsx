@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMovements, useMovementItems, useDeleteMovement, type Movement, type MovementType } from '@/hooks/use-movements';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -174,6 +175,7 @@ function MovementDetailsDialog({
 
 export default function Movements() {
   const { userRole } = useAuth();
+  const isMobile = useIsMobile();
   const { data: movements, isLoading } = useMovements();
   const deleteMovement = useDeleteMovement();
   const { toast } = useToast();
@@ -372,6 +374,61 @@ export default function Movements() {
                 Clear Filters
               </Button>
             </div>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {filteredMovements.map((movement, index) => {
+                const moveCost = movement.movement_items?.reduce((itemSum, item: any) => {
+                  return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
+                }, 0) || 0;
+
+                const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+                  const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
+                  acc[name] = (acc[name] || 0) + 1;
+                  return acc;
+                }, {});
+
+                const itemsDisplay = itemsSummary
+                  ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
+                  : '-';
+
+                return (
+                  <motion.div
+                    key={movement.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.04 }}
+                  >
+                    <Card
+                      className="cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => setViewingMovement(movement)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <Badge variant={typeColors[movement.type]} className="text-xs mb-1">
+                              {typeLabels[movement.type]}
+                            </Badge>
+                            <p className="text-sm font-medium">{movement.contacts?.name || 'No contact'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(movement.movement_date), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-sm">${(movement.amount_paid || 0).toFixed(2)}</p>
+                            <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className="text-xs capitalize mt-1">
+                              {movement.payment_status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2 truncate" title={itemsDisplay}>
+                          {itemsDisplay}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -439,6 +496,7 @@ export default function Movements() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="View movement details"
                             onClick={() => setViewingMovement(movement)}
                           >
                             <Eye className="h-4 w-4" />
@@ -448,6 +506,7 @@ export default function Movements() {
                               variant="ghost"
                               size="icon"
                               className="text-destructive hover:text-destructive"
+                              aria-label="Delete movement"
                               onClick={() => setDeletingMovement(movement)}
                             >
                               <Trash2 className="h-4 w-4" />
