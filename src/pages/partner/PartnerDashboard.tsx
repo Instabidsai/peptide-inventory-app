@@ -230,9 +230,13 @@ interface NetworkTreeProps {
 }
 
 function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: NetworkTreeProps) {
+    // Exclude contacts who are also partners in the downline (e.g. James Kuhlman)
+    const partnerNames = new Set(partners.map(p => p.full_name?.toLowerCase()));
+    const filteredClients = clients.filter(c => !partnerNames.has(c.name?.toLowerCase()));
+
     // Group clients by assigned rep
     const clientsByRep = new Map<string, DownlineClient[]>();
-    clients.forEach(c => {
+    filteredClients.forEach(c => {
         if (c.assigned_rep_id) {
             const list = clientsByRep.get(c.assigned_rep_id) || [];
             list.push(c);

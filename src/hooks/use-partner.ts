@@ -164,11 +164,12 @@ export function useFullNetwork() {
 
             if (error) throw error;
 
-            // 2. Fetch all contacts assigned to reps (clients under partners)
+            // 2. Fetch customer contacts assigned to reps (exclude partner-type contacts)
             const { data: contacts, error: contError } = await supabase
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
                 .not('assigned_rep_id', 'is', null)
+                .eq('type', 'customer')
                 .order('name');
 
             if (contError) throw contError;
@@ -206,10 +207,14 @@ export function useFullNetwork() {
             })) as PartnerNode[];
 
             // Build client nodes as children of their assigned rep
+            // Exclude contacts who are also partner profiles (by name match)
+            const partnerNames = new Set(data.map(p => p.full_name?.toLowerCase()));
+            const customerContacts = (contacts || []).filter(c => !partnerNames.has(c.name?.toLowerCase()));
+
             const partnerDepthMap = new Map(partnerNodes.map(p => [p.id, p.depth]));
             const partnerPathMap = new Map(partnerNodes.map(p => [p.id, p.path]));
 
-            const clientNodes = (contacts || []).map(c => {
+            const clientNodes = customerContacts.map(c => {
                 const parentDepth = partnerDepthMap.get(c.assigned_rep_id) ?? 0;
                 const parentPath = partnerPathMap.get(c.assigned_rep_id) ?? [];
                 return {
@@ -249,6 +254,7 @@ export function useDownlineClients(repIds: string[]) {
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
                 .in('assigned_rep_id', repIds)
+                .eq('type', 'customer')
                 .order('name');
             if (error) throw error;
             return (data || []) as DownlineClient[];
