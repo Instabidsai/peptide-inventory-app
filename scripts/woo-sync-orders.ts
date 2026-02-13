@@ -290,6 +290,23 @@ async function main() {
             if (existing) {
                 // Update if WooCommerce status changed
                 if (existing.woo_status !== woo.status) {
+                    const newTotal = parseFloat(woo.total);
+                    // Recalculate merchant fee if payment status changed
+                    const newMerchantFee = paymentStatus === 'paid' ? newTotal * 0.05 : 0;
+
+                    // Fetch current COGS/shipping/commission to recalculate profit
+                    const { data: currentOrder } = await supabase
+                        .from('sales_orders')
+                        .select('cogs_amount, shipping_cost, commission_amount')
+                        .eq('id', existing.id)
+                        .single();
+
+                    const newProfit = newTotal
+                        - Number(currentOrder?.cogs_amount || 0)
+                        - Number(currentOrder?.shipping_cost || 0)
+                        - Number(currentOrder?.commission_amount || 0)
+                        - newMerchantFee;
+
                     await supabase
                         .from('sales_orders')
                         .update({
@@ -297,8 +314,10 @@ async function main() {
                             payment_status: paymentStatus,
                             woo_status: woo.status,
                             woo_date_modified: woo.date_modified,
-                            total_amount: parseFloat(woo.total),
-                        })
+                            total_amount: newTotal,
+                            merchant_fee: newMerchantFee,
+                            profit_amount: newProfit,
+                        } as any)
                         .eq('id', existing.id);
                     console.log(`🔄 Order #${woo.number} updated: ${existing.woo_status} → ${woo.status}`);
                     updated++;
