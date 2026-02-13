@@ -247,6 +247,54 @@ export default function AdminDashboard() {
                 </Link>
             </div>
 
+            {/* Per-Order Profit Summary */}
+            <Link to="/sales">
+                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Sales Order P&L</CardTitle>
+                        <CardDescription>Aggregated from individual order profit tracking</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {financialsLoading ? <Skeleton className="h-8 w-full" /> : (
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                                <div>
+                                    <p className="text-muted-foreground">Order COGS</p>
+                                    <p className="text-lg font-semibold text-red-500">
+                                        ${(financials?.orderBasedCogs ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Merchant Fees</p>
+                                    <p className="text-lg font-semibold text-red-500">
+                                        ${(financials?.merchantFees ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Commissions</p>
+                                    <p className="text-lg font-semibold text-red-500">
+                                        ${(financials?.commissionsTotal ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Order Profit</p>
+                                    <p className={`text-lg font-semibold ${(financials?.orderBasedProfit ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        ${(financials?.orderBasedProfit ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Avg Margin</p>
+                                    <p className="text-lg font-semibold">
+                                        {(financials?.salesRevenue ?? 0) > 0
+                                            ? (((financials?.orderBasedProfit ?? 0) / (financials?.salesRevenue ?? 1)) * 100).toFixed(1)
+                                            : '0.0'}%
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </Link>
+
             {/* Inventory Overview */}
             <div className="grid gap-4 md:grid-cols-2">
                 <Link to="/bottles?status=in_stock">
@@ -503,7 +551,7 @@ export default function AdminDashboard() {
                 </Card>
             </div>
             <div className="text-center text-xs text-muted-foreground mt-8">
-                System Version: 2.2 (Financial Views)
+                System Version: 2.3 (Profit Pipeline + WooCommerce)
             </div>
         </div>
     );

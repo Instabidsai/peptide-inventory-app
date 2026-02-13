@@ -183,8 +183,8 @@ export default function OrderDetails() {
                                         {(profile?.credit_balance || 0) > 0 && (
                                             <>
                                                 <div className="h-px bg-muted my-1" />
-                                                <DropdownMenuItem onClick={handlePayWithCredit} className="text-green-600 font-medium">
-                                                    Pay with Credit (${(profile?.credit_balance || 0).toFixed(2)})
+                                                <DropdownMenuItem onClick={handlePayWithCredit} disabled={payWithCredit.isPending} className="text-green-600 font-medium">
+                                                    {payWithCredit.isPending ? 'Processing...' : `Pay with Credit ($${(profile?.credit_balance || 0).toFixed(2)})`}
                                                 </DropdownMenuItem>
                                             </>
                                         )}
@@ -216,10 +216,12 @@ export default function OrderDetails() {
                             <Button
                                 className="w-full bg-green-600 hover:bg-green-700"
                                 size="lg"
-                                disabled={order.status === 'fulfilled'}
+                                disabled={order.status === 'fulfilled' || fulfillOrder.isPending || updateOrder.isPending}
                                 onClick={attemptFulfill}
                             >
-                                {order.status === 'fulfilled' ? (
+                                {fulfillOrder.isPending ? (
+                                    <>Fulfilling... <Truck className="ml-2 h-4 w-4 animate-pulse" /></>
+                                ) : order.status === 'fulfilled' ? (
                                     <>Fulfilled <CheckCircle className="ml-2 h-4 w-4" /></>
                                 ) : (
                                     <>Fulfill & Deduct Inventory <Truck className="ml-2 h-4 w-4" /></>

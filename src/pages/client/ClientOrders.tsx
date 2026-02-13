@@ -110,12 +110,23 @@ export default function ClientOrders() {
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
-                                            {/* Status + Date */}
-                                            <div className="flex items-center gap-2 mb-2">
+                                            {/* Status + Shipping + Date */}
+                                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                 <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
                                                     <span className="mr-1">{statusInfo.icon}</span>
                                                     {statusInfo.label}
                                                 </Badge>
+                                                {order.shipping_status && order.shipping_status !== 'pending' && (
+                                                    <Badge variant="outline" className={`text-xs ${getStatus(order.shipping_status === 'label_created' ? 'processing' : order.shipping_status === 'in_transit' ? 'shipped' : order.shipping_status).color}`}>
+                                                        <Truck className="h-3 w-3 mr-1" />
+                                                        {order.shipping_status === 'label_created' ? 'Label Created' : order.shipping_status === 'in_transit' ? 'In Transit' : order.shipping_status === 'delivered' ? 'Delivered' : order.shipping_status}
+                                                    </Badge>
+                                                )}
+                                                {order.payment_status === 'paid' && (
+                                                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20">
+                                                        Paid
+                                                    </Badge>
+                                                )}
                                                 <span className="text-xs text-muted-foreground">
                                                     {format(new Date(order.created_at), 'MMM d, yyyy')}
                                                 </span>
@@ -144,13 +155,37 @@ export default function ClientOrders() {
                                         </div>
                                     </div>
 
-                                    {/* Shipping info if present */}
-                                    {order.shipping_address && (
-                                        <div className="mt-2 pt-2 border-t">
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Truck className="h-3 w-3" />
-                                                {order.shipping_address}
-                                            </p>
+                                    {/* Tracking + Shipping info */}
+                                    {(order.tracking_number || order.shipping_address) && (
+                                        <div className="mt-2 pt-2 border-t space-y-1">
+                                            {order.tracking_number && (
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <Truck className="h-3 w-3 text-emerald-500" />
+                                                    <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
+                                                    <a
+                                                        href={
+                                                            order.carrier === 'USPS'
+                                                                ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${order.tracking_number}`
+                                                                : order.carrier === 'UPS'
+                                                                ? `https://www.ups.com/track?tracknum=${order.tracking_number}`
+                                                                : order.carrier === 'FedEx'
+                                                                ? `https://www.fedex.com/fedextrack/?trknbr=${order.tracking_number}`
+                                                                : `https://parcelsapp.com/en/tracking/${order.tracking_number}`
+                                                        }
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-mono text-primary hover:underline"
+                                                    >
+                                                        {order.tracking_number}
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {order.shipping_address && !order.tracking_number && (
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Truck className="h-3 w-3" />
+                                                    {order.shipping_address}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>

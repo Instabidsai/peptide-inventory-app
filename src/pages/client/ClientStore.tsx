@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +36,13 @@ export default function ClientStore() {
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Auto-fill shipping address from contact profile
+    useEffect(() => {
+        if (contact && (contact as any).address && !shippingAddress) {
+            setShippingAddress((contact as any).address);
+        }
+    }, [contact]);
 
     // Get all active peptides
     const { data: peptides, isLoading } = useQuery({
