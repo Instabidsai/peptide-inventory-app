@@ -29,6 +29,10 @@ export class ErrorBoundary extends Component<Props, State> {
         this.setState({ error, errorInfo });
     }
 
+    private handleRetry = () => {
+        this.setState({ hasError: false, error: null, errorInfo: null });
+    };
+
     public render() {
         if (this.state.hasError) {
             return (
@@ -37,6 +41,12 @@ export class ErrorBoundary extends Component<Props, State> {
                         <AlertTriangle className="h-6 w-6 text-red-600" />
                         Something went wrong in {this.props.name || 'Component'}
                     </h2>
+                    <button
+                        onClick={this.handleRetry}
+                        className="mb-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+                    >
+                        Try Again
+                    </button>
                     <details className="whitespace-pre-wrap font-mono text-sm bg-white/50 dark:bg-black/50 p-4 rounded overflow-auto max-h-[400px]">
                         <summary className="cursor-pointer font-semibold mb-2">Error Details</summary>
                         {this.state.error && this.state.error.toString()}

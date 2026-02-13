@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Trash2, Calculator } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -214,21 +215,57 @@ export default function Protocols() {
                 </Dialog>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {protocols?.map((protocol) => (
-                    <Card key={protocol.id}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                {protocol.name}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-xs text-muted-foreground">{protocol.description}</div>
-                            <div className="mt-4 text-xs font-semibold">{protocol.protocol_items?.count || 0} items</div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+            {isLoading ? (
+                <div className="text-center py-12 text-muted-foreground">Loading protocols...</div>
+            ) : protocols?.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    No protocol templates yet. Create your first one above.
+                </div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {protocols?.map((protocol) => {
+                        const items = protocol.protocol_items || [];
+                        const supps = protocol.protocol_supplements || [];
+                        return (
+                            <Card key={protocol.id}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">
+                                        {protocol.name}
+                                    </CardTitle>
+                                    <Badge variant="secondary" className="text-xs">
+                                        {items.length} item{items.length !== 1 ? 's' : ''}
+                                    </Badge>
+                                </CardHeader>
+                                <CardContent>
+                                    {protocol.description && (
+                                        <div className="text-xs text-muted-foreground mb-3">{protocol.description}</div>
+                                    )}
+                                    {items.length > 0 && (
+                                        <div className="space-y-1">
+                                            {items.slice(0, 4).map((item: any) => (
+                                                <div key={item.id} className="text-xs flex justify-between">
+                                                    <span className="font-medium truncate mr-2">{item.peptides?.name || 'Unknown'}</span>
+                                                    <span className="text-muted-foreground whitespace-nowrap">
+                                                        {item.dosage_amount}{item.dosage_unit} · {item.frequency}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {items.length > 4 && (
+                                                <div className="text-xs text-muted-foreground">+{items.length - 4} more</div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {supps.length > 0 && (
+                                        <div className="mt-2 text-xs text-muted-foreground">
+                                            + {supps.length} supplement{supps.length !== 1 ? 's' : ''}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
