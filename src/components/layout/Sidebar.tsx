@@ -173,7 +173,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
 
         {/* Partner Portal Switcher */}
-        {(userRole?.role === 'admin' || userRole?.role === 'sales_rep') && (
+        {(userRole?.role === 'admin' || userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') && (
           <div className="mt-2 px-3">
             <NavLink
               to="/partner"
