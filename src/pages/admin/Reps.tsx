@@ -244,24 +244,24 @@ export default function Reps() {
                                                 ...children.flatMap(child => renderRow(child, depth + 1)),
                                                 // Render customer contacts as leaf nodes under this partner
                                                 ...clients.map(client => (
-                                                    <TableRow key={`client-${client.id}`} className="bg-blue-50/30 dark:bg-blue-950/10">
+                                                    <TableRow key={`client-${client.id}`}>
                                                         <TableCell className="font-medium">
                                                             <div className="flex items-center" style={{ paddingLeft: `${(depth + 1) * 24}px` }}>
-                                                                <span className="text-muted-foreground mr-2 font-mono text-xs">└─</span>
+                                                                <span className="text-blue-500 mr-2 font-mono text-xs">└─</span>
                                                                 <span className="text-blue-600 dark:text-blue-400">{client.name}</span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="text-muted-foreground text-sm">{client.email || '—'}</TableCell>
-                                                        <TableCell className="text-muted-foreground text-xs">—</TableCell>
+                                                        <TableCell className="text-blue-500/70 text-sm">{client.email || ''}</TableCell>
+                                                        <TableCell></TableCell>
                                                         <TableCell>
                                                             <Badge variant="outline" className="text-blue-600 border-blue-300">customer</Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
-                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
-                                                        <TableCell className="text-right text-muted-foreground">—</TableCell>
-                                                        <TableCell className="text-sm">{rep.full_name}</TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell></TableCell>
+                                                        <TableCell className="text-blue-500/70 text-sm">{rep.full_name}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/contacts`)}>
+                                                            <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => navigate(`/contacts`)}>
                                                                 <Eye className="h-4 w-4 mr-2" /> View
                                                             </Button>
                                                         </TableCell>
