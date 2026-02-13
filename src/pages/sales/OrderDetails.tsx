@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,18 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
@@ -27,6 +38,7 @@ export default function OrderDetails() {
     const payWithCredit = usePayWithCredit();
     const shipLabel = useCreateShippingLabel();
     const { toast } = useToast();
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -69,9 +81,11 @@ export default function OrderDetails() {
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
             <div className="flex items-center gap-2 mb-4">
-                <Button variant="ghost" onClick={() => navigate('/sales')}>
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Orders
-                </Button>
+                <nav className="flex items-center text-sm text-muted-foreground">
+                    <Link to="/sales" className="hover:text-foreground transition-colors">Sales Orders</Link>
+                    <span className="mx-2">/</span>
+                    <span className="text-foreground font-medium">Order #{order.id.slice(0, 8)}</span>
+                </nav>
             </div>
 
             <div className="flex flex-col md:flex-row justify-between gap-6">
@@ -191,7 +205,7 @@ export default function OrderDetails() {
                                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
                                         <DropdownMenuItem onClick={() => handleStatusChange('draft')}>Draft</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleStatusChange('submitted')}>Submitted</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChange('cancelled')} className="text-destructive">Cancelled</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setShowCancelConfirm(true)} className="text-destructive">Cancelled</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -366,6 +380,29 @@ export default function OrderDetails() {
                     </Card>
                 </div>
             </div>
+
+            {/* Cancel Order Confirmation */}
+            <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will mark the order as cancelled. The ${order.total_amount.toFixed(2)} order
+                            {order.contacts?.name ? ` for ${order.contacts.name}` : ''} will no longer be active.
+                            This action can be undone by changing the status back.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleStatusChange('cancelled')}
+                        >
+                            Cancel Order
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

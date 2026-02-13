@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useContact, useUpdateContact } from '@/hooks/use-contacts';
 import { useContactNotes, useCreateContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes';
 import { useProtocols } from '@/hooks/use-protocols';
@@ -406,6 +406,12 @@ export default function ContactDetails() {
 
     return (
         <div className="space-y-6">
+            <nav className="flex items-center text-sm text-muted-foreground">
+                <Link to="/contacts" className="hover:text-foreground transition-colors">Contacts</Link>
+                <span className="mx-2">/</span>
+                <span className="text-foreground font-medium">{contact.name}</span>
+            </nav>
+
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{contact.name}</h1>

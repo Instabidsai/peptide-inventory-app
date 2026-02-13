@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -55,6 +55,32 @@ export default function OrderList() {
 
     if (isLoading) return <div className="p-8 text-center">Loading orders...</div>;
 
+    const exportCSV = () => {
+        if (!orders || orders.length === 0) return;
+        const headers = ['Date', 'Client', 'Source', 'Status', 'Payment', 'Total', 'COGS', 'Shipping', 'Commission', 'Fee', 'Profit'];
+        const rows = orders.map(o => [
+            format(new Date(o.created_at), 'yyyy-MM-dd'),
+            (o.contacts?.name || '').replace(/,/g, ''),
+            o.order_source || 'app',
+            o.status,
+            o.payment_status,
+            (o.total_amount || 0).toFixed(2),
+            (o.cogs_amount || 0).toFixed(2),
+            (o.shipping_cost || 0).toFixed(2),
+            (o.commission_amount || 0).toFixed(2),
+            (o.merchant_fee || 0).toFixed(2),
+            (o.profit_amount || 0).toFixed(2),
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const getStatusColor = (status: SalesOrderStatus) => {
         switch (status) {
             case 'draft': return 'secondary';
@@ -91,9 +117,16 @@ export default function OrderList() {
                     <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
                     <p className="text-muted-foreground">Manage customer orders and commissions.</p>
                 </div>
-                <Button onClick={() => navigate('/sales/new')}>
-                    <Plus className="mr-2 h-4 w-4" /> New Order
-                </Button>
+                <div className="flex gap-2">
+                    {orders && orders.length > 0 && (
+                        <Button variant="outline" onClick={exportCSV}>
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                    )}
+                    <Button onClick={() => navigate('/sales/new')}>
+                        <Plus className="mr-2 h-4 w-4" /> New Order
+                    </Button>
+                </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -233,8 +266,16 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={isRep ? 9 : 11} className="h-24 text-center text-muted-foreground">
-                                        No orders found.
+                                    <TableCell colSpan={isRep ? 9 : 11} className="h-32 text-center">
+                                        <div className="text-muted-foreground">
+                                            <Truck className="mx-auto h-10 w-10 mb-3 opacity-50" />
+                                            <p className="text-lg font-medium">No orders found</p>
+                                            <p className="text-sm mt-1">
+                                                {filterStatus !== 'all' || filterSource !== 'all'
+                                                    ? 'Try adjusting your filters'
+                                                    : 'Create your first sales order to get started'}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}

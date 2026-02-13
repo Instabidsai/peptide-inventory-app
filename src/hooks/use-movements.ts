@@ -621,39 +621,37 @@ export function useDeleteMovement() {
               .eq('id', movement.contact_id)
               .single();
 
-            if (contact?.assigned_rep_id) {
-              const commissionPerRep = (order.total_amount || 0) * 0.10;
+            // Fetch actual commission records to reverse exact amounts
+            const { data: commRecords } = await supabase
+              .from('commissions')
+              .select('id, partner_id, amount')
+              .eq('sale_id', order.id);
 
-              // Walk chain exactly like we did when creating
-              let currentRepId: string | null = (contact as any).assigned_rep_id;
-              const visited = new Set<string>();
+            if (commRecords && commRecords.length > 0) {
               const reversalLog: string[] = [];
 
-              while (currentRepId && !visited.has(currentRepId)) {
-                visited.add(currentRepId);
+              for (const comm of commRecords) {
+                const commAmount = Number(comm.amount) || 0;
+                if (commAmount <= 0) continue;
+
                 const { data: repProfile } = await supabase
                   .from('profiles')
-                  .select('id, full_name, parent_rep_id, credit_balance')
-                  .eq('id', currentRepId)
+                  .select('id, full_name, credit_balance')
+                  .eq('id', comm.partner_id)
                   .single();
 
                 if (repProfile) {
                   const oldBalance = Number((repProfile as any)?.credit_balance) || 0;
-                  const newBalance = oldBalance - commissionPerRep;
+                  const newBalance = oldBalance - commAmount;
 
-                  // Subtract the commission back
                   await supabase
                     .from('profiles')
                     .update({ credit_balance: newBalance })
                     .eq('id', repProfile.id);
 
                   reversalLog.push(
-                    `${(repProfile as any).full_name}: -$${commissionPerRep.toFixed(2)} (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
+                    `${(repProfile as any).full_name}: -$${commAmount.toFixed(2)} (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
                   );
-
-                  currentRepId = (repProfile as any).parent_rep_id || null;
-                } else {
-                  break;
                 }
               }
 
