@@ -3,12 +3,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients, PartnerNode, DownlineClient } from '@/hooks/use-partner';
+import { useCreateContact } from '@/hooks/use-contacts';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -20,12 +23,14 @@ import {
     ShoppingBag,
     Percent,
     User,
+    UserPlus,
     AlertTriangle,
     Wallet,
     Clock,
     ArrowRightLeft,
     CheckCircle2,
-    Loader2
+    Loader2,
+    Plus
 } from 'lucide-react';
 import {
     Table,
@@ -45,7 +50,9 @@ const TIER_INFO: Record<string, { label: string; discount: string; emoji: string
     executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
 };
 
-type SheetView = 'balance' | 'commissions' | 'owed' | 'earnings' | null;
+type SheetView = 'balance' | 'commissions' | 'owed' | 'earnings' | 'add-person' | null;
+
+const EMPTY_PERSON = { name: '', email: '', phone: '', address: '', assignedTo: '' };
 
 export default function PartnerDashboard() {
     const navigate = useNavigate();
@@ -56,6 +63,8 @@ export default function PartnerDashboard() {
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
     const [activeSheet, setActiveSheet] = useState<SheetView>(null);
+    const [newPerson, setNewPerson] = useState(EMPTY_PERSON);
+    const createContact = useCreateContact();
 
     const tier = (authProfile as any)?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
@@ -167,6 +176,10 @@ export default function PartnerDashboard() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
                     <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setActiveSheet('add-person')}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Add Person
+                        </Button>
                         <Link to="/partner/store">
                             <Button variant="default" size="sm">
                                 <ShoppingBag className="mr-2 h-4 w-4" />
@@ -348,9 +361,14 @@ export default function PartnerDashboard() {
 
                 {/* Downline Tree / List */}
                 <Card className="col-span-1">
-                    <CardHeader>
-                        <CardTitle>Network Hierarchy</CardTitle>
-                        <CardDescription>Your team structure</CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                        <div>
+                            <CardTitle>Network Hierarchy</CardTitle>
+                            <CardDescription>Your team structure</CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setActiveSheet('add-person')}>
+                            <Plus className="h-4 w-4 mr-1" /> Add
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         {downlineLoading ? (
@@ -625,6 +643,109 @@ export default function PartnerDashboard() {
                             )}
                         </div>
                     </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Add Person Sheet */}
+            <Sheet open={activeSheet === 'add-person'} onOpenChange={(open) => { if (!open) { setActiveSheet(null); setNewPerson(EMPTY_PERSON); } }}>
+                <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <UserPlus className="h-5 w-5 text-primary" />
+                            Add Person
+                        </SheetTitle>
+                        <SheetDescription>Add a customer to your network</SheetDescription>
+                    </SheetHeader>
+                    <form
+                        className="mt-6 space-y-4"
+                        onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!newPerson.name.trim()) return;
+                            const assignedTo = newPerson.assignedTo || myProfileId || undefined;
+                            try {
+                                await createContact.mutateAsync({
+                                    name: newPerson.name.trim(),
+                                    email: newPerson.email.trim() || undefined,
+                                    phone: newPerson.phone.trim() || undefined,
+                                    address: newPerson.address.trim() || undefined,
+                                    type: 'customer',
+                                    assigned_rep_id: assignedTo || null,
+                                });
+                                queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
+                                setActiveSheet(null);
+                                setNewPerson(EMPTY_PERSON);
+                            } catch {
+                                // useCreateContact already toasts the error
+                            }
+                        }}
+                    >
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Name *</label>
+                            <Input
+                                placeholder="Full name"
+                                value={newPerson.name}
+                                onChange={e => setNewPerson(p => ({ ...p, name: e.target.value }))}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Email</label>
+                            <Input
+                                type="email"
+                                placeholder="email@example.com"
+                                value={newPerson.email}
+                                onChange={e => setNewPerson(p => ({ ...p, email: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Phone</label>
+                            <Input
+                                type="tel"
+                                placeholder="(555) 123-4567"
+                                value={newPerson.phone}
+                                onChange={e => setNewPerson(p => ({ ...p, phone: e.target.value }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Shipping Address</label>
+                            <Textarea
+                                placeholder="Street, City, State, ZIP"
+                                value={newPerson.address}
+                                onChange={e => setNewPerson(p => ({ ...p, address: e.target.value }))}
+                                rows={2}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Assign To</label>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                value={newPerson.assignedTo}
+                                onChange={e => setNewPerson(p => ({ ...p, assignedTo: e.target.value }))}
+                            >
+                                <option value="">Me ({(authProfile as any)?.full_name || 'You'})</option>
+                                {downline?.map(partner => (
+                                    <option key={partner.id} value={partner.id}>
+                                        {partner.full_name || partner.email} ({partner.partner_tier})
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Choose who this person is assigned to. Leave as "Me" to add them directly under you.
+                            </p>
+                        </div>
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={createContact.isPending || !newPerson.name.trim()}
+                        >
+                            {createContact.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <UserPlus className="h-4 w-4 mr-2" />
+                            )}
+                            Add to Network
+                        </Button>
+                    </form>
                 </SheetContent>
             </Sheet>
         </div>
