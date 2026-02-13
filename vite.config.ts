@@ -7,7 +7,6 @@ import checker from 'vite-plugin-checker';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-// import { componentTagger } from "lovable-tagger"
 
 // Custom plugin to copy index.html as 404.html for Vercel SPA routing
 function vercelSPAPlugin() {
@@ -37,7 +36,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' &&
-    // componentTagger(),
     checker({
       typescript: true,
       eslint: { lintCommand: 'eslint . --max-warnings=0', useFlatConfig: true }
