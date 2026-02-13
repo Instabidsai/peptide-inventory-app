@@ -45,9 +45,9 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+          <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/30 hover:ring-offset-2">
+            <Avatar className="h-10 w-10 border-2 border-primary/20 transition-colors">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>

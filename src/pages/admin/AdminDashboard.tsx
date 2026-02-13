@@ -26,7 +26,18 @@ import {
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { motion } from 'framer-motion';
 import React from 'react';
+
+const staggerContainer = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.06 } },
+};
+
+const staggerItem = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] } },
+};
 
 export default function AdminDashboard() {
     const { organization } = useAuth();
@@ -105,7 +116,12 @@ export default function AdminDashboard() {
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+            >
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
                     <p className="text-muted-foreground">
@@ -126,7 +142,7 @@ export default function AdminDashboard() {
                         </Link>
                     </Button>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Financial View Toggle */}
             <div className="flex items-center gap-1 bg-muted p-1 rounded-md w-fit">
@@ -147,8 +163,8 @@ export default function AdminDashboard() {
             </div>
 
             {/* Financial Overview - 4 cards, always in a clean grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link to="/lots">
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <motion.div variants={staggerItem}><Link to="/lots">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
@@ -161,9 +177,9 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/movements?type=sale">
+                <motion.div variants={staggerItem}><Link to="/movements?type=sale">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
@@ -176,10 +192,10 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground">Total collected from sales</p>
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
                 {/* Card 3: Overhead / Total Investment */}
-                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">
                             {isOps ? 'Operational Overhead' : 'Total Investment'}
@@ -199,10 +215,10 @@ export default function AdminDashboard() {
                             {isOps ? 'Incl. commissions owed' : 'Overhead + Inventory + Owed'}
                         </p>
                     </CardContent>
-                </Card>
+                </Card></motion.div>
 
                 {/* Card 4: Operating Profit / Net Position */}
-                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">
                             {isOps ? 'Operating Profit' : 'Net Position'}
@@ -224,12 +240,12 @@ export default function AdminDashboard() {
                             {isOps ? 'Revenue - (COGS + Overhead + Commissions)' : 'Revenue - All Costs (Paid & Owed)'}
                         </p>
                     </CardContent>
-                </Card>
-            </div>
+                </Card></motion.div>
+            </motion.div>
 
             {/* Pending Orders Row */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link to="/orders?status=pending">
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <motion.div variants={staggerItem}><Link to="/orders?status=pending">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
@@ -242,9 +258,9 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground">Orders awaiting delivery</p>
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/orders?status=pending">
+                <motion.div variants={staggerItem}><Link to="/orders?status=pending">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">On Order Value</CardTitle>
@@ -257,9 +273,9 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground">Est. cost of pending orders</p>
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/admin/commissions">
+                <motion.div variants={staggerItem}><Link to="/admin/commissions">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Commissions</CardTitle>
@@ -292,9 +308,9 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/sales?source=woocommerce">
+                <motion.div variants={staggerItem}><Link to="/sales?source=woocommerce">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">WooCommerce</CardTitle>
@@ -309,10 +325,11 @@ export default function AdminDashboard() {
                             </p>
                         </CardContent>
                     </Card>
-                </Link>
-            </div>
+                </Link></motion.div>
+            </motion.div>
 
             {/* Per-Order Profit Summary */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}>
             <Link to="/sales">
                 <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                     <CardHeader className="pb-2">
@@ -359,10 +376,11 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </Link>
+            </motion.div>
 
             {/* Inventory Overview */}
-            <div className="grid gap-4 md:grid-cols-2">
-                <Link to="/bottles?status=in_stock">
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
+                <motion.div variants={staggerItem}><Link to="/bottles?status=in_stock">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">In Stock</CardTitle>
@@ -381,9 +399,9 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/peptides">
+                <motion.div variants={staggerItem}><Link to="/peptides">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Peptides</CardTitle>
@@ -402,12 +420,12 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
-            </div>
+                </Link></motion.div>
+            </motion.div>
 
             {/* Movement Stats (Sold / Giveaway / Internal) */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Link to="/movements?type=sale">
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
+                <motion.div variants={staggerItem}><Link to="/movements?type=sale">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Sold</CardTitle>
@@ -426,9 +444,9 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/movements?type=giveaway">
+                <motion.div variants={staggerItem}><Link to="/movements?type=giveaway">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Given Away</CardTitle>
@@ -447,9 +465,9 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
+                </Link></motion.div>
 
-                <Link to="/movements?type=internal_use">
+                <motion.div variants={staggerItem}><Link to="/movements?type=internal_use">
                     <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Internal Use</CardTitle>
@@ -468,12 +486,12 @@ export default function AdminDashboard() {
                             )}
                         </CardContent>
                     </Card>
-                </Link>
-            </div>
+                </Link></motion.div>
+            </motion.div>
 
             {/* Secondary Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-card border-border">
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
+                <motion.div variants={staggerItem}><Card className="bg-card border-border">
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-around">
                             <Link to="/movements?type=loss" className="group text-center">
@@ -487,9 +505,9 @@ export default function AdminDashboard() {
                             </Link>
                         </div>
                     </CardContent>
-                </Card>
+                </Card></motion.div>
 
-                <Card className="md:col-span-1 bg-card border-border">
+                <motion.div variants={staggerItem}><Card className="md:col-span-1 bg-card border-border">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-base">Recent Feedback</CardTitle>
@@ -515,7 +533,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                </Card></motion.div>
 
                 {/* Low Stock Alerts */}
                 {(() => {
@@ -586,7 +604,7 @@ export default function AdminDashboard() {
                     </Card>
                 )}
 
-                <Card className="md:col-span-2 bg-card border-border">
+                <motion.div variants={staggerItem} className="md:col-span-2"><Card className="bg-card border-border">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>
@@ -641,8 +659,8 @@ export default function AdminDashboard() {
                             </div>
                         )}
                     </CardContent>
-                </Card>
-            </div>
+                </Card></motion.div>
+            </motion.div>
             <div className="text-center text-xs text-muted-foreground mt-8">
                 System Version: 2.7 (Profit Pipeline + WooCommerce + Partner + Analytics)
             </div>

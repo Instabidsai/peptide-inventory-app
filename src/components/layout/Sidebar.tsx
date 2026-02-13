@@ -78,27 +78,27 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
-        open ? 'translate-x-0' : '-translate-x-full'
+        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transform transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:translate-x-0',
+        open ? 'translate-x-0 shadow-2xl shadow-black/30' : '-translate-x-full'
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-primary/10 rounded-lg">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border/50">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/10">
             <FlaskConical className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-sidebar-foreground">
               {organization?.name || 'Inventory'}
             </span>
-            <span className="text-xs text-muted-foreground">Tracker</span>
+            <span className="text-[11px] text-muted-foreground -mt-0.5">Tracker</span>
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
-              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/50 rounded text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/20">
                 <DollarSign className="h-3 w-3" />
-                <span>Wallet: ${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
+                <span>${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>
             )}
 
@@ -146,23 +146,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             onClick={onClose}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
               )
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+                )}
+                <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
                 <span className="flex-1">{item.name}</span>
                 {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
-                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg shadow-red-500/30 px-1">
                     {pendingRequestCount}
                   </span>
                 )}
-                {isActive && <ChevronRight className="h-4 w-4 text-primary" />}
+                {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
               </>
             )}
           </NavLink>
