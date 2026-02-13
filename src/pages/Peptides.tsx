@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
 import { usePendingOrdersByPeptide } from '@/hooks/use-orders';
 import { useAuth } from '@/contexts/AuthContext';
@@ -295,8 +296,8 @@ export default function Peptides() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPeptides?.map((peptide) => (
-                  <TableRow key={peptide.id}>
+                {filteredPeptides?.map((peptide, index) => (
+                  <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <TableCell className="font-medium">{peptide.name}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {peptide.sku || '-'}
@@ -396,7 +397,7 @@ export default function Peptides() {
                         )}
                       </div>
                     </TableCell>
-                  </TableRow>
+                  </motion.tr>
                 ))}
               </TableBody>
             </Table>

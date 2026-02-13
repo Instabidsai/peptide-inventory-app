@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useSalesOrders, useMySalesOrders, type SalesOrder, useUpdateSalesOrder, type SalesOrderStatus, useDeleteSalesOrder } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +40,7 @@ import {
 export default function OrderList() {
     const { userRole, profile } = useAuth();
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
     const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
@@ -190,7 +193,49 @@ export default function OrderList() {
                 )}
             </div>
 
-            <Card>
+            {/* Mobile Card View */}
+            {isMobile && orders && orders.length > 0 && (
+                <div className="space-y-3 md:hidden">
+                    {orders.map((order, index) => (
+                        <motion.div
+                            key={order.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, delay: index * 0.04 }}
+                        >
+                            <Card
+                                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                                onClick={() => navigate(`/sales/${order.id}`)}
+                            >
+                                <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <p className="font-medium">{order.contacts?.name || 'Unknown'}</p>
+                                            <p className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
+                                        </div>
+                                        <span className="text-lg font-bold">${order.total_amount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge variant={getStatusColor(order.status) as any} className="text-xs">{order.status}</Badge>
+                                        <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
+                                        {order.order_source === 'woocommerce' && (
+                                            <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">WC</Badge>
+                                        )}
+                                        {!isRep && (
+                                            <span className={`ml-auto text-sm font-medium ${(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                P: ${(order.profit_amount || 0).toFixed(2)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+
+            {/* Desktop Table View */}
+            <Card className={isMobile ? 'hidden' : ''}>
                 <CardHeader className="p-0">
                     {/* Optional Header Content */}
                 </CardHeader>
@@ -213,8 +258,8 @@ export default function OrderList() {
                         </TableHeader>
                         <TableBody>
                             {orders && orders.length > 0 ? (
-                                orders.map((order) => (
-                                    <TableRow key={order.id}>
+                                orders.map((order, index) => (
+                                    <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
@@ -296,7 +341,7 @@ export default function OrderList() {
                                                 </Button>
                                             )}
                                         </TableCell>
-                                    </TableRow>
+                                    </motion.tr>
                                 ))
                             ) : (
                                 <TableRow>

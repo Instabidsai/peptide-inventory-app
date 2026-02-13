@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { useBottles, useDeleteBottle, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
 import { usePeptides } from '@/hooks/use-peptides';
@@ -181,8 +182,8 @@ export default function Bottles() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBottles?.map((bottle) => (
-                    <TableRow key={bottle.id}>
+                  {filteredBottles?.map((bottle, index) => (
+                    <motion.tr key={bottle.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                       <TableCell className="font-mono text-sm font-medium">
                         {bottle.uid}
                       </TableCell>
@@ -225,7 +226,7 @@ export default function Bottles() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </TableRow>
+                    </motion.tr>
                   ))}
                 </TableBody>
               </Table>

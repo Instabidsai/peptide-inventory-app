@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useExpenses, useCreateExpense, useDeleteExpense, ExpenseCategory } from '@/hooks/use-expenses';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,15 @@ import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFinancialMetrics } from '@/hooks/use-financials';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+const CATEGORY_COLORS: Record<string, string> = {
+    startup: '#f59e0b',
+    operating: '#3b82f6',
+    inventory: '#10b981',
+    commission: '#8b5cf6',
+    other: '#6b7280',
+};
 
 export default function Finance() {
     const { data: expenses, isLoading: expensesLoading } = useExpenses();
@@ -115,6 +124,31 @@ export default function Finance() {
         setIsAddOpen(false);
         setFormData({ ...formData, amount: '', description: '', recipient: '' });
     };
+
+    // Expense category chart data
+    const categoryChartData = useMemo(() => {
+        if (!expenses) return [];
+        const agg: Record<string, number> = {};
+        expenses.forEach(e => {
+            agg[e.category] = (agg[e.category] || 0) + Number(e.amount);
+        });
+        return Object.entries(agg)
+            .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value: Number(value.toFixed(2)), fill: CATEGORY_COLORS[name] || '#6b7280' }))
+            .sort((a, b) => b.value - a.value);
+    }, [expenses]);
+
+    // Monthly expense trend data
+    const monthlyTrend = useMemo(() => {
+        if (!expenses) return [];
+        const monthly: Record<string, number> = {};
+        expenses.forEach(e => {
+            const key = format(new Date(e.date), 'MMM yyyy');
+            monthly[key] = (monthly[key] || 0) + Number(e.amount);
+        });
+        return Object.entries(monthly)
+            .map(([month, total]) => ({ month, total: Number(total.toFixed(2)) }))
+            .slice(-6);
+    }, [expenses]);
 
     if (expensesLoading || ordersLoading) return <div className="p-8">Loading financials...</div>;
 
@@ -339,6 +373,57 @@ export default function Finance() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Expense Charts */}
+            {categoryChartData.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">Spending by Category</CardTitle>
+                            <CardDescription>All-time expense breakdown</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={categoryChartData} layout="vertical" margin={{ left: 0, right: 20 }}>
+                                    <XAxis type="number" tickFormatter={v => `$${v}`} tick={{ fill: 'hsl(215 20% 65%)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                    <YAxis type="category" dataKey="name" tick={{ fill: 'hsl(210 40% 98%)', fontSize: 12 }} axisLine={false} tickLine={false} width={85} />
+                                    <Tooltip
+                                        formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']}
+                                        contentStyle={{ background: 'hsl(222 47% 8%)', border: '1px solid hsl(217 33% 17%)', borderRadius: '8px', color: 'hsl(210 40% 98%)' }}
+                                    />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                                        {categoryChartData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {monthlyTrend.length > 1 && (
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Monthly Spend Trend</CardTitle>
+                                <CardDescription>Last {monthlyTrend.length} months</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <BarChart data={monthlyTrend} margin={{ left: 0, right: 10 }}>
+                                        <XAxis dataKey="month" tick={{ fill: 'hsl(215 20% 65%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                        <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'hsl(215 20% 65%)', fontSize: 12 }} axisLine={false} tickLine={false} width={60} />
+                                        <Tooltip
+                                            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Total']}
+                                            contentStyle={{ background: 'hsl(222 47% 8%)', border: '1px solid hsl(217 33% 17%)', borderRadius: '8px', color: 'hsl(210 40% 98%)' }}
+                                        />
+                                        <Bar dataKey="total" fill="hsl(160 84% 39%)" radius={[4, 4, 0, 0]} barSize={32} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            )}
 
             {/* Sales P&L Section */}
             {financials && (financials.orderBasedProfit !== 0 || financials.merchantFees !== 0 || financials.orderBasedCogs !== 0) && (

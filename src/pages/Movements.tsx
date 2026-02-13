@@ -1,4 +1,4 @@
-
+import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
@@ -387,7 +387,7 @@ export default function Movements() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMovements.map((movement) => {
+                {filteredMovements.map((movement, index) => {
                   const moveCost = movement.movement_items?.reduce((itemSum, item: any) => {
                     return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                   }, 0) || 0;
@@ -404,7 +404,7 @@ export default function Movements() {
                     : '-';
 
                   return (
-                    <TableRow key={movement.id}>
+                    <motion.tr key={movement.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                       <TableCell className="font-medium">
                         {format(new Date(movement.movement_date), 'MMM d, yyyy')}
                       </TableCell>
@@ -455,7 +455,7 @@ export default function Movements() {
                           )}
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </motion.tr>
                   )
                 })}
               </TableBody>

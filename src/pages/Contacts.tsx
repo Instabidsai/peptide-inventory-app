@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact, type ContactType } from '@/hooks/use-contacts';
 import { useReps } from '@/hooks/use-profiles'; // NEW: Import useReps
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,6 +59,7 @@ const typeColors: Record<ContactType, 'default' | 'secondary' | 'outline'> = {
 export default function Contacts() {
   const navigate = useNavigate();
   const { userRole } = useAuth();
+  const isMobile = useIsMobile();
   const [typeFilter, setTypeFilter] = useState<ContactType | undefined>();
   const { data: contacts, isLoading } = useContacts(typeFilter);
   const { data: reps } = useReps(); // Fetch reps
@@ -378,6 +381,42 @@ export default function Contacts() {
               <p className="text-lg font-medium">No contacts found</p>
               <p className="text-sm">Add your first customer or partner</p>
             </div>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {filteredContacts?.map((contact, index) => (
+                <motion.div
+                  key={contact.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.04 }}
+                >
+                  <Card
+                    className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => navigate(`/contacts/${contact.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-1.5">
+                        <div>
+                          <p className="font-medium">{contact.name}</p>
+                          <p className="text-xs text-muted-foreground">{contact.email || contact.phone || 'No contact info'}</p>
+                        </div>
+                        <Badge variant={typeColors[contact.type]} className="text-xs">{typeLabels[contact.type]}</Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {contact.company && <span>{contact.company}</span>}
+                        {(() => {
+                          const count = (contact as any).sales_orders?.length || 0;
+                          return count > 0 ? <span>{count} order{count !== 1 ? 's' : ''}</span> : null;
+                        })()}
+                        {(contact as any).assigned_rep?.full_name && (
+                          <span className="flex items-center gap-0.5 text-blue-500"><Briefcase className="h-3 w-3" />{(contact as any).assigned_rep.full_name}</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -394,10 +433,13 @@ export default function Contacts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredContacts?.map((contact) => (
-                  <TableRow
+                {filteredContacts?.map((contact, index) => (
+                  <motion.tr
                     key={contact.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }}
+                    className="border-b transition-colors cursor-pointer hover:bg-muted/50 data-[state=selected]:bg-muted"
                     onClick={() => navigate(`/contacts/${contact.id}`)}
                   >
                     <TableCell className="font-medium">{contact.name}</TableCell>
@@ -466,7 +508,7 @@ export default function Contacts() {
                         )}
                       </div>
                     </TableCell>
-                  </TableRow>
+                  </motion.tr>
                 ))}
               </TableBody>
             </Table>

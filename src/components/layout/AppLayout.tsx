@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { CommandPalette } from '@/components/CommandPalette';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export function AppLayout() {
@@ -11,6 +12,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <CommandPalette />
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
         {sidebarOpen && (
