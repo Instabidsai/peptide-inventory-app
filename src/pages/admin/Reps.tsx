@@ -25,7 +25,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -160,6 +160,7 @@ export default function Reps() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead>Actions</TableHead>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Email</TableHead>
                                         <TableHead>Commission Rate</TableHead>
@@ -168,7 +169,6 @@ export default function Reps() {
                                         <TableHead className="text-right">Earned</TableHead>
                                         <TableHead className="text-right">Customers</TableHead>
                                         <TableHead>Upline</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -197,6 +197,16 @@ export default function Reps() {
                                             const clients = clientsOf(rep.id);
                                             return [
                                                 <TableRow key={rep.id} className={depth > 0 ? 'bg-muted/20' : ''}>
+                                                    <TableCell>
+                                                        <div className="flex gap-1">
+                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
+                                                                <Eye className="h-4 w-4 mr-1" /> View
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
                                                     <TableCell className="font-medium">
                                                         <div className="flex items-center" style={{ paddingLeft: `${depth * 24}px` }}>
                                                             {depth > 0 && (
@@ -230,21 +240,21 @@ export default function Reps() {
                                                             : <span className="text-muted-foreground text-xs">None</span>
                                                         }
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
-                                                                <Eye className="h-4 w-4 mr-2" /> View Details
-                                                            </Button>
-                                                            <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
-                                                                <Pencil className="h-4 w-4 mr-2" /> Edit
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
                                                 </TableRow>,
                                                 ...children.flatMap(child => renderRow(child, depth + 1)),
                                                 // Render customer contacts as leaf nodes under this partner
                                                 ...clients.map(client => (
                                                     <TableRow key={`client-${client.id}`}>
+                                                        <TableCell>
+                                                            <div className="flex gap-1">
+                                                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-300" onClick={() => navigate(`/contacts/${client.id}`)}>
+                                                                    <Eye className="h-4 w-4 mr-1" /> View
+                                                                </Button>
+                                                                <Button variant="secondary" size="sm" className="text-blue-600" onClick={() => navigate(`/sales/new?contact_id=${client.id}`)}>
+                                                                    <ShoppingCart className="h-4 w-4 mr-1" /> Order
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
                                                         <TableCell className="font-medium">
                                                             <div className="flex items-center" style={{ paddingLeft: `${(depth + 1) * 24}px` }}>
                                                                 <span className="text-blue-500 mr-2 font-mono text-xs">└─</span>
@@ -260,11 +270,6 @@ export default function Reps() {
                                                         <TableCell></TableCell>
                                                         <TableCell></TableCell>
                                                         <TableCell className="text-blue-500/70 text-sm">{rep.full_name}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => navigate(`/contacts`)}>
-                                                                <Eye className="h-4 w-4 mr-2" /> View
-                                                            </Button>
-                                                        </TableCell>
                                                     </TableRow>
                                                 ))
                                             ];
