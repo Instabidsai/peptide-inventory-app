@@ -46,6 +46,7 @@ interface CartItem {
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
 const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
+const VENMO_HANDLE = 'PureUSPeptide';
 
 export default function PartnerStore() {
     const { user, profile } = useAuth();
@@ -473,9 +474,18 @@ export default function PartnerStore() {
                                             {/* Venmo info */}
                                             {paymentMethod === 'venmo' && (
                                                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
-                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Pay via Venmo</p>
+                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Pay via Venmo to @{VENMO_HANDLE}</p>
+                                                    <a
+                                                        href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                        Open Venmo — ${cartTotal.toFixed(2)}
+                                                    </a>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via Venmo. We'll confirm when received.
+                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via the link above or search @{VENMO_HANDLE} in Venmo.
                                                     </p>
                                                 </div>
                                             )}
@@ -513,6 +523,9 @@ export default function PartnerStore() {
                                                     {paymentMethod === 'zelle' && (
                                                         <> to <strong>{ZELLE_EMAIL}</strong></>
                                                     )}
+                                                    {paymentMethod === 'venmo' && (
+                                                        <> to <strong>@{VENMO_HANDLE}</strong></>
+                                                    )}
                                                 </p>
                                             </div>
                                             {paymentMethod === 'zelle' && (
@@ -520,6 +533,18 @@ export default function PartnerStore() {
                                                     {copiedZelle ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
                                                     Copy Zelle Email
                                                 </Button>
+                                            )}
+                                            {paymentMethod === 'venmo' && (
+                                                <a
+                                                    href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button variant="outline" size="sm">
+                                                        <ExternalLink className="h-3 w-3 mr-1" />
+                                                        Open Venmo to Pay
+                                                    </Button>
+                                                </a>
                                             )}
                                             <Button
                                                 variant="ghost"
