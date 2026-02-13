@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMovements, useMovementItems, useDeleteMovement, type Movement, type MovementType } from '@/hooks/use-movements';
@@ -69,6 +69,33 @@ function MovementDetailsDialog({
   onUpdate: (id: string, updates: any) => Promise<void>;
 }) {
   const { data: items, isLoading } = useMovementItems(movement?.id || '');
+
+  // Extract linked sales order ID from notes (e.g., "Sales Order #93ac1fad")
+  const orderShortId = movement?.notes?.match(/(?:Sales Order|Fulfilled Sales Order)\s*#([a-f0-9]{8})/i)?.[1] || '';
+
+  // Fetch commissions linked to the sales order
+  const { data: commissions } = useQuery({
+    queryKey: ['movement_commissions', orderShortId],
+    queryFn: async () => {
+      if (!orderShortId) return [];
+      // Find the sales order by ID prefix
+      const { data: orders } = await supabase
+        .from('sales_orders')
+        .select('id')
+        .ilike('id', `${orderShortId}%`)
+        .limit(1);
+      if (!orders?.length) return [];
+      const { data: comms, error } = await supabase
+        .from('commissions')
+        .select('id, amount, commission_rate, type, partner_id, profiles:partner_id(full_name)')
+        .eq('sale_id', orders[0].id);
+      if (error) return [];
+      return comms || [];
+    },
+    enabled: !!orderShortId,
+  });
+
+  const totalCommission = commissions?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) || 0;
 
   // Editable state — initialized from the movement when it changes
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -228,12 +255,28 @@ function MovementDetailsDialog({
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Cost</span>
+              <span className="text-muted-foreground">Total Cost (COGS)</span>
               <span>${totalCost.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Margin</span>
-              <span className="text-primary font-medium">${(finalTotal - totalCost).toFixed(2)}</span>
+            {totalCommission > 0 && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Commissions</span>
+                  <span className="text-orange-600">${totalCommission.toFixed(2)}</span>
+                </div>
+                {commissions?.map((c: any) => (
+                  <div key={c.id} className="flex justify-between text-xs text-muted-foreground pl-3">
+                    <span>{c.profiles?.full_name || 'Unknown'} ({c.type === 'direct' ? 'Direct' : 'Override'} {((c.commission_rate || 0) * 100).toFixed(0)}%)</span>
+                    <span>${Number(c.amount).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-semibold border-t pt-2">
+              <span>Net Profit</span>
+              <span className={(finalTotal - totalCost - totalCommission) >= 0 ? 'text-green-600' : 'text-red-500'}>
+                ${(finalTotal - totalCost - totalCommission).toFixed(2)}
+              </span>
             </div>
           </div>
 
