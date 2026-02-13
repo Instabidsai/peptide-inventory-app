@@ -74,12 +74,13 @@ export default function PartnerDashboard() {
     ];
     const { data: clients } = useDownlineClients(allRepIds);
 
-    // Fetch unpaid movements detail (for Amount Owed sheet)
+    // Fetch movements for Amount Owed (simple query — just totals)
     const { data: owedMovements } = useQuery({
         queryKey: ['partner_owed_movements', user?.id],
         queryFn: async () => {
             if (!user?.id) return [];
 
+            // Find linked contact
             const { data: contact } = await supabase
                 .from('contacts')
                 .select('id')
@@ -88,53 +89,26 @@ export default function PartnerDashboard() {
 
             if (!contact?.id) return [];
 
-            // Fetch movements with items
-            const { data: movements } = await (supabase as any)
+            // Fetch movements with items (just price_at_sale for totals)
+            const { data: movements, error } = await (supabase as any)
                 .from('movements')
-                .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(bottle_id, price_at_sale)')
+                .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(price_at_sale)')
                 .eq('contact_id', contact.id)
                 .order('created_at', { ascending: true });
 
-            if (!movements?.length) return [];
-
-            // Resolve peptide names: bottle_id → bottles.lot_id → lots.peptide_id → peptides.name
-            const allBottleIds = movements.flatMap((m: any) => (m.movement_items || []).map((i: any) => i.bottle_id)).filter(Boolean);
-            const uniqueBottleIds = [...new Set(allBottleIds)] as string[];
-
-            let peptideNameMap = new Map<string, string>();
-            if (uniqueBottleIds.length > 0) {
-                const { data: bottles } = await supabase.from('bottles').select('id, lot_id').in('id', uniqueBottleIds);
-                const lotIds = [...new Set((bottles || []).map((b: any) => b.lot_id).filter(Boolean))];
-                if (lotIds.length > 0) {
-                    const { data: lots } = await (supabase as any).from('lots').select('id, peptides(name)').in('id', lotIds);
-                    const lotPeptideMap = new Map((lots || []).map((l: any) => [l.id, l.peptides?.name || 'Unknown']));
-                    const bottleLotMap = new Map((bottles || []).map((b: any) => [b.id, b.lot_id]));
-                    // Map bottle_id → peptide name
-                    for (const [bottleId, lotId] of bottleLotMap) {
-                        peptideNameMap.set(bottleId, lotPeptideMap.get(lotId) || 'Unknown');
-                    }
-                }
+            if (error) {
+                console.error('owedMovements query error:', error);
+                return [];
             }
+            if (!movements?.length) return [];
 
             return movements.map((m: any) => {
                 const subtotal = (m.movement_items || []).reduce((s: number, i: any) => s + (Number(i.price_at_sale) || 0), 0);
                 const discount = Number(m.discount_amount) || 0;
                 const paid = Number(m.amount_paid) || 0;
                 const owed = Math.max(0, subtotal - discount - paid);
-
-                // Group items by peptide name
-                const grouped: Record<string, { count: number; total: number }> = {};
-                for (const i of (m.movement_items || [])) {
-                    const name = peptideNameMap.get(i.bottle_id) || 'Item';
-                    if (!grouped[name]) grouped[name] = { count: 0, total: 0 };
-                    grouped[name].count += 1;
-                    grouped[name].total += Number(i.price_at_sale) || 0;
-                }
-                const items = Object.entries(grouped).map(([name, { count, total }]) => ({
-                    name, quantity: count, price: total
-                }));
-
-                return { ...m, subtotal, discount, paid, owed, items };
+                const itemCount = (m.movement_items || []).length;
+                return { ...m, subtotal, discount, paid, owed, itemCount, items: [] };
             });
         },
         enabled: !!user?.id,
@@ -554,11 +528,8 @@ export default function PartnerDashboard() {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), 'MMM d, yyyy')}</p>
-                                            {m.items.map((item: any, i: number) => (
-                                                <p key={i} className="text-sm">
-                                                    {item.name} x{item.quantity} — ${item.price.toFixed(2)}
-                                                </p>
-                                            ))}
+                                            <p className="text-sm">{m.itemCount} item{m.itemCount !== 1 ? 's' : ''} — ${m.subtotal.toFixed(2)}</p>
+                                            {m.notes && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{m.notes}</p>}
                                         </div>
                                         <div className="text-right">
                                             <p className="text-lg font-bold text-red-500">${m.owed.toFixed(2)}</p>
@@ -581,7 +552,7 @@ export default function PartnerDashboard() {
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), 'MMM d, yyyy')}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        {m.items.map((i: any) => i.name).join(', ')}
+                                                        {m.itemCount} item{m.itemCount !== 1 ? 's' : ''}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-1 text-green-500">
