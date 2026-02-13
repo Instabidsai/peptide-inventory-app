@@ -197,7 +197,7 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Stats Overview — Clickable Cards */}
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 <Card
                     className="border-green-500/20 bg-green-500/5 cursor-pointer hover:bg-green-500/10 transition-colors"
                     onClick={() => setActiveSheet('commissions')}
@@ -306,6 +306,7 @@ export default function PartnerDashboard() {
                                 <Skeleton className="h-12 w-full" />
                             </div>
                         ) : commissions && commissions.length > 0 ? (
+                            <div className="overflow-x-auto -mx-4 px-4">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -336,6 +337,7 @@ export default function PartnerDashboard() {
                                     ))}
                                 </TableBody>
                             </Table>
+                            </div>
                         ) : (
                             <div className="text-center py-6 text-muted-foreground text-sm">
                                 No commission history yet.
@@ -381,7 +383,7 @@ export default function PartnerDashboard() {
 
             {/* Balance Sheet */}
             <Sheet open={activeSheet === 'balance'} onOpenChange={(open) => !open && setActiveSheet(null)}>
-                <SheetContent className="overflow-y-auto">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <Wallet className="h-5 w-5 text-green-500" />
@@ -427,7 +429,7 @@ export default function PartnerDashboard() {
 
             {/* Commissions Sheet */}
             <Sheet open={activeSheet === 'commissions'} onOpenChange={(open) => !open && setActiveSheet(null)}>
-                <SheetContent className="overflow-y-auto">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <Clock className="h-5 w-5 text-amber-500" />
@@ -498,7 +500,7 @@ export default function PartnerDashboard() {
 
             {/* Amount Owed Sheet */}
             <Sheet open={activeSheet === 'owed'} onOpenChange={(open) => !open && setActiveSheet(null)}>
-                <SheetContent className="overflow-y-auto">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <AlertTriangle className={`h-5 w-5 ${totalOwed > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
@@ -577,7 +579,7 @@ export default function PartnerDashboard() {
 
             {/* Lifetime Earnings Sheet */}
             <Sheet open={activeSheet === 'earnings'} onOpenChange={(open) => !open && setActiveSheet(null)}>
-                <SheetContent className="overflow-y-auto">
+                <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <DollarSign className="h-5 w-5 text-primary" />

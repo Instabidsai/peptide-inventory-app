@@ -235,7 +235,7 @@ export default function PartnerStore() {
     };
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -341,7 +341,7 @@ export default function PartnerStore() {
                                                     )}
                                                 </div>
                                                 <Button
-                                                    size="sm"
+                                                    size="default"
                                                     onClick={() => addToCart(peptide)}
                                                     className="flex items-center gap-1"
                                                 >
@@ -359,7 +359,7 @@ export default function PartnerStore() {
                 </div>
 
                 {/* Cart Sidebar */}
-                <div className="space-y-4">
+                <div id="partner-cart" className="space-y-4">
                     <Card className="bg-card border-border sticky top-4">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -391,10 +391,10 @@ export default function PartnerStore() {
                                                     <Button
                                                         variant="outline"
                                                         size="icon"
-                                                        className="h-7 w-7"
+                                                        className="h-9 w-9"
                                                         onClick={() => updateQuantity(item.peptide_id, -1)}
                                                     >
-                                                        <Minus className="h-3 w-3" />
+                                                        <Minus className="h-4 w-4" />
                                                     </Button>
                                                     <span className="w-8 text-center text-sm font-medium">
                                                         {item.quantity}
@@ -402,10 +402,10 @@ export default function PartnerStore() {
                                                     <Button
                                                         variant="outline"
                                                         size="icon"
-                                                        className="h-7 w-7"
+                                                        className="h-9 w-9"
                                                         onClick={() => updateQuantity(item.peptide_id, 1)}
                                                     >
-                                                        <Plus className="h-3 w-3" />
+                                                        <Plus className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                                 <span className="text-sm font-semibold w-16 text-right">
@@ -620,6 +620,30 @@ export default function PartnerStore() {
                     </Card>
                 </div>
             </div>
+
+            {/* Floating cart summary bar — mobile only, shown when cart has items */}
+            {cart.length > 0 && (
+                <div className="fixed bottom-14 left-0 right-0 lg:hidden z-30 px-4 pb-2">
+                    <Card className="shadow-lg border-primary/30 bg-card/95 backdrop-blur-sm">
+                        <CardContent className="flex items-center justify-between py-3 px-4">
+                            <div>
+                                <p className="text-sm font-bold">
+                                    {cart.reduce((s, i) => s + i.quantity, 0)} items &middot; ${cartTotal.toFixed(2)}
+                                </p>
+                                {totalSavings > 0 && (
+                                    <p className="text-xs text-green-500">Save ${totalSavings.toFixed(2)}</p>
+                                )}
+                            </div>
+                            <Button
+                                size="sm"
+                                onClick={() => document.getElementById('partner-cart')?.scrollIntoView({ behavior: 'smooth' })}
+                            >
+                                <ShoppingCart className="h-4 w-4 mr-1" /> View Cart
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

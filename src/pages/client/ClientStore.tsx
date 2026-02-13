@@ -231,10 +231,10 @@ export default function ClientStore() {
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-7 w-7"
+                                                            className="h-9 w-9"
                                                             onClick={() => updateQuantity(peptide.id, -1)}
                                                         >
-                                                            <Minus className="h-3 w-3" />
+                                                            <Minus className="h-4 w-4" />
                                                         </Button>
                                                         <span className="w-6 text-center text-sm font-medium">
                                                             {inCart.quantity}
@@ -242,10 +242,10 @@ export default function ClientStore() {
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-7 w-7"
+                                                            className="h-9 w-9"
                                                             onClick={() => updateQuantity(peptide.id, 1)}
                                                         >
-                                                            <Plus className="h-3 w-3" />
+                                                            <Plus className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 ) : (
@@ -295,18 +295,18 @@ export default function ClientStore() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="h-8 w-8"
                                             onClick={() => updateQuantity(item.peptide_id, -1)}
                                         >
-                                            <Minus className="h-3 w-3" />
+                                            <Minus className="h-3.5 w-3.5" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="h-8 w-8"
                                             onClick={() => updateQuantity(item.peptide_id, 1)}
                                         >
-                                            <Plus className="h-3 w-3" />
+                                            <Plus className="h-3.5 w-3.5" />
                                         </Button>
                                         <span className="font-semibold w-16 text-right">
                                             ${(item.price * item.quantity).toFixed(2)}

@@ -425,10 +425,10 @@ export default function MacroTracker() {
                 !image && !result && (
                     <GlassCard className="border-dashed border-2">
                         <CardContent className="flex flex-col items-center justify-center py-12">
-                            <div className="flex gap-4">
-                                <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
-                                    <Camera className="h-8 w-8" />
-                                    <span>Camera</span>
+                            <div className="grid grid-cols-3 gap-3 w-full max-w-xs mx-auto">
+                                <Button variant="outline" className="h-20 w-full flex flex-col gap-2 relative">
+                                    <Camera className="h-7 w-7" />
+                                    <span className="text-xs">Camera</span>
                                     <input
                                         type="file"
                                         accept="image/*"
@@ -437,9 +437,9 @@ export default function MacroTracker() {
                                         onChange={handleImageUpload}
                                     />
                                 </Button>
-                                <Button variant="outline" className="h-24 w-24 flex flex-col gap-2 relative">
-                                    <Upload className="h-8 w-8" />
-                                    <span>Upload</span>
+                                <Button variant="outline" className="h-20 w-full flex flex-col gap-2 relative">
+                                    <Upload className="h-7 w-7" />
+                                    <span className="text-xs">Upload</span>
                                     <input
                                         type="file"
                                         accept="image/*"
@@ -449,11 +449,11 @@ export default function MacroTracker() {
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="h-24 w-24 flex flex-col gap-2"
+                                    className="h-20 w-full flex flex-col gap-2"
                                     onClick={() => setShowBarcodeScanner(true)}
                                 >
-                                    <Barcode className="h-8 w-8" />
-                                    <span>Barcode</span>
+                                    <Barcode className="h-7 w-7" />
+                                    <span className="text-xs">Barcode</span>
                                 </Button>
                             </div>
                             <p className="mt-4 text-muted-foreground text-sm">Take a photo, upload, or scan a barcode</p>
@@ -482,7 +482,7 @@ export default function MacroTracker() {
                                 <CardTitle>Analysis Results</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-4 gap-4 text-center mb-6 p-4 bg-muted rounded-lg">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-6 p-4 bg-muted rounded-lg">
                                     <div>
                                         <div className="text-2xl font-bold">{Math.round(result.total_calories)}</div>
                                         <div className="text-xs text-muted-foreground uppercase">Calories</div>

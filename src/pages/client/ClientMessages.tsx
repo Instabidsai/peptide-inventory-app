@@ -201,7 +201,7 @@ export default function ClientMessages() {
             </AlertDialog>
 
             <Dialog open={!!viewId} onOpenChange={(open) => !open && setViewId(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-[95vw] sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Conversation</DialogTitle>
                     </DialogHeader>

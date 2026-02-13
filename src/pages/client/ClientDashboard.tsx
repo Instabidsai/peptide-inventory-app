@@ -332,7 +332,7 @@ function ClientDashboardContent() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="ai-coach" className="min-h-[600px]">
+                <TabsContent value="ai-coach" className="min-h-[400px] md:min-h-[600px]">
                     <AIChatInterface />
                 </TabsContent>
             </Tabs>

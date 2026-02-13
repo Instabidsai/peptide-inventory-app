@@ -203,18 +203,18 @@ export default function ClientRegimen() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
                         Bio-Optimization Command Center
                     </h1>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="text-muted-foreground mt-1 text-sm">
                         Track your protocol, inventory, and health metrics in one place.
                     </p>
                 </div>
                 <button
                     onClick={() => setRequestModalOpen(true)}
-                    className="bg-secondary/50 hover:bg-secondary text-sm px-4 py-2 rounded-lg transition-colors border border-border"
+                    className="bg-secondary/50 hover:bg-secondary text-sm px-4 py-2 rounded-lg transition-colors border border-border shrink-0"
                 >
                     Have a Question?
                 </button>
@@ -267,7 +267,7 @@ export default function ClientRegimen() {
             })()}
 
             {/* Bento Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:h-[calc(100vh-200px)] md:min-h-[600px]">
 
                 {/* Column 1: Daily Protocol (3 cols) */}
                 <div className="md:col-span-3 h-full">

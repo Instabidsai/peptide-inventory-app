@@ -341,7 +341,7 @@ export default function CommunityForum() {
                     </div>
 
                     {/* Reply Input */}
-                    <Card className="sticky bottom-4 bg-background border-primary/20">
+                    <Card className="sticky bottom-20 lg:bottom-4 bg-background border-primary/20">
                         <CardContent className="p-4">
                             <form
                                 onSubmit={(e) => {

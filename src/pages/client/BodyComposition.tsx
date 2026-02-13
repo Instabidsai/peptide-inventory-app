@@ -150,8 +150,8 @@ export default function BodyComposition() {
 
     return (
         <div className="container mx-auto p-4 max-w-2xl space-y-6 pb-20">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-primary">Body Composition</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary">Body Composition</h1>
                 <Button onClick={() => setIsLogging(!isLogging)} variant={isLogging ? "secondary" : "default"}>
                     {isLogging ? "Cancel" : <><Plus className="mr-2 h-4 w-4" /> Log New</>}
                 </Button>
@@ -219,7 +219,7 @@ export default function BodyComposition() {
 
             {/* Latest Stats Cards */}
             {latestLog && (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
                             <div className="text-2xl font-bold">{latestLog.weight}</div>
