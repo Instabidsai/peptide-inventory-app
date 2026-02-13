@@ -155,11 +155,19 @@ async function processOrder(order: any): Promise<{ tracking: string; carrier: st
 
     if (updateErr) throw new Error(`DB update failed: ${updateErr.message}`);
 
+    // Recalculate profit now that shipping cost is known
+    const shippingCost = parseFloat(selectedRate.amount);
+    const profit = (order.total_amount || 0) - (order.cogs_amount || 0) - shippingCost - (order.commission_amount || 0);
+    await supabase
+        .from('sales_orders')
+        .update({ profit_amount: profit } as any)
+        .eq('id', order.id);
+
     return {
         tracking: transaction.tracking_number,
         carrier: selectedRate.provider,
         label: transaction.label_url,
-        cost: parseFloat(selectedRate.amount),
+        cost: shippingCost,
     };
 }
 
@@ -216,7 +224,7 @@ async function main() {
     const { data: orders, error } = await supabase
         .from('sales_orders')
         .select(`
-            id, shipping_address, total_amount, notes,
+            id, shipping_address, total_amount, commission_amount, cogs_amount, notes,
             contacts (id, name, email, phone, address),
             sales_order_items (quantity, peptides (name))
         `)

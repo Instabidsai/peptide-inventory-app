@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -86,6 +86,11 @@ export default function OrderDetails() {
                                 </div>
                             </div>
                             <div className="flex gap-2">
+                                {order.order_source === 'woocommerce' && (
+                                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 py-1 px-3">
+                                        WooCommerce
+                                    </Badge>
+                                )}
                                 <Badge variant="outline" className="text-lg py-1 px-3">
                                     {order.status.toUpperCase()}
                                 </Badge>
@@ -315,6 +320,44 @@ export default function OrderDetails() {
                             <p className="text-xs text-muted-foreground mt-1">
                                 Calculated at time of sale.
                             </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" /> Profit Breakdown
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span>Revenue</span>
+                                <span className="font-medium">${order.total_amount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-red-500">
+                                <span>COGS</span>
+                                <span>-${(order.cogs_amount || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-red-500">
+                                <span>Shipping</span>
+                                <span>-${(order.shipping_cost || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-red-500">
+                                <span>Commission</span>
+                                <span>-${(order.commission_amount || 0).toFixed(2)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between font-bold text-lg">
+                                <span>Net Profit</span>
+                                <span className={(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                    ${(order.profit_amount || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                Margin: {order.total_amount > 0
+                                    ? ((order.profit_amount || 0) / order.total_amount * 100).toFixed(1)
+                                    : '0.0'}%
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

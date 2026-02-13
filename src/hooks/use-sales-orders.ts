@@ -34,7 +34,7 @@ export interface SalesOrder {
     notes: string | null;
     created_at: string;
     updated_at: string;
-    // Shipping fields (from 20260213 migration)
+    // Shipping fields
     tracking_number?: string | null;
     carrier?: string | null;
     shipping_status?: string | null;
@@ -42,6 +42,11 @@ export interface SalesOrder {
     shipping_cost?: number | null;
     label_url?: string | null;
     shipping_error?: string | null;
+    // WooCommerce + profit fields
+    order_source?: string;
+    woo_order_id?: number | null;
+    cogs_amount?: number | null;
+    profit_amount?: number | null;
     contacts?: {
         id: string;
         name: string;

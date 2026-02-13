@@ -37,6 +37,7 @@ export default function OrderList() {
     const { userRole, profile } = useAuth();
     const navigate = useNavigate();
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
+    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
 
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
     const isRep = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
@@ -46,7 +47,10 @@ export default function OrderList() {
     const deleteOrder = useDeleteSalesOrder();
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
-    const orders = isRep ? myOrders : allOrders;
+    const rawOrders = isRep ? myOrders : allOrders;
+    const orders = filterSource === 'all'
+        ? rawOrders
+        : rawOrders?.filter(o => (o.order_source || 'app') === filterSource);
     const isLoading = isRep ? myLoading : allLoading;
 
     if (isLoading) return <div className="p-8 text-center">Loading orders...</div>;
@@ -105,6 +109,18 @@ export default function OrderList() {
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                 </Select>
+                {!isRep && (
+                    <Select value={filterSource} onValueChange={(v: any) => setFilterSource(v)}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Order Source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Sources</SelectItem>
+                            <SelectItem value="app">App Orders</SelectItem>
+                            <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                        </SelectContent>
+                    </Select>
+                )}
             </div>
 
             <Card>
@@ -124,6 +140,7 @@ export default function OrderList() {
                                 <TableHead>Shipping</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                                 {isRep && <TableHead className="text-right">Commission</TableHead>}
+                                {!isRep && <TableHead className="text-right">Profit</TableHead>}
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -133,6 +150,9 @@ export default function OrderList() {
                                     <TableRow key={order.id}>
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
+                                            {order.order_source === 'woocommerce' && (
+                                                <Badge variant="outline" className="ml-1 text-[10px] py-0 bg-purple-50 text-purple-700 border-purple-200">WC</Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             {format(new Date(order.created_at), 'MMM d, yyyy')}
@@ -185,6 +205,13 @@ export default function OrderList() {
                                                 ${order.commission_amount?.toFixed(2) || '0.00'}
                                             </TableCell>
                                         )}
+                                        {!isRep && (
+                                            <TableCell className="text-right font-medium">
+                                                <span className={(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                                    ${(order.profit_amount || 0).toFixed(2)}
+                                                </span>
+                                            </TableCell>
+                                        )}
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" asChild>
                                                 <Link to={`/sales/${order.id}`}>
@@ -206,7 +233,7 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={isRep ? 9 : 10} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={isRep ? 9 : 11} className="h-24 text-center text-muted-foreground">
                                         No orders found.
                                     </TableCell>
                                 </TableRow>
