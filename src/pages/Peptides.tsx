@@ -60,6 +60,7 @@ export default function Peptides() {
   const deletePeptide = useDeletePeptide();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
@@ -101,10 +102,12 @@ export default function Peptides() {
     defaultValues: { name: '', description: '', sku: '', retail_price: 0 },
   });
 
-  const filteredPeptides = peptides?.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPeptides = peptides?.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? p.active : !p.active);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleCreate = async (data: PeptideFormData) => {
     // @ts-expect-error - retail_price might not exist in type yet but we'll send it
@@ -247,6 +250,16 @@ export default function Peptides() {
                 className="pl-9"
               />
             </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active Only</SelectItem>
+                <SelectItem value="inactive">Inactive Only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -289,7 +302,18 @@ export default function Peptides() {
                       {peptide.sku || '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{peptide.stock_count || 0} Vials</Badge>
+                      <Badge variant="outline" className={
+                        (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
+                        (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
+                      }>
+                        {peptide.stock_count || 0} Vials
+                      </Badge>
+                      {(peptide.stock_count || 0) === 0 && (
+                        <span className="text-[10px] text-red-500 block">Out of Stock</span>
+                      )}
+                      {(peptide.stock_count || 0) > 0 && (peptide.stock_count || 0) < 5 && (
+                        <span className="text-[10px] text-amber-500 block">Low Stock</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {pendingByPeptide?.[peptide.id]?.totalOrdered ? (

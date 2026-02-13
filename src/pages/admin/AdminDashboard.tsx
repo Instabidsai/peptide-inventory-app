@@ -644,7 +644,7 @@ export default function AdminDashboard() {
                 </Card>
             </div>
             <div className="text-center text-xs text-muted-foreground mt-8">
-                System Version: 2.4 (Profit Pipeline + WooCommerce + Partner Enhancements)
+                System Version: 2.5 (Profit Pipeline + WooCommerce + Partner + Analytics)
             </div>
         </div>
     );
