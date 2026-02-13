@@ -99,6 +99,7 @@ function MovementDetailsDialog({
 
   // Editable state — initialized from the movement when it changes
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountDollars, setDiscountDollars] = useState(0);
   const [paymentInput, setPaymentInput] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
@@ -108,6 +109,7 @@ function MovementDetailsDialog({
   useEffect(() => {
     if (movement) {
       setDiscountPercent(Number(movement.discount_percent) || 0);
+      setDiscountDollars(Number(movement.discount_amount) || 0);
       setPaymentInput('');
       setPaymentMethod(movement.payment_method || '');
       setNotes(movement.notes || '');
@@ -119,8 +121,8 @@ function MovementDetailsDialog({
   const subtotal = items?.reduce((sum, item) => sum + (Number(item.price_at_sale) || 0), 0) || 0;
   const totalCost = items?.reduce((sum, item) => sum + (Number(item.bottles?.lots?.cost_per_unit) || 0), 0) || 0;
 
-  const discountAmt = subtotal * (discountPercent / 100);
-  const finalTotal = subtotal - discountAmt;
+  const discountAmt = discountDollars;
+  const finalTotal = Math.max(0, subtotal - discountAmt);
   const previouslyPaid = Number(movement.amount_paid) || 0;
   const newPayment = Number(paymentInput) || 0;
   const totalPaid = previouslyPaid + newPayment;
@@ -129,8 +131,8 @@ function MovementDetailsDialog({
   const handleSave = async () => {
     setSaving(true);
     const updates: any = {
-      discount_percent: discountPercent,
-      discount_amount: Math.round(discountAmt * 100) / 100,
+      discount_percent: Math.round(discountPercent * 100) / 100,
+      discount_amount: Math.round(discountDollars * 100) / 100,
       notes: notes || null,
     };
 
@@ -229,24 +231,42 @@ function MovementDetailsDialog({
               <span className="font-medium">${subtotal.toFixed(2)}</span>
             </div>
 
-            {/* Discount input */}
-            <div className="flex justify-between items-center text-sm">
+            {/* Discount inputs — % and $ stay in sync */}
+            <div className="flex justify-between items-center text-sm gap-3">
+              <span className="text-muted-foreground shrink-0">Discount</span>
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Discount</span>
                 <Input
                   type="number"
                   min={0}
                   max={100}
                   value={discountPercent || ''}
-                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  onChange={(e) => {
+                    const pct = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                    setDiscountPercent(pct);
+                    setDiscountDollars(Math.round(subtotal * pct) / 100);
+                  }}
                   className="w-20 h-7 text-sm"
                   placeholder="0"
                 />
                 <span className="text-muted-foreground">%</span>
               </div>
-              {discountAmt > 0 && (
-                <span className="font-medium text-red-500">-${discountAmt.toFixed(2)}</span>
-              )}
+              <span className="text-muted-foreground">or</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={discountDollars || ''}
+                  onChange={(e) => {
+                    const amt = Math.max(0, Number(e.target.value) || 0);
+                    setDiscountDollars(amt);
+                    setDiscountPercent(subtotal > 0 ? Math.round((amt / subtotal) * 10000) / 100 : 0);
+                  }}
+                  className="w-24 h-7 text-sm"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             <div className="flex justify-between text-sm font-semibold border-t pt-2">
