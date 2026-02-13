@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AnimatePresence, motion } from 'framer-motion';
+// Note: Page transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
 import { LayoutDashboard, ShoppingBag, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,24 +48,14 @@ export function AppLayout() {
           isPartnerRoute && "pb-24 lg:pb-8" // extra bottom padding for mobile nav
         )}>
           <ErrorBoundary name="Page">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            <Outlet />
           </ErrorBoundary>
         </main>
       </div>
 
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card/95 backdrop-blur-xl z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <nav className="flex justify-around items-center h-14">
             {partnerNav.map((item) => {
               const isActive = location.pathname === item.path;
