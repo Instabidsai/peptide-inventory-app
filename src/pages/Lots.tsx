@@ -34,7 +34,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Package, Search, Calendar, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 const lotSchema = z.object({
@@ -401,13 +401,26 @@ export default function Lots() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {lot.expiry_date ? (
-                        <Badge
-                          variant={new Date(lot.expiry_date) < new Date() ? 'destructive' : 'outline'}
-                        >
-                          {format(new Date(lot.expiry_date), 'MMM d, yyyy')}
-                        </Badge>
-                      ) : (
+                      {lot.expiry_date ? (() => {
+                        const daysLeft = differenceInDays(new Date(lot.expiry_date), new Date());
+                        const colorClass = daysLeft < 0
+                          ? 'text-red-500 border-red-500/30'
+                          : daysLeft < 30
+                          ? 'text-red-400 border-red-400/30'
+                          : daysLeft < 90
+                          ? 'text-amber-500 border-amber-500/30'
+                          : 'text-green-500 border-green-500/30';
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <Badge variant="outline" className={colorClass}>
+                              {daysLeft < 0 ? `Expired ${Math.abs(daysLeft)}d ago` : `${daysLeft}d left`}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(lot.expiry_date), 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                        );
+                      })() : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>

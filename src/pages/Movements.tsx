@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download } from 'lucide-react';
+import { format, startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import {
@@ -181,6 +181,7 @@ export default function Movements() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewingMovement, setViewingMovement] = useState<Movement | null>(null);
   const [deletingMovement, setDeletingMovement] = useState<Movement | null>(null);
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   const handleUpdate = async (id: string, updates: any) => {
     const { error } = await supabase
@@ -211,12 +212,29 @@ export default function Movements() {
 
   const filteredMovements = useMemo(() => {
     if (!movements) return [];
-    if (filterType === 'all') return movements;
-    if (filterType === 'overhead') {
-      return movements.filter(m => ['internal_use', 'giveaway', 'loss'].includes(m.type));
+    let filtered = movements;
+
+    // Type filter
+    if (filterType !== 'all') {
+      if (filterType === 'overhead') {
+        filtered = filtered.filter(m => ['internal_use', 'giveaway', 'loss'].includes(m.type));
+      } else {
+        filtered = filtered.filter(m => m.type === filterType);
+      }
     }
-    return movements.filter(m => m.type === filterType);
-  }, [movements, filterType]);
+
+    // Date range filter
+    if (dateRange !== 'all') {
+      const now = new Date();
+      let cutoff: Date;
+      if (dateRange === 'today') cutoff = startOfDay(now);
+      else if (dateRange === 'week') cutoff = startOfWeek(now, { weekStartsOn: 1 });
+      else cutoff = startOfMonth(now);
+      filtered = filtered.filter(m => isAfter(new Date(m.movement_date), cutoff));
+    }
+
+    return filtered;
+  }, [movements, filterType, dateRange]);
 
   const updateFilter = (val: string) => {
     if (val === 'all') {
@@ -225,6 +243,38 @@ export default function Movements() {
     } else {
       setSearchParams({ type: val });
     }
+  };
+
+  const exportMovementsCSV = () => {
+    if (filteredMovements.length === 0) return;
+    const headers = ['Date', 'Type', 'Contact', 'Items', 'Cost', 'Amount Paid', 'Payment Status', 'Notes'];
+    const rows = filteredMovements.map(m => {
+      const itemsSummary = m.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+        const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+      }, {});
+      const itemsStr = itemsSummary ? Object.entries(itemsSummary).map(([n, c]) => `${n} (${c})`).join('; ') : '';
+      const cost = m.movement_items?.reduce((s: number, item: any) => s + (item.bottles?.lots?.cost_per_unit || 0), 0) || 0;
+      return [
+        format(new Date(m.movement_date), 'yyyy-MM-dd'),
+        typeLabels[m.type],
+        m.contacts?.name || '',
+        `"${itemsStr}"`,
+        cost.toFixed(2),
+        (m.amount_paid || 0).toFixed(2),
+        m.payment_status,
+        `"${(m.notes || '').replace(/"/g, '""')}"`,
+      ];
+    });
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `movements-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Calculating totals for the filtered list for quick view
@@ -243,7 +293,7 @@ export default function Movements() {
           <h1 className="text-2xl font-bold tracking-tight">Movements</h1>
           <p className="text-muted-foreground">Track inventory transactions</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={filterType} onValueChange={updateFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter Type" />
@@ -256,6 +306,11 @@ export default function Movements() {
               <SelectItem value="internal_use">Internal Use</SelectItem>
             </SelectContent>
           </Select>
+          {filteredMovements.length > 0 && (
+            <Button variant="outline" size="sm" onClick={exportMovementsCSV}>
+              <Download className="mr-2 h-4 w-4" /> Export CSV
+            </Button>
+          )}
           <Button asChild>
             <Link to="/movements/new">
               <Plus className="mr-2 h-4 w-4" />
@@ -263,6 +318,23 @@ export default function Movements() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* Date range quick filters */}
+      <div className="flex gap-2 flex-wrap">
+        {(['all', 'today', 'week', 'month'] as const).map((range) => (
+          <Button
+            key={range}
+            variant={dateRange === range ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateRange(range)}
+          >
+            {range === 'all' ? 'All Time' : range === 'today' ? 'Today' : range === 'week' ? 'This Week' : 'This Month'}
+          </Button>
+        ))}
+        <span className="text-sm text-muted-foreground self-center ml-2">
+          {filteredMovements.length} movement{filteredMovements.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {filterType !== 'all' && (

@@ -195,12 +195,7 @@ export default function PartnerDetail() {
                 </TabsContent>
 
                 <TabsContent value="orders">
-                    <Card>
-                        <CardHeader><CardTitle>Sales History</CardTitle></CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Order history table coming soon...</p>
-                        </CardContent>
-                    </Card>
+                    <SalesOrdersTabContent repId={id!} />
                 </TabsContent>
 
                 <TabsContent value="clients">
@@ -216,6 +211,142 @@ export default function PartnerDetail() {
                     <PayoutsTabContent repId={id!} />
                 </TabsContent>
             </Tabs>
+        </div>
+    );
+}
+
+function SalesOrdersTabContent({ repId }: { repId: string }) {
+    const navigate = useNavigate();
+
+    const { data: orders, isLoading } = useQuery({
+        queryKey: ['partner_sales_orders', repId],
+        queryFn: async () => {
+            const { data, error } = await (supabase as any)
+                .from('sales_orders')
+                .select(`
+                    id, created_at, status, payment_status, total_amount,
+                    commission_amount, profit_amount, source,
+                    contacts (name),
+                    sales_order_items (quantity, peptides (name))
+                `)
+                .eq('rep_id', repId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        },
+    });
+
+    if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading sales orders...</div>;
+
+    const totalVolume = orders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
+    const totalCommission = orders?.reduce((s: number, o: any) => s + Number(o.commission_amount || 0), 0) || 0;
+    const orderCount = orders?.length || 0;
+
+    const statusColor = (s: string) => {
+        if (s === 'fulfilled' || s === 'delivered') return 'bg-green-500/10 text-green-500 border-green-500/20';
+        if (s === 'cancelled') return 'bg-red-500/10 text-red-500 border-red-500/20';
+        if (s === 'shipped') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Summary stats */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardContent className="pt-4 pb-3">
+                        <p className="text-xs text-muted-foreground">Total Orders</p>
+                        <p className="text-2xl font-bold">{orderCount}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4 pb-3">
+                        <p className="text-xs text-muted-foreground">Sales Volume</p>
+                        <p className="text-2xl font-bold">${totalVolume.toFixed(2)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4 pb-3">
+                        <p className="text-xs text-muted-foreground">Total Commission</p>
+                        <p className="text-2xl font-bold text-green-500">${totalCommission.toFixed(2)}</p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sales History</CardTitle>
+                    <CardDescription>{orderCount} order{orderCount !== 1 ? 's' : ''} placed through this partner</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Client</TableHead>
+                                <TableHead>Items</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Payment</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead className="text-right">Commission</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {orderCount === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                        No sales orders yet for this partner.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {orders?.map((order: any) => {
+                                const items = order.sales_order_items || [];
+                                const itemSummary = items.map((i: any) =>
+                                    `${i.peptides?.name || '?'} ×${i.quantity}`
+                                ).join(', ');
+
+                                return (
+                                    <TableRow
+                                        key={order.id}
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => navigate(`/sales/${order.id}`)}
+                                    >
+                                        <TableCell className="text-sm">
+                                            {format(new Date(order.created_at), 'MMM d, yyyy')}
+                                        </TableCell>
+                                        <TableCell className="font-medium">
+                                            {order.contacts?.name || 'N/A'}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                                            {itemSummary || '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={`text-xs ${statusColor(order.status)}`}>
+                                                {order.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={`text-xs ${
+                                                order.payment_status === 'paid'
+                                                    ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                                                    : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                            }`}>
+                                                {order.payment_status || 'pending'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium">
+                                            ${Number(order.total_amount || 0).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-right text-green-500 font-medium">
+                                            ${Number(order.commission_amount || 0).toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </div>
     );
 }
