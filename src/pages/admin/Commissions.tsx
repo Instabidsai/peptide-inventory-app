@@ -199,6 +199,52 @@ export default function Commissions() {
                 </CardContent>
             </Card>
 
+            {/* Top Earners */}
+            {commissions && commissions.length > 0 && (() => {
+                const earnerMap = new Map<string, { name: string; tier: string; total: number; count: number }>();
+                commissions.forEach(c => {
+                    const pid = c.partner_id;
+                    const existing = earnerMap.get(pid) || {
+                        name: (c.profiles as any)?.full_name || 'Unknown',
+                        tier: (c.profiles as any)?.partner_tier || 'standard',
+                        total: 0,
+                        count: 0,
+                    };
+                    existing.total += Number(c.amount) || 0;
+                    existing.count += 1;
+                    earnerMap.set(pid, existing);
+                });
+                const topEarners = [...earnerMap.values()].sort((a, b) => b.total - a.total).slice(0, 5);
+
+                return (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <TrendingUp className="h-4 w-4" /> Top Earners
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {topEarners.map((earner, i) => (
+                                    <div key={i} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-lg font-bold text-muted-foreground w-6">
+                                                {i + 1}
+                                            </span>
+                                            <div>
+                                                <p className="font-medium text-sm">{earner.name}</p>
+                                                <p className="text-xs text-muted-foreground capitalize">{earner.tier} · {earner.count} sale{earner.count !== 1 ? 's' : ''}</p>
+                                            </div>
+                                        </div>
+                                        <span className="font-bold text-green-500">${earner.total.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })()}
+
             {/* Full Commission Table */}
             <Card>
                 <CardHeader>

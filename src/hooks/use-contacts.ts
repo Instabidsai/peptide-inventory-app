@@ -58,7 +58,7 @@ export function useContacts(type?: ContactType) {
             id,
             full_name
           ),
-          sales_orders:sales_orders!client_id (id)
+          sales_orders:sales_orders!client_id (id, created_at)
         `)
         .order('name');
 

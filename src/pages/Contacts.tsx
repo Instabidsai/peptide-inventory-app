@@ -17,6 +17,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download } from 'lucide-react';
+import { format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -387,6 +388,7 @@ export default function Contacts() {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Orders</TableHead>
+                  <TableHead>Last Order</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -426,6 +428,16 @@ export default function Contacts() {
                         return count > 0
                           ? <Badge variant="secondary" className="text-xs">{count}</Badge>
                           : <span className="text-muted-foreground text-xs">0</span>;
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {(() => {
+                        const orders = (contact as any).sales_orders || [];
+                        if (orders.length === 0) return '-';
+                        const latest = orders.reduce((max: any, o: any) =>
+                          new Date(o.created_at) > new Date(max.created_at) ? o : max
+                        );
+                        return format(new Date(latest.created_at), 'MMM d, yyyy');
                       })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
