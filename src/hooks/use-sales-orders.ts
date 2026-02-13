@@ -152,9 +152,48 @@ export function useCreateSalesOrder() {
 
             if (!profile?.org_id) throw new Error('No organization found');
 
-            // Use profile's commission_rate (default 10%) and price_multiplier
-            const repCommissionRate = Number((profile as any).commission_rate) || 0.10;
-            const priceMultiplier = Number((profile as any).price_multiplier) || 1.0;
+            // Determine the actual rep for this order:
+            // If the client has an assigned_rep_id, attribute the order to that rep
+            let repId = profile.id;
+            let repCommissionRate = 0;
+            let priceMultiplier = 1.0;
+
+            if (input.client_id) {
+                const { data: contact } = await supabase
+                    .from('contacts')
+                    .select('assigned_rep_id')
+                    .eq('id', input.client_id)
+                    .single();
+
+                if (contact?.assigned_rep_id) {
+                    repId = contact.assigned_rep_id;
+                    // Fetch the actual rep's commission settings
+                    const { data: repProfile } = await supabase
+                        .from('profiles')
+                        .select('commission_rate, price_multiplier')
+                        .eq('id', contact.assigned_rep_id)
+                        .single();
+
+                    if (repProfile) {
+                        const rate = repProfile.commission_rate;
+                        repCommissionRate = (rate != null) ? Number(rate) : 0.10;
+                        const mult = repProfile.price_multiplier;
+                        priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+                    }
+                } else {
+                    // No assigned rep — use logged-in user's settings
+                    const rate = (profile as any).commission_rate;
+                    repCommissionRate = (rate != null) ? Number(rate) : 0.10;
+                    const mult = (profile as any).price_multiplier;
+                    priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+                }
+            } else {
+                // No client selected — use logged-in user's settings
+                const rate = (profile as any).commission_rate;
+                repCommissionRate = (rate != null) ? Number(rate) : 0.10;
+                const mult = (profile as any).price_multiplier;
+                priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+            }
 
             // Calculate totals and commission
             let totalAmount = 0;
@@ -173,10 +212,7 @@ export function useCreateSalesOrder() {
                 const itemTotal = item.quantity * item.unit_price;
                 totalAmount += itemTotal;
 
-                // Commission Logic: Uses profile's commission_rate
-                // Partner Cost = retail_price × price_multiplier (tier-based discount)
-                // Profit = SalePrice - Partner Cost
-                // Commission = Profit × commission_rate
+                // Commission = (SalePrice - PartnerCost) × commission_rate
                 const peptide = peptideMap.get(item.peptide_id);
                 const retailPrice = (peptide as any)?.retail_price || (peptide as any)?.avg_cost || 0;
                 const partnerCost = retailPrice * priceMultiplier;
@@ -189,13 +225,13 @@ export function useCreateSalesOrder() {
 
             const commissionAmount = Math.max(0, totalCommission); // Ensure non-negative
 
-            // 1. Create Order
+            // 1. Create Order (attributed to the actual rep, not the admin)
             const { data: order, error: orderError } = await supabase
                 .from('sales_orders')
                 .insert({
                     org_id: profile.org_id,
                     client_id: input.client_id,
-                    rep_id: profile.id,
+                    rep_id: repId,
                     status: input.status || 'draft',
                     total_amount: totalAmount,
                     commission_amount: commissionAmount,

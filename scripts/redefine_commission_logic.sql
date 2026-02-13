@@ -62,15 +62,16 @@ BEGIN
     -- If still no rep, exit (House Sale)
     IF v_rep_id IS NULL THEN RETURN; END IF;
 
-    -- 3. Calculate Total Margin
-    FOR v_item IN 
-        SELECT soi.*, p.avg_cost, p.retail_price 
+    -- 3. Calculate Total Margin (avg cost from lots table, not peptides)
+    FOR v_item IN
+        SELECT soi.*,
+               p.retail_price,
+               COALESCE((SELECT AVG(l.cost_per_unit) FROM public.lots l WHERE l.peptide_id = soi.peptide_id), 0) as avg_cost
         FROM public.sales_order_items soi
         JOIN public.peptides p ON soi.peptide_id = p.id
         WHERE soi.sales_order_id = p_sale_id
     LOOP
         -- Cost Basis: Avg Cost + $4.00 (Overhead)
-        -- Fallback: If avg_cost is 0, use retail_price? Or 0?
         v_cost := COALESCE(v_item.avg_cost, 0) + 4.00;
         
         -- Margin = (Unit Price - Cost) * Qty

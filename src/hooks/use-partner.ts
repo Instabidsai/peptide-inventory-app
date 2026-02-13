@@ -150,11 +150,12 @@ export function useConvertCommission() {
     });
 }
 
-// Admin hook: fetch ALL partners as a flat tree for the Network View
+// Admin hook: fetch ALL partners + their clients as a flat tree for the Network View
 export function useFullNetwork() {
     return useQuery({
         queryKey: ['full_network'],
         queryFn: async () => {
+            // 1. Fetch all partner profiles
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
@@ -162,6 +163,15 @@ export function useFullNetwork() {
                 .order('full_name');
 
             if (error) throw error;
+
+            // 2. Fetch all contacts assigned to reps (clients under partners)
+            const { data: contacts, error: contError } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, assigned_rep_id')
+                .not('assigned_rep_id', 'is', null)
+                .order('name');
+
+            if (contError) throw contError;
 
             // Convert flat profiles into PartnerNode format
             // Build depth by walking parent chains
@@ -183,7 +193,7 @@ export function useFullNetwork() {
                 return [...getPath(p.parent_rep_id, visited), id];
             };
 
-            return data.map(p => ({
+            const partnerNodes = data.map(p => ({
                 id: p.id,
                 full_name: p.full_name,
                 email: p.email,
@@ -194,6 +204,30 @@ export function useFullNetwork() {
                 path: getPath(p.id),
                 parent_rep_id: p.parent_rep_id,
             })) as PartnerNode[];
+
+            // Build client nodes as children of their assigned rep
+            const partnerDepthMap = new Map(partnerNodes.map(p => [p.id, p.depth]));
+            const partnerPathMap = new Map(partnerNodes.map(p => [p.id, p.path]));
+
+            const clientNodes = (contacts || []).map(c => {
+                const parentDepth = partnerDepthMap.get(c.assigned_rep_id) ?? 0;
+                const parentPath = partnerPathMap.get(c.assigned_rep_id) ?? [];
+                return {
+                    id: c.id,
+                    full_name: c.name,
+                    email: c.email,
+                    partner_tier: 'client',
+                    commission_rate: 0,
+                    total_sales: 0,
+                    depth: parentDepth + 1,
+                    path: [...parentPath, c.id],
+                    parent_rep_id: c.assigned_rep_id,
+                    isClient: true,
+                    contactType: c.type,
+                };
+            }) as PartnerNode[];
+
+            return [...partnerNodes, ...clientNodes];
         },
     });
 }
