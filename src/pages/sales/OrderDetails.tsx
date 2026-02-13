@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -101,6 +101,43 @@ export default function OrderDetails() {
             return; // Or allow it with override? Let's block for safety.
         }
         fulfillOrder.mutate(order.id);
+    };
+
+    const printPackingSlip = () => {
+        const items = order.sales_order_items?.map(item =>
+            `<tr><td style="padding:8px;border-bottom:1px solid #eee">${item.peptides?.name || 'Unknown'}</td>` +
+            `<td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${item.quantity}</td>` +
+            `<td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${(item.quantity * item.unit_price).toFixed(2)}</td></tr>`
+        ).join('') || '';
+
+        const html = `<!DOCTYPE html><html><head><title>Packing Slip - ${order.id.slice(0, 8)}</title>
+            <style>body{font-family:system-ui,sans-serif;margin:40px;color:#333}
+            h1{font-size:24px;margin-bottom:4px} table{width:100%;border-collapse:collapse;margin:20px 0}
+            th{text-align:left;padding:8px;border-bottom:2px solid #333;font-size:14px}
+            .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}
+            .label{color:#666;font-size:12px;margin-bottom:2px} .value{font-size:14px}
+            @media print{body{margin:20px}}</style></head><body>
+            <h1>Packing Slip</h1>
+            <p style="color:#666">Order #${order.id.slice(0, 8)} — ${format(new Date(order.created_at), 'MMMM d, yyyy')}</p>
+            <div class="grid">
+                <div><div class="label">Ship To</div><div class="value"><strong>${order.contacts?.name || 'N/A'}</strong><br>${order.shipping_address || order.contacts?.email || ''}</div></div>
+                <div><div class="label">Order Total</div><div class="value" style="font-size:20px;font-weight:bold">$${order.total_amount.toFixed(2)}</div></div>
+            </div>
+            <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Subtotal</th></tr></thead>
+            <tbody>${items}</tbody>
+            <tfoot><tr><td colspan="2" style="padding:8px;font-weight:bold">Total</td>
+            <td style="padding:8px;text-align:right;font-weight:bold">$${order.total_amount.toFixed(2)}</td></tr></tfoot></table>
+            ${order.notes ? `<div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:4px"><strong>Notes:</strong> ${order.notes}</div>` : ''}
+            <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;color:#999;font-size:11px">Printed ${format(new Date(), 'MMM d, yyyy h:mm a')}</div>
+            </body></html>`;
+
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
     };
 
     return (
@@ -263,6 +300,10 @@ export default function OrderDetails() {
                                     Inventory has been deducted.
                                 </p>
                             )}
+
+                            <Button variant="outline" className="w-full" onClick={printPackingSlip}>
+                                <Printer className="mr-2 h-4 w-4" /> Print Packing Slip
+                            </Button>
                         </CardContent>
                     </Card>
 
