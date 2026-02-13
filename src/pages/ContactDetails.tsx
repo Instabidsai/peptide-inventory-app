@@ -1108,7 +1108,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
         if (relevant.length === 0) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No Orders' };
 
         const latest = relevant[0];
-        let color = 'bg-gray-100 text-gray-800 border-gray-200';
+        let color = 'bg-muted text-muted-foreground border-border';
         let label = latest.payment_status;
 
         if (latest.type === 'giveaway') {

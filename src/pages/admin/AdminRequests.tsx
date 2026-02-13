@@ -207,7 +207,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                                 {att.type?.startsWith('image/') ? (
                                     <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-xs text-center p-1 break-all">
+                                    <div className="w-full h-full flex items-center justify-center bg-muted text-xs text-center p-1 break-all">
                                         {att.name}
                                     </div>
                                 )}

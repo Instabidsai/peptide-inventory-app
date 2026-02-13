@@ -54,7 +54,7 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         return <div className="p-10 text-red-600 bg-red-50 border border-red-200 m-4 rounded">
             <h2 className="font-bold text-lg mb-2">Access Error</h2>
             <p>Something went wrong verifying your permissions.</p>
-            <pre className="mt-4 text-xs bg-white p-2 border overflow-auto">{JSON.stringify(err, null, 2)}</pre>
+            <pre className="mt-4 text-xs bg-card p-2 border overflow-auto">{JSON.stringify(err, null, 2)}</pre>
         </div>;
     }
 }

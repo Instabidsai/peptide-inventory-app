@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,7 +24,9 @@ export function AppLayout() {
       <div className="lg:pl-64">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
         <main className="p-4 md:p-6 lg:p-8">
-          <Outlet />
+          <ErrorBoundary name="Page">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

@@ -329,7 +329,7 @@ export default function MacroTracker() {
             <FavoritesSheet onSelect={handleQuickAdd} />
 
             {/* Dashboard Hero Section */}
-            <Card className="mb-6 shadow-md bg-white">
+            <Card className="mb-6 shadow-md bg-card">
                 <CardContent className="pt-6 pb-8">
                     <div className="flex flex-col items-center mb-8">
                         <CircularProgress

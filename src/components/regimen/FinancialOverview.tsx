@@ -141,7 +141,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         {hasBalance ? 'Outstanding Balance' : 'Account Status'}
                     </CardTitle>
                     {hasBalance && (
-                        <Badge variant="outline" className="bg-white text-slate-700 border-slate-300 shadow-sm">
+                        <Badge variant="outline" className="bg-card text-foreground border-border shadow-sm">
                             Action Required
                         </Badge>
                     )}
@@ -169,13 +169,13 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
                     <div className="pt-2">
                         <Tabs defaultValue={hasBalance ? "unpaid" : "history"} className="w-full">
-                            <TabsList className="w-full grid grid-cols-2 bg-slate-100/50">
-                                <TabsTrigger value="unpaid" disabled={!hasBalance} className="data-[state=active]:bg-white data-[state=active]:text-slate-900">Unpaid Orders</TabsTrigger>
-                                <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:text-slate-900">History</TabsTrigger>
+                            <TabsList className="w-full grid grid-cols-2 bg-muted/50">
+                                <TabsTrigger value="unpaid" disabled={!hasBalance} className="data-[state=active]:bg-card data-[state=active]:text-foreground">Unpaid Orders</TabsTrigger>
+                                <TabsTrigger value="history" className="data-[state=active]:bg-card data-[state=active]:text-foreground">History</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="unpaid" className="mt-2 text-sm">
-                                <div className="bg-white rounded-md border border-slate-200 p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
+                                <div className="bg-card rounded-md border border-border p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
                                     {allMovements.filter(m => m.payment_status !== 'paid').map(m => {
                                         const totalPrice = m.movement_items?.reduce((sum: number, item: any) => sum + (item.price_at_sale || 0), 0) || 0;
                                         const paid = m.amount_paid || 0;
@@ -219,7 +219,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             </TabsContent>
 
                             <TabsContent value="history" className="mt-2 text-sm">
-                                <div className="bg-white rounded-md border border-slate-200 p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
+                                <div className="bg-card rounded-md border border-border p-2 max-h-[200px] overflow-y-auto space-y-2 shadow-sm">
                                     {allMovements.filter(m => m.payment_status === 'paid').length === 0 ? (
                                         <div className="text-center py-4 text-slate-400">No payment history found.</div>
                                     ) : (

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 
 import { AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export function ClientLayout() {
     const navigate = useNavigate();
@@ -91,11 +92,13 @@ export function ClientLayout() {
 
             {/* Content */}
             <main className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
-                <AnimatePresence mode="wait">
-                    <PageTransition key={location.pathname} className="h-full">
-                        <Outlet />
-                    </PageTransition>
-                </AnimatePresence>
+                <ErrorBoundary name="Page">
+                    <AnimatePresence mode="wait">
+                        <PageTransition key={location.pathname} className="h-full">
+                            <Outlet />
+                        </PageTransition>
+                    </AnimatePresence>
+                </ErrorBoundary>
             </main>
 
             {/* Bottom Navigation (Mobile First) */}
