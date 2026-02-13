@@ -1394,7 +1394,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                 <p className="font-semibold text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" /> No Billing Record</p>
                                 <p className="text-[10px] opacity-80">Inventory not yet assigned.</p>
                             </div>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 bg-white hover:bg-amber-50 text-amber-900" onClick={(e) => {
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 bg-card hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-900 dark:text-amber-200" onClick={(e) => {
                                 e.stopPropagation();
                                 const item = protocol.protocol_items?.[0];
                                 if (item) onAssignInventory(item.peptide_id, item.id);
@@ -1451,7 +1451,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                             <AccordionContent>
                                                 <div className="space-y-1 mt-1">
                                                     {supply.bottles.map(bottle => (
-                                                        <div key={bottle.id} className="flex justify-between items-center text-[10px] bg-white p-1.5 rounded border">
+                                                        <div key={bottle.id} className="flex justify-between items-center text-[10px] bg-card p-1.5 rounded border">
                                                             <div className="flex-1">
                                                                 <div className="font-mono text-[10px]">{bottle.uid}</div>
                                                                 <div className="text-muted-foreground">

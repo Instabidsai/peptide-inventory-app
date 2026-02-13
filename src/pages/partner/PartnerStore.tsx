@@ -60,7 +60,7 @@ export default function PartnerStore() {
     });
 
     // Get all active peptides with pricing
-    const { data: peptides, isLoading } = useQuery({
+    const { data: peptides, isLoading, isError } = useQuery({
         queryKey: ['partner_store_peptides'],
         queryFn: async () => {
             // Use select('*') and cast — generated types are stale and don't include retail_price
@@ -185,13 +185,25 @@ export default function PartnerStore() {
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
-                    ) : (
+                    ) : isError ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                            <p className="text-sm">Failed to load products. Please try refreshing the page.</p>
+                        </div>
+                    ) : (() => {
+                        const filtered = peptides?.filter((p: any) => {
+                            if (!searchQuery) return true;
+                            const q = searchQuery.toLowerCase();
+                            return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
+                        }) || [];
+                        if (filtered.length === 0) return (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                <p className="text-sm">{searchQuery ? 'No peptides match your search.' : 'No peptides available right now.'}</p>
+                            </div>
+                        );
+                        return (
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {peptides?.filter((p: any) => {
-                                if (!searchQuery) return true;
-                                const q = searchQuery.toLowerCase();
-                                return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
-                            }).map(peptide => {
+                            {filtered.map(peptide => {
                                 const retail = Number((peptide as any).retail_price || (peptide as any).avg_cost || 0);
                                 const yourPrice = getPartnerPrice(peptide);
                                 const savings = retail - yourPrice;
@@ -247,7 +259,8 @@ export default function PartnerStore() {
                                 );
                             })}
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
 
                 {/* Cart Sidebar */}

@@ -45,7 +45,7 @@ export default function ClientStore() {
     }, [contact]);
 
     // Get all active peptides
-    const { data: peptides, isLoading } = useQuery({
+    const { data: peptides, isLoading, isError } = useQuery({
         queryKey: ['client_store_peptides'],
         queryFn: async () => {
             const { data, error } = await (supabase as any)
@@ -194,6 +194,15 @@ export default function ClientStore() {
                 {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                ) : isError ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                        <p className="text-sm">Failed to load products. Please try refreshing the page.</p>
+                    </div>
+                ) : filteredPeptides?.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                        <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                        <p className="text-sm">{searchQuery ? 'No peptides match your search.' : 'No peptides available right now.'}</p>
                     </div>
                 ) : (
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
