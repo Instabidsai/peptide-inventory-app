@@ -109,6 +109,20 @@ async function findOrCreateContact(woo: any): Promise<string> {
 
 // ── Peptide Matching ────────────────────────────────────────────────────────
 
+// WooCommerce uses different names for some compounds
+const WOO_NAME_ALIASES: Record<string, string> = {
+    'GLP2-T': 'Retatrutide',
+    'GLP3-R': 'Tirzepatide',
+    'Tesamorelin/Ipamorelin Blend': 'Tesamorelin/Ipamorelin Blnd',
+};
+
+// Bundle products → component peptide names
+const BUNDLE_COMPONENTS: Record<string, string[]> = {
+    'BPC-157 + TB-500 Bundle': ['BPC-157 10mg', 'TB500 10mg'],
+    'MOTS-C 40mg + SS-31 50mg Bundle': ['MOTS-C 40mg', 'SS-31 50mg'],
+    'Tesamorelin 10mg + Ipamorelin 10mg Bundle': ['Tesamorelin 10mg', 'Ipamorelin 10mg'],
+};
+
 // Cache peptides for the run
 let peptideCache: { id: string; name: string }[] | null = null;
 
@@ -122,23 +136,66 @@ async function getPeptides() {
     return peptideCache;
 }
 
+function applyAliases(productName: string): string {
+    // Replace known aliases: "GLP2-T 10mg" → "Retatrutide 10mg"
+    for (const [wooName, dbName] of Object.entries(WOO_NAME_ALIASES)) {
+        if (productName.startsWith(wooName)) {
+            return productName.replace(wooName, dbName);
+        }
+    }
+    return productName;
+}
+
 async function matchPeptide(productName: string): Promise<string | null> {
     const peptides = await getPeptides();
-    // Strip dosage suffix for matching: "BPC-157 10mg" → "BPC-157"
-    const baseName = productName
-        .replace(/\s+\d+(?:[.,]\d+)?(?:mg|mcg|iu|ml|vial|kit)s?$/i, '')
+    const aliased = applyAliases(productName);
+
+    // 1. Exact match on full name (most WC names match exactly)
+    const exactFull = peptides.find(p =>
+        p.name.toLowerCase() === aliased.toLowerCase()
+    );
+    if (exactFull) return exactFull.id;
+
+    // 2. Strip dosage suffix: "BPC-157 10mg" → "BPC-157"
+    const baseName = aliased
+        .replace(/\s+\d+(?:[.,]\d+)?(?:mg|mcg|iu|ml|vial|kit)(?:\/\d+(?:mg|mcg))?s?$/i, '')
         .trim()
         .toLowerCase();
 
-    // Exact match first
-    const exact = peptides.find(p => p.name.toLowerCase() === baseName);
+    // Base name match
+    const exact = peptides.find(p =>
+        p.name.toLowerCase().replace(/\s+\d+(?:[.,]\d+)?(?:mg|mcg|iu|ml|vial|kit)(?:\/\d+(?:mg|mcg))?s?$/i, '').trim().toLowerCase() === baseName
+    );
     if (exact) return exact.id;
 
-    // Partial match
+    // 3. Partial/contains match as fallback
     const partial = peptides.find(p =>
         p.name.toLowerCase().includes(baseName) || baseName.includes(p.name.toLowerCase())
     );
     return partial?.id || null;
+}
+
+// Expand bundle products into component items
+async function expandBundleItems(
+    wooItem: any
+): Promise<{ peptide_id: string; quantity: number; unit_price: number }[] | null> {
+    const bundleComponents = BUNDLE_COMPONENTS[wooItem.name];
+    if (!bundleComponents) return null;
+
+    const items: { peptide_id: string; quantity: number; unit_price: number }[] = [];
+    const pricePerComponent = parseFloat(wooItem.total || '0') / bundleComponents.length;
+
+    for (const compName of bundleComponents) {
+        const peptideId = await matchPeptide(compName);
+        if (peptideId) {
+            items.push({
+                peptide_id: peptideId,
+                quantity: wooItem.quantity,
+                unit_price: pricePerComponent / wooItem.quantity,
+            });
+        }
+    }
+    return items.length > 0 ? items : null;
 }
 
 // ── COGS Calculation ────────────────────────────────────────────────────────
@@ -266,6 +323,13 @@ async function main() {
             const unmatchedItems: string[] = [];
 
             for (const item of (woo.line_items || [])) {
+                // Check if this is a bundle product first
+                const bundleItems = await expandBundleItems(item);
+                if (bundleItems) {
+                    lineItems.push(...bundleItems);
+                    continue;
+                }
+
                 const peptideId = await matchPeptide(item.name);
                 if (peptideId) {
                     lineItems.push({
