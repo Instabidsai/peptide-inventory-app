@@ -261,15 +261,84 @@ export function useCreateSalesOrder() {
             const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
             if (rpcError) console.error("Commission processing failed:", rpcError);
 
+            // Auto-fulfill: deduct inventory + create movement (like contacts flow)
+            let fulfilled = false;
+            try {
+                // Create movement record
+                const { data: movement, error: movError } = await supabase
+                    .from('movements')
+                    .insert({
+                        org_id: profile.org_id,
+                        type: 'sale',
+                        contact_id: input.client_id,
+                        movement_date: new Date().toISOString().split('T')[0],
+                        notes: `Sales Order #${order.id.slice(0, 8)}`,
+                        created_by: repId || user.id,
+                        payment_status: 'unpaid',
+                        amount_paid: 0,
+                    })
+                    .select()
+                    .single();
+
+                if (movError) throw movError;
+
+                // FIFO bottle allocation for each item
+                for (const item of input.items) {
+                    const { data: bottles, error: bError } = await supabase
+                        .from('bottles')
+                        .select('*, lots!inner(peptide_id)')
+                        .eq('status', 'in_stock')
+                        .eq('lots.peptide_id', item.peptide_id)
+                        .order('created_at', { ascending: true })
+                        .limit(item.quantity);
+
+                    if (bError) throw bError;
+                    if (!bottles || bottles.length < item.quantity) {
+                        throw new Error(`Insufficient stock for peptide. Need ${item.quantity}, have ${bottles?.length || 0}`);
+                    }
+
+                    const bottleIds = bottles.map(b => b.id);
+
+                    // Create movement items
+                    const moveItems = bottleIds.map(bid => ({
+                        movement_id: movement.id,
+                        bottle_id: bid,
+                        price_at_sale: item.unit_price,
+                    }));
+                    const { error: miError } = await supabase.from('movement_items').insert(moveItems);
+                    if (miError) throw miError;
+
+                    // Mark bottles as sold
+                    const { error: buError } = await supabase
+                        .from('bottles')
+                        .update({ status: 'sold' })
+                        .in('id', bottleIds);
+                    if (buError) throw buError;
+                }
+
+                // Mark order as fulfilled
+                await supabase
+                    .from('sales_orders')
+                    .update({ status: 'fulfilled' })
+                    .eq('id', order.id);
+
+                fulfilled = true;
+            } catch (fulfillErr) {
+                // If fulfillment fails (e.g. insufficient stock), order stays as submitted
+                console.warn("Auto-fulfill skipped:", fulfillErr);
+            }
+
             // Calculate COGS + profit (merchant fee = 0 since unpaid)
             await recalculateOrderProfit(order.id);
 
             return order;
         },
-        onSuccess: () => {
+        onSuccess: (_, input) => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
-            toast({ title: 'Order created successfully' });
+            queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            toast({ title: 'Order created and inventory deducted' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to create order', description: error.message });
