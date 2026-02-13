@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients, PartnerNode, DownlineClient } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { useToast } from '@/hooks/use-toast';
 import {
     Users,
     DollarSign,
@@ -20,7 +22,10 @@ import {
     User,
     AlertTriangle,
     Wallet,
-    Clock
+    Clock,
+    ArrowRightLeft,
+    CheckCircle2,
+    Loader2
 } from 'lucide-react';
 import {
     Table,
@@ -40,12 +45,17 @@ const TIER_INFO: Record<string, { label: string; discount: string; emoji: string
     executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
 };
 
+type SheetView = 'balance' | 'commissions' | 'owed' | 'earnings' | null;
+
 export default function PartnerDashboard() {
     const navigate = useNavigate();
-    const { profile: authProfile, userRole, user } = useAuth();
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { profile: authProfile, userRole, user, refreshProfile } = useAuth();
     const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
+    const [activeSheet, setActiveSheet] = useState<SheetView>(null);
 
     const tier = (authProfile as any)?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
@@ -64,40 +74,87 @@ export default function PartnerDashboard() {
     ];
     const { data: clients } = useDownlineClients(allRepIds);
 
-    // Fetch amount owed for peptides (movements not fully paid)
-    const { data: amountOwed } = useQuery({
-        queryKey: ['partner_amount_owed', user?.id],
+    // Fetch unpaid movements detail (for Amount Owed sheet)
+    const { data: owedMovements } = useQuery({
+        queryKey: ['partner_owed_movements', user?.id],
         queryFn: async () => {
-            if (!user?.id) return 0;
+            if (!user?.id) return [];
 
-            // Find the contact linked to this user
             const { data: contact } = await supabase
                 .from('contacts')
                 .select('id')
                 .eq('linked_user_id', user.id)
                 .maybeSingle();
 
-            if (!contact?.id) return 0;
+            if (!contact?.id) return [];
 
-            // Get all movements with items for this contact
             const { data: movements } = await (supabase as any)
                 .from('movements')
-                .select('id, amount_paid, payment_status, discount_amount, movement_items(price_at_sale)')
+                .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(peptide_id, quantity, price_at_sale, peptides(name))')
                 .eq('contact_id', contact.id)
-                .neq('payment_status', 'paid');
+                .order('created_at', { ascending: true });
 
-            if (!movements) return 0;
-
-            let totalOwed = 0;
-            for (const m of movements) {
+            return (movements || []).map((m: any) => {
                 const subtotal = (m.movement_items || []).reduce((s: number, i: any) => s + (Number(i.price_at_sale) || 0), 0);
                 const discount = Number(m.discount_amount) || 0;
                 const paid = Number(m.amount_paid) || 0;
-                totalOwed += Math.max(0, subtotal - discount - paid);
-            }
-            return totalOwed;
+                const owed = Math.max(0, subtotal - discount - paid);
+                const items = (m.movement_items || []).map((i: any) => ({
+                    name: i.peptides?.name || 'Unknown',
+                    quantity: i.quantity,
+                    price: Number(i.price_at_sale) || 0,
+                }));
+                return { ...m, subtotal, discount, paid, owed, items };
+            });
         },
         enabled: !!user?.id,
+    });
+
+    const totalOwed = owedMovements?.reduce((s: number, m: any) => s + m.owed, 0) || 0;
+    const unpaidMovements = owedMovements?.filter((m: any) => m.owed > 0) || [];
+
+    // Apply commissions to amount owed mutation
+    const applyCommissions = useMutation({
+        mutationFn: async () => {
+            if (!myProfileId) throw new Error('No profile');
+            const { data, error } = await supabase.rpc('apply_commissions_to_owed', {
+                partner_profile_id: myProfileId
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: (data: any) => {
+            toast({
+                title: 'Commissions Applied',
+                description: `$${Number(data.applied).toFixed(2)} applied to owed balance. ${data.remaining_credit > 0 ? `$${Number(data.remaining_credit).toFixed(2)} added to store credit.` : ''}`,
+            });
+            // Refresh everything
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_owed_movements'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_amount_owed'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
+            refreshProfile?.();
+        },
+        onError: (err: any) => {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        }
+    });
+
+    // Convert commission to store credit mutation
+    const convertToCredit = useMutation({
+        mutationFn: async (commissionId: string) => {
+            const { error } = await supabase.rpc('convert_commission_to_credit', { commission_id: commissionId });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast({ title: 'Converted', description: 'Commission added to your store credit.' });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
+            refreshProfile?.();
+        },
+        onError: (err: any) => {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        }
     });
 
     return (
@@ -120,7 +177,7 @@ export default function PartnerDashboard() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-muted-foreground">Manage your team and track your earnings.</p>
                     <Badge variant="outline" className="text-xs">
                         {tierInfo.emoji} {tierInfo.label}
@@ -132,48 +189,62 @@ export default function PartnerDashboard() {
                 </div>
             </div>
 
-            {/* Stats Overview */}
+            {/* Stats Overview — Clickable Cards */}
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-                <Card className="border-green-500/20 bg-green-500/5">
+                <Card
+                    className="border-green-500/20 bg-green-500/5 cursor-pointer hover:bg-green-500/10 transition-colors"
+                    onClick={() => setActiveSheet('balance')}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
                         <Wallet className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-500">${creditBalance.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Store credit</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">Store credit <ChevronRight className="h-3 w-3" /></p>
                     </CardContent>
                 </Card>
-                <Card className="border-amber-500/20 bg-amber-500/5">
+                <Card
+                    className="border-amber-500/20 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                    onClick={() => setActiveSheet('commissions')}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Pending Commissions</CardTitle>
                         <Clock className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-amber-500">${stats.pending.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Clearing in 30 days</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">Tap to manage <ChevronRight className="h-3 w-3" /></p>
                     </CardContent>
                 </Card>
-                <Card className={`${(amountOwed || 0) > 0 ? 'border-red-500/20 bg-red-500/5' : 'border-border'}`}>
+                <Card
+                    className={`cursor-pointer transition-colors ${(totalOwed) > 0 ? 'border-red-500/20 bg-red-500/5 hover:bg-red-500/10' : 'border-border hover:bg-muted/50'}`}
+                    onClick={() => setActiveSheet('owed')}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Amount Owed</CardTitle>
-                        <AlertTriangle className={`h-4 w-4 ${(amountOwed || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                        <AlertTriangle className={`h-4 w-4 ${totalOwed > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${(amountOwed || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                            ${(amountOwed || 0).toFixed(2)}
+                        <div className={`text-2xl font-bold ${totalOwed > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            ${totalOwed.toFixed(2)}
                         </div>
-                        <p className="text-xs text-muted-foreground">For peptides received</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            {unpaidMovements.length} unpaid <ChevronRight className="h-3 w-3" />
+                        </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setActiveSheet('earnings')}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Lifetime Earnings</CardTitle>
                         <DollarSign className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">${stats.total.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">All time commissions</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">All time <ChevronRight className="h-3 w-3" /></p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -188,8 +259,31 @@ export default function PartnerDashboard() {
                 </Card>
             </div>
 
+            {/* Apply Commission Banner — shown when both pending commissions and owed exist */}
+            {stats.pending > 0 && totalOwed > 0 && (
+                <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="flex items-center justify-between py-4">
+                        <div className="flex items-center gap-3">
+                            <ArrowRightLeft className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="text-sm font-medium">Apply ${stats.pending.toFixed(2)} in commissions to your ${totalOwed.toFixed(2)} balance?</p>
+                                <p className="text-xs text-muted-foreground">Commissions will pay off oldest invoices first. Any surplus goes to store credit.</p>
+                            </div>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={() => applyCommissions.mutate()}
+                            disabled={applyCommissions.isPending}
+                        >
+                            {applyCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                            Apply Now
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
-                {/* Available Commissions Table */}
+                {/* Commission History Table */}
                 <Card className="col-span-1">
                     <CardHeader>
                         <CardTitle>Commission History</CardTitle>
@@ -216,7 +310,6 @@ export default function PartnerDashboard() {
                                         <TableRow key={comm.id}>
                                             <TableCell>{format(new Date(comm.created_at), 'MMM d')}</TableCell>
                                             <TableCell className="font-medium">
-                                                {/* If we had better joins we could show partner name, currently just showing sale ID or generic */}
                                                 Order #{comm.sales_orders?.order_number || 'N/A'}
                                             </TableCell>
                                             <TableCell>
@@ -273,6 +366,258 @@ export default function PartnerDashboard() {
 
             {/* Downline Activity Section */}
             <DownlineActivity downline={downline || []} />
+
+            {/* ===== DETAIL SHEETS ===== */}
+
+            {/* Balance Sheet */}
+            <Sheet open={activeSheet === 'balance'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+                <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <Wallet className="h-5 w-5 text-green-500" />
+                            Available Balance
+                        </SheetTitle>
+                        <SheetDescription>Your store credit balance and history</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                            <p className="text-sm text-muted-foreground">Current Balance</p>
+                            <p className="text-4xl font-bold text-green-500">${creditBalance.toFixed(2)}</p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Your store credit can be used for purchases in the Partner Store. Credit is earned from
+                            commission conversions.
+                        </p>
+                        {stats.pending > 0 && (
+                            <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                                <p className="text-sm font-medium text-amber-500">
+                                    You have ${stats.pending.toFixed(2)} in pending commissions that can be converted to store credit.
+                                </p>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">Recent Activity</h4>
+                            {commissions?.filter((c: any) => c.status === 'paid').length ? (
+                                commissions.filter((c: any) => c.status === 'paid').slice(0, 10).map((c: any) => (
+                                    <div key={c.id} className="flex justify-between items-center p-2 rounded border border-border/50">
+                                        <div>
+                                            <p className="text-sm font-medium">Commission converted</p>
+                                            <p className="text-xs text-muted-foreground">{format(new Date(c.created_at), 'MMM d, yyyy')}</p>
+                                        </div>
+                                        <span className="text-sm font-medium text-green-500">+${Number(c.amount).toFixed(2)}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No credit history yet.</p>
+                            )}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Commissions Sheet */}
+            <Sheet open={activeSheet === 'commissions'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+                <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-amber-500" />
+                            Commissions
+                        </SheetTitle>
+                        <SheetDescription>Manage your earned commissions</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+                                <p className="text-xs text-muted-foreground">Pending</p>
+                                <p className="text-2xl font-bold text-amber-500">${stats.pending.toFixed(2)}</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                                <p className="text-xs text-muted-foreground">Paid Out</p>
+                                <p className="text-2xl font-bold text-green-500">${stats.paid.toFixed(2)}</p>
+                            </div>
+                        </div>
+
+                        {/* Apply to owed button */}
+                        {stats.pending > 0 && totalOwed > 0 && (
+                            <Button
+                                className="w-full"
+                                onClick={() => applyCommissions.mutate()}
+                                disabled={applyCommissions.isPending}
+                            >
+                                {applyCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
+                                Apply ${stats.pending.toFixed(2)} to Amount Owed (${totalOwed.toFixed(2)})
+                            </Button>
+                        )}
+
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">All Commissions</h4>
+                            {commissions && commissions.length > 0 ? (
+                                commissions.map((comm: any) => (
+                                    <div key={comm.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-medium truncate">
+                                                    Order #{comm.sales_orders?.order_number || 'N/A'}
+                                                </p>
+                                                <Badge variant="outline" className="capitalize text-[10px] shrink-0">
+                                                    {comm.type.replace(/_/g, ' ')}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">{format(new Date(comm.created_at), 'MMM d, yyyy')}</p>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2 flex items-center gap-2">
+                                            <span className={`text-sm font-bold ${
+                                                comm.status === 'paid' ? 'text-muted-foreground' :
+                                                comm.status === 'pending' ? 'text-amber-500' : 'text-green-500'
+                                            }`}>
+                                                ${Number(comm.amount).toFixed(2)}
+                                            </span>
+                                            <Badge variant={comm.status === 'paid' ? 'secondary' : comm.status === 'pending' ? 'outline' : 'default'} className="text-[10px]">
+                                                {comm.status}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No commissions yet.</p>
+                            )}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Amount Owed Sheet */}
+            <Sheet open={activeSheet === 'owed'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+                <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <AlertTriangle className={`h-5 w-5 ${totalOwed > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                            Amount Owed
+                        </SheetTitle>
+                        <SheetDescription>Peptides received with outstanding balance</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+                            <p className="text-xs text-muted-foreground">Total Outstanding</p>
+                            <p className={`text-4xl font-bold ${totalOwed > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                ${totalOwed.toFixed(2)}
+                            </p>
+                        </div>
+
+                        {stats.pending > 0 && totalOwed > 0 && (
+                            <Button
+                                className="w-full"
+                                onClick={() => applyCommissions.mutate()}
+                                disabled={applyCommissions.isPending}
+                            >
+                                {applyCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
+                                Apply ${stats.pending.toFixed(2)} Commissions Here
+                            </Button>
+                        )}
+
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-semibold">
+                                {unpaidMovements.length > 0 ? 'Unpaid Orders' : 'All Paid Up!'}
+                            </h4>
+                            {unpaidMovements.map((m: any) => (
+                                <div key={m.id} className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), 'MMM d, yyyy')}</p>
+                                            {m.items.map((item: any, i: number) => (
+                                                <p key={i} className="text-sm">
+                                                    {item.name} x{item.quantity} — ${item.price.toFixed(2)}
+                                                </p>
+                                            ))}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-lg font-bold text-red-500">${m.owed.toFixed(2)}</p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                of ${m.subtotal.toFixed(2)}
+                                                {m.paid > 0 && ` (paid $${m.paid.toFixed(2)})`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Show paid movements too */}
+                            {owedMovements && owedMovements.filter((m: any) => m.owed === 0).length > 0 && (
+                                <>
+                                    <h4 className="text-sm font-semibold text-muted-foreground mt-4">Paid Orders</h4>
+                                    {owedMovements.filter((m: any) => m.owed === 0).slice(0, 10).map((m: any) => (
+                                        <div key={m.id} className="p-3 rounded-lg border border-border/50 space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), 'MMM d, yyyy')}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {m.items.map((i: any) => i.name).join(', ')}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-green-500">
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    <span className="text-sm font-medium">${m.subtotal.toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Lifetime Earnings Sheet */}
+            <Sheet open={activeSheet === 'earnings'} onOpenChange={(open) => !open && setActiveSheet(null)}>
+                <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <DollarSign className="h-5 w-5 text-primary" />
+                            Lifetime Earnings
+                        </SheetTitle>
+                        <SheetDescription>Your complete commission earnings breakdown</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                        <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                            <p className="text-xs text-muted-foreground">Total Earned</p>
+                            <p className="text-4xl font-bold text-primary">${stats.total.toFixed(2)}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="p-3 rounded-lg border text-center">
+                                <p className="text-xs text-muted-foreground">Pending</p>
+                                <p className="text-lg font-bold text-amber-500">${stats.pending.toFixed(2)}</p>
+                            </div>
+                            <div className="p-3 rounded-lg border text-center">
+                                <p className="text-xs text-muted-foreground">Available</p>
+                                <p className="text-lg font-bold text-green-500">${stats.available.toFixed(2)}</p>
+                            </div>
+                            <div className="p-3 rounded-lg border text-center">
+                                <p className="text-xs text-muted-foreground">Paid</p>
+                                <p className="text-lg font-bold">${stats.paid.toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">Breakdown by Type</h4>
+                            {commissions && commissions.length > 0 ? (() => {
+                                const byType: Record<string, number> = {};
+                                commissions.forEach((c: any) => {
+                                    const label = c.type.replace(/_/g, ' ');
+                                    byType[label] = (byType[label] || 0) + Number(c.amount);
+                                });
+                                return Object.entries(byType).map(([type, amount]) => (
+                                    <div key={type} className="flex justify-between p-2 rounded border border-border/50">
+                                        <span className="text-sm capitalize">{type}</span>
+                                        <span className="text-sm font-medium">${amount.toFixed(2)}</span>
+                                    </div>
+                                ));
+                            })() : (
+                                <p className="text-sm text-muted-foreground">No earnings yet. Commissions are earned when your network makes sales.</p>
+                            )}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }
