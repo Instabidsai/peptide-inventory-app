@@ -173,7 +173,7 @@ export default function AdminFeedback() {
                     <DialogHeader>
                         <DialogTitle>Reply to {selectedFeedback?.protocols?.contacts?.name}</DialogTitle>
                         <DialogDescription>
-                            Orginal Feedback: "{selectedFeedback?.comment}"
+                            Original Feedback: "{selectedFeedback?.comment}"
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">

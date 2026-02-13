@@ -33,7 +33,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, ClipboardList, Search, Filter, MoreHorizontal, Pencil, Trash2, PackageCheck, X, DollarSign } from 'lucide-react';
+import { Plus, ClipboardList, Search, Filter, MoreHorizontal, Pencil, Trash2, PackageCheck, X, DollarSign, Download, Package, Clock, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 
@@ -183,6 +183,38 @@ export default function Orders() {
 
     const activePeptides = peptides?.filter((p) => p.active) || [];
 
+    // Summary stats
+    const pendingOrders = filteredOrders?.filter(o => o.status === 'pending') || [];
+    const receivedOrders = filteredOrders?.filter(o => o.status === 'received') || [];
+    const pendingValue = pendingOrders.reduce((s, o) => s + (o.quantity_ordered * (o.estimated_cost_per_unit || 0)), 0);
+    const totalSpent = (filteredOrders || []).reduce((s, o) => s + (o.amount_paid || 0), 0);
+
+    const exportOrdersCSV = () => {
+        if (!filteredOrders || filteredOrders.length === 0) return;
+        const headers = ['Peptide', 'Quantity', 'Est. Cost/Unit', 'Est. Total', 'Order Date', 'Expected Arrival', 'Supplier', 'Tracking', 'Status', 'Payment', 'Amount Paid'];
+        const rows = filteredOrders.map(o => [
+            (o.peptides?.name || '').replace(/,/g, ''),
+            o.quantity_ordered,
+            (o.estimated_cost_per_unit || 0).toFixed(2),
+            (o.quantity_ordered * (o.estimated_cost_per_unit || 0)).toFixed(2),
+            format(new Date(o.order_date), 'yyyy-MM-dd'),
+            o.expected_arrival_date ? format(new Date(o.expected_arrival_date), 'yyyy-MM-dd') : '',
+            (o.supplier || '').replace(/,/g, ''),
+            o.tracking_number || '',
+            o.status,
+            o.payment_status || 'unpaid',
+            (o.amount_paid || 0).toFixed(2),
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `purchase-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const recordPayment = useRecordOrderPayment();
     const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
     const [paymentData, setPaymentData] = useState({
@@ -233,6 +265,12 @@ export default function Orders() {
                     <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
                     <p className="text-muted-foreground">Track pending inventory orders</p>
                 </div>
+                <div className="flex gap-2">
+                    {filteredOrders && filteredOrders.length > 0 && (
+                        <Button variant="outline" onClick={exportOrdersCSV}>
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                    )}
                 {canEdit && (
                     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                         <DialogTrigger asChild>
@@ -379,6 +417,53 @@ export default function Orders() {
                         </DialogContent>
                     </Dialog>
                 )}
+                </div>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-card border-border">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-amber-500/10">
+                                <Clock className="h-5 w-5 text-amber-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Pending Orders</p>
+                                <p className="text-2xl font-bold">{pendingOrders.length}</p>
+                                <p className="text-xs text-muted-foreground">${pendingValue.toFixed(2)} est. value</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card border-border">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-green-500/10">
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Received</p>
+                                <p className="text-2xl font-bold">{receivedOrders.length}</p>
+                                <p className="text-xs text-muted-foreground">of {(filteredOrders || []).length} total orders</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card border-border">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-500/10">
+                                <DollarSign className="h-5 w-5 text-blue-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total Paid</p>
+                                <p className="text-2xl font-bold">${totalSpent.toFixed(2)}</p>
+                                <p className="text-xs text-muted-foreground">across all orders</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             <Card className="bg-card border-border">

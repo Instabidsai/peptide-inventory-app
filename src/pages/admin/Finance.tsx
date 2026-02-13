@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote } from 'lucide-react';
+import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
@@ -23,6 +23,9 @@ export default function Finance() {
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
     const [isAddOpen, setIsAddOpen] = useState(false);
+
+    // Expense filter
+    const [expenseFilter, setExpenseFilter] = useState<string>('all');
 
     // Bulk Payment State
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -129,6 +132,30 @@ export default function Finance() {
         const paid = o.amount_paid || 0;
         return sum + (cost - paid);
     }, 0) || 0;
+
+    // Filtered expenses for display
+    const filteredExpenses = expenses?.filter(e => expenseFilter === 'all' || e.category === expenseFilter);
+
+    const exportExpensesCSV = () => {
+        if (!filteredExpenses || filteredExpenses.length === 0) return;
+        const headers = ['Date', 'Category', 'Recipient', 'Description', 'Method', 'Amount'];
+        const rows = filteredExpenses.map(e => [
+            format(new Date(e.date), 'yyyy-MM-dd'),
+            e.category,
+            (e.recipient || '').replace(/,/g, ''),
+            (e.description || '').replace(/,/g, ''),
+            e.payment_method || '',
+            Number(e.amount).toFixed(2),
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `expenses-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     // Group By Batch (Purchase Orders)
     const batches = orders?.reduce((acc, order) => {
@@ -551,7 +578,29 @@ export default function Finance() {
             {/* Expenses Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Transactions</CardTitle>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <CardTitle>Recent Transactions</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Select value={expenseFilter} onValueChange={setExpenseFilter}>
+                                <SelectTrigger className="w-[150px]">
+                                    <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Categories</SelectItem>
+                                    <SelectItem value="startup">Startup</SelectItem>
+                                    <SelectItem value="operating">Operating</SelectItem>
+                                    <SelectItem value="inventory">Inventory</SelectItem>
+                                    <SelectItem value="commission">Commission</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {filteredExpenses && filteredExpenses.length > 0 && (
+                                <Button variant="outline" size="sm" onClick={exportExpensesCSV}>
+                                    <Download className="mr-2 h-4 w-4" /> Export
+                                </Button>
+                            )}
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -567,7 +616,7 @@ export default function Finance() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {expenses?.map((expense) => (
+                            {filteredExpenses?.map((expense) => (
                                 <TableRow key={expense.id}>
                                     <TableCell>{format(new Date(expense.date), 'MMM d, yyyy')}</TableCell>
                                     <TableCell>
@@ -586,8 +635,8 @@ export default function Finance() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {expenses?.length === 0 && (
-                                <TableRow><TableCell colSpan={7} className="text-center py-8">No expenses recorded yet.</TableCell></TableRow>
+                            {(!filteredExpenses || filteredExpenses.length === 0) && (
+                                <TableRow><TableCell colSpan={7} className="text-center py-8">{expenseFilter !== 'all' ? 'No expenses in this category.' : 'No expenses recorded yet.'}</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

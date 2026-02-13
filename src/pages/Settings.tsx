@@ -11,8 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users } from 'lucide-react';
+import { Loader2, User, Building2, Users, Copy, Check, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 
 const profileSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -32,6 +33,15 @@ export default function Settings() {
   const [isUpdatingOrg, setIsUpdatingOrg] = useState(false);
 
   const isAdmin = userRole?.role === 'admin';
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyInviteLink = () => {
+    const signupUrl = `${window.location.origin}/auth`;
+    navigator.clipboard.writeText(signupUrl);
+    setCopiedLink(true);
+    toast({ title: 'Invite link copied to clipboard' });
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -209,13 +219,21 @@ export default function Settings() {
         )}
 
         {isAdmin && (
-          <TabsContent value="team">
+          <TabsContent value="team" className="space-y-6">
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>
-                  Manage your team (invite functionality coming soon)
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Team Members</CardTitle>
+                    <CardDescription>
+                      {teamMembers?.length || 0} member{(teamMembers?.length || 0) !== 1 ? 's' : ''} in your organization
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleCopyInviteLink}>
+                    {copiedLink ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                    {copiedLink ? 'Copied!' : 'Copy Invite Link'}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -224,13 +242,26 @@ export default function Settings() {
                       key={member.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
                     >
-                      <div>
-                        <p className="font-medium">{member.full_name || 'Unnamed'}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                          {(member.full_name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium">{member.full_name || 'Unnamed'}</p>
+                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                        </div>
                       </div>
-                      <Badge>
-                        {member.user_roles?.[0]?.role || 'No role'}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        {member.created_at && (
+                          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            Joined {format(new Date(member.created_at), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                        <Badge>
+                          {member.user_roles?.[0]?.role || 'No role'}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                   {(!teamMembers || teamMembers.length === 0) && (

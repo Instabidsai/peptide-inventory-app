@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -40,6 +41,7 @@ export default function OrderList() {
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
     const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
     const isRep = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
@@ -52,7 +54,17 @@ export default function OrderList() {
     const rawOrders = isRep ? myOrders : allOrders;
     const orders = rawOrders
         ?.filter(o => filterSource === 'all' || (o.order_source || 'app') === filterSource)
-        ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment);
+        ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment)
+        ?.filter(o => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+                o.contacts?.name?.toLowerCase().includes(q) ||
+                o.contacts?.email?.toLowerCase().includes(q) ||
+                o.id.toLowerCase().includes(q) ||
+                o.tracking_number?.toLowerCase().includes(q)
+            );
+        });
     const isLoading = isRep ? myLoading : allLoading;
 
     if (isLoading) return <div className="p-8 text-center">Loading orders...</div>;
@@ -131,7 +143,16 @@ export default function OrderList() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        placeholder="Search customer, email, ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
                 <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Status" />
@@ -284,8 +305,8 @@ export default function OrderList() {
                                             <Truck className="mx-auto h-10 w-10 mb-3 opacity-50" />
                                             <p className="text-lg font-medium">No orders found</p>
                                             <p className="text-sm mt-1">
-                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all'
-                                                    ? 'Try adjusting your filters'
+                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || searchQuery
+                                                    ? 'Try adjusting your filters or search'
                                                     : 'Create your first sales order to get started'}
                                             </p>
                                         </div>
