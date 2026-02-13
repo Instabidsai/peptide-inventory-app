@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import {
-  LayoutDashboard, Beaker, Archive, FlaskConical, Users, FileText, ArrowLeftRight, Settings, LogOut, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
+  LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
   ClipboardList,
   ShoppingBag,
   Briefcase,

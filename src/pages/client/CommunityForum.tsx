@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
     Loader2, MessageSquare, Plus, Send, ArrowLeft, ChevronRight,
-    Clock, User, Pin, Reply, MoreVertical
+    Clock, User, Pin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

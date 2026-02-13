@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, Plus, TrendingDown, TrendingUp, History, Camera } from "lucide-react";
+import { Loader2, Plus, History, Camera } from "lucide-react";
 import {
     Line,
     AreaChart,
