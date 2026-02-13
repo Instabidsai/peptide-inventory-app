@@ -33,7 +33,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Package, Search, Calendar, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Package, Search, Calendar, MoreHorizontal, Pencil, Trash2, DollarSign, AlertTriangle, Download } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
@@ -149,6 +149,40 @@ export default function Lots() {
 
   const activePeptides = peptides?.filter((p) => p.active) || [];
 
+  // Summary stats
+  const totalBottles = lots?.reduce((s, l) => s + l.quantity_received, 0) || 0;
+  const totalValue = lots?.reduce((s, l) => s + (l.quantity_received * l.cost_per_unit), 0) || 0;
+  const expiringSoon = lots?.filter(l => {
+    if (!l.expiry_date) return false;
+    const daysLeft = differenceInDays(new Date(l.expiry_date), new Date());
+    return daysLeft >= 0 && daysLeft <= 90;
+  }).length || 0;
+  const unpaidLots = lots?.filter(l => l.payment_status !== 'paid').length || 0;
+
+  const exportLotsCSV = () => {
+    if (!filteredLots || filteredLots.length === 0) return;
+    const headers = ['Lot Number', 'Peptide', 'Quantity', 'Cost/Unit', 'Total Cost', 'Received', 'Expiry', 'Payment Status', 'Notes'];
+    const rows = filteredLots.map(l => [
+      l.lot_number,
+      l.peptides?.name || '',
+      String(l.quantity_received),
+      Number(l.cost_per_unit).toFixed(2),
+      (l.quantity_received * l.cost_per_unit).toFixed(2),
+      l.received_date ? format(new Date(l.received_date), 'yyyy-MM-dd') : '',
+      l.expiry_date ? format(new Date(l.expiry_date), 'yyyy-MM-dd') : '',
+      l.payment_status || '',
+      `"${(l.notes || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lots-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -156,6 +190,12 @@ export default function Lots() {
           <h1 className="text-2xl font-bold tracking-tight">Lots</h1>
           <p className="text-muted-foreground">Manage inventory batches</p>
         </div>
+        <div className="flex gap-2">
+          {filteredLots && filteredLots.length > 0 && (
+            <Button variant="outline" onClick={exportLotsCSV}>
+              <Download className="mr-2 h-4 w-4" /> Export CSV
+            </Button>
+          )}
         {canEdit && (
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -326,6 +366,59 @@ export default function Lots() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Lots</p>
+                <p className="text-2xl font-bold">{lots?.length || 0}</p>
+              </div>
+              <Package className="h-8 w-8 text-muted-foreground/30" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{totalBottles} bottles total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Inventory Value</p>
+                <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-muted-foreground/30" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Total cost at purchase</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
+                <p className={`text-2xl font-bold ${expiringSoon > 0 ? 'text-amber-500' : ''}`}>{expiringSoon}</p>
+              </div>
+              <AlertTriangle className={`h-8 w-8 ${expiringSoon > 0 ? 'text-amber-500/50' : 'text-muted-foreground/30'}`} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Within 90 days</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Unpaid</p>
+                <p className={`text-2xl font-bold ${unpaidLots > 0 ? 'text-red-500' : ''}`}>{unpaidLots}</p>
+              </div>
+              <DollarSign className={`h-8 w-8 ${unpaidLots > 0 ? 'text-red-500/50' : 'text-muted-foreground/30'}`} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Lots not fully paid</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-card border-border">

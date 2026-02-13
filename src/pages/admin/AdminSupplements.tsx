@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSupplements, Supplement } from "@/hooks/use-supplements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,8 +127,16 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
         default_dosage: initialData?.default_dosage || ''
     });
 
-    // Reset when opening fresh
-    // Note: simplifed for this context, real app might use useEffect to sync initialData
+    // Sync form when initialData changes (e.g. editing a different supplement)
+    useEffect(() => {
+        setFormData({
+            name: initialData?.name || '',
+            description: initialData?.description || '',
+            image_url: initialData?.image_url || '',
+            purchase_link: initialData?.purchase_link || '',
+            default_dosage: initialData?.default_dosage || ''
+        });
+    }, [initialData?.id]);
 
     const handleSubmit = () => {
         onSubmit(formData);

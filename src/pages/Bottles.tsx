@@ -232,8 +232,19 @@ export default function Bottles() {
             </div>
           )}
           {filteredBottles && filteredBottles.length > 0 && (
-            <div className="mt-4 text-sm text-muted-foreground">
-              Showing {filteredBottles.length} bottles
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span>Showing {filteredBottles.length} bottles</span>
+              <span className="text-muted-foreground/50">|</span>
+              {Object.entries(
+                filteredBottles.reduce((acc, b) => {
+                  acc[b.status] = (acc[b.status] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>)
+              ).map(([status, count]) => (
+                <Badge key={status} variant={statusColors[status as BottleStatus] || 'outline'} className="text-xs">
+                  {statusLabels[status as BottleStatus] || status}: {count}
+                </Badge>
+              ))}
             </div>
           )}
         </CardContent>
