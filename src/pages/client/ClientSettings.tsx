@@ -115,10 +115,10 @@ export default function ClientSettings() {
                 <CardContent className="pt-6 space-y-4">
                     <Button variant="outline" className="w-full justify-between h-12" onClick={() => navigate('/update-password')}>
                         <div className="flex items-center gap-2">
-                            <Lock className="h-4 w-4 text-slate-500" />
+                            <Lock className="h-4 w-4 text-muted-foreground" />
                             <span>Change Password</span>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </Button>
 
                     <Button variant="destructive" className="w-full h-12" onClick={handleSignOut}>

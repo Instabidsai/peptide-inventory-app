@@ -30,7 +30,7 @@ import { format } from 'date-fns';
 
 export default function PartnerDashboard() {
     const navigate = useNavigate();
-    const { profile: authProfile } = useAuth();
+    const { profile: authProfile, userRole } = useAuth();
     const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
@@ -58,10 +58,12 @@ export default function PartnerDashboard() {
                                 Order Peptides
                             </Button>
                         </Link>
-                        <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Return to Admin
-                        </Button>
+                        {userRole?.role === 'admin' && (
+                            <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Return to Admin
+                            </Button>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-3">

@@ -28,9 +28,9 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // 1. Explicitly block clients/customers from Admin areas
         const previewRole = searchParams.get('preview_role');
 
-        // Allow Admins to preview as other roles
+        // Allow staff/admin/sales_rep to preview as other roles (e.g. Family Portal)
         let roleName = userRole?.role || '';
-        if (roleName === 'admin' && previewRole) {
+        if (previewRole && ['admin', 'staff', 'sales_rep'].includes(roleName)) {
             roleName = previewRole;
         }
 

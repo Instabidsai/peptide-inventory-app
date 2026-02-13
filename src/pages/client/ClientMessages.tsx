@@ -67,7 +67,7 @@ export default function ClientMessages() {
             case 'regimen_help':
                 return <ShoppingBag className="h-4 w-4 text-blue-500" />;
             default:
-                return <MessageSquare className="h-4 w-4 text-gray-500" />;
+                return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
         }
     };
 

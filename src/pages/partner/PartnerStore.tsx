@@ -80,7 +80,7 @@ export default function PartnerStore() {
 
     // Calculate discounted price
     const getPartnerPrice = (peptide: any): number => {
-        const retail = Number(peptide.retail_price || peptide.avg_cost || 0);
+        const retail = Number(peptide.retail_price || 0);
         return Math.round(retail * priceMultiplier * 100) / 100;
     };
 
@@ -97,7 +97,7 @@ export default function PartnerStore() {
             return [...prev, {
                 peptide_id: peptide.id,
                 name: peptide.name,
-                retailPrice: Number(peptide.retail_price || peptide.avg_cost || 0),
+                retailPrice: Number(peptide.retail_price || 0),
                 yourPrice: getPartnerPrice(peptide),
                 quantity: 1,
             }];
@@ -203,8 +203,8 @@ export default function PartnerStore() {
                         );
                         return (
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {filtered.map(peptide => {
-                                const retail = Number((peptide as any).retail_price || (peptide as any).avg_cost || 0);
+                            {filtered.filter(p => Number(p.retail_price || 0) > 0).map(peptide => {
+                                const retail = Number((peptide as any).retail_price || 0);
                                 const yourPrice = getPartnerPrice(peptide);
                                 const savings = retail - yourPrice;
                                 const inCart = cart.find(i => i.peptide_id === peptide.id);
