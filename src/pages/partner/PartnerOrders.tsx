@@ -18,6 +18,7 @@ import {
     DollarSign,
     TrendingUp,
     Users,
+    ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -43,7 +44,7 @@ export default function PartnerOrders() {
             if (!user?.id) return null;
             const { data } = await supabase
                 .from('profiles')
-                .select('id')
+                .select('id, full_name')
                 .eq('user_id', user.id)
                 .single();
             return data;
@@ -57,8 +58,10 @@ export default function PartnerOrders() {
         ...(downline?.map(d => d.id) || []),
     ];
 
+    const downlineLoaded = downline !== undefined;
+
     const { data: orders, isLoading } = useQuery({
-        queryKey: ['partner_network_orders', networkRepIds],
+        queryKey: ['partner_network_orders', networkRepIds, downlineLoaded],
         queryFn: async () => {
             if (networkRepIds.length === 0) return [];
 
@@ -67,7 +70,7 @@ export default function PartnerOrders() {
                 .select(`
                     *,
                     contacts (id, name, email),
-                    profiles (id, full_name),
+                    profiles!sales_orders_rep_id_fkey (id, full_name, parent_rep_id),
                     sales_order_items (
                         *,
                         peptides (id, name)
@@ -79,7 +82,7 @@ export default function PartnerOrders() {
             if (error) throw error;
             return data || [];
         },
-        enabled: networkRepIds.length > 0,
+        enabled: networkRepIds.length > 0 && downlineLoaded,
     });
 
     // Fetch commissions for this partner to show per-order earnings
@@ -181,7 +184,7 @@ export default function PartnerOrders() {
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
                             {selfOrders.map((order: any) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} />
+                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={profileData?.full_name || undefined} />
                             ))}
                         </div>
                     )}
@@ -209,6 +212,7 @@ export default function PartnerOrders() {
                                     getStatus={getStatus}
                                     commission={commissionBySale.get(order.id)}
                                     repName={order.rep_id !== profileData?.id ? (repNameMap.get(order.rep_id) || order.profiles?.full_name || null) : null}
+                                    myName={profileData?.full_name || undefined}
                                 />
                             ))
                         )}
@@ -219,10 +223,13 @@ export default function PartnerOrders() {
     );
 }
 
-function OrderCard({ order, getStatus, commission, repName }: { order: any; getStatus: (s: string) => any; commission?: number; repName?: string | null }) {
+function OrderCard({ order, getStatus, commission, repName, myName }: { order: any; getStatus: (s: string) => any; commission?: number; repName?: string | null; myName?: string }) {
     const statusInfo = getStatus(order.status);
     const items = order.sales_order_items || [];
     const clientName = order.contacts?.name || (order.notes?.includes('PARTNER SELF-ORDER') ? 'Self Order' : 'Unknown');
+    const isSelfOrder = order.notes?.includes('PARTNER SELF-ORDER');
+    const repFullName = repName || order.profiles?.full_name || 'Unknown';
+    const isDownlineOrder = repName !== null && repName !== undefined;
 
     const getTrackingUrl = (carrier: string | null, tracking: string) => {
         switch (carrier) {
@@ -238,12 +245,26 @@ function OrderCard({ order, getStatus, commission, repName }: { order: any; getS
             <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
+                        {/* Attribution chain: Customer → Rep → Upline */}
+                        {isDownlineOrder && !isSelfOrder && (
+                            <div className="flex items-center gap-1 mb-1.5 text-xs text-muted-foreground flex-wrap">
+                                <span className="font-medium text-foreground">{clientName}</span>
+                                <ChevronRight className="h-3 w-3" />
+                                <span className="text-blue-500 font-medium">{repFullName}</span>
+                                {myName && (
+                                    <>
+                                        <ChevronRight className="h-3 w-3" />
+                                        <span className="text-primary font-medium">{myName}</span>
+                                    </>
+                                )}
+                            </div>
+                        )}
                         {/* Header row: client name + badges */}
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-medium text-sm">{clientName}</span>
-                            {repName && (
+                            {!isDownlineOrder && <span className="font-medium text-sm">{clientName}</span>}
+                            {isDownlineOrder && !isSelfOrder && (
                                 <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
-                                    via {repName}
+                                    via {repFullName}
                                 </Badge>
                             )}
                             <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
