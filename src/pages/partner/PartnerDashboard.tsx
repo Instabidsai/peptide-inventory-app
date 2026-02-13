@@ -188,7 +188,10 @@ export default function PartnerDashboard() {
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
                         <Percent className="h-3 w-3 mr-1" />
-                        {discountPct}% off retail · {commRate.toFixed(1)}% commission
+                        {(authProfile as any)?.pricing_mode === 'cost_plus'
+                            ? `Cost + $${Number((authProfile as any)?.cost_plus_markup || 0)}`
+                            : `${discountPct}% off retail`
+                        } · {commRate.toFixed(1)}% commission
                     </Badge>
                 </div>
             </div>

@@ -67,9 +67,9 @@ export default function PartnerStore() {
         queryKey: ['partner_store_profile'],
         queryFn: async () => {
             if (!user?.id) return null;
-            const { data } = await supabase
+            const { data } = await (supabase as any)
                 .from('profiles')
-                .select('id, org_id, partner_tier, price_multiplier, commission_rate, full_name')
+                .select('id, org_id, partner_tier, price_multiplier, commission_rate, full_name, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
                 .single();
             return data;
@@ -95,9 +95,43 @@ export default function PartnerStore() {
     const priceMultiplier = Number((partnerProfile as any)?.price_multiplier) || 1.0;
     const partnerTier = (partnerProfile as any)?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[partnerTier] || TIER_INFO.standard;
+    const pricingMode = (partnerProfile as any)?.pricing_mode || 'percentage';
+    const costPlusMarkup = Number((partnerProfile as any)?.cost_plus_markup) || 0;
 
-    // Calculate discounted price
+    // Fetch avg lot costs for cost_plus pricing
+    const { data: lotCosts } = useQuery({
+        queryKey: ['partner_lot_costs'],
+        queryFn: async () => {
+            const { data: lots } = await (supabase as any)
+                .from('lots')
+                .select('peptide_id, cost_per_unit')
+                .gt('cost_per_unit', 0);
+            if (!lots) return {};
+            const costMap: Record<string, { total: number; count: number }> = {};
+            lots.forEach((l: any) => {
+                const pid = l.peptide_id;
+                if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
+                costMap[pid].total += Number(l.cost_per_unit);
+                costMap[pid].count += 1;
+            });
+            const result: Record<string, number> = {};
+            Object.entries(costMap).forEach(([pid, { total, count }]) => {
+                result[pid] = total / count;
+            });
+            return result;
+        },
+        enabled: pricingMode === 'cost_plus',
+    });
+
+    // Calculate partner price based on pricing mode
     const getPartnerPrice = (peptide: any): number => {
+        if (pricingMode === 'cost_plus' && lotCosts) {
+            const avgCost = lotCosts[peptide.id] || 0;
+            if (avgCost > 0) {
+                return Math.round((avgCost + costPlusMarkup) * 100) / 100;
+            }
+            // Fallback to percentage if no lot cost data
+        }
         const retail = Number(peptide.retail_price || 0);
         return Math.round(retail * priceMultiplier * 100) / 100;
     };
@@ -216,7 +250,10 @@ export default function PartnerStore() {
                     </Badge>
                     <Badge variant="secondary" className="text-sm px-3 py-1">
                         <Percent className="h-3 w-3 mr-1" />
-                        {Math.round((1 - priceMultiplier) * 100)}% off retail
+                        {pricingMode === 'cost_plus'
+                            ? `Cost + $${costPlusMarkup}`
+                            : `${Math.round((1 - priceMultiplier) * 100)}% off retail`
+                        }
                     </Badge>
                 </div>
             </div>
@@ -574,7 +611,10 @@ export default function PartnerStore() {
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 As a <span className={tierInfo.color}>{partnerTier}</span> partner, you get
-                                <span className="font-semibold"> {Math.round((1 - priceMultiplier) * 100)}% off</span> all items.
+                                <span className="font-semibold"> {pricingMode === 'cost_plus'
+                                    ? `cost + $${costPlusMarkup} pricing`
+                                    : `${Math.round((1 - priceMultiplier) * 100)}% off`
+                                }</span> all items.
                             </p>
                         </CardContent>
                     </Card>

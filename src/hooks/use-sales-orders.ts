@@ -145,9 +145,9 @@ export function useCreateSalesOrder() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data: profile } = await supabase
+            const { data: profile } = await (supabase as any)
                 .from('profiles')
-                .select('id, org_id, commission_rate, price_multiplier')
+                .select('id, org_id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
                 .single();
 
@@ -159,6 +159,9 @@ export function useCreateSalesOrder() {
             let repCommissionRate = 0;
             let priceMultiplier = 1.0;
 
+            let repPricingMode = 'percentage';
+            let repCostPlusMarkup = 0;
+
             if (input.client_id) {
                 const { data: contact } = await supabase
                     .from('contacts')
@@ -169,9 +172,9 @@ export function useCreateSalesOrder() {
                 if (contact?.assigned_rep_id) {
                     repId = contact.assigned_rep_id;
                     // Fetch the actual rep's commission settings
-                    const { data: repProfile } = await supabase
+                    const { data: repProfile } = await (supabase as any)
                         .from('profiles')
-                        .select('commission_rate, price_multiplier')
+                        .select('commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                         .eq('id', contact.assigned_rep_id)
                         .single();
 
@@ -180,6 +183,8 @@ export function useCreateSalesOrder() {
                         repCommissionRate = (rate != null) ? Number(rate) : 0.10;
                         const mult = repProfile.price_multiplier;
                         priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+                        repPricingMode = repProfile.pricing_mode || 'percentage';
+                        repCostPlusMarkup = Number(repProfile.cost_plus_markup) || 0;
                     }
                 } else {
                     // No assigned rep — use logged-in user's settings
@@ -187,6 +192,8 @@ export function useCreateSalesOrder() {
                     repCommissionRate = (rate != null) ? Number(rate) : 0.10;
                     const mult = (profile as any).price_multiplier;
                     priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+                    repPricingMode = (profile as any).pricing_mode || 'percentage';
+                    repCostPlusMarkup = Number((profile as any).cost_plus_markup) || 0;
                 }
             } else {
                 // No client selected — use logged-in user's settings
@@ -194,6 +201,29 @@ export function useCreateSalesOrder() {
                 repCommissionRate = (rate != null) ? Number(rate) : 0.10;
                 const mult = (profile as any).price_multiplier;
                 priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
+                repPricingMode = (profile as any).pricing_mode || 'percentage';
+                repCostPlusMarkup = Number((profile as any).cost_plus_markup) || 0;
+            }
+
+            // If cost_plus pricing, fetch avg lot costs for commission calculation
+            let avgLotCosts: Record<string, number> = {};
+            if (repPricingMode === 'cost_plus') {
+                const { data: lots } = await (supabase as any)
+                    .from('lots')
+                    .select('peptide_id, cost_per_unit')
+                    .gt('cost_per_unit', 0);
+                if (lots) {
+                    const costMap: Record<string, { total: number; count: number }> = {};
+                    lots.forEach((l: any) => {
+                        const pid = l.peptide_id;
+                        if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
+                        costMap[pid].total += Number(l.cost_per_unit);
+                        costMap[pid].count += 1;
+                    });
+                    Object.entries(costMap).forEach(([pid, { total, count }]) => {
+                        avgLotCosts[pid] = total / count;
+                    });
+                }
             }
 
             // Calculate totals and commission
@@ -216,7 +246,13 @@ export function useCreateSalesOrder() {
                 // Commission = (SalePrice - PartnerCost) × commission_rate
                 const peptide = peptideMap.get(item.peptide_id);
                 const retailPrice = (peptide as any)?.retail_price || (peptide as any)?.avg_cost || 0;
-                const partnerCost = retailPrice * priceMultiplier;
+
+                let partnerCost: number;
+                if (repPricingMode === 'cost_plus' && avgLotCosts[item.peptide_id]) {
+                    partnerCost = avgLotCosts[item.peptide_id] + repCostPlusMarkup;
+                } else {
+                    partnerCost = retailPrice * priceMultiplier;
+                }
 
                 const marginPerUnit = item.unit_price - partnerCost;
                 if (marginPerUnit > 0) {
