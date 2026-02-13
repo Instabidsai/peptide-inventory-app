@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { usePartnerDownline, useCommissions, useCommissionStats, PartnerNode } from '@/hooks/use-partner';
+import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients, PartnerNode, DownlineClient } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +16,8 @@ import {
     ChevronRight,
     Network,
     ShoppingBag,
-    Percent
+    Percent,
+    User
 } from 'lucide-react';
 import {
     Table,
@@ -28,6 +29,14 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 
+// Tier display config
+const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
+    senior: { label: 'Senior Partner', discount: '50% off retail', emoji: '🥇' },
+    standard: { label: 'Standard Partner', discount: '35% off retail', emoji: '🥈' },
+    associate: { label: 'Associate Partner', discount: '25% off retail', emoji: '🥉' },
+    executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
+};
+
 export default function PartnerDashboard() {
     const navigate = useNavigate();
     const { profile: authProfile, userRole } = useAuth();
@@ -35,16 +44,17 @@ export default function PartnerDashboard() {
     const { data: commissions, isLoading: commissionsLoading } = useCommissions();
     const stats = useCommissionStats();
 
-    // Tier display config
-    const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
-        senior: { label: 'Senior Partner', discount: '50% off retail', emoji: '🥇' },
-        standard: { label: 'Standard Partner', discount: '35% off retail', emoji: '🥈' },
-        associate: { label: 'Associate Partner', discount: '25% off retail', emoji: '🥉' },
-        executive: { label: 'Executive', discount: '50% off retail', emoji: '⭐' },
-    };
     const tier = (authProfile as any)?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
     const commRate = Number((authProfile as any)?.commission_rate || 0) * 100;
+
+    // Fetch clients assigned to all reps in the network
+    const myProfileId = (authProfile as any)?.id as string | undefined;
+    const allRepIds = [
+        ...(myProfileId ? [myProfileId] : []),
+        ...(downline?.map(d => d.id) || [])
+    ];
+    const { data: clients } = useDownlineClients(allRepIds);
 
     return (
         <div className="space-y-6">
@@ -188,25 +198,13 @@ export default function PartnerDashboard() {
                                 <Skeleton className="h-8 w-full" />
                             </div>
                         ) : downline && downline.length > 0 ? (
-                            <div className="space-y-4">
-                                {downline.map((partner) => (
-                                    <div key={partner.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
-                                                {partner.depth}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{partner.full_name || partner.email}</p>
-                                                <p className="text-xs text-muted-foreground capitalize">{partner.partner_tier} Partner</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium">${Number(partner.total_sales).toFixed(2)}</p>
-                                            <p className="text-[10px] text-muted-foreground">Vol</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <NetworkTree
+                                rootName={(authProfile as any)?.full_name || 'You'}
+                                rootTier={tier}
+                                rootProfileId={myProfileId || null}
+                                partners={downline}
+                                clients={clients || []}
+                            />
                         ) : (
                             <div className="flex flex-col items-center justify-center py-8 text-center">
                                 <Network className="h-8 w-8 text-muted-foreground/30 mb-2" />
@@ -219,6 +217,124 @@ export default function PartnerDashboard() {
 
             {/* Downline Activity Section */}
             <DownlineActivity downline={downline || []} />
+        </div>
+    );
+}
+
+interface NetworkTreeProps {
+    rootName: string;
+    rootTier: string;
+    rootProfileId: string | null;
+    partners: PartnerNode[];
+    clients: DownlineClient[];
+}
+
+function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: NetworkTreeProps) {
+    // Group clients by assigned rep
+    const clientsByRep = new Map<string, DownlineClient[]>();
+    clients.forEach(c => {
+        if (c.assigned_rep_id) {
+            const list = clientsByRep.get(c.assigned_rep_id) || [];
+            list.push(c);
+            clientsByRep.set(c.assigned_rep_id, list);
+        }
+    });
+
+    // Derive parent from the path array returned by the RPC
+    const getParentId = (p: PartnerNode): string | null => {
+        if (p.path && p.path.length >= 2) return p.path[p.path.length - 2];
+        return null; // depth 1 nodes are direct children of root
+    };
+
+    const renderBranch = (parentId: string | null, indent: number): React.ReactNode => {
+        const childPartners = parentId === null
+            ? partners.filter(p => p.depth === 1)
+            : partners.filter(p => getParentId(p) === parentId);
+
+        return (
+            <>
+                {childPartners.map(partner => {
+                    const partnerClients = clientsByRep.get(partner.id) || [];
+                    return (
+                        <React.Fragment key={partner.id}>
+                            {/* Partner row */}
+                            <div
+                                className="flex items-center justify-between py-2 border-l-2 border-primary/20"
+                                style={{ paddingLeft: indent * 20 + 8 }}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-sm shrink-0">
+                                        {TIER_INFO[partner.partner_tier]?.emoji || '🥈'}
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                            {partner.full_name || partner.email}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground capitalize">
+                                            {partner.partner_tier} Partner
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0 ml-2">
+                                    <p className="text-xs font-medium">
+                                        ${Number(partner.total_sales).toFixed(2)}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">Vol</p>
+                                </div>
+                            </div>
+                            {/* This partner's clients */}
+                            {partnerClients.map(client => (
+                                <div
+                                    key={client.id}
+                                    className="flex items-center gap-2 py-1 border-l-2 border-muted"
+                                    style={{ paddingLeft: (indent + 1) * 20 + 8 }}
+                                >
+                                    <div className="w-5 h-5 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                                        <User className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                    <span className="text-sm text-muted-foreground truncate">
+                                        {client.name}
+                                    </span>
+                                </div>
+                            ))}
+                            {/* Sub-partners (recursive) */}
+                            {renderBranch(partner.id, indent + 1)}
+                        </React.Fragment>
+                    );
+                })}
+            </>
+        );
+    };
+
+    const rootClients = rootProfileId ? (clientsByRep.get(rootProfileId) || []) : [];
+
+    return (
+        <div className="space-y-0.5">
+            {/* Root node (the logged-in partner) */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 mb-1">
+                <span className="text-base">{TIER_INFO[rootTier]?.emoji || '⭐'}</span>
+                <div>
+                    <p className="text-sm font-semibold">{rootName}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{rootTier} Partner</p>
+                </div>
+            </div>
+            {/* Root's own clients */}
+            {rootClients.map(client => (
+                <div
+                    key={client.id}
+                    className="flex items-center gap-2 py-1 border-l-2 border-primary/20"
+                    style={{ paddingLeft: 28 }}
+                >
+                    <div className="w-5 h-5 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    <span className="text-sm text-muted-foreground truncate">
+                        {client.name}
+                    </span>
+                </div>
+            ))}
+            {/* Partner tree from depth 1 down */}
+            {renderBranch(null, 1)}
         </div>
     );
 }

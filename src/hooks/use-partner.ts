@@ -197,3 +197,28 @@ export function useFullNetwork() {
         },
     });
 }
+
+export interface DownlineClient {
+    id: string;
+    name: string;
+    email: string | null;
+    type: string;
+    assigned_rep_id: string | null;
+}
+
+export function useDownlineClients(repIds: string[]) {
+    return useQuery({
+        queryKey: ['downline_clients', repIds],
+        queryFn: async () => {
+            if (repIds.length === 0) return [];
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, assigned_rep_id')
+                .in('assigned_rep_id', repIds)
+                .order('name');
+            if (error) throw error;
+            return (data || []) as DownlineClient[];
+        },
+        enabled: repIds.length > 0,
+    });
+}
