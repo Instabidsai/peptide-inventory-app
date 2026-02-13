@@ -71,6 +71,7 @@ export interface CreateSalesOrderInput {
     shipping_address?: string;
     notes?: string;
     status?: SalesOrderStatus;
+    payment_method?: string;
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
@@ -237,6 +238,7 @@ export function useCreateSalesOrder() {
                     commission_amount: commissionAmount,
                     shipping_address: input.shipping_address,
                     notes: input.notes,
+                    payment_method: input.payment_method || null,
                 })
                 .select()
                 .single();

@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCheckout } from '@/hooks/use-checkout';
+import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import {
     ShoppingCart,
     Package,
@@ -18,6 +20,11 @@ import {
     CreditCard,
     Loader2,
     Search,
+    Copy,
+    Check,
+    Banknote,
+    Smartphone,
+    ExternalLink,
 } from 'lucide-react';
 
 // Tier config for display
@@ -36,13 +43,23 @@ interface CartItem {
     quantity: number;
 }
 
+type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
+
+const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
+
 export default function PartnerStore() {
     const { user, profile } = useAuth();
     const checkout = useCheckout();
+    const createOrder = useCreateSalesOrder();
+    const { toast } = useToast();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+    const [copiedZelle, setCopiedZelle] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false);
+    const [placingOrder, setPlacingOrder] = useState(false);
 
     // Get partner's profile with pricing info
     const { data: partnerProfile } = useQuery({
@@ -118,17 +135,21 @@ export default function PartnerStore() {
     const retailTotal = cart.reduce((sum, i) => sum + (i.retailPrice * i.quantity), 0);
     const totalSavings = retailTotal - cartTotal;
 
-    // Checkout handler — creates order + redirects to PsiFi payment
-    const handleCheckout = () => {
-        if (!partnerProfile) return;
-        if (cart.length === 0) return;
+    const copyZelleEmail = () => {
+        navigator.clipboard.writeText(ZELLE_EMAIL);
+        setCopiedZelle(true);
+        setTimeout(() => setCopiedZelle(false), 2000);
+    };
 
+    // Card checkout — existing PsiFi flow
+    const handleCardCheckout = () => {
+        if (!partnerProfile) return;
         const orgId = (partnerProfile as any).org_id;
         if (!orgId) return;
 
         checkout.mutate({
             org_id: orgId,
-            client_id: null, // Self-order
+            client_id: null,
             rep_id: (partnerProfile as any).id,
             total_amount: cartTotal,
             shipping_address: shippingAddress || undefined,
@@ -140,6 +161,42 @@ export default function PartnerStore() {
                 unit_price: i.yourPrice,
             })),
         });
+    };
+
+    // Non-card checkout — creates order as awaiting payment
+    const handleAlternativeCheckout = async () => {
+        if (!partnerProfile || cart.length === 0) return;
+        setPlacingOrder(true);
+
+        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
+
+        try {
+            await createOrder.mutateAsync({
+                client_id: (partnerProfile as any).id,
+                items: cart.map(i => ({
+                    peptide_id: i.peptide_id,
+                    quantity: i.quantity,
+                    unit_price: i.yourPrice,
+                })),
+                shipping_address: shippingAddress || undefined,
+                notes: `PARTNER SELF-ORDER (${partnerTier}) — ${(partnerProfile as any).full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
+                payment_method: paymentMethod,
+            });
+            setOrderPlaced(true);
+            toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Order failed', description: err.message });
+        } finally {
+            setPlacingOrder(false);
+        }
+    };
+
+    const handleCheckout = () => {
+        if (paymentMethod === 'card') {
+            handleCardCheckout();
+        } else {
+            handleAlternativeCheckout();
+        }
     };
 
     return (
@@ -361,20 +418,123 @@ export default function PartnerStore() {
                                         />
                                     </div>
 
-                                    {/* Checkout with Payment */}
-                                    <Button
-                                        className="w-full"
-                                        size="lg"
-                                        onClick={handleCheckout}
-                                        disabled={checkout.isPending || cart.length === 0}
-                                    >
-                                        {checkout.isPending ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                            <CreditCard className="h-4 w-4 mr-2" />
-                                        )}
-                                        Checkout — ${cartTotal.toFixed(2)}
-                                    </Button>
+                                    {/* Payment Method Selection */}
+                                    {!orderPlaced ? (
+                                        <div className="space-y-3">
+                                            <label className="text-sm font-medium">Payment Method</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {([
+                                                    { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
+                                                    { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
+                                                    { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
+                                                    { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
+                                                ]).map(m => (
+                                                    <Button
+                                                        key={m.id}
+                                                        variant={paymentMethod === m.id ? 'default' : 'outline'}
+                                                        size="sm"
+                                                        className="justify-start"
+                                                        onClick={() => setPaymentMethod(m.id)}
+                                                    >
+                                                        <m.icon className="h-4 w-4 mr-2" />
+                                                        {m.label}
+                                                    </Button>
+                                                ))}
+                                            </div>
+
+                                            {/* Zelle info */}
+                                            {paymentMethod === 'zelle' && (
+                                                <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Send payment via Zelle to:</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <code className="flex-1 text-sm font-mono bg-white dark:bg-background rounded px-2 py-1 border">
+                                                            {ZELLE_EMAIL}
+                                                        </code>
+                                                        <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0">
+                                                            {copiedZelle ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via your bank's Zelle. We'll confirm when received.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Cash App info */}
+                                            {paymentMethod === 'cashapp' && (
+                                                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-green-700 dark:text-green-300">Pay via Cash App</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via Cash App. We'll confirm when received.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Venmo info */}
+                                            {paymentMethod === 'venmo' && (
+                                                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Pay via Venmo</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via Venmo. We'll confirm when received.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            <Button
+                                                className="w-full"
+                                                size="lg"
+                                                onClick={handleCheckout}
+                                                disabled={checkout.isPending || placingOrder || cart.length === 0}
+                                            >
+                                                {(checkout.isPending || placingOrder) ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                ) : paymentMethod === 'card' ? (
+                                                    <CreditCard className="h-4 w-4 mr-2" />
+                                                ) : (
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                )}
+                                                {paymentMethod === 'card'
+                                                    ? `Pay with Card — $${cartTotal.toFixed(2)}`
+                                                    : `Place Order — $${cartTotal.toFixed(2)}`
+                                                }
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        /* Order placed confirmation */
+                                        <div className="text-center space-y-3 py-4">
+                                            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
+                                                <Check className="h-6 w-6 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-green-600">Order Placed!</p>
+                                                <p className="text-sm text-muted-foreground mt-1">
+                                                    Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
+                                                    {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}
+                                                    {paymentMethod === 'zelle' && (
+                                                        <> to <strong>{ZELLE_EMAIL}</strong></>
+                                                    )}
+                                                </p>
+                                            </div>
+                                            {paymentMethod === 'zelle' && (
+                                                <Button variant="outline" size="sm" onClick={copyZelleEmail}>
+                                                    {copiedZelle ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                                                    Copy Zelle Email
+                                                </Button>
+                                            )}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setOrderPlaced(false);
+                                                    setCart([]);
+                                                    setNotes('');
+                                                    setShippingAddress('');
+                                                }}
+                                            >
+                                                Start New Order
+                                            </Button>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </CardContent>
