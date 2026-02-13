@@ -87,7 +87,7 @@ export default function ClientNotifications() {
             ) : (
                 <div className="space-y-4">
                     {notifications?.map((notification) => (
-                        <Card key={notification.id} className={`transition-colors ${!notification.is_read ? 'bg-secondary/30 border-blue-200' : ''}`}>
+                        <Card key={notification.id} className={`transition-colors ${!notification.is_read ? 'bg-secondary/30 border-primary/30' : ''}`}>
                             <CardContent className="p-4 flex gap-4 items-start">
                                 <div className="mt-1">
                                     {getIcon(notification.type)}

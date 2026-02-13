@@ -366,7 +366,7 @@ export default function MacroTracker() {
             </Card>
 
             {showSettings && (
-                <GlassCard className="mb-6 border-blue-200 bg-blue-50/50">
+                <GlassCard className="mb-6 border-primary/20 bg-primary/5">
                     <CardHeader>
                         <CardTitle className="text-lg">Daily Goals</CardTitle>
                     </CardHeader>
