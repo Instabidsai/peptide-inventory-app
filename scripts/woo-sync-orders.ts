@@ -111,8 +111,8 @@ async function findOrCreateContact(woo: any): Promise<string> {
 
 // WooCommerce uses different names for some compounds
 const WOO_NAME_ALIASES: Record<string, string> = {
-    'GLP2-T': 'Retatrutide',
-    'GLP3-R': 'Tirzepatide',
+    'GLP2-T': 'Tirzepatide',
+    'GLP3-R': 'Retatrutide',
     'Tesamorelin/Ipamorelin Blend': 'Tesamorelin/Ipamorelin Blnd',
 };
 
