@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
@@ -25,7 +25,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart, UserX } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -40,9 +40,31 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Reps() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
     const { data: reps, isLoading } = useReps();
     const { data: networkData, isLoading: networkLoading } = useFullNetwork();
     const updateProfile = useUpdateProfile();
+
+    // Unlink a customer from their assigned rep
+    const unlinkCustomer = useMutation({
+        mutationFn: async (contactId: string) => {
+            const { error } = await supabase
+                .from('contacts')
+                .update({ assigned_rep_id: null })
+                .eq('id', contactId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['rep_customers_list'] });
+            queryClient.invalidateQueries({ queryKey: ['rep_performance'] });
+            queryClient.invalidateQueries({ queryKey: ['full_network'] });
+            toast({ title: 'Customer removed from partner' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to remove customer', description: error.message });
+        },
+    });
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -252,6 +274,18 @@ export default function Reps() {
                                                                 </Button>
                                                                 <Button variant="secondary" size="sm" className="text-blue-600" onClick={() => navigate(`/sales/new?contact_id=${client.id}`)}>
                                                                     <ShoppingCart className="h-4 w-4 mr-1" /> Order
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                    onClick={() => {
+                                                                        if (confirm(`Remove ${client.name} from ${rep.full_name}?`)) {
+                                                                            unlinkCustomer.mutate(client.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <UserX className="h-4 w-4 mr-1" /> Remove
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
