@@ -346,7 +346,8 @@ async function main() {
             const cogsAmount = await calculateCogs(lineItems);
             const totalAmount = parseFloat(woo.total);
             const shippingFromWoo = parseFloat(woo.shipping_total || '0');
-            const profitAmount = totalAmount - cogsAmount - shippingFromWoo;
+            const merchantFee = paymentStatus === 'paid' ? totalAmount * 0.05 : 0;
+            const profitAmount = totalAmount - cogsAmount - shippingFromWoo - merchantFee;
 
             // Build notes
             const notes = [
@@ -375,6 +376,7 @@ async function main() {
                     woo_date_created: woo.date_created,
                     woo_date_modified: woo.date_modified,
                     cogs_amount: cogsAmount,
+                    merchant_fee: merchantFee,
                     profit_amount: profitAmount,
                     payment_method: woo.payment_method_title || woo.payment_method || null,
                     payment_date: paymentStatus === 'paid' ? woo.date_paid : null,

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { recalculateOrderProfit } from '@/lib/order-profit';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded';
@@ -47,6 +48,7 @@ export interface SalesOrder {
     woo_order_id?: number | null;
     cogs_amount?: number | null;
     profit_amount?: number | null;
+    merchant_fee?: number | null;
     contacts?: {
         id: string;
         name: string;
@@ -219,6 +221,9 @@ export function useCreateSalesOrder() {
 
             if (itemsError) throw itemsError;
 
+            // Calculate COGS + profit (merchant fee = 0 since unpaid)
+            await recalculateOrderProfit(order.id);
+
             return order;
         },
         onSuccess: () => {
@@ -252,6 +257,11 @@ export function useUpdateSalesOrder() {
                 if (rpcError) {
                     console.error("Commission processing failed:", rpcError);
                 }
+            }
+
+            // Recalculate profit (handles merchant fee on payment, commission changes, etc.)
+            if (updates.payment_status || updates.commission_amount !== undefined || updates.shipping_cost !== undefined) {
+                await recalculateOrderProfit(id);
             }
         },
         onSuccess: () => {
@@ -356,6 +366,9 @@ export function useFulfillOrder() {
                 .eq('id', orderId);
 
             if (updateError) throw updateError;
+
+            // 5. Recalculate COGS + profit with current data
+            await recalculateOrderProfit(orderId);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });

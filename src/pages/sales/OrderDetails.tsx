@@ -346,6 +346,10 @@ export default function OrderDetails() {
                                 <span>Commission</span>
                                 <span>-${(order.commission_amount || 0).toFixed(2)}</span>
                             </div>
+                            <div className="flex justify-between text-red-500">
+                                <span>Merchant Fee (5%)</span>
+                                <span>-${(order.merchant_fee || 0).toFixed(2)}</span>
+                            </div>
                             <Separator />
                             <div className="flex justify-between font-bold text-lg">
                                 <span>Net Profit</span>

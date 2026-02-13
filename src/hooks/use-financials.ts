@@ -15,6 +15,10 @@ export interface FinancialMetrics {
     commissionsOwed: number;    // Pending — not yet paid
     commissionsApplied: number; // Applied to partner balance
     commissionsTotal: number;   // Sum of all commissions ever
+    // Per-order aggregates
+    merchantFees: number;       // Total merchant fees across all orders
+    orderBasedProfit: number;   // SUM of per-order profit_amount
+    orderBasedCogs: number;     // SUM of per-order cogs_amount
 }
 
 export function useFinancialMetrics() {
@@ -184,6 +188,16 @@ export function useFinancialMetrics() {
                 // Total Overhead (for Cash Flow) = Internal + Ops + Inventory + Unrealized Commissions
                 // Operational Overhead = Internal + Ops + Unrealized Commissions
 
+                // --- 6. Per-Order Aggregates (merchant fees, order-level profit) ---
+                const { data: orderAgg } = await supabase
+                    .from('sales_orders')
+                    .select('merchant_fee, profit_amount, cogs_amount')
+                    .neq('status', 'cancelled');
+
+                const merchantFees = orderAgg?.reduce((s, o: any) => s + Number(o.merchant_fee || 0), 0) || 0;
+                const orderBasedProfit = orderAgg?.reduce((s, o: any) => s + Number(o.profit_amount || 0), 0) || 0;
+                const orderBasedCogs = orderAgg?.reduce((s, o: any) => s + Number(o.cogs_amount || 0), 0) || 0;
+
                 return {
                     inventoryValue,
                     salesRevenue,
@@ -195,7 +209,10 @@ export function useFinancialMetrics() {
                     commissionsPaid,
                     commissionsOwed,
                     commissionsApplied,
-                    commissionsTotal
+                    commissionsTotal,
+                    merchantFees,
+                    orderBasedProfit,
+                    orderBasedCogs,
                 };
             } catch (err) {
                 console.error("Error calculating financials:", err);
@@ -210,7 +227,10 @@ export function useFinancialMetrics() {
                     commissionsPaid: 0,
                     commissionsOwed: 0,
                     commissionsApplied: 0,
-                    commissionsTotal: 0
+                    commissionsTotal: 0,
+                    merchantFees: 0,
+                    orderBasedProfit: 0,
+                    orderBasedCogs: 0,
                 };
             }
         }

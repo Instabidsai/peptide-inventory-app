@@ -29,10 +29,13 @@ async function main() {
 
     console.log(`[backfill] Loaded costs for ${avgCostMap.size} peptides`);
 
+    // Payment methods exempt from merchant fee
+    const FEE_EXEMPT = ['credit', 'cash', 'wire', 'store_credit'];
+
     // Get all orders with their items
     const { data: orders } = await supabase
         .from('sales_orders')
-        .select('id, total_amount, shipping_cost, commission_amount, sales_order_items(peptide_id, quantity)');
+        .select('id, total_amount, shipping_cost, commission_amount, payment_status, payment_method, sales_order_items(peptide_id, quantity)');
 
     if (!orders?.length) {
         console.log('[backfill] No orders found.');
@@ -50,17 +53,22 @@ async function main() {
             cogs += cost * item.quantity;
         }
 
-        const profit = (order.total_amount || 0) - cogs - (order.shipping_cost || 0) - (order.commission_amount || 0);
+        // Merchant fee: 5% if paid through processor (not cash/wire/credit)
+        const isPaid = (order as any).payment_status === 'paid';
+        const isExempt = FEE_EXEMPT.includes((order as any).payment_method || '');
+        const merchantFee = (isPaid && !isExempt) ? (order.total_amount || 0) * 0.05 : 0;
+
+        const profit = (order.total_amount || 0) - cogs - (order.shipping_cost || 0) - (order.commission_amount || 0) - merchantFee;
 
         const { error } = await supabase
             .from('sales_orders')
-            .update({ cogs_amount: cogs, profit_amount: profit })
+            .update({ cogs_amount: cogs, merchant_fee: merchantFee, profit_amount: profit })
             .eq('id', order.id);
 
         if (error) {
             console.error(`  Error on ${order.id}: ${error.message}`);
         } else {
-            console.log(`  ${order.id.slice(0, 8)} — COGS: $${cogs.toFixed(2)} | Profit: $${profit.toFixed(2)}`);
+            console.log(`  ${order.id.slice(0, 8)} — COGS: $${cogs.toFixed(2)} | Fee: $${merchantFee.toFixed(2)} | Profit: $${profit.toFixed(2)}`);
             updated++;
         }
     }

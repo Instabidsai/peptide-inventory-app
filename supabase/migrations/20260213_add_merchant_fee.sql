@@ -1,0 +1,1 @@
+ALTER TABLE sales_orders ADD COLUMN IF NOT EXISTS merchant_fee NUMERIC DEFAULT 0;

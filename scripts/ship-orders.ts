@@ -157,7 +157,8 @@ async function processOrder(order: any): Promise<{ tracking: string; carrier: st
 
     // Recalculate profit now that shipping cost is known
     const shippingCost = parseFloat(selectedRate.amount);
-    const profit = (order.total_amount || 0) - (order.cogs_amount || 0) - shippingCost - (order.commission_amount || 0);
+    const merchantFee = Number(order.merchant_fee || 0);
+    const profit = (order.total_amount || 0) - (order.cogs_amount || 0) - shippingCost - (order.commission_amount || 0) - merchantFee;
     await supabase
         .from('sales_orders')
         .update({ profit_amount: profit } as any)
@@ -224,7 +225,7 @@ async function main() {
     const { data: orders, error } = await supabase
         .from('sales_orders')
         .select(`
-            id, shipping_address, total_amount, commission_amount, cogs_amount, notes,
+            id, shipping_address, total_amount, commission_amount, cogs_amount, merchant_fee, notes,
             contacts (id, name, email, phone, address),
             sales_order_items (quantity, peptides (name))
         `)
