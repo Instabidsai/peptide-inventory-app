@@ -15,6 +15,7 @@ import {
     XCircle,
     ShoppingBag,
     Loader2,
+    RotateCcw,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -186,6 +187,21 @@ export default function ClientOrders() {
                                                     {order.shipping_address}
                                                 </p>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* Reorder button for completed orders */}
+                                    {(order.status === 'fulfilled' || order.status === 'delivered' || order.shipping_status === 'delivered') && (
+                                        <div className="mt-2 pt-2 border-t">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="w-full text-xs"
+                                                onClick={() => navigate('/store')}
+                                            >
+                                                <RotateCcw className="h-3 w-3 mr-1" />
+                                                Reorder
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>

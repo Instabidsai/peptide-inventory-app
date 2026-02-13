@@ -34,8 +34,9 @@ const contactSchema = z.object({
   phone: z.string().optional(),
   type: z.enum(['customer', 'partner', 'internal']).default('customer'),
   company: z.string().optional(),
+  address: z.string().optional(),
   notes: z.string().optional(),
-  assigned_rep_id: z.string().optional(), // New field
+  assigned_rep_id: z.string().optional(),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -73,7 +74,7 @@ export default function Contacts() {
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: '', email: '', phone: '', type: 'customer', company: '', notes: '', assigned_rep_id: '' },
+    defaultValues: { name: '', email: '', phone: '', type: 'customer', company: '', address: '', notes: '', assigned_rep_id: '' },
   });
 
   const filteredContacts = contacts?.filter((c) =>
@@ -94,6 +95,7 @@ export default function Contacts() {
       email: data.email || undefined,
       phone: data.phone,
       company: data.company,
+      address: data.address,
       notes: data.notes,
       assigned_rep_id: assignedRepId,
     });
@@ -111,6 +113,7 @@ export default function Contacts() {
       id: editingContact.id,
       ...data,
       email: data.email || undefined,
+      address: data.address,
       assigned_rep_id: assignedRepId,
     });
     setEditingContact(null);
@@ -131,6 +134,7 @@ export default function Contacts() {
       phone: contact.phone || '',
       type: contact.type,
       company: contact.company || '',
+      address: contact.address || '',
       notes: contact.notes || '',
       assigned_rep_id: contact.assigned_rep_id || 'none',
     });
@@ -138,14 +142,16 @@ export default function Contacts() {
 
   const exportContactsCSV = () => {
     if (!filteredContacts || filteredContacts.length === 0) return;
-    const headers = ['Name', 'Type', 'Email', 'Phone', 'Company', 'Assigned Rep', 'Notes'];
+    const headers = ['Name', 'Type', 'Email', 'Phone', 'Company', 'Address', 'Assigned Rep', 'Orders', 'Notes'];
     const rows = filteredContacts.map(c => [
       (c.name || '').replace(/,/g, ''),
       c.type,
       c.email || '',
       c.phone || '',
       (c.company || '').replace(/,/g, ''),
+      (c.address || '').replace(/,/g, ' ').replace(/\n/g, ' '),
       (c as any).assigned_rep?.full_name || '',
+      String((c as any).sales_orders?.length || 0),
       (c.notes || '').replace(/,/g, ' ').replace(/\n/g, ' '),
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -292,6 +298,19 @@ export default function Contacts() {
                   />
                   <FormField
                     control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shipping Address (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="123 Main St, City, State ZIP" rows={2} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
@@ -367,6 +386,7 @@ export default function Contacts() {
                   <TableHead>Assigned Rep</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead>Orders</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -399,6 +419,14 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {contact.phone || '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {(() => {
+                        const count = (contact as any).sales_orders?.length || 0;
+                        return count > 0
+                          ? <Badge variant="secondary" className="text-xs">{count}</Badge>
+                          : <span className="text-muted-foreground text-xs">0</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {contact.company || '-'}
@@ -541,6 +569,19 @@ export default function Contacts() {
                     <FormLabel>Company</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shipping Address</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="123 Main St, City, State ZIP" rows={2} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
