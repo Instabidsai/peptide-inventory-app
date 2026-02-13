@@ -129,7 +129,7 @@ export default function ClientSettings() {
             </Card>
 
             <div className="text-center text-xs text-muted-foreground">
-                Version 2.6 • Peptide Inventory App
+                Version 2.7 • Peptide Inventory App
             </div>
         </div>
     );

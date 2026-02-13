@@ -33,9 +33,11 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 function LoginForm({
   onSubmit,
+  onForgotPassword,
   isLoading
 }: {
   onSubmit: (data: LoginFormData) => void;
+  onForgotPassword: (email: string) => void;
   isLoading: boolean;
 }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -71,7 +73,17 @@ function LoginForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Password</FormLabel>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs text-muted-foreground"
+                  onClick={() => onForgotPassword(form.getValues('email'))}
+                >
+                  Forgot password?
+                </Button>
+              </div>
               <FormControl>
                 <div className="relative">
                   <Input
@@ -279,6 +291,34 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (email: string) => {
+    if (!email) {
+      toast({
+        variant: 'destructive',
+        title: 'Email required',
+        description: 'Please enter your email address first, then click "Forgot password?"',
+      });
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/#/update-password`,
+    });
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Reset failed',
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: 'Reset email sent',
+        description: 'Check your inbox for a password reset link.',
+      });
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -361,7 +401,7 @@ export default function Auth() {
           </div>
 
           {mode === 'login' ? (
-            <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
+            <LoginForm onSubmit={handleLogin} onForgotPassword={handleForgotPassword} isLoading={isLoading} />
           ) : (
             <SignupForm onSubmit={handleSignup} isLoading={isLoading} />
           )}
