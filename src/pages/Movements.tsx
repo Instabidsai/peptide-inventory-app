@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download } from 'lucide-react';
+import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download, Search } from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Link, useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -337,6 +337,7 @@ export default function Movements() {
   const [viewingMovement, setViewingMovement] = useState<Movement | null>(null);
   const [deletingMovement, setDeletingMovement] = useState<Movement | null>(null);
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleUpdate = async (id: string, updates: any) => {
     const { error } = await supabase
@@ -388,8 +389,21 @@ export default function Movements() {
       filtered = filtered.filter(m => isAfter(new Date(m.movement_date), cutoff));
     }
 
+    // Search filter — matches contact name, notes, or peptide names
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(m => {
+        const contactName = m.contacts?.name?.toLowerCase() || '';
+        const notes = m.notes?.toLowerCase() || '';
+        const peptideNames = m.movement_items?.map(item =>
+          item.bottles?.lots?.peptides?.name?.toLowerCase() || ''
+        ).join(' ') || '';
+        return contactName.includes(q) || notes.includes(q) || peptideNames.includes(q);
+      });
+    }
+
     return filtered;
-  }, [movements, filterType, dateRange]);
+  }, [movements, filterType, dateRange, searchQuery]);
 
   const updateFilter = (val: string) => {
     if (val === 'all') {
@@ -473,6 +487,27 @@ export default function Movements() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by customer, peptide, or notes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 max-w-md"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            onClick={() => setSearchQuery('')}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
       </div>
 
       {/* Date range quick filters */}
