@@ -88,22 +88,52 @@ export default function PartnerDashboard() {
 
             if (!contact?.id) return [];
 
+            // Fetch movements with items
             const { data: movements } = await (supabase as any)
                 .from('movements')
-                .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(peptide_id, quantity, price_at_sale, peptides(name))')
+                .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(bottle_id, price_at_sale)')
                 .eq('contact_id', contact.id)
                 .order('created_at', { ascending: true });
 
-            return (movements || []).map((m: any) => {
+            if (!movements?.length) return [];
+
+            // Resolve peptide names: bottle_id → bottles.lot_id → lots.peptide_id → peptides.name
+            const allBottleIds = movements.flatMap((m: any) => (m.movement_items || []).map((i: any) => i.bottle_id)).filter(Boolean);
+            const uniqueBottleIds = [...new Set(allBottleIds)] as string[];
+
+            let peptideNameMap = new Map<string, string>();
+            if (uniqueBottleIds.length > 0) {
+                const { data: bottles } = await supabase.from('bottles').select('id, lot_id').in('id', uniqueBottleIds);
+                const lotIds = [...new Set((bottles || []).map((b: any) => b.lot_id).filter(Boolean))];
+                if (lotIds.length > 0) {
+                    const { data: lots } = await (supabase as any).from('lots').select('id, peptides(name)').in('id', lotIds);
+                    const lotPeptideMap = new Map((lots || []).map((l: any) => [l.id, l.peptides?.name || 'Unknown']));
+                    const bottleLotMap = new Map((bottles || []).map((b: any) => [b.id, b.lot_id]));
+                    // Map bottle_id → peptide name
+                    for (const [bottleId, lotId] of bottleLotMap) {
+                        peptideNameMap.set(bottleId, lotPeptideMap.get(lotId) || 'Unknown');
+                    }
+                }
+            }
+
+            return movements.map((m: any) => {
                 const subtotal = (m.movement_items || []).reduce((s: number, i: any) => s + (Number(i.price_at_sale) || 0), 0);
                 const discount = Number(m.discount_amount) || 0;
                 const paid = Number(m.amount_paid) || 0;
                 const owed = Math.max(0, subtotal - discount - paid);
-                const items = (m.movement_items || []).map((i: any) => ({
-                    name: i.peptides?.name || 'Unknown',
-                    quantity: i.quantity,
-                    price: Number(i.price_at_sale) || 0,
+
+                // Group items by peptide name
+                const grouped: Record<string, { count: number; total: number }> = {};
+                for (const i of (m.movement_items || [])) {
+                    const name = peptideNameMap.get(i.bottle_id) || 'Item';
+                    if (!grouped[name]) grouped[name] = { count: 0, total: 0 };
+                    grouped[name].count += 1;
+                    grouped[name].total += Number(i.price_at_sale) || 0;
+                }
+                const items = Object.entries(grouped).map(([name, { count, total }]) => ({
+                    name, quantity: count, price: total
                 }));
+
                 return { ...m, subtotal, discount, paid, owed, items };
             });
         },
