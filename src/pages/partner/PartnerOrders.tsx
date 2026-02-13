@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePartnerDownline } from '@/hooks/use-partner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +17,7 @@ import {
     ShoppingBag,
     DollarSign,
     TrendingUp,
+    Users,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -33,6 +35,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 
 export default function PartnerOrders() {
     const { user } = useAuth();
+    const { data: downline } = usePartnerDownline();
 
     const { data: profileData } = useQuery({
         queryKey: ['partner_profile_id', user?.id],
@@ -48,28 +51,35 @@ export default function PartnerOrders() {
         enabled: !!user?.id,
     });
 
+    // Build list of all rep IDs in the network (self + downline)
+    const networkRepIds = [
+        ...(profileData?.id ? [profileData.id] : []),
+        ...(downline?.map(d => d.id) || []),
+    ];
+
     const { data: orders, isLoading } = useQuery({
-        queryKey: ['partner_my_orders', profileData?.id],
+        queryKey: ['partner_network_orders', networkRepIds],
         queryFn: async () => {
-            if (!profileData?.id) return [];
+            if (networkRepIds.length === 0) return [];
 
             const { data, error } = await (supabase as any)
                 .from('sales_orders')
                 .select(`
                     *,
                     contacts (id, name, email),
+                    profiles (id, full_name),
                     sales_order_items (
                         *,
                         peptides (id, name)
                     )
                 `)
-                .eq('rep_id', profileData.id)
+                .in('rep_id', networkRepIds)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return data || [];
         },
-        enabled: !!profileData?.id,
+        enabled: networkRepIds.length > 0,
     });
 
     // Fetch commissions for this partner to show per-order earnings
@@ -77,7 +87,7 @@ export default function PartnerOrders() {
         queryKey: ['partner_order_commissions', profileData?.id],
         queryFn: async () => {
             if (!profileData?.id) return [];
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('commissions')
                 .select('id, sale_id, amount, type, status')
                 .eq('partner_id', profileData.id);
@@ -94,8 +104,13 @@ export default function PartnerOrders() {
         commissionBySale.set(c.sale_id, current + Number(c.amount || 0));
     });
 
-    const selfOrders = orders?.filter((o: any) => o.notes?.includes('PARTNER SELF-ORDER')) || [];
-    const clientOrders = orders?.filter((o: any) => !o.notes?.includes('PARTNER SELF-ORDER')) || [];
+    // Build rep name lookup
+    const repNameMap = new Map<string, string>();
+    if (profileData?.id) repNameMap.set(profileData.id, 'You');
+    downline?.forEach(d => { if (d.full_name) repNameMap.set(d.id, d.full_name); });
+
+    const selfOrders = orders?.filter((o: any) => o.rep_id === profileData?.id && o.notes?.includes('PARTNER SELF-ORDER')) || [];
+    const networkOrders = orders?.filter((o: any) => !(o.rep_id === profileData?.id && o.notes?.includes('PARTNER SELF-ORDER'))) || [];
 
     const getStatus = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
@@ -166,29 +181,35 @@ export default function PartnerOrders() {
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
                             {selfOrders.map((order: any) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} />
+                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} />
                             ))}
                         </div>
                     )}
 
-                    {/* Client Orders Section */}
+                    {/* Network Orders Section */}
                     <div className="space-y-3">
                         <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <Package className="h-5 w-5 text-primary" />
-                            Client Orders
-                            <Badge variant="secondary">{clientOrders.length}</Badge>
+                            <Users className="h-5 w-5 text-primary" />
+                            Network Orders
+                            <Badge variant="secondary">{networkOrders.length}</Badge>
                         </h2>
-                        {clientOrders.length === 0 ? (
+                        {networkOrders.length === 0 ? (
                             <Card className="bg-muted/30">
                                 <CardContent className="flex flex-col items-center justify-center py-8">
                                     <Package className="h-8 w-8 text-muted-foreground mb-2" />
-                                    <p className="text-muted-foreground text-sm">No client orders yet</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Orders placed by your clients will appear here with commission tracking.</p>
+                                    <p className="text-muted-foreground text-sm">No network orders yet</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Orders from your clients and downline will appear here.</p>
                                 </CardContent>
                             </Card>
                         ) : (
-                            clientOrders.map((order: any) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} />
+                            networkOrders.map((order: any) => (
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    getStatus={getStatus}
+                                    commission={commissionBySale.get(order.id)}
+                                    repName={order.rep_id !== profileData?.id ? (repNameMap.get(order.rep_id) || order.profiles?.full_name || null) : null}
+                                />
                             ))
                         )}
                     </div>
@@ -198,7 +219,7 @@ export default function PartnerOrders() {
     );
 }
 
-function OrderCard({ order, getStatus, commission }: { order: any; getStatus: (s: string) => any; commission?: number }) {
+function OrderCard({ order, getStatus, commission, repName }: { order: any; getStatus: (s: string) => any; commission?: number; repName?: string | null }) {
     const statusInfo = getStatus(order.status);
     const items = order.sales_order_items || [];
     const clientName = order.contacts?.name || (order.notes?.includes('PARTNER SELF-ORDER') ? 'Self Order' : 'Unknown');
@@ -220,6 +241,11 @@ function OrderCard({ order, getStatus, commission }: { order: any; getStatus: (s
                         {/* Header row: client name + badges */}
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-medium text-sm">{clientName}</span>
+                            {repName && (
+                                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                    via {repName}
+                                </Badge>
+                            )}
                             <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
                                 <span className="mr-1">{statusInfo.icon}</span>
                                 {statusInfo.label}
