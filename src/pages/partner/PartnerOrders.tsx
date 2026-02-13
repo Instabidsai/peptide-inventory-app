@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePartnerDownline } from '@/hooks/use-partner';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,41 +36,40 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 
 export default function PartnerOrders() {
     const { user } = useAuth();
-    const { data: downline } = usePartnerDownline();
 
-    const { data: profileData } = useQuery({
-        queryKey: ['partner_profile_id', user?.id],
+    // Single self-contained query: fetches profile, downline, then orders
+    const { data: orderData, isLoading } = useQuery({
+        queryKey: ['partner_network_orders', user?.id],
         queryFn: async () => {
-            if (!user?.id) return null;
-            const { data } = await supabase
+            if (!user?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
+
+            // 1. Get my profile
+            const { data: profile } = await supabase
                 .from('profiles')
                 .select('id, full_name')
                 .eq('user_id', user.id)
                 .single();
-            return data;
-        },
-        enabled: !!user?.id,
-    });
 
-    // Build list of all rep IDs in the network (self + downline)
-    const networkRepIds = [
-        ...(profileData?.id ? [profileData.id] : []),
-        ...(downline?.map(d => d.id) || []),
-    ];
+            if (!profile?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
 
-    const downlineLoaded = downline !== undefined;
+            // 2. Get downline via RPC
+            const { data: downline } = await supabase.rpc('get_partner_downline', { root_id: user.id });
+            const downlineIds = (downline || []).map((d: any) => d.id);
 
-    const { data: orders, isLoading } = useQuery({
-        queryKey: ['partner_network_orders', networkRepIds, downlineLoaded],
-        queryFn: async () => {
-            if (networkRepIds.length === 0) return [];
+            // 3. Build network rep IDs
+            const networkRepIds = [profile.id, ...downlineIds];
 
-            const { data, error } = await (supabase as any)
+            // 4. Build name map
+            const repNames = new Map<string, string>();
+            repNames.set(profile.id, 'You');
+            (downline || []).forEach((d: any) => { if (d.full_name) repNames.set(d.id, d.full_name); });
+
+            // 5. Fetch all orders for the network
+            const { data: orders, error } = await (supabase as any)
                 .from('sales_orders')
                 .select(`
                     *,
                     contacts (id, name, email),
-                    profiles!sales_orders_rep_id_fkey (id, full_name, parent_rep_id),
                     sales_order_items (
                         *,
                         peptides (id, name)
@@ -79,25 +78,51 @@ export default function PartnerOrders() {
                 .in('rep_id', networkRepIds)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data || [];
+            if (error) {
+                console.error('Partner orders query error:', error);
+                throw error;
+            }
+
+            // 6. Fetch rep profile names for orders (batch)
+            const repIds = [...new Set((orders || []).map((o: any) => o.rep_id).filter(Boolean))] as string[];
+            if (repIds.length > 0) {
+                const { data: repProfiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .in('id', repIds);
+                (repProfiles || []).forEach((p: any) => {
+                    if (p.full_name && !repNames.has(p.id)) repNames.set(p.id, p.full_name);
+                });
+            }
+
+            return {
+                orders: orders || [],
+                myProfileId: profile.id,
+                myName: profile.full_name,
+                repNames,
+            };
         },
-        enabled: networkRepIds.length > 0 && downlineLoaded,
+        enabled: !!user?.id,
     });
+
+    const orders = orderData?.orders || [];
+    const myProfileId = orderData?.myProfileId;
+    const myName = orderData?.myName;
+    const repNames = orderData?.repNames || new Map<string, string>();
 
     // Fetch commissions for this partner to show per-order earnings
     const { data: commissions } = useQuery({
-        queryKey: ['partner_order_commissions', profileData?.id],
+        queryKey: ['partner_order_commissions', myProfileId],
         queryFn: async () => {
-            if (!profileData?.id) return [];
+            if (!myProfileId) return [];
             const { data, error } = await (supabase as any)
                 .from('commissions')
                 .select('id, sale_id, amount, type, status')
-                .eq('partner_id', profileData.id);
+                .eq('partner_id', myProfileId);
             if (error) throw error;
             return data || [];
         },
-        enabled: !!profileData?.id,
+        enabled: !!myProfileId,
     });
 
     // Build commission lookup by sale_id
@@ -107,13 +132,8 @@ export default function PartnerOrders() {
         commissionBySale.set(c.sale_id, current + Number(c.amount || 0));
     });
 
-    // Build rep name lookup
-    const repNameMap = new Map<string, string>();
-    if (profileData?.id) repNameMap.set(profileData.id, 'You');
-    downline?.forEach(d => { if (d.full_name) repNameMap.set(d.id, d.full_name); });
-
-    const selfOrders = orders?.filter((o: any) => o.rep_id === profileData?.id && o.notes?.includes('PARTNER SELF-ORDER')) || [];
-    const networkOrders = orders?.filter((o: any) => !(o.rep_id === profileData?.id && o.notes?.includes('PARTNER SELF-ORDER'))) || [];
+    const selfOrders = orders.filter((o: any) => o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER'));
+    const networkOrders = orders.filter((o: any) => !(o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER')));
 
     const getStatus = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
@@ -184,7 +204,7 @@ export default function PartnerOrders() {
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
                             {selfOrders.map((order: any) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={profileData?.full_name || undefined} />
+                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} />
                             ))}
                         </div>
                     )}
@@ -211,8 +231,8 @@ export default function PartnerOrders() {
                                     order={order}
                                     getStatus={getStatus}
                                     commission={commissionBySale.get(order.id)}
-                                    repName={order.rep_id !== profileData?.id ? (repNameMap.get(order.rep_id) || order.profiles?.full_name || null) : null}
-                                    myName={profileData?.full_name || undefined}
+                                    repName={order.rep_id !== myProfileId ? (repNames.get(order.rep_id) || null) : null}
+                                    myName={myName || undefined}
                                 />
                             ))
                         )}
