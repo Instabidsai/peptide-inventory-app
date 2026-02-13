@@ -79,7 +79,7 @@ export default function Bottles() {
 
   const filteredBottles = bottles?.filter((b) =>
     b.uid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.lots?.lot_number.toLowerCase().includes(searchQuery.toLowerCase())
+    b.lots?.lot_number?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const exportBottlesCSV = () => {

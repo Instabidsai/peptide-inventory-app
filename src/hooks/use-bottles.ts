@@ -170,8 +170,7 @@ export function useBottleStats() {
         const count = Number(row.count);
         stats.total += count;
         if (row.status in stats) {
-          // @ts-ignore
-          stats[row.status] = count;
+          (stats as Record<string, number>)[row.status] = count;
         }
       });
 

@@ -197,7 +197,7 @@ export default function Orders() {
             o.quantity_ordered,
             (o.estimated_cost_per_unit || 0).toFixed(2),
             (o.quantity_ordered * (o.estimated_cost_per_unit || 0)).toFixed(2),
-            format(new Date(o.order_date), 'yyyy-MM-dd'),
+            o.order_date ? format(new Date(o.order_date), 'yyyy-MM-dd') : '',
             o.expected_arrival_date ? format(new Date(o.expected_arrival_date), 'yyyy-MM-dd') : '',
             (o.supplier || '').replace(/,/g, ''),
             o.tracking_number || '',
@@ -532,7 +532,7 @@ export default function Orders() {
                                                 ${((order.estimated_cost_per_unit || 0) * order.quantity_ordered).toFixed(2)}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {format(new Date(order.order_date), 'MMM d, yyyy')}
+                                                {order.order_date ? format(new Date(order.order_date), 'MMM d, yyyy') : '-'}
                                             </TableCell>
                                             <TableCell>
                                                 {order.expected_arrival_date ? (

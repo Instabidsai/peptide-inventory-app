@@ -489,7 +489,7 @@ export default function Movements() {
       const itemsStr = itemsSummary ? Object.entries(itemsSummary).map(([n, c]) => `${n} (${c})`).join('; ') : '';
       const cost = m.movement_items?.reduce((s: number, item: any) => s + (item.bottles?.lots?.cost_per_unit || 0), 0) || 0;
       return [
-        format(new Date(m.movement_date), 'yyyy-MM-dd'),
+        m.movement_date ? format(new Date(m.movement_date), 'yyyy-MM-dd') : '',
         typeLabels[m.type],
         m.contacts?.name || '',
         `"${itemsStr}"`,

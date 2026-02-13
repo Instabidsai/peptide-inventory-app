@@ -481,7 +481,7 @@ export default function Lots() {
                     <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(lot.received_date), 'MMM d, yyyy')}
+                        {lot.received_date ? format(new Date(lot.received_date), 'MMM d, yyyy') : '-'}
                       </div>
                     </TableCell>
                     <TableCell>

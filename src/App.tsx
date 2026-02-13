@@ -86,7 +86,7 @@ const App = () => (
                             <Route path="/update-password" element={<UpdatePassword />} />
                             <Route element={
                                 <ProtectedRoute>
-                                    <RoleBasedRedirect allowedRoles={['customer']}>
+                                    <RoleBasedRedirect allowedRoles={['client', 'customer']}>
                                         <ClientLayout />
                                     </RoleBasedRedirect>
                                 </ProtectedRoute>

@@ -18,7 +18,7 @@ export function useContactNotes(contactId?: string) {
             const { data, error } = await supabase
                 .from('contact_notes')
                 .select('*')
-                .eq('contact_id', contactId!)
+                .eq('contact_id', contactId as string)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

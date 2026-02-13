@@ -116,7 +116,7 @@ export default function MovementWizard() {
 
   const filteredBottles = bottles?.filter((b) =>
     b.uid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.lots?.peptides?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    b.lots?.peptides?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const isBottleSelected = (id: string) => selectedBottles.some((sb) => sb.bottle.id === id);
