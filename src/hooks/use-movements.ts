@@ -605,13 +605,38 @@ export function useDeleteMovement() {
       // 3. Reverse commissions if this was a sale
       if (movement?.type === 'sale' && movement?.contact_id) {
         try {
+          // The movement notes contain the order's short ID, e.g. "Sales Order #93ac1fad"
+          // Extract it and find the matching sales_order
+          const { data: movementFull } = await supabase
+            .from('movements')
+            .select('notes')
+            .eq('id', id)
+            .single();
+
+          const notesText = movementFull?.notes || '';
+          // Match patterns: "Sales Order #XXXXXXXX" or "Fulfilled Sales Order #XXXXXXXX"
+          const orderIdMatch = notesText.match(/(?:Sales Order|Fulfilled Sales Order)\s*#([a-f0-9]{8})/i);
+          const orderShortId = orderIdMatch?.[1] || '';
+
+          // Also try the old approach (movement ID in sales_order notes) as fallback
           const movementShortId = id.slice(0, 8);
 
-          // Find the auto-generated sales_order by movement ID in notes
-          const { data: linkedOrders } = await supabase
-            .from('sales_orders')
-            .select('id, total_amount, rep_id, notes, commission_amount')
-            .ilike('notes', `%${movementShortId}%`);
+          // Try both: order short ID from movement notes, or movement short ID in order notes
+          let linkedOrders: any[] = [];
+          if (orderShortId) {
+            const { data } = await supabase
+              .from('sales_orders')
+              .select('id, total_amount, rep_id, notes, commission_amount')
+              .ilike('id', `${orderShortId}%`);
+            linkedOrders = data || [];
+          }
+          if (linkedOrders.length === 0) {
+            const { data } = await supabase
+              .from('sales_orders')
+              .select('id, total_amount, rep_id, notes, commission_amount')
+              .ilike('notes', `%${movementShortId}%`);
+            linkedOrders = data || [];
+          }
 
           for (const order of (linkedOrders || [])) {
             // Walk the upline chain from the contact's assigned rep to reverse commissions
