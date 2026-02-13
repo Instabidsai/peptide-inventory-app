@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download } from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,14 +70,67 @@ function MovementDetailsDialog({
 }) {
   const { data: items, isLoading } = useMovementItems(movement?.id || '');
 
+  // Editable state — initialized from the movement when it changes
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [paymentInput, setPaymentInput] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Reset local state when a different movement is opened
+  useEffect(() => {
+    if (movement) {
+      setDiscountPercent(Number(movement.discount_percent) || 0);
+      setPaymentInput('');
+      setPaymentMethod(movement.payment_method || '');
+      setNotes(movement.notes || '');
+    }
+  }, [movement?.id]);
+
   if (!movement) return null;
 
-  const totalPrice = items?.reduce((sum, item) => sum + (Number(item.price_at_sale) || 0), 0) || 0;
+  const subtotal = items?.reduce((sum, item) => sum + (Number(item.price_at_sale) || 0), 0) || 0;
   const totalCost = items?.reduce((sum, item) => sum + (Number(item.bottles?.lots?.cost_per_unit) || 0), 0) || 0;
+
+  const discountAmt = subtotal * (discountPercent / 100);
+  const finalTotal = subtotal - discountAmt;
+  const previouslyPaid = Number(movement.amount_paid) || 0;
+  const newPayment = Number(paymentInput) || 0;
+  const totalPaid = previouslyPaid + newPayment;
+  const balanceDue = Math.max(0, finalTotal - totalPaid);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const updates: any = {
+      discount_percent: discountPercent,
+      discount_amount: Math.round(discountAmt * 100) / 100,
+      notes: notes || null,
+    };
+
+    // If a new payment was entered, add it to the running total
+    if (newPayment > 0) {
+      updates.amount_paid = Math.round(totalPaid * 100) / 100;
+      updates.payment_date = new Date().toISOString();
+      if (paymentMethod) updates.payment_method = paymentMethod;
+    }
+
+    // Auto-set payment status based on amounts
+    if (totalPaid >= finalTotal && finalTotal > 0) {
+      updates.payment_status = 'paid';
+    } else if (totalPaid > 0 && totalPaid < finalTotal) {
+      updates.payment_status = 'partial';
+    }
+
+    await onUpdate(movement.id, updates);
+    setSaving(false);
+  };
+
+  const isPaid = movement.payment_status === 'paid';
+  const isRefunded = movement.payment_status === 'refunded';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Movement Details</DialogTitle>
           <DialogDescription>
@@ -84,6 +138,7 @@ function MovementDetailsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Info row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Type</p>
@@ -109,13 +164,7 @@ function MovementDetailsDialog({
             </div>
           </div>
 
-          {movement.notes && (
-            <div>
-              <p className="text-sm text-muted-foreground">Notes</p>
-              <p className="text-sm">{movement.notes}</p>
-            </div>
-          )}
-
+          {/* Items table */}
           <div>
             <p className="text-sm text-muted-foreground mb-2">Items ({items?.length || 0})</p>
             {isLoading ? (
@@ -146,26 +195,130 @@ function MovementDetailsDialog({
             )}
           </div>
 
-          <div className="flex justify-between pt-4 border-t">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Cost</p>
-              <p className="font-medium">${totalCost.toFixed(2)}</p>
+          {/* Financial summary */}
+          <div className="border rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium">${subtotal.toFixed(2)}</span>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Total Price</p>
-              <p className="font-medium">${totalPrice.toFixed(2)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Margin</p>
-              <p className="font-medium text-primary">${(totalPrice - totalCost).toFixed(2)}</p>
-            </div>
-            {movement.payment_status !== 'paid' && movement.payment_status !== 'refunded' && (
-              <div className="flex items-end">
-                <Button size="sm" onClick={() => onUpdate(movement.id, { payment_status: 'paid', amount_paid: totalPrice, payment_date: new Date().toISOString() })}>
-                  Mark Paid
-                </Button>
+
+            {/* Discount input */}
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Discount</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={discountPercent || ''}
+                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  className="w-20 h-7 text-sm"
+                  placeholder="0"
+                />
+                <span className="text-muted-foreground">%</span>
               </div>
-            )}
+              {discountAmt > 0 && (
+                <span className="font-medium text-red-500">-${discountAmt.toFixed(2)}</span>
+              )}
+            </div>
+
+            <div className="flex justify-between text-sm font-semibold border-t pt-2">
+              <span>Total</span>
+              <span>${finalTotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total Cost</span>
+              <span>${totalCost.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Margin</span>
+              <span className="text-primary font-medium">${(finalTotal - totalCost).toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Payment section */}
+          {!isRefunded && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold">Payment</p>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Previously Paid</span>
+                <span className="font-medium">${previouslyPaid.toFixed(2)}</span>
+              </div>
+
+              {!isPaid && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground w-28 shrink-0">Add Payment</label>
+                    <span className="text-sm">$</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={paymentInput}
+                      onChange={(e) => setPaymentInput(e.target.value)}
+                      placeholder={balanceDue.toFixed(2)}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      onClick={() => setPaymentInput(balanceDue.toFixed(2))}
+                    >
+                      Pay Full
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground w-28 shrink-0">Method</label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                        <SelectItem value="zelle">Zelle</SelectItem>
+                        <SelectItem value="venmo">Venmo</SelectItem>
+                        <SelectItem value="wire">Wire</SelectItem>
+                        <SelectItem value="check">Check</SelectItem>
+                        <SelectItem value="credit">Store Credit</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                <span>Balance Due</span>
+                <span className={balanceDue > 0 ? 'text-red-500' : 'text-green-600'}>
+                  ${(newPayment > 0 ? Math.max(0, finalTotal - totalPaid) : Math.max(0, finalTotal - previouslyPaid)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="text-sm text-muted-foreground">Notes</label>
+            <textarea
+              className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add notes..."
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </div>
       </DialogContent>

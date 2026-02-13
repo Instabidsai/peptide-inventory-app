@@ -28,6 +28,8 @@ export interface Movement {
   amount_paid: number;
   payment_method: string | null;
   payment_date: string | null;
+  discount_percent: number;
+  discount_amount: number;
   movement_items?: {
     id?: string;
     price_at_sale?: number | null;
