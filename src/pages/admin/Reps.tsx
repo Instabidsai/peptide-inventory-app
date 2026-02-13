@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/sb_client/client';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
@@ -23,7 +25,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, Network } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -44,6 +46,48 @@ export default function Reps() {
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+    // Fetch per-rep performance: sales volume + commission earned
+    const { data: repStats } = useQuery({
+        queryKey: ['rep_performance', reps?.map(r => r.id)],
+        queryFn: async () => {
+            if (!reps || reps.length === 0) return new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
+
+            // Get sales stats per rep
+            const { data: orders } = await (supabase as any)
+                .from('sales_orders')
+                .select('rep_id, total_amount, commission_amount')
+                .not('rep_id', 'is', null)
+                .neq('status', 'cancelled');
+
+            // Get customer counts per rep
+            const { data: contacts } = await (supabase as any)
+                .from('contacts')
+                .select('assigned_rep_id')
+                .not('assigned_rep_id', 'is', null);
+
+            const stats = new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
+
+            // Aggregate orders
+            (orders || []).forEach((o: any) => {
+                const existing = stats.get(o.rep_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
+                existing.volume += Number(o.total_amount || 0);
+                existing.commission += Number(o.commission_amount || 0);
+                existing.orders += 1;
+                stats.set(o.rep_id, existing);
+            });
+
+            // Count customers
+            (contacts || []).forEach((c: any) => {
+                const existing = stats.get(c.assigned_rep_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
+                existing.customers += 1;
+                stats.set(c.assigned_rep_id, existing);
+            });
+
+            return stats;
+        },
+        enabled: !!reps && reps.length > 0,
+    });
 
     if (isLoading) return <div>Loading reps...</div>;
 
@@ -88,6 +132,9 @@ export default function Reps() {
                                         <TableHead>Email</TableHead>
                                         <TableHead>Commission Rate</TableHead>
                                         <TableHead>Tier</TableHead>
+                                        <TableHead className="text-right">Sales Volume</TableHead>
+                                        <TableHead className="text-right">Earned</TableHead>
+                                        <TableHead className="text-right">Customers</TableHead>
                                         <TableHead>Upline</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -97,7 +144,7 @@ export default function Reps() {
                                         if (!reps || reps.length === 0) {
                                             return (
                                                 <TableRow>
-                                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                                         No sales reps found. Invite or promote users to get started.
                                                     </TableCell>
                                                 </TableRow>
@@ -125,6 +172,20 @@ export default function Reps() {
                                                     <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
                                                     <TableCell className="capitalize">
                                                         <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">
+                                                        ${(repStats?.get(rep.id)?.volume || 0).toFixed(2)}
+                                                        {(repStats?.get(rep.id)?.orders || 0) > 0 && (
+                                                            <span className="text-xs text-muted-foreground ml-1">
+                                                                ({repStats?.get(rep.id)?.orders})
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-green-600 font-medium">
+                                                        ${(repStats?.get(rep.id)?.commission || 0).toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {repStats?.get(rep.id)?.customers || 0}
                                                     </TableCell>
                                                     <TableCell>
                                                         {rep.parent_rep_id

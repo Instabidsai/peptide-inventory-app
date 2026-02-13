@@ -401,6 +401,30 @@ export default function ContactDetails() {
     }, [dosageAmount, dosageUnit, frequency, durationValue, selectedPeptideId, costMultiplier, peptides, vialSize]);
 
 
+    // Customer order stats
+    const { data: orderStats } = useQuery({
+        queryKey: ['contact_order_stats', id],
+        queryFn: async () => {
+            if (!id) return null;
+            const { data, error } = await (supabase as any)
+                .from('sales_orders')
+                .select('id, total_amount, created_at, status')
+                .eq('client_id', id)
+                .neq('status', 'cancelled');
+            if (error) throw error;
+            if (!data || data.length === 0) return null;
+            const totalSpend = data.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
+            const lastOrder = data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            return {
+                orderCount: data.length,
+                totalSpend,
+                avgOrderValue: totalSpend / data.length,
+                lastOrderDate: lastOrder?.created_at,
+            };
+        },
+        enabled: !!id,
+    });
+
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     if (!contact) return <div className="p-8">Contact not found</div>;
 
@@ -420,6 +444,38 @@ export default function ContactDetails() {
                     </Badge>
                 </div>
             </div>
+
+            {/* Customer Stats */}
+            {orderStats && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Card>
+                        <CardContent className="pt-4 pb-3 text-center">
+                            <p className="text-2xl font-bold text-primary">{orderStats.orderCount}</p>
+                            <p className="text-xs text-muted-foreground">Total Orders</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-4 pb-3 text-center">
+                            <p className="text-2xl font-bold">${orderStats.totalSpend.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Lifetime Spend</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-4 pb-3 text-center">
+                            <p className="text-2xl font-bold">${orderStats.avgOrderValue.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Avg Order Value</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-4 pb-3 text-center">
+                            <p className="text-2xl font-bold text-muted-foreground">
+                                {orderStats.lastOrderDate ? format(new Date(orderStats.lastOrderDate), 'MMM d') : '—'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Last Order</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Contact Info Card */}

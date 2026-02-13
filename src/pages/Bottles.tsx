@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Pill, Search, Filter, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Pill, Search, Filter, MoreHorizontal, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -79,6 +79,27 @@ export default function Bottles() {
     b.lots?.lot_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const exportBottlesCSV = () => {
+    if (!filteredBottles || filteredBottles.length === 0) return;
+    const headers = ['UID', 'Peptide', 'Lot', 'Status', 'Cost', 'Created'];
+    const rows = filteredBottles.map(b => [
+      b.uid,
+      b.lots?.peptides?.name || '',
+      b.lots?.lot_number || '',
+      statusLabels[b.status] || b.status,
+      Number(b.lots?.cost_per_unit || 0).toFixed(2),
+      format(new Date(b.created_at), 'yyyy-MM-dd'),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bottles-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -86,6 +107,11 @@ export default function Bottles() {
           <h1 className="text-2xl font-bold tracking-tight">Bottles</h1>
           <p className="text-muted-foreground">Track individual inventory units</p>
         </div>
+        {filteredBottles && filteredBottles.length > 0 && (
+          <Button variant="outline" onClick={exportBottlesCSV}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+        )}
       </div>
 
       <Card className="bg-card border-border">
