@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download, Search } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -127,6 +127,7 @@ export default function OrderList() {
     const getShippingColor = (status: string | null | undefined) => {
         switch (status) {
             case 'label_created': return 'bg-blue-500/15 text-blue-500 border-blue-500/30';
+            case 'printed': return 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40';
             case 'in_transit': return 'bg-amber-500/15 text-amber-500 border-amber-500/30';
             case 'delivered': return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30';
             case 'error': return 'bg-red-500/15 text-red-500 border-red-500/30';
@@ -302,16 +303,41 @@ export default function OrderList() {
                                         <TableCell>
                                             {order.status === 'fulfilled' || order.tracking_number ? (
                                                 <div className="flex flex-col gap-0.5">
-                                                    <Badge variant="outline" className={getShippingColor(order.shipping_status)}>
-                                                        <Truck className="h-3 w-3 mr-1" />
-                                                        {(order.shipping_status || 'pending').replace('_', ' ')}
-                                                    </Badge>
+                                                    <div className="flex items-center gap-1">
+                                                        <Badge variant="outline" className={getShippingColor(order.shipping_status)}>
+                                                            <Truck className="h-3 w-3 mr-1" />
+                                                            {(order.shipping_status || 'pending').replace('_', ' ')}
+                                                        </Badge>
+                                                        {/* Quick action: print label */}
+                                                        {order.label_url && order.shipping_status === 'label_created' && (
+                                                            <button
+                                                                aria-label="Print shipping label"
+                                                                className="p-1 rounded hover:bg-indigo-500/20 text-indigo-400 transition-colors"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    window.open(order.label_url, '_blank');
+                                                                }}
+                                                            >
+                                                                <Printer className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     {order.tracking_number && (
                                                         <span className="text-xs font-mono text-muted-foreground truncate max-w-[100px]">
                                                             {order.tracking_number.slice(0, 14)}...
                                                         </span>
                                                     )}
                                                 </div>
+                                            ) : order.status === 'fulfilled' && order.payment_status === 'paid' && !order.tracking_number ? (
+                                                <Link
+                                                    to={`/sales/${order.id}`}
+                                                    className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                                    aria-label="Create shipping label"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Tag className="h-3 w-3" />
+                                                    Create Label
+                                                </Link>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">—</span>
                                             )}

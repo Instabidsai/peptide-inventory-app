@@ -377,11 +377,35 @@ export function useUpdateSalesOrder() {
             // status transitions, shipping cost, and any field that affects the profit formula)
             await recalculateOrderProfit(id);
         },
-        onSuccess: () => {
+        onSuccess: async (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             toast({ title: 'Order updated' });
+
+            // If marked as delivered, notify customer
+            if (variables.shipping_status === 'delivered') {
+                try {
+                    const { data: orderData } = await supabase
+                        .from('sales_orders')
+                        .select('client_id, contacts!inner(linked_user_id)')
+                        .eq('id', variables.id)
+                        .single();
+
+                    const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                    if (clientUserId) {
+                        await supabase.from('notifications').insert({
+                            user_id: clientUserId,
+                            title: 'Your order has been delivered!',
+                            message: 'Your peptide order has been delivered. Check your mailbox!',
+                            type: 'success',
+                            is_read: false,
+                        });
+                    }
+                } catch (notifErr) {
+                    console.error('Failed to create delivery notification:', notifErr);
+                }
+            }
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to update order', description: error.message });
@@ -597,13 +621,37 @@ export function useCreateShippingLabel() {
 
             return res.json();
         },
-        onSuccess: (data) => {
+        onSuccess: async (data, orderId) => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
             toast({
                 title: 'Shipping Label Created',
                 description: `Tracking: ${data.tracking_number} via ${data.carrier}`,
             });
+
+            // Create in-app notification for customer
+            try {
+                // Look up the order to get client_id, then contact to get linked_user_id
+                const { data: orderData } = await supabase
+                    .from('sales_orders')
+                    .select('client_id, contacts!inner(linked_user_id, name)')
+                    .eq('id', orderId)
+                    .single();
+
+                const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                if (clientUserId) {
+                    await supabase.from('notifications').insert({
+                        user_id: clientUserId,
+                        title: 'Your order has shipped!',
+                        message: `Your order is on the way! Tracking: ${data.tracking_number} via ${data.carrier}.`,
+                        type: 'success',
+                        is_read: false,
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Failed to create shipping notification:', notifErr);
+                // Non-blocking — don't fail the label creation
+            }
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Shipping Failed', description: error.message });

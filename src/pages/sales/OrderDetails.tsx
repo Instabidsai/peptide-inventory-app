@@ -169,7 +169,8 @@ export default function OrderDetails() {
                                 { label: 'Created', done: true, icon: CircleDot },
                                 { label: 'Paid', done: order.payment_status === 'paid', icon: CreditCard },
                                 { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
-                                { label: 'Shipped', done: !!order.tracking_number, icon: Truck },
+                                { label: 'Label', done: !!order.tracking_number, icon: Truck },
+                                { label: 'Printed', done: ['printed','in_transit','delivered'].includes(order.shipping_status), icon: Printer },
                                 { label: 'Delivered', done: order.shipping_status === 'delivered', icon: CheckCircle },
                             ].map((step, i, arr) => (
                                 <div key={step.label} className="flex items-center flex-1 last:flex-none">
@@ -364,6 +365,7 @@ export default function OrderDetails() {
                                 <span className="text-sm">Status</span>
                                 <Badge variant="outline" className={
                                     order.shipping_status === 'label_created' ? 'bg-blue-900/20 text-blue-400 border-blue-500/40' :
+                                    order.shipping_status === 'printed' ? 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40' :
                                     order.shipping_status === 'in_transit' ? 'bg-amber-900/20 text-amber-400 border-amber-500/40' :
                                     order.shipping_status === 'delivered' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-500/40' :
                                     order.shipping_status === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/40' :
@@ -401,6 +403,80 @@ export default function OrderDetails() {
                                     <a href={order.label_url} target="_blank" rel="noopener noreferrer">
                                         <FileDown className="mr-2 h-4 w-4" /> Download Label (PDF)
                                     </a>
+                                </Button>
+                            )}
+
+                            {/* Print label - opens PDF in new tab for printing */}
+                            {order.label_url && !['delivered'].includes(order.shipping_status) && (
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700"
+                                    onClick={() => {
+                                        const printWin = window.open(order.label_url, '_blank');
+                                        if (printWin) {
+                                            printWin.addEventListener('afterprint', () => {
+                                                // Auto-prompt to mark as printed after print dialog closes
+                                            });
+                                        }
+                                        toast({ title: 'Label opened for printing' });
+                                    }}
+                                >
+                                    <Printer className="mr-2 h-4 w-4" /> Print Shipping Label
+                                </Button>
+                            )}
+
+                            {/* Confirm Printed - updates shipping_status to 'printed' */}
+                            {order.shipping_status === 'label_created' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-indigo-500/40 text-indigo-400"
+                                    disabled={updateOrder.isPending}
+                                    onClick={() => {
+                                        updateOrder.mutate(
+                                            { id: order.id, shipping_status: 'printed' },
+                                            { onSuccess: () => toast({ title: 'Label marked as printed' }) }
+                                        );
+                                    }}
+                                >
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Confirm Label Printed
+                                </Button>
+                            )}
+
+                            {/* Mark as Shipped - for when package is dropped off */}
+                            {order.shipping_status === 'printed' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-amber-500/40 text-amber-400"
+                                    disabled={updateOrder.isPending}
+                                    onClick={() => {
+                                        updateOrder.mutate(
+                                            { id: order.id, shipping_status: 'in_transit' },
+                                            { onSuccess: () => toast({ title: 'Marked as shipped!' }) }
+                                        );
+                                    }}
+                                >
+                                    <Truck className="mr-2 h-4 w-4" /> Mark as Shipped
+                                </Button>
+                            )}
+
+                            {/* Mark as Delivered */}
+                            {order.shipping_status === 'in_transit' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-emerald-500/40 text-emerald-400"
+                                    disabled={updateOrder.isPending}
+                                    onClick={() => {
+                                        updateOrder.mutate(
+                                            { id: order.id, shipping_status: 'delivered' },
+                                            { onSuccess: () => toast({ title: 'Order delivered!' }) }
+                                        );
+                                    }}
+                                >
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Mark as Delivered
                                 </Button>
                             )}
 
