@@ -17,49 +17,57 @@ import Dashboard from "./pages/Dashboard";
 import Join from "./pages/Join";
 import NotFound from "./pages/NotFound";
 
+// Retry wrapper — reloads page on stale chunk errors after deploy
+function lazyRetry(fn: () => Promise<any>) {
+  return lazy(() => fn().catch(() => {
+    window.location.reload();
+    return new Promise(() => {}); // reload handles it
+  }));
+}
+
 // Lazy loaded — only fetched when navigated to
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const UpdatePassword = lazy(() => import("./pages/auth/UpdatePassword"));
-const Peptides = lazy(() => import("./pages/Peptides"));
-const Lots = lazy(() => import("./pages/Lots"));
-const Bottles = lazy(() => import("./pages/Bottles"));
-const Orders = lazy(() => import("./pages/Orders"));
-const OrderList = lazy(() => import("./pages/sales/OrderList"));
-const NewOrder = lazy(() => import("./pages/sales/NewOrder"));
-const OrderDetails = lazy(() => import("./pages/sales/OrderDetails"));
-const Reps = lazy(() => import("./pages/admin/Reps"));
-const Contacts = lazy(() => import("./pages/Contacts"));
-const Protocols = lazy(() => import("./pages/Protocols"));
-const ContactDetails = lazy(() => import("./pages/ContactDetails"));
-const Movements = lazy(() => import("./pages/Movements"));
-const MovementWizard = lazy(() => import("./pages/MovementWizard"));
-const Settings = lazy(() => import("./pages/Settings"));
-const AdminFeedback = lazy(() => import("./pages/AdminFeedback"));
-const AdminRequests = lazy(() => import("./pages/admin/AdminRequests"));
-const AdminResources = lazy(() => import("./pages/AdminResources"));
-const Commissions = lazy(() => import("./pages/admin/Commissions"));
-const Finance = lazy(() => import("./pages/admin/Finance"));
-const AdminSupplements = lazy(() => import("./pages/admin/AdminSupplements"));
-const PartnerDetail = lazy(() => import("./pages/admin/PartnerDetail"));
-const PartnerDashboard = lazy(() => import("./pages/partner/PartnerDashboard"));
-const PartnerStore = lazy(() => import("./pages/partner/PartnerStore"));
-const PartnerOrders = lazy(() => import("./pages/partner/PartnerOrders"));
+const Onboarding = lazyRetry(() => import("./pages/Onboarding"));
+const UpdatePassword = lazyRetry(() => import("./pages/auth/UpdatePassword"));
+const Peptides = lazyRetry(() => import("./pages/Peptides"));
+const Lots = lazyRetry(() => import("./pages/Lots"));
+const Bottles = lazyRetry(() => import("./pages/Bottles"));
+const Orders = lazyRetry(() => import("./pages/Orders"));
+const OrderList = lazyRetry(() => import("./pages/sales/OrderList"));
+const NewOrder = lazyRetry(() => import("./pages/sales/NewOrder"));
+const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetails"));
+const Reps = lazyRetry(() => import("./pages/admin/Reps"));
+const Contacts = lazyRetry(() => import("./pages/Contacts"));
+const Protocols = lazyRetry(() => import("./pages/Protocols"));
+const ContactDetails = lazyRetry(() => import("./pages/ContactDetails"));
+const Movements = lazyRetry(() => import("./pages/Movements"));
+const MovementWizard = lazyRetry(() => import("./pages/MovementWizard"));
+const Settings = lazyRetry(() => import("./pages/Settings"));
+const AdminFeedback = lazyRetry(() => import("./pages/AdminFeedback"));
+const AdminRequests = lazyRetry(() => import("./pages/admin/AdminRequests"));
+const AdminResources = lazyRetry(() => import("./pages/AdminResources"));
+const Commissions = lazyRetry(() => import("./pages/admin/Commissions"));
+const Finance = lazyRetry(() => import("./pages/admin/Finance"));
+const AdminSupplements = lazyRetry(() => import("./pages/admin/AdminSupplements"));
+const PartnerDetail = lazyRetry(() => import("./pages/admin/PartnerDetail"));
+const PartnerDashboard = lazyRetry(() => import("./pages/partner/PartnerDashboard"));
+const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
+const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
-const ClientDashboard = lazy(() => import("./pages/client/ClientDashboard"));
-const ClientRegimen = lazy(() => import("./pages/client/ClientRegimen"));
-const ClientMessages = lazy(() => import("./pages/client/ClientMessages"));
-const ClientNotifications = lazy(() => import("./pages/client/ClientNotifications"));
-const ClientResources = lazy(() => import("./pages/client/ClientResources"));
-const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
-const MacroTracker = lazy(() => import("./pages/client/MacroTracker"));
-const BodyComposition = lazy(() => import("./pages/client/BodyComposition"));
-const CommunityForum = lazy(() => import("./pages/client/CommunityForum"));
-const ClientStore = lazy(() => import("./pages/client/ClientStore"));
-const ClientOrders = lazy(() => import("./pages/client/ClientOrders"));
-const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
-const CheckoutCancel = lazy(() => import("./pages/checkout/CheckoutCancel"));
+const ClientDashboard = lazyRetry(() => import("./pages/client/ClientDashboard"));
+const ClientRegimen = lazyRetry(() => import("./pages/client/ClientRegimen"));
+const ClientMessages = lazyRetry(() => import("./pages/client/ClientMessages"));
+const ClientNotifications = lazyRetry(() => import("./pages/client/ClientNotifications"));
+const ClientResources = lazyRetry(() => import("./pages/client/ClientResources"));
+const ClientSettings = lazyRetry(() => import("./pages/client/ClientSettings"));
+const MacroTracker = lazyRetry(() => import("./pages/client/MacroTracker"));
+const BodyComposition = lazyRetry(() => import("./pages/client/BodyComposition"));
+const CommunityForum = lazyRetry(() => import("./pages/client/CommunityForum"));
+const ClientStore = lazyRetry(() => import("./pages/client/ClientStore"));
+const ClientOrders = lazyRetry(() => import("./pages/client/ClientOrders"));
+const CheckoutSuccess = lazyRetry(() => import("./pages/checkout/CheckoutSuccess"));
+const CheckoutCancel = lazyRetry(() => import("./pages/checkout/CheckoutCancel"));
 
 const queryClient = new QueryClient();
 

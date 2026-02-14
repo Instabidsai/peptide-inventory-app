@@ -58,7 +58,7 @@ const typeColors: Record<ContactType, 'default' | 'secondary' | 'outline'> = {
 
 export default function Contacts() {
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { userRole, profile: authProfile } = useAuth();
   const isMobile = useIsMobile();
   const [typeFilter, setTypeFilter] = useState<ContactType | undefined>();
   const { data: contacts, isLoading } = useContacts(typeFilter);
@@ -73,7 +73,9 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
 
-  const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff';
+  const isSalesRep = userRole?.role === 'sales_rep' || (authProfile as any)?.role === 'sales_rep';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
+  const canEdit = isAdmin || isSalesRep;
   const canDelete = userRole?.role === 'admin';
 
   const form = useForm<ContactFormData>({
@@ -90,12 +92,14 @@ export default function Contacts() {
   );
 
   const handleCreate = async (data: ContactFormData) => {
-    // Convert empty string or 'none' to null for UUID field
-    const assignedRepId = (!data.assigned_rep_id || data.assigned_rep_id === 'none') ? null : data.assigned_rep_id;
+    // For sales_rep: always customer type, auto-assign to self
+    const assignedRepId = isSalesRep
+      ? ((authProfile as any)?.id || null)
+      : ((!data.assigned_rep_id || data.assigned_rep_id === 'none') ? null : data.assigned_rep_id);
 
     await createContact.mutateAsync({
       name: data.name,
-      type: data.type,
+      type: isSalesRep ? 'customer' : data.type,
       email: data.email || undefined,
       phone: data.phone,
       company: data.company,
@@ -209,6 +213,8 @@ export default function Contacts() {
                       </FormItem>
                     )}
                   />
+                  {/* Type + Rep — admin only */}
+                  {isAdmin && (
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -258,6 +264,7 @@ export default function Contacts() {
                       )}
                     />
                   </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -540,6 +547,8 @@ export default function Contacts() {
                   </FormItem>
                 )}
               />
+              {/* Type + Rep — admin only */}
+              {isAdmin && (
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -589,6 +598,7 @@ export default function Contacts() {
                   )}
                 />
               </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}

@@ -66,12 +66,8 @@ export function useContacts(type?: ContactType) {
         query = query.eq('type', type);
       }
 
-      // If user is sales_rep, restrict to their assigned contacts
+      // If user is sales_rep, restrict to their network (self + downline partners)
       if (profile?.role === 'sales_rep') {
-        // Find their Profile ID (which is what assigned_rep_id links to)
-        // Oops, assigned_rep_id links to profiles.id, not users.id? 
-        // Let's check schema. Yes, profiles.id usually.
-        // Let's check my profile fetch.
         const { data: myProfile } = await supabase
           .from('profiles')
           .select('id')
@@ -79,7 +75,10 @@ export function useContacts(type?: ContactType) {
           .single();
 
         if (myProfile) {
-          query = query.eq('assigned_rep_id', myProfile.id);
+          const { data: downline } = await supabase
+            .rpc('get_partner_downline', { root_id: user.id });
+          const allRepIds = [myProfile.id, ...(downline || []).map((d: any) => d.id)];
+          query = query.in('assigned_rep_id', allRepIds);
         }
       }
 

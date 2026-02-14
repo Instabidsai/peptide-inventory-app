@@ -5,13 +5,14 @@ import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 // Note: framer-motion transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
-import { LayoutDashboard, ShoppingBag, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, ClipboardList, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const partnerNav = [
   { name: 'Dashboard', path: '/partner', icon: LayoutDashboard },
   { name: 'Store', path: '/partner/store', icon: ShoppingBag },
   { name: 'Orders', path: '/partner/orders', icon: ClipboardList },
+  { name: 'People', path: '/contacts', icon: Users },
 ];
 
 export function AppLayout() {
