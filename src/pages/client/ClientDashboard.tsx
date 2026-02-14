@@ -3,7 +3,7 @@ import { useProtocols } from '@/hooks/use-protocols';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Loader2, CheckCircle2, Clock, Sparkles, User } from "lucide-react";
+import { ChevronRight, Loader2, CheckCircle2, Clock, Sparkles, User, Flame, Target } from "lucide-react";
 import { format, differenceInDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -94,123 +94,139 @@ function ClientDashboardContent() {
     const takenCount = todaysItems.filter(i => i?.isTakenToday).length;
     const totalCount = todaysItems.length;
     const adherenceRate = totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
+    const streak = parseInt(contact?.notes?.match(/streak:(\d+)/i)?.[1] || '0');
 
     return (
         <div className="space-y-6 pb-20">
             {/* Header / Greeting */}
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold tracking-tight">
-                    Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},
-                </h1>
-                <p className="text-muted-foreground text-lg">{contact?.name || 'Friend'}</p>
-                <p className="text-sm text-muted-foreground mt-1">
+            <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-medium text-muted-foreground/60">
                     {format(today, 'EEEE, MMMM do')}
                 </p>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
+                    <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
+                </h1>
             </div>
 
             <Tabs defaultValue="protocol" className="w-full">
-                <TabsList className="w-full grid grid-cols-2 mb-4">
-                    <TabsTrigger value="protocol">My Protocol</TabsTrigger>
-                    <TabsTrigger value="ai-coach" className="gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
+                <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
+                    <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-sm">
+                        My Protocol
+                    </TabsTrigger>
+                    <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-sm">
+                        <Sparkles className="h-3.5 w-3.5" />
                         AI Coach
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="protocol" className="space-y-6">
+                <TabsContent value="protocol" className="space-y-5">
                     {/* Today's Regimen Checklist */}
-                    <GlassCard className="border-l-4 border-l-primary shadow-sm shadow-primary/5">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg flex justify-between items-center">
-                                Today's Regimen
-                                <span className="text-xs font-normal text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full">
-                                    {takenCount} of {totalCount} Done
-                                </span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {todaysItems.length === 0 ? (
-                                    <div className="text-sm text-muted-foreground py-2">No active protocols assigned.</div>
-                                ) : (
-                                    todaysItems.map((item: any, idx) => (
-                                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${item.isTakenToday ? 'bg-muted/40' : 'border border-white/10'}`}>
-                                            <div className={`flex items-center gap-3 ${item.isTakenToday ? '' : 'opacity-80'}`}>
+                    {todaysItems.length > 0 && (
+                        <GlassCard className="border-white/[0.04] overflow-hidden">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base font-semibold tracking-tight flex justify-between items-center">
+                                    Today's Regimen
+                                    <span className="text-[11px] font-medium text-muted-foreground/50 bg-white/[0.04] px-2.5 py-1 rounded-full">
+                                        {takenCount}/{totalCount}
+                                    </span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">
+                                    {todaysItems.map((item: any, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
+                                                item.isTakenToday
+                                                    ? 'bg-emerald-500/[0.06]'
+                                                    : 'bg-white/[0.02] border border-white/[0.04]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
                                                 {item.isTakenToday ? (
-                                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                                    <div className="h-8 w-8 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                                                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                                    </div>
                                                 ) : (
-                                                    <Clock className="h-5 w-5 text-muted-foreground" />
+                                                    <div className="h-8 w-8 rounded-xl bg-white/[0.04] flex items-center justify-center">
+                                                        <Clock className="h-4 w-4 text-muted-foreground/50" />
+                                                    </div>
                                                 )}
                                                 <div>
-                                                    <p className="font-medium">{item.protocolName}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {item.item.dosage_amount}{item.item.dosage_unit} • {item.item.frequency}
+                                                    <p className="font-medium text-sm">{item.protocolName}</p>
+                                                    <p className="text-xs text-muted-foreground/50">
+                                                        {item.item.dosage_amount}{item.item.dosage_unit}
                                                         {item.units && (
-                                                            <span className="ml-1 text-emerald-500 font-semibold">• {item.units} units</span>
+                                                            <span className="ml-1.5 text-emerald-400/80 font-medium">· {item.units} units</span>
                                                         )}
                                                     </p>
                                                 </div>
                                             </div>
                                             {item.isTakenToday ? (
-                                                <span className="text-xs text-green-600 font-medium">
+                                                <span className="text-[11px] text-emerald-400/70 font-medium">
                                                     {format(new Date(item.lastTaken), 'h:mm a')}
                                                 </span>
                                             ) : (
                                                 <Button
                                                     size="sm"
-                                                    variant="outline"
-                                                    className="h-7 text-xs"
+                                                    className="h-8 rounded-xl text-xs font-medium"
                                                     onClick={() => logProtocolUsage.mutate({ itemId: item.item.id })}
                                                 >
-                                                    Mark
+                                                    Mark Done
                                                 </Button>
                                             )}
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </GlassCard>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </GlassCard>
+                    )}
 
-                    {/* Simple Vials */}
                     {/* Week Calendar Strip */}
                     <WeekStrip inventory={inventory || []} />
 
                     {/* Vial Lifecycle Manager */}
                     <SimpleVials inventory={inventory || []} contactId={contact?.id} />
 
-                    {/* Streak / Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <GlassCard className="border-primary/20 hover:border-primary/30 transition-all duration-300">
-                            <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
-                                <div className="text-3xl font-bold text-primary">{contact?.notes?.match(/streak:(\d+)/i)?.[1] || 0}</div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Day Streak</div>
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <GlassCard className="border-white/[0.04] hover-lift">
+                            <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
+                                <div className="p-2 rounded-xl bg-primary/10 mb-1">
+                                    <Flame className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="text-2xl font-bold tracking-tight text-primary">{streak}</div>
+                                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Day Streak</div>
                             </CardContent>
                         </GlassCard>
-                        <GlassCard className="border-green-500/20 hover:border-green-500/30 transition-all duration-300">
-                            <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
-                                <div className="text-3xl font-bold text-green-500">{adherenceRate}%</div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Daily Adherence</div>
+                        <GlassCard className="border-white/[0.04] hover-lift">
+                            <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
+                                <div className="p-2 rounded-xl bg-emerald-500/10 mb-1">
+                                    <Target className="h-4 w-4 text-emerald-400" />
+                                </div>
+                                <div className="text-2xl font-bold tracking-tight text-emerald-400">{adherenceRate}%</div>
+                                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Adherence</div>
                             </CardContent>
                         </GlassCard>
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-lg">Quick Actions</h3>
-                        <Button variant="secondary" className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent" onClick={() => navigate('/my-regimen')}>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-background rounded-full">
-                                    <Clock className="h-4 w-4" />
-                                </div>
-                                <div className="text-left">
-                                    <div className="font-medium">Full Regimen</div>
-                                    <div className="text-xs text-muted-foreground">View all details</div>
-                                </div>
+                    <button
+                        onClick={() => navigate('/my-regimen')}
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all duration-200"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-white/[0.04]">
+                                <Clock className="h-4 w-4 text-muted-foreground/60" />
                             </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                    </div>
+                            <div className="text-left">
+                                <div className="font-medium text-sm">Full Regimen</div>
+                                <div className="text-xs text-muted-foreground/40">View all protocol details</div>
+                            </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                    </button>
                 </TabsContent>
 
                 <TabsContent value="ai-coach" className="min-h-[400px] md:min-h-[600px]">
