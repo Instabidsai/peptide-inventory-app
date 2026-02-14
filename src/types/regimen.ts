@@ -1,5 +1,8 @@
 
-export type InventoryStatus = 'active' | 'finished' | 'archived';
+export type InventoryStatus = 'active' | 'finished' | 'archived' | 'depleted';
+
+export const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+export type DayOfWeek = typeof DAYS_OF_WEEK[number];
 
 export interface ClientInventoryItem {
     id: string;
@@ -15,6 +18,10 @@ export interface ClientInventoryItem {
     status: InventoryStatus;
     created_at: string;
     updated_at: string;
+
+    // Dose scheduling fields
+    dose_amount_mg: number | null;
+    dose_days: string[] | null;
 
     // Joined fields (optional)
     peptide?: {

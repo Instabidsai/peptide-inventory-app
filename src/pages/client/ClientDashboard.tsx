@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
+import { WeekStrip } from '@/components/regimen/WeekStrip';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChatInterface } from "@/components/ai/AIChatInterface";
@@ -172,7 +173,11 @@ function ClientDashboardContent() {
                     </GlassCard>
 
                     {/* Simple Vials */}
-                    <SimpleVials inventory={inventory || []} />
+                    {/* Week Calendar Strip */}
+                    <WeekStrip inventory={inventory || []} />
+
+                    {/* Vial Lifecycle Manager */}
+                    <SimpleVials inventory={inventory || []} contactId={contact?.id} />
 
                     {/* Streak / Stats */}
                     <div className="grid grid-cols-2 gap-4">
