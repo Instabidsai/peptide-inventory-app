@@ -25,6 +25,7 @@ export interface ClientInventoryItem {
     dose_frequency: string | null;  // 'daily' | 'every_other_day' | 'every_x_days' | 'x_on_y_off' | 'specific_days'
     dose_interval: number | null;   // for every_x_days: the X
     dose_off_days: number | null;   // for x_on_y_off: the off count
+    dose_time_of_day: string | null; // 'morning' | 'afternoon' | 'evening'
     in_fridge: boolean;
 
     // Joined fields (optional)
@@ -34,6 +35,13 @@ export interface ClientInventoryItem {
 }
 
 export type DoseFrequency = 'daily' | 'every_other_day' | 'every_x_days' | 'x_on_y_off' | 'specific_days';
+export type DoseTimeOfDay = 'morning' | 'afternoon' | 'evening';
+
+export const TIME_OF_DAY_OPTIONS: { value: DoseTimeOfDay; label: string; short: string }[] = [
+    { value: 'morning', label: 'Morning', short: 'AM' },
+    { value: 'afternoon', label: 'Afternoon', short: 'Noon' },
+    { value: 'evening', label: 'Evening', short: 'PM' },
+];
 
 export const FREQUENCY_OPTIONS: { value: DoseFrequency; label: string }[] = [
     { value: 'daily', label: 'Every day' },
@@ -95,15 +103,21 @@ export function getScheduleLabel(vial: {
     dose_days?: string[] | null;
     dose_interval?: number | null;
     dose_off_days?: number | null;
+    dose_time_of_day?: string | null;
 }): string {
     const freq = vial.dose_frequency;
     if (!freq) return '';
-    if (freq === 'daily') return 'Every day';
-    if (freq === 'every_other_day') return 'Every other day';
-    if (freq === 'every_x_days') return `Every ${vial.dose_interval || '?'} days`;
-    if (freq === 'x_on_y_off') return `${vial.dose_interval || '?'} on, ${vial.dose_off_days || '?'} off`;
-    if (freq === 'specific_days') return (vial.dose_days || []).join(', ');
-    return freq;
+    let label = '';
+    if (freq === 'daily') label = 'Every day';
+    else if (freq === 'every_other_day') label = 'Every other day';
+    else if (freq === 'every_x_days') label = `Every ${vial.dose_interval || '?'} days`;
+    else if (freq === 'x_on_y_off') label = `${vial.dose_interval || '?'} on, ${vial.dose_off_days || '?'} off`;
+    else if (freq === 'specific_days') label = (vial.dose_days || []).join(', ');
+    else label = freq;
+
+    const timeLabel = TIME_OF_DAY_OPTIONS.find(t => t.value === vial.dose_time_of_day);
+    if (timeLabel) label += ` · ${timeLabel.short}`;
+    return label;
 }
 
 export interface ClientDailyLog {

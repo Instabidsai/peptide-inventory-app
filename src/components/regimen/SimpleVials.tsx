@@ -8,8 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Droplets, ShoppingBag, Syringe, Check, XCircle, Beaker, ChevronDown, ChevronUp, Plus, ArrowUpFromLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
-import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, isDoseDay, getScheduleLabel } from '@/types/regimen';
-import type { DoseFrequency } from '@/types/regimen';
+import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, TIME_OF_DAY_OPTIONS, isDoseDay, getScheduleLabel } from '@/types/regimen';
+import type { DoseFrequency, DoseTimeOfDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -95,6 +95,7 @@ function UnmixedCard({ vial, actions }: { vial: any; actions: ReturnType<typeof 
 function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
     const [doseMg, setDoseMg] = useState('');
     const [frequency, setFrequency] = useState<DoseFrequency | ''>('');
+    const [timeOfDay, setTimeOfDay] = useState<DoseTimeOfDay | ''>('');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [interval, setInterval] = useState('');
     const [onDays, setOnDays] = useState('');
@@ -111,7 +112,7 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
     const units = concentration > 0 && doseNum > 0 ? Math.round((doseNum / concentration) * 100) : 0;
 
     const canSave = (): boolean => {
-        if (!doseMg || parseFloat(doseMg) <= 0 || !frequency) return false;
+        if (!doseMg || parseFloat(doseMg) <= 0 || !frequency || !timeOfDay) return false;
         if (frequency === 'specific_days' && selectedDays.length === 0) return false;
         if (frequency === 'every_x_days' && (!interval || parseInt(interval) < 1)) return false;
         if (frequency === 'x_on_y_off' && (!onDays || parseInt(onDays) < 1 || !offDays || parseInt(offDays) < 1)) return false;
@@ -127,6 +128,7 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
             doseInterval: frequency === 'every_x_days' ? parseInt(interval)
                 : frequency === 'x_on_y_off' ? parseInt(onDays) : undefined,
             doseOffDays: frequency === 'x_on_y_off' ? parseInt(offDays) : undefined,
+            doseTimeOfDay: timeOfDay || undefined,
         });
     };
 
@@ -245,6 +247,28 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
                     </div>
                 </div>
             )}
+
+            {/* Time of day */}
+            <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">When?</label>
+                <div className="flex gap-1.5">
+                    {TIME_OF_DAY_OPTIONS.map(opt => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setTimeOfDay(opt.value)}
+                            className={cn(
+                                "flex-1 py-1.5 rounded-md text-[11px] font-medium transition-all border",
+                                timeOfDay === opt.value
+                                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                                    : "bg-secondary/50 border-transparent text-muted-foreground hover:bg-secondary"
+                            )}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             <Button
                 size="sm"

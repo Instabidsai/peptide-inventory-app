@@ -41,6 +41,7 @@ export function useVialActions(contactId?: string) {
             doseDays?: string[];
             doseInterval?: number;
             doseOffDays?: number;
+            doseTimeOfDay?: string;
         }) => {
             const { error } = await supabase
                 .from('client_inventory')
@@ -50,6 +51,7 @@ export function useVialActions(contactId?: string) {
                     dose_days: params.doseDays || null,
                     dose_interval: params.doseInterval || null,
                     dose_off_days: params.doseOffDays || null,
+                    dose_time_of_day: params.doseTimeOfDay || null,
                 })
                 .eq('id', params.vialId);
             if (error) throw error;
