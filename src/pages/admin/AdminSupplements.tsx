@@ -60,7 +60,7 @@ export default function AdminSupplements() {
                                 </div>
                             )}
                             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setEditingItem(item)}>
+                                <Button size="icon" variant="secondary" className="h-8 w-8" aria-label="Edit supplement" onClick={() => setEditingItem(item)}>
                                     <Pencil className="h-4 w-4" />
                                 </Button>
                                 <DeleteConfirm onConfirm={() => deleteSupplement.mutate(item.id)} />
@@ -186,7 +186,7 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
                                 />
                                 {formData.image_url && <img src={formData.image_url} className="h-10 w-10 rounded object-cover border bg-white" onError={(e) => e.currentTarget.style.display = 'none'} />}
                             </div>
-                            <p className="text-[10px] text-muted-foreground">Use Unsplash or direct image links for best results.</p>
+                            <p className="text-xs text-muted-foreground">Use Unsplash or direct image links for best results.</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
@@ -230,7 +230,7 @@ function DeleteConfirm({ onConfirm }: { onConfirm: () => void }) {
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive text-muted-foreground/50">
+                <Button size="icon" variant="ghost" aria-label="Delete supplement" className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive text-muted-foreground/50">
                     <Trash2 className="h-4 w-4" />
                 </Button>
             </AlertDialogTrigger>

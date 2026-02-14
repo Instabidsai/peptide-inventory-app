@@ -71,8 +71,8 @@ export default function Commissions() {
         },
     });
 
-    // Compute summary stats
-    const stats = (commissions || []).reduce(
+    // Compute summary stats (with rounding to avoid floating-point drift)
+    const rawStats = (commissions || []).reduce(
         (acc, c) => {
             const amt = Number(c.amount) || 0;
             acc.total += amt;
@@ -91,9 +91,19 @@ export default function Commissions() {
         },
         { total: 0, count: 0, pending: 0, pendingCount: 0, available: 0, availableCount: 0, paid: 0, paidCount: 0, appliedToDebt: 0, appliedCount: 0, other: 0, totalOrderValue: 0 }
     );
+    const stats = {
+        ...rawStats,
+        total: Math.round(rawStats.total * 100) / 100,
+        pending: Math.round(rawStats.pending * 100) / 100,
+        available: Math.round(rawStats.available * 100) / 100,
+        paid: Math.round(rawStats.paid * 100) / 100,
+        appliedToDebt: Math.round(rawStats.appliedToDebt * 100) / 100,
+        other: Math.round(rawStats.other * 100) / 100,
+        totalOrderValue: Math.round(rawStats.totalOrderValue * 100) / 100,
+    };
 
     const avgRate = commissions?.length
-        ? (commissions.reduce((sum, c) => sum + (Number(c.commission_rate) || 0), 0) / commissions.length * 100)
+        ? Math.round((commissions.reduce((sum, c) => sum + (Number(c.commission_rate) || 0), 0) / commissions.length * 100) * 100) / 100
         : 0;
 
     const statusBadge = (status: string) => {
@@ -210,7 +220,7 @@ export default function Commissions() {
                         total: 0,
                         count: 0,
                     };
-                    existing.total += Number(c.amount) || 0;
+                    existing.total = Math.round((existing.total + (Number(c.amount) || 0)) * 100) / 100;
                     existing.count += 1;
                     earnerMap.set(pid, existing);
                 });

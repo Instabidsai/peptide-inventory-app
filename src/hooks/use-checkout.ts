@@ -25,6 +25,11 @@ interface CheckoutInput {
  * 1. Creates a sales_order in Supabase with status 'pending_payment'
  * 2. Calls our Vercel serverless function to create a PsiFi checkout session
  * 3. Redirects the user to PsiFi's hosted payment page
+ *
+ * TODO: Auto-generate Bottle records when a Lot is created/received.
+ * When lot quantity_received is set, create one Bottle record per unit with
+ * status 'in_stock'. This logic lives in use-orders.ts or the fulfillment
+ * flow (not in this checkout hook). See use-orders.ts for implementation.
  */
 export function useCheckout() {
     const { user } = useAuth();

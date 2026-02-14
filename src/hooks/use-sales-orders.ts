@@ -212,10 +212,10 @@ export function useCreateSalesOrder() {
             let totalAmount = 0;
 
             for (const item of input.items) {
-                totalAmount += item.quantity * item.unit_price;
+                totalAmount += Math.round(item.quantity * item.unit_price * 100) / 100;
             }
 
-            const totalCommission = totalAmount * repCommissionRate;
+            const totalCommission = Math.round(totalAmount * repCommissionRate * 100) / 100;
 
             const commissionAmount = Math.max(0, totalCommission); // Ensure non-negative
 
@@ -254,7 +254,11 @@ export function useCreateSalesOrder() {
 
             // Process commission records (direct + override for upline)
             const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
-            if (rpcError) console.error("Commission processing failed:", rpcError);
+            if (rpcError) {
+                console.error("Commission processing failed:", rpcError);
+                // Don't throw -- order is already created, but notify user
+                toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+            }
 
             // Auto-fulfill: deduct inventory + create movement (like contacts flow)
             let fulfilled = false;
@@ -267,7 +271,7 @@ export function useCreateSalesOrder() {
                         type: 'sale',
                         contact_id: input.client_id,
                         movement_date: new Date().toISOString().split('T')[0],
-                        notes: `Sales Order #${order.id.slice(0, 8)}`,
+                        notes: `[SO:${order.id}] Sales Order #${order.id.slice(0, 8)}`,
                         created_by: repId || user.id,
                         payment_status: 'unpaid',
                         amount_paid: 0,
@@ -298,7 +302,7 @@ export function useCreateSalesOrder() {
                     const moveItems = bottleIds.map(bid => ({
                         movement_id: movement.id,
                         bottle_id: bid,
-                        price_at_sale: item.unit_price,
+                        price_at_sale: Math.round(item.unit_price * 100) / 100,
                     }));
                     const { error: miError } = await supabase.from('movement_items').insert(moveItems);
                     if (miError) throw miError;
@@ -318,9 +322,14 @@ export function useCreateSalesOrder() {
                     .eq('id', order.id);
 
                 fulfilled = true;
-            } catch (fulfillErr) {
+            } catch (fulfillErr: any) {
                 // If fulfillment fails (e.g. insufficient stock), order stays as submitted
-                console.warn("Auto-fulfill skipped:", fulfillErr);
+                console.warn('Auto-fulfillment failed:', fulfillErr);
+                toast({
+                    title: "Order created — fulfillment pending",
+                    description: fulfillErr?.message || "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
+                    variant: "destructive",
+                });
             }
 
             // Calculate COGS + profit (merchant fee = 0 since unpaid)
@@ -360,13 +369,13 @@ export function useUpdateSalesOrder() {
                 const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
                 if (rpcError) {
                     console.error("Commission processing failed:", rpcError);
+                    toast({ title: "Warning", description: "Order updated but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
                 }
             }
 
-            // Recalculate profit (handles merchant fee on payment, commission changes, etc.)
-            if (updates.payment_status || updates.commission_amount !== undefined || updates.shipping_cost !== undefined) {
-                await recalculateOrderProfit(id);
-            }
+            // Recalculate profit on EVERY update (handles merchant fee, commission changes,
+            // status transitions, shipping cost, and any field that affects the profit formula)
+            await recalculateOrderProfit(id);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
@@ -414,7 +423,7 @@ export function useFulfillOrder() {
                     type: 'sale',
                     contact_id: order.client_id,
                     movement_date: new Date().toISOString().split('T')[0],
-                    notes: `Fulfilled Sales Order #${order.id.slice(0, 8)}`,
+                    notes: `[SO:${orderId}] Fulfilled Sales Order #${orderId.slice(0, 8)}`,
                     created_by: order.rep_id || user.id, // Attribute to rep if exists
                     payment_status: order.payment_status || 'unpaid',
                     amount_paid: order.amount_paid || 0,
@@ -448,7 +457,7 @@ export function useFulfillOrder() {
                 const moveItems = bottles.map(b => ({
                     movement_id: movement.id,
                     bottle_id: b.id,
-                    price_at_sale: item.unit_price, // Assign unit price from order
+                    price_at_sale: Math.round(item.unit_price * 100) / 100, // Assign unit price from order
                 }));
 
                 const { error: miError } = await supabase.from('movement_items').insert(moveItems);
@@ -473,7 +482,10 @@ export function useFulfillOrder() {
 
             // 5. Process commission records (idempotent — skips if already created)
             const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
-            if (rpcError) console.error("Commission processing on fulfill failed:", rpcError);
+            if (rpcError) {
+                console.error("Commission processing on fulfill failed:", rpcError);
+                toast({ title: "Warning", description: "Order fulfilled but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+            }
 
             // 6. Recalculate COGS + profit with current data
             await recalculateOrderProfit(orderId);

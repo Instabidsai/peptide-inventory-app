@@ -35,6 +35,7 @@ interface AuthContextType {
   userRole: UserRole | null;
   organization: Organization | null;
   loading: boolean;
+  authError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -50,37 +51,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const fetchUserData = async (userId: string) => {
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    try {
+      setAuthError(null);
 
-    setProfile(profileData);
-
-    if (profileData?.org_id) {
-      // Fetch user role
-      const { data: roleData } = await supabase
-        .from('user_roles')
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .eq('org_id', profileData.org_id)
         .maybeSingle();
 
-      setUserRole(roleData);
+      if (profileError) {
+        const msg = `Failed to load user profile: ${profileError.message}`;
+        console.error('AuthProvider:', msg);
+        setAuthError(msg);
+        setProfile(null);
+        setUserRole(null);
+        setOrganization(null);
+        return;
+      }
 
-      // Fetch organization
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', profileData.org_id)
-        .maybeSingle();
+      setProfile(profileData);
 
-      setOrganization(orgData);
-    } else {
+      if (profileData?.org_id) {
+        // Fetch user role
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('org_id', profileData.org_id)
+          .maybeSingle();
+
+        if (roleError) {
+          const msg = `Failed to load user role: ${roleError.message}`;
+          console.error('AuthProvider:', msg);
+          setAuthError(msg);
+          setUserRole(null);
+        } else {
+          setUserRole(roleData);
+        }
+
+        // Fetch organization
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', profileData.org_id)
+          .maybeSingle();
+
+        if (orgError) {
+          const msg = `Failed to load organization: ${orgError.message}`;
+          console.error('AuthProvider:', msg);
+          setAuthError(msg);
+          setOrganization(null);
+        } else {
+          setOrganization(orgData);
+        }
+      } else {
+        setUserRole(null);
+        setOrganization(null);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error loading user data';
+      console.error('AuthProvider: Unexpected error in fetchUserData:', msg);
+      setAuthError(msg);
+      setProfile(null);
       setUserRole(null);
       setOrganization(null);
     }
@@ -189,6 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userRole,
         organization,
         loading,
+        authError,
         signIn,
         signUp,
         signOut,

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type OrderStatus = 'pending' | 'received' | 'cancelled';
 
@@ -48,12 +49,15 @@ export interface MarkReceivedInput {
 
 // Fetch all orders
 export function useOrders(status?: OrderStatus) {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['orders', status],
+        queryKey: ['orders', status, profile?.org_id],
         queryFn: async () => {
             let query = supabase
                 .from('orders')
                 .select('*, peptides(id, name)')
+                .eq('org_id', profile!.org_id!)
                 .order('created_at', { ascending: false });
 
             if (status) {
@@ -64,6 +68,7 @@ export function useOrders(status?: OrderStatus) {
             if (error) throw error;
             return data as Order[];
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 
@@ -74,29 +79,36 @@ export function usePendingOrders() {
 
 // Get pending orders count
 export function usePendingOrdersCount() {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['orders', 'pending', 'count'],
+        queryKey: ['orders', 'pending', 'count', profile?.org_id],
         queryFn: async () => {
             const { count, error } = await supabase
                 .from('orders')
                 .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
+                .eq('status', 'pending')
+                .eq('org_id', profile!.org_id!);
 
             if (error) throw error;
             return count || 0;
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 
 // Get total pending order value
 export function usePendingOrderValue() {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['orders', 'pending', 'value'],
+        queryKey: ['orders', 'pending', 'value', profile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('orders')
                 .select('quantity_ordered, estimated_cost_per_unit')
-                .eq('status', 'pending');
+                .eq('status', 'pending')
+                .eq('org_id', profile!.org_id!);
 
             if (error) throw error;
 
@@ -106,18 +118,22 @@ export function usePendingOrderValue() {
 
             return totalValue;
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 
 // Get detailed pending financials (Total, Paid, Owed)
 export function usePendingOrderFinancials() {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['orders', 'pending', 'financials'],
+        queryKey: ['orders', 'pending', 'financials', profile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('orders')
                 .select('quantity_ordered, estimated_cost_per_unit, amount_paid')
-                .eq('status', 'pending');
+                .eq('status', 'pending')
+                .eq('org_id', profile!.org_id!);
 
             if (error) throw error;
 
@@ -135,18 +151,22 @@ export function usePendingOrderFinancials() {
                 outstandingLiability: totalValue - totalPaid
             };
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 
 // Get pending orders by peptide (for peptides page)
 export function usePendingOrdersByPeptide() {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['orders', 'pending', 'by-peptide'],
+        queryKey: ['orders', 'pending', 'by-peptide', profile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('orders')
                 .select('peptide_id, quantity_ordered, expected_arrival_date, estimated_cost_per_unit')
-                .eq('status', 'pending');
+                .eq('status', 'pending')
+                .eq('org_id', profile!.org_id!);
 
             if (error) throw error;
 
@@ -190,6 +210,7 @@ export function usePendingOrdersByPeptide() {
 
             return byPeptide;
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 

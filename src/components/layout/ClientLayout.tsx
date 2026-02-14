@@ -79,7 +79,7 @@ export function ClientLayout() {
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
-                    <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
+                    <Button variant="ghost" size="icon" className="relative" aria-label="Notifications" onClick={() => navigate('/notifications')}>
                         <Bell className="h-5 w-5" />
                         {unreadNotifications && unreadNotifications > 0 && (
                             <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
@@ -117,18 +117,19 @@ export function ClientLayout() {
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
+                                aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors relative",
+                                    "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
                                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <div className="relative">
-                                    <item.icon className={cn("h-5 w-5", isActive && "fill-current")} />
+                                    <item.icon className={cn("h-6 w-6", isActive && "fill-current")} />
                                     {item.hasBadge && (
                                         <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
                                     )}
                                 </div>
-                                <span className="text-[10px] font-medium">{item.label}</span>
+                                <span className="text-xs font-medium">{item.label}</span>
                             </button>
                         );
                     })}

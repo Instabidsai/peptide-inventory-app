@@ -1244,10 +1244,10 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                         <CardDescription>{protocol.description}</CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={onEdit}>
+                        <Button variant="outline" size="icon" aria-label="Edit regimen" onClick={onEdit}>
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => {
+                        <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={() => {
                             if (window.confirm('Are you sure you want to delete this regimen? This will verify delete all logs and history.')) {
                                 onDelete(protocol.id);
                             }
@@ -1321,12 +1321,13 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                     <div>
                                         <div className="font-medium text-sm">{supp.supplements?.name || 'Unknown'}</div>
                                         <div className="text-xs text-muted-foreground">{supp.dosage} <span className="mx-1">•</span> {supp.frequency}</div>
-                                        {supp.notes && <div className="text-[10px] text-muted-foreground mt-1 italic">"{supp.notes}"</div>}
+                                        {supp.notes && <div className="text-xs text-muted-foreground mt-1 italic">"{supp.notes}"</div>}
                                     </div>
                                 </div>
                                 <Button
                                     size="icon"
                                     variant="ghost"
+                                    aria-label="Delete supplement"
                                     className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                                     onClick={(e) => { e.stopPropagation(); onDeleteSupplement(supp.id); }}
                                 >
@@ -1354,18 +1355,19 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     {latestMovement ? (
                         <div className="bg-slate-50 p-2 rounded border text-sm grid grid-cols-2 gap-2 relative group-billing">
                             <div>
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide block mb-0.5">Status</span>
                                 <Badge variant="outline" className={`${statusColor} capitalize font-normal border px-2 py-0 h-5`}>
                                     {statusLabel}
                                 </Badge>
                             </div>
                             <div className="text-right">
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-0.5">Sold At</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide block mb-0.5">Sold At</span>
                                 <div className="flex items-center justify-end gap-2">
                                     <span className="font-mono font-medium">${lastSoldDetails?.price.toFixed(2)}</span>
                                     <Button
                                         variant="ghost"
                                         size="icon"
+                                        aria-label="Void invoice"
                                         className="h-5 w-5 opacity-0 group-hover-billing:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity"
                                         title="Void Invoice / Delete Movement"
                                         onClick={(e) => {
@@ -1383,16 +1385,16 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                 <div className="text-xs flex items-center gap-1.5 text-muted-foreground">
                                     <ShoppingBag className="h-3 w-3" />
                                     <span>From Inventory</span>
-                                    {lastSoldDetails?.lot && <Badge variant="secondary" className="text-[10px] h-4 px-1 ml-1 bg-slate-200 text-slate-700">Lot {lastSoldDetails.lot}</Badge>}
+                                    {lastSoldDetails?.lot && <Badge variant="secondary" className="text-xs h-4 px-1 ml-1 bg-slate-200 text-slate-700">Lot {lastSoldDetails.lot}</Badge>}
                                 </div>
-                                <span className="text-[10px] text-muted-foreground">{new Date(lastSoldDetails?.date).toLocaleDateString()}</span>
+                                <span className="text-xs text-muted-foreground">{new Date(lastSoldDetails?.date).toLocaleDateString()}</span>
                             </div>
                         </div>
                     ) : (
                         <div className="bg-amber-500/10 p-3 rounded border border-amber-500/20 text-sm flex justify-between items-center">
                             <div className="text-amber-400">
                                 <p className="font-semibold text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" /> No Billing Record</p>
-                                <p className="text-[10px] opacity-80">Inventory not yet assigned.</p>
+                                <p className="text-xs opacity-80">Inventory not yet assigned.</p>
                             </div>
                             <Button size="sm" variant="outline" className="h-7 text-xs border-amber-500/30 bg-card hover:bg-amber-500/10 text-amber-400" onClick={(e) => {
                                 e.stopPropagation();
@@ -1432,28 +1434,28 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                         </div>
                                         <Badge
                                             variant="outline"
-                                            className={`${getSupplyStatusColor(supply.status)} text-white border-0 text-[10px] px-1.5 py-0`}
+                                            className={`${getSupplyStatusColor(supply.status)} text-white border-0 text-xs px-1.5 py-0`}
                                         >
                                             {getSupplyStatusLabel(supply.daysRemaining)}
                                         </Badge>
                                     </div>
 
-                                    <div className="text-[10px] text-muted-foreground mb-1.5 grid grid-cols-2 gap-1">
+                                    <div className="text-xs text-muted-foreground mb-1.5 grid grid-cols-2 gap-1">
                                         <div>Supply: {supply.totalSupplyMg.toFixed(1)} mg</div>
                                         <div>Usage: {supply.dailyUsageMg.toFixed(1)} mg/day</div>
                                     </div>
 
                                     <Accordion type="single" collapsible>
                                         <AccordionItem value="bottles" className="border-0">
-                                            <AccordionTrigger className="py-1 text-[10px] hover:no-underline">
+                                            <AccordionTrigger className="py-1 text-xs hover:no-underline">
                                                 {supply.bottles.length} bottle{supply.bottles.length !== 1 ? 's' : ''}
                                             </AccordionTrigger>
                                             <AccordionContent>
                                                 <div className="space-y-1 mt-1">
                                                     {supply.bottles.map(bottle => (
-                                                        <div key={bottle.id} className="flex justify-between items-center text-[10px] bg-card p-1.5 rounded border">
+                                                        <div key={bottle.id} className="flex justify-between items-center text-xs bg-card p-1.5 rounded border">
                                                             <div className="flex-1">
-                                                                <div className="font-mono text-[10px]">{bottle.uid}</div>
+                                                                <div className="font-mono text-xs">{bottle.uid}</div>
                                                                 <div className="text-muted-foreground">
                                                                     {bottle.currentQuantityMg.toFixed(1)} mg
                                                                     {bottle.usagePercent > 0 && ` • ${bottle.usagePercent.toFixed(0)}% used`}
@@ -1562,7 +1564,7 @@ function ResourceList({ contactId }: { contactId: string }) {
                         {r.type === 'video' ? <FlaskConical className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                         <span className="truncate">{r.title}</span>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(r.id)}>
+                    <Button variant="ghost" size="icon" aria-label="Delete resource" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(r.id)}>
                         <Trash2 className="h-3 w-3" />
                     </Button>
                 </div>
@@ -1743,7 +1745,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                     <div className="text-xs font-mono text-muted-foreground">
                                                         Lot: {item.batch_number || 'N/A'}
                                                     </div>
-                                                    <div className="text-[10px] text-muted-foreground">
+                                                    <div className="text-xs text-muted-foreground">
                                                         Exp: {item.expiration_date ? format(new Date(item.expiration_date), 'MM/yyyy') : 'N/A'}
                                                     </div>
                                                 </div>
@@ -1759,12 +1761,12 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
 
                                                     <div className="text-right">
                                                         <div className="text-sm font-medium">{item.current_quantity_mg}mg</div>
-                                                        <div className="text-[10px] text-muted-foreground">of {item.vial_size_mg}mg</div>
+                                                        <div className="text-xs text-muted-foreground">of {item.vial_size_mg}mg</div>
                                                     </div>
 
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                            <Button variant="ghost" size="icon" aria-label="More options" className="h-6 w-6">
                                                                 <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -1831,11 +1833,11 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                     <Folder className={`h-4 w-4 shrink-0 ${isUnassigned ? 'text-orange-400' : 'text-blue-400'}`} />
                                                     <div className="flex flex-col items-start truncate">
                                                         <span className="font-medium text-sm">{groupTitle}</span>
-                                                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px] md:max-w-md">
+                                                        <span className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-md">
                                                             {peptideNames.join(', ')}
                                                         </span>
                                                     </div>
-                                                    <Badge variant="secondary" className="ml-2 text-[10px] font-normal shrink-0">
+                                                    <Badge variant="secondary" className="ml-2 text-xs font-normal shrink-0">
                                                         {items.length} vial{items.length !== 1 ? 's' : ''}
                                                     </Badge>
                                                 </div>
@@ -1857,7 +1859,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 bg-card/50 backdrop-blur-sm hover:bg-card/80">
+                                                                        <Button variant="ghost" size="icon" aria-label="More options" className="h-6 w-6 bg-card/50 backdrop-blur-sm hover:bg-card/80">
                                                                             <MoreVertical className="h-3.5 w-3.5" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
@@ -1901,10 +1903,10 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                 </CardTitle>
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-[10px]">
+                                                                <Badge variant={item.current_quantity_mg > 0 ? 'outline' : 'destructive'} className="text-xs">
                                                                     {item.current_quantity_mg > 0 ? 'In Stock' : 'Depleted'}
                                                                 </Badge>
-                                                                <div className="text-[10px] text-muted-foreground">
+                                                                <div className="text-xs text-muted-foreground">
                                                                     Lot: {item.batch_number || 'N/A'}
                                                                 </div>
                                                             </div>
@@ -1918,14 +1920,14 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                         </span>
                                                                         <span className="text-xs">remaining</span>
                                                                     </div>
-                                                                    <div className="text-[10px] mt-1">
+                                                                    <div className="text-xs mt-1">
                                                                         {format(new Date(item.created_at), 'MMM d, yyyy')}
                                                                     </div>
                                                                 </div>
                                                                 <div className="text-xs text-muted-foreground text-right">
                                                                     <div>/ {item.vial_size_mg}mg size</div>
                                                                     {item.current_quantity_mg < item.vial_size_mg && (
-                                                                        <div className="text-[10px] text-emerald-600 font-medium">
+                                                                        <div className="text-xs text-emerald-600 font-medium">
                                                                             -{((1 - (item.current_quantity_mg / item.vial_size_mg)) * 100).toFixed(0)}% used
                                                                         </div>
                                                                     )}

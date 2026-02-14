@@ -150,14 +150,17 @@ export function useConvertCommission() {
 
 // Admin hook: fetch ALL partners + their clients as a flat tree for the Network View
 export function useFullNetwork() {
+    const { user, profile } = useAuth();
+
     return useQuery({
-        queryKey: ['full_network'],
+        queryKey: ['full_network', profile?.org_id],
         queryFn: async () => {
-            // 1. Fetch all partner profiles
+            // 1. Fetch all partner profiles scoped to org
             const { data, error } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
                 .eq('role', 'sales_rep')
+                .eq('org_id', profile!.org_id!)
                 .order('full_name');
 
             if (error) throw error;
@@ -168,6 +171,7 @@ export function useFullNetwork() {
                 .select('id, name, email, type, assigned_rep_id')
                 .not('assigned_rep_id', 'is', null)
                 .eq('type', 'customer')
+                .eq('org_id', profile!.org_id!)
                 .order('name');
 
             if (contError) throw contError;
@@ -232,6 +236,7 @@ export function useFullNetwork() {
 
             return [...partnerNodes, ...clientNodes];
         },
+        enabled: !!user && !!profile?.org_id,
     });
 }
 

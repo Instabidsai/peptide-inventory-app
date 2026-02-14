@@ -36,6 +36,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         variant="ghost"
         size="icon"
         className="lg:hidden"
+        aria-label="Open menu"
         onClick={onMenuClick}
       >
         <Menu className="h-5 w-5" />
@@ -44,11 +45,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       {/* Search trigger */}
       <button
         onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+        aria-label="Search"
         className="hidden md:inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
       >
         <Search className="h-3.5 w-3.5" />
         <span>Search...</span>
-        <kbd className="pointer-events-none ml-2 hidden h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:flex">
+        <kbd className="pointer-events-none ml-2 hidden h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-xs font-medium sm:flex">
           <span className="text-xs">Ctrl</span>K
         </kbd>
       </button>

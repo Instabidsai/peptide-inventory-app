@@ -325,7 +325,7 @@ export function useCreateMovement() {
         movement_id: movement.id,
         bottle_id: item.bottle_id || null,
         description: item.description || null,
-        price_at_sale: item.price_at_sale || null,
+        price_at_sale: item.price_at_sale != null ? Math.round(item.price_at_sale * 100) / 100 : null,
       }));
 
       const { error: itemsError } = await supabase
@@ -407,7 +407,7 @@ export function useCreateMovement() {
             .single();
 
           if ((contact as any)?.assigned_rep_id) {
-            const totalSaleAmount = input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0);
+            const totalSaleAmount = Math.round(input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0) * 100) / 100;
             const orgId = profile!.org_id;
 
             // Create the sales_order — RPC handles commission split
@@ -421,7 +421,7 @@ export function useCreateMovement() {
                 payment_status: 'paid',
                 amount_paid: totalSaleAmount,
                 total_amount: totalSaleAmount,
-                notes: `Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${(contact as any).name || 'Unknown'}.`,
+                notes: `[MV:${movement.id}] Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${(contact as any).name || 'Unknown'}.`,
               } as any)
               .select()
               .single();
@@ -512,22 +512,35 @@ export function useDeleteMovement() {
             .single();
 
           const notesText = movementFull?.notes || '';
-          // Match patterns: "Sales Order #XXXXXXXX" or "Fulfilled Sales Order #XXXXXXXX"
+
+          // Preferred: parse structured [SO:uuid] prefix for direct lookup
+          const structuredMatch = notesText.match(/\[SO:([0-9a-f-]{36})\]/i);
+          // Fallback: legacy pattern "Sales Order #XXXXXXXX" or "Fulfilled Sales Order #XXXXXXXX"
           const orderIdMatch = notesText.match(/(?:Sales Order|Fulfilled Sales Order)\s*#([a-f0-9]{8})/i);
           const orderShortId = orderIdMatch?.[1] || '';
-
-          // Also try the old approach (movement ID in sales_order notes) as fallback
           const movementShortId = id.slice(0, 8);
 
-          // Try both: order short ID from movement notes, or movement short ID in order notes
           let linkedOrders: any[] = [];
-          if (orderShortId) {
+
+          // 1. Try structured [SO:uuid] — exact match
+          if (structuredMatch?.[1]) {
+            const { data } = await supabase
+              .from('sales_orders')
+              .select('id, total_amount, rep_id, notes, commission_amount')
+              .eq('id', structuredMatch[1]);
+            linkedOrders = data || [];
+          }
+
+          // 2. Fallback: order short ID prefix match
+          if (linkedOrders.length === 0 && orderShortId) {
             const { data } = await supabase
               .from('sales_orders')
               .select('id, total_amount, rep_id, notes, commission_amount')
               .ilike('id', `${orderShortId}%`);
             linkedOrders = data || [];
           }
+
+          // 3. Fallback: movement short ID in order notes
           if (linkedOrders.length === 0) {
             const { data } = await supabase
               .from('sales_orders')
@@ -565,7 +578,7 @@ export function useDeleteMovement() {
 
                 if (repProfile) {
                   const oldBalance = Number((repProfile as any)?.credit_balance) || 0;
-                  const newBalance = oldBalance - commAmount;
+                  const newBalance = Math.round((oldBalance - commAmount) * 100) / 100;
 
                   await supabase
                     .from('profiles')

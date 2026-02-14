@@ -226,7 +226,7 @@ export default function OrderList() {
                                         <Badge variant={getStatusColor(order.status) as any} className="text-xs">{order.status}</Badge>
                                         <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
                                         {order.order_source === 'woocommerce' && (
-                                            <Badge variant="outline" className="text-[10px] bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
+                                            <Badge variant="outline" className="text-xs bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                         )}
                                         {!isRep && (
                                             <span className={`ml-auto text-sm font-medium ${(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -270,7 +270,7 @@ export default function OrderList() {
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
-                                                <Badge variant="outline" className="ml-1 text-[10px] py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
+                                                <Badge variant="outline" className="ml-1 text-xs py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell>
@@ -307,7 +307,7 @@ export default function OrderList() {
                                                         {(order.shipping_status || 'pending').replace('_', ' ')}
                                                     </Badge>
                                                     {order.tracking_number && (
-                                                        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
+                                                        <span className="text-xs font-mono text-muted-foreground truncate max-w-[100px]">
                                                             {order.tracking_number.slice(0, 14)}...
                                                         </span>
                                                     )}

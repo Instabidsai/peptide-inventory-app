@@ -61,6 +61,8 @@ export default function Finance() {
     // Batch Payment State
     const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
     const [batchPayAmount, setBatchPayAmount] = useState('');
+    const [isBatchPaying, setIsBatchPaying] = useState(false);
+    const [isBulkPaying, setIsBulkPaying] = useState(false);
 
     const toggleOrderSelection = (id: string) => {
         const newSelected = new Set(selectedOrders);
@@ -85,14 +87,20 @@ export default function Finance() {
     // ... logic ...
 
     const handleBulkSubmit = async () => {
-        const ordersToPay = orders?.filter(o => selectedOrders.has(o.id)) || [];
+        if (isBulkPaying) return; // Prevent double-click
+        setIsBulkPaying(true);
 
-        for (const order of ordersToPay) {
-            const totalCost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
-            const paid = order.amount_paid || 0;
-            const due = totalCost - paid;
+        try {
+            const ordersToPay = orders?.filter(o => selectedOrders.has(o.id)) || [];
 
-            if (due > 0.01) {
+            for (const order of ordersToPay) {
+                const totalCost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
+                const paid = order.amount_paid || 0;
+                const due = Math.round((totalCost - paid) * 100) / 100;
+
+                // Skip if already fully paid (idempotency check)
+                if (due <= 0.01 || order.payment_status === 'paid') continue;
+
                 await recordPayment.mutateAsync({
                     orderId: order.id,
                     amount: due,
@@ -102,17 +110,19 @@ export default function Finance() {
                     isFullPayment: true
                 });
             }
+            setIsBulkPayOpen(false);
+            setSelectedOrders(new Set());
+            setBulkPayData({ ...bulkPayData, note: '' });
+        } finally {
+            setIsBulkPaying(false);
         }
-        setIsBulkPayOpen(false);
-        setSelectedOrders(new Set());
-        setBulkPayData({ ...bulkPayData, note: '' });
     };
 
     // Calculate total for selected
-    const selectedTotal = orders?.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => {
-        const cost = (o.quantity_ordered * (o.estimated_cost_per_unit || 0));
+    const selectedTotal = Math.round((orders?.filter(o => selectedOrders.has(o.id)).reduce((sum, o) => {
+        const cost = Math.round((o.quantity_ordered * (o.estimated_cost_per_unit || 0)) * 100) / 100;
         return sum + (cost - (o.amount_paid || 0));
-    }, 0) || 0;
+    }, 0) || 0) * 100) / 100;
 
     // ... existing submit ...
 
@@ -223,42 +233,51 @@ export default function Finance() {
     }, {} as Record<string, { id: string, total: number, paid: number, due: number, orders: typeof orders }>) || {};
 
     const handleBatchPayment = async () => {
-        if (!selectedBatch || !batchPayAmount) return;
+        if (!selectedBatch || !batchPayAmount || isBatchPaying) return;
+        setIsBatchPaying(true);
 
-        const batch = batches[selectedBatch];
-        let remainingAmount = Number(batchPayAmount);
+        try {
+            const batch = batches[selectedBatch];
+            let remainingAmount = Number(batchPayAmount);
 
-        // Sort orders by due amount (smallest first? or oldest first? let's do oldest created_at)
-        // actually, standard accounting might strictly apply to specific invoices, but here we just want to burn down the "pool".
-        // Let's iterate through unpaid orders in the batch.
+            // Sort orders by due amount (smallest first? or oldest first? let's do oldest created_at)
+            // actually, standard accounting might strictly apply to specific invoices, but here we just want to burn down the "pool".
+            // Let's iterate through unpaid orders in the batch.
 
-        const unpaidInBatch = batch.orders
-            .filter(o => (o.quantity_ordered * (o.estimated_cost_per_unit || 0)) - (o.amount_paid || 0) > 0.01)
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const unpaidInBatch = batch.orders
+                .filter(o => {
+                    // Idempotency: skip already-paid orders
+                    if (o.payment_status === 'paid') return false;
+                    return (o.quantity_ordered * (o.estimated_cost_per_unit || 0)) - (o.amount_paid || 0) > 0.01;
+                })
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        for (const order of unpaidInBatch) {
-            if (remainingAmount <= 0) break;
+            for (const order of unpaidInBatch) {
+                if (remainingAmount <= 0) break;
 
-            const cost = (order.quantity_ordered * (order.estimated_cost_per_unit || 0));
-            const alreadyPaid = order.amount_paid || 0;
-            const due = cost - alreadyPaid;
+                const cost = Math.round((order.quantity_ordered * (order.estimated_cost_per_unit || 0)) * 100) / 100;
+                const alreadyPaid = order.amount_paid || 0;
+                const due = Math.round((cost - alreadyPaid) * 100) / 100;
 
-            const payAmount = Math.min(remainingAmount, due);
+                const payAmount = Math.round(Math.min(remainingAmount, due) * 100) / 100;
 
-            await recordPayment.mutateAsync({
-                orderId: order.id,
-                amount: payAmount,
-                method: 'wire', // Default or add selector
-                date: new Date().toISOString().split('T')[0],
-                note: `Batch Payment: ${selectedBatch}`,
-                isFullPayment: Math.abs(payAmount - due) < 0.01
-            });
+                await recordPayment.mutateAsync({
+                    orderId: order.id,
+                    amount: payAmount,
+                    method: 'wire', // Default or add selector
+                    date: new Date().toISOString().split('T')[0],
+                    note: `Batch Payment: ${selectedBatch}`,
+                    isFullPayment: Math.abs(payAmount - due) < 0.01
+                });
 
-            remainingAmount -= payAmount;
+                remainingAmount = Math.round((remainingAmount - payAmount) * 100) / 100;
+            }
+
+            setSelectedBatch(null);
+            setBatchPayAmount('');
+        } finally {
+            setIsBatchPaying(false);
         }
-
-        setSelectedBatch(null);
-        setBatchPayAmount('');
     };
 
     return (
@@ -547,8 +566,8 @@ export default function Finance() {
                                                     placeholder={`Max: ${batch.due.toFixed(2)}`}
                                                 />
                                             </div>
-                                            <Button onClick={handleBatchPayment} className="w-full">
-                                                Confirm Payment
+                                            <Button onClick={handleBatchPayment} className="w-full" disabled={isBatchPaying}>
+                                                {isBatchPaying ? 'Processing...' : 'Confirm Payment'}
                                             </Button>
                                         </div>
                                     </DialogContent>
@@ -611,7 +630,9 @@ export default function Finance() {
                                     <div className="pt-2 text-sm text-muted-foreground">
                                         Paying <strong>{selectedOrders.size}</strong> orders for a total of <strong>${selectedTotal.toFixed(2)}</strong>.
                                     </div>
-                                    <Button className="w-full mt-2" onClick={handleBulkSubmit}>Confirm Payment</Button>
+                                    <Button className="w-full mt-2" onClick={handleBulkSubmit} disabled={isBulkPaying}>
+                                        {isBulkPaying ? 'Processing...' : 'Confirm Payment'}
+                                    </Button>
                                 </div>
                             </DialogContent>
                         </Dialog>

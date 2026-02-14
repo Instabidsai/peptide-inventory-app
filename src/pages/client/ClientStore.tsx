@@ -58,7 +58,7 @@ export default function ClientStore() {
         },
     });
 
-    // Get the assigned rep for this client (for commission tracking)
+    // Get the assigned rep for this client (for commission tracking + pricing discount)
     const { data: assignedRep } = useQuery({
         queryKey: ['client_assigned_rep', contact?.id],
         queryFn: async () => {
@@ -68,7 +68,7 @@ export default function ClientStore() {
             if (!contactData.assigned_rep_id) return null;
             const { data } = await supabase
                 .from('profiles')
-                .select('id, full_name, commission_rate, price_multiplier, partner_tier')
+                .select('id, full_name, commission_rate, price_multiplier, partner_tier, pricing_mode, cost_plus_markup')
                 .eq('id', contactData.assigned_rep_id)
                 .single();
             return data;
@@ -76,8 +76,56 @@ export default function ClientStore() {
         enabled: !!contact?.id,
     });
 
+    // Fetch avg lot costs for cost_plus pricing (only if rep uses cost_plus mode)
+    const repPricingMode = (assignedRep as any)?.pricing_mode || 'percentage';
+    const { data: lotCosts } = useQuery({
+        queryKey: ['client_lot_costs'],
+        queryFn: async () => {
+            const { data: lots } = await (supabase as any)
+                .from('lots')
+                .select('peptide_id, cost_per_unit')
+                .gt('cost_per_unit', 0);
+            if (!lots) return {};
+            const costMap: Record<string, { total: number; count: number }> = {};
+            lots.forEach((l: any) => {
+                const pid = l.peptide_id;
+                if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
+                costMap[pid].total += Number(l.cost_per_unit);
+                costMap[pid].count += 1;
+            });
+            const result: Record<string, number> = {};
+            Object.entries(costMap).forEach(([pid, { total, count }]) => {
+                result[pid] = total / count;
+            });
+            return result;
+        },
+        enabled: !!assignedRep && repPricingMode === 'cost_plus',
+    });
+
+    // Calculate client price: if rep assigned, apply rep's pricing model; otherwise retail
+    const getClientPrice = (peptide: any): number => {
+        const retail = Number(peptide.retail_price || 0);
+        if (!assignedRep) return retail;
+
+        const rep = assignedRep as any;
+        const mode = rep.pricing_mode || 'percentage';
+        const multiplier = Number(rep.price_multiplier) || 1.0;
+        const markup = Number(rep.cost_plus_markup) || 0;
+
+        if (mode === 'cost_plus' && lotCosts) {
+            const avgCost = lotCosts[peptide.id] || 0;
+            if (avgCost > 0) {
+                return Math.round((avgCost + markup) * 100) / 100;
+            }
+            // Fallback to percentage if no lot cost data
+        }
+
+        // percentage mode
+        return Math.round(retail * multiplier * 100) / 100;
+    };
+
     const addToCart = (peptide: any) => {
-        const price = Number(peptide.retail_price || 0);
+        const price = getClientPrice(peptide);
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
@@ -207,10 +255,12 @@ export default function ClientStore() {
                 ) : (
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                         {filteredPeptides?.map((peptide: any) => {
-                            const price = Number(peptide.retail_price || 0);
+                            const price = getClientPrice(peptide);
+                            const retail = Number(peptide.retail_price || 0);
+                            const hasDiscount = assignedRep && price < retail;
                             const inCart = cart.find(i => i.peptide_id === peptide.id);
 
-                            if (price <= 0) return null; // Skip items without a price
+                            if (price <= 0 && retail <= 0) return null; // Skip items without a price
 
                             return (
                                 <GlassCard key={peptide.id} className="hover:border-primary/30 transition-colors">
@@ -221,9 +271,16 @@ export default function ClientStore() {
                                                 {peptide.sku && (
                                                     <p className="text-xs text-muted-foreground mt-0.5">SKU: {peptide.sku}</p>
                                                 )}
-                                                <p className="text-xl font-bold text-primary mt-1">
-                                                    ${price.toFixed(2)}
-                                                </p>
+                                                <div className="flex items-baseline gap-2 mt-1">
+                                                    <p className="text-xl font-bold text-primary">
+                                                        ${price.toFixed(2)}
+                                                    </p>
+                                                    {hasDiscount && (
+                                                        <span className="text-sm text-muted-foreground line-through">
+                                                            ${retail.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
                                                 {inCart ? (
@@ -233,6 +290,7 @@ export default function ClientStore() {
                                                             size="icon"
                                                             className="h-9 w-9"
                                                             onClick={() => updateQuantity(peptide.id, -1)}
+                                                            aria-label={`Decrease quantity of ${peptide.name}`}
                                                         >
                                                             <Minus className="h-4 w-4" />
                                                         </Button>
@@ -244,6 +302,7 @@ export default function ClientStore() {
                                                             size="icon"
                                                             className="h-9 w-9"
                                                             onClick={() => updateQuantity(peptide.id, 1)}
+                                                            aria-label={`Increase quantity of ${peptide.name}`}
                                                         >
                                                             <Plus className="h-4 w-4" />
                                                         </Button>
@@ -297,6 +356,7 @@ export default function ClientStore() {
                                             size="icon"
                                             className="h-8 w-8"
                                             onClick={() => updateQuantity(item.peptide_id, -1)}
+                                            aria-label={`Decrease quantity of ${item.name}`}
                                         >
                                             <Minus className="h-3.5 w-3.5" />
                                         </Button>
@@ -305,6 +365,7 @@ export default function ClientStore() {
                                             size="icon"
                                             className="h-8 w-8"
                                             onClick={() => updateQuantity(item.peptide_id, 1)}
+                                            aria-label={`Increase quantity of ${item.name}`}
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                         </Button>

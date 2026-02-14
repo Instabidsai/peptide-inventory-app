@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Peptide {
   id: string;
@@ -28,13 +29,16 @@ export interface UpdatePeptideInput extends Partial<CreatePeptideInput> {
 }
 
 export function usePeptides() {
+  const { user, profile } = useAuth();
+
   return useQuery({
-    queryKey: ['peptides'],
+    queryKey: ['peptides', profile?.org_id],
     queryFn: async () => {
       // 1. Fetch all peptides independent of bottles
       const { data: peptidesData, error: peptidesError } = await supabase
         .from('peptides')
         .select('*')
+        .eq('org_id', profile!.org_id!)
         .order('name');
 
       if (peptidesError) throw peptidesError;
@@ -42,11 +46,14 @@ export function usePeptides() {
       // 2. Fetch all lots to calculate true historical average cost
       const { data: lotsData, error: lotsError } = await supabase
         .from('lots')
-        .select('peptide_id, cost_per_unit');
+        .select('peptide_id, cost_per_unit')
+        .eq('org_id', profile!.org_id!);
 
       if (lotsError) throw lotsError;
 
       // 3. Fetch in-stock bottle counts via RPC (Bypass 1000-row limit)
+      // TODO: Pass org_id to get_peptide_stock_counts RPC for multi-tenant isolation,
+      // or ensure the RPC uses RLS / auth.uid() internally to scope results.
       const { data: stockCounts, error: stockError } = await supabase
         .rpc('get_peptide_stock_counts');
 
@@ -88,10 +95,13 @@ export function usePeptides() {
         };
       });
     },
+    enabled: !!user && !!profile?.org_id,
   });
 }
 
 export function usePeptide(id: string) {
+  const { user, profile } = useAuth();
+
   return useQuery({
     queryKey: ['peptides', id],
     queryFn: async () => {
@@ -99,12 +109,13 @@ export function usePeptide(id: string) {
         .from('peptides')
         .select('*')
         .eq('id', id)
+        .eq('org_id', profile!.org_id!)
         .single();
 
       if (error) throw error;
       return data as Peptide;
     },
-    enabled: !!id,
+    enabled: !!id && !!user && !!profile?.org_id,
   });
 }
 

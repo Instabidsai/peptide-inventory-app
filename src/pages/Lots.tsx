@@ -69,6 +69,7 @@ export default function Lots() {
 
   const form = useForm<LotFormData>({
     resolver: zodResolver(lotSchema),
+    mode: 'onBlur',
     defaultValues: {
       peptide_id: '',
       lot_number: '',
@@ -85,6 +86,7 @@ export default function Lots() {
 
   const editForm = useForm<LotFormData>({
     resolver: zodResolver(lotSchema),
+    mode: 'onBlur',
   });
 
   const filteredLots = lots?.filter((l) =>

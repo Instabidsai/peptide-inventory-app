@@ -201,7 +201,7 @@ export default function MovementWizard() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/movements')}>
+        <Button variant="ghost" size="icon" aria-label="Back to movements" onClick={() => navigate('/movements')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -442,6 +442,7 @@ export default function MovementWizard() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Remove bottle"
                             onClick={() => removeBottle(sb.bottle.id)}
                           >
                             <X className="h-4 w-4" />
@@ -518,13 +519,14 @@ export default function MovementWizard() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Remove extra item"
                         onClick={() => setExtraItems(extraItems.filter((_, i) => i !== idx))}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
-                  <div className="flex gap-2 justify-end text-[10px] text-muted-foreground">
+                  <div className="flex gap-2 justify-end text-xs text-muted-foreground">
                     Quick adjust:
                     <button onClick={() => {
                       const newItems = [...extraItems];

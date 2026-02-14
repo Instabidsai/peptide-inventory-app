@@ -89,11 +89,19 @@ export default function NewOrder() {
     }, [selectedContactId, contacts]);
 
     // Helper to get consistent Base Cost
+    // Uses the rep's pricing_mode to match PartnerStore pricing logic:
+    //   - 'cost_plus': avgCost + cost_plus_markup
+    //   - 'percentage' (default): avgCost * price_multiplier
     const getBaseCost = (peptide: Peptide, profile: any) => {
-        // Inventory Avg Cost + Overhead
         const avgCost = (peptide.avg_cost && peptide.avg_cost > 0) ? peptide.avg_cost : ((peptide as any).retail_price || 10.50);
-        const overhead = profile?.overhead_per_unit !== undefined ? profile.overhead_per_unit : 4.00;
-        return avgCost + overhead;
+        const pricingMode = profile?.pricing_mode || 'percentage';
+        if (pricingMode === 'cost_plus') {
+            const markup = Number(profile?.cost_plus_markup) || 0;
+            return Math.round((avgCost + markup) * 100) / 100;
+        }
+        // percentage mode: avgCost * price_multiplier
+        const multiplier = Number(profile?.price_multiplier) || 1.0;
+        return Math.round((avgCost * multiplier) * 100) / 100;
     };
 
     // Helper to generate Pricing Tiers
@@ -310,9 +318,12 @@ export default function NewOrder() {
                         <ShoppingCart className="h-5 w-5" />
                         Current Order
                     </CardTitle>
-                    {activeProfile?.price_multiplier !== 1 && (
+                    {activeProfile && (
                         <p className="text-xs text-muted-foreground">
-                            Pricing: (Base + ${activeProfile?.overhead_per_unit ?? 4.00} Overhead) x {activeProfile?.price_multiplier}
+                            {(activeProfile as any)?.pricing_mode === 'cost_plus'
+                                ? `Pricing: Avg Cost + $${Number((activeProfile as any)?.cost_plus_markup) || 0} markup`
+                                : `Pricing: Avg Cost x ${activeProfile?.price_multiplier || 1}`
+                            }
                         </p>
                     )}
                 </CardHeader>
@@ -405,7 +416,7 @@ export default function NewOrder() {
                                     <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-card">
                                         <div className="flex justify-between items-start">
                                             <span className="font-medium">{item.peptide.name}</span>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.peptide.id)}>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.peptide.id)} aria-label={`Remove ${item.peptide.name} from cart`}>
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
                                         </div>

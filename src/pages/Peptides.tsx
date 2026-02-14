@@ -351,10 +351,10 @@ export default function Peptides() {
                         {peptide.stock_count || 0} Vials
                       </Badge>
                       {(peptide.stock_count || 0) === 0 && (
-                        <span className="text-[10px] text-red-500 block">Out of Stock</span>
+                        <span className="text-xs text-red-500 block">Out of Stock</span>
                       )}
                       {(peptide.stock_count || 0) > 0 && (peptide.stock_count || 0) < 5 && (
-                        <span className="text-[10px] text-amber-500 block">Low Stock</span>
+                        <span className="text-xs text-amber-500 block">Low Stock</span>
                       )}
                     </TableCell>
                     <TableCell>

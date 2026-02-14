@@ -43,6 +43,10 @@ interface CartItem {
     quantity: number;
 }
 
+// Payment methods available in the partner store.
+// Merchant fee mapping (see order-profit.ts for fee exemption logic):
+//   'card' -> charged 5% merchant fee (maps to 'processor' in order-profit)
+//   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
 const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
@@ -89,6 +93,20 @@ export default function PartnerStore() {
                 .order('name');
             if (error) throw error;
             return data as any[];
+        },
+    });
+
+    // Fetch stock counts for display
+    const { data: stockCounts } = useQuery({
+        queryKey: ['partner_stock_counts'],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_peptide_stock_counts');
+            if (error) return {};
+            const result: Record<string, number> = {};
+            (data || []).forEach((item: any) => {
+                result[item.peptide_id] = Number(item.stock_count);
+            });
+            return result;
         },
     });
 
@@ -304,6 +322,8 @@ export default function PartnerStore() {
                                 const savings = retail - yourPrice;
                                 const inCart = cart.find(i => i.peptide_id === peptide.id);
 
+                                const stock = stockCounts?.[peptide.id] ?? null;
+
                                 return (
                                     <Card key={peptide.id} className="bg-card border-border hover:border-primary/30 transition-colors">
                                         <CardHeader className="pb-3">
@@ -314,11 +334,27 @@ export default function PartnerStore() {
                                                         <p className="text-xs text-muted-foreground mt-0.5">SKU: {peptide.sku}</p>
                                                     )}
                                                 </div>
-                                                {inCart && (
-                                                    <Badge variant="default" className="text-xs">
-                                                        {inCart.quantity} in cart
-                                                    </Badge>
-                                                )}
+                                                <div className="flex items-center gap-1.5">
+                                                    {stock !== null && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`text-xs ${
+                                                                stock === 0
+                                                                    ? 'text-red-500 border-red-500/30'
+                                                                    : stock < 5
+                                                                    ? 'text-amber-500 border-amber-500/30'
+                                                                    : 'text-green-500 border-green-500/30'
+                                                            }`}
+                                                        >
+                                                            {stock === 0 ? 'Out of Stock' : stock < 5 ? `${stock} Left` : 'In Stock'}
+                                                        </Badge>
+                                                    )}
+                                                    {inCart && (
+                                                        <Badge variant="default" className="text-xs">
+                                                            {inCart.quantity} in cart
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
@@ -393,6 +429,7 @@ export default function PartnerStore() {
                                                         size="icon"
                                                         className="h-9 w-9"
                                                         onClick={() => updateQuantity(item.peptide_id, -1)}
+                                                        aria-label={`Decrease quantity of ${item.name}`}
                                                     >
                                                         <Minus className="h-4 w-4" />
                                                     </Button>
@@ -404,6 +441,7 @@ export default function PartnerStore() {
                                                         size="icon"
                                                         className="h-9 w-9"
                                                         onClick={() => updateQuantity(item.peptide_id, 1)}
+                                                        aria-label={`Increase quantity of ${item.name}`}
                                                     >
                                                         <Plus className="h-4 w-4" />
                                                     </Button>
@@ -488,7 +526,7 @@ export default function PartnerStore() {
                                                         <code className="flex-1 text-sm font-mono bg-white dark:bg-background rounded px-2 py-1 border">
                                                             {ZELLE_EMAIL}
                                                         </code>
-                                                        <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0">
+                                                        <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0" aria-label="Copy Zelle email address">
                                                             {copiedZelle ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                                                         </Button>
                                                     </div>

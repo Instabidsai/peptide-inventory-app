@@ -156,6 +156,14 @@ export default function PartnerDashboard() {
     // Convert commission to store credit mutation
     const convertToCredit = useMutation({
         mutationFn: async (commissionId: string) => {
+            // Validate commission status before converting
+            const commission = commissions?.find((c: any) => c.id === commissionId);
+            if (commission?.status === 'paid') {
+                throw new Error('Commission already converted');
+            }
+            if (commission && commission.status !== 'available') {
+                throw new Error(`Cannot convert commission with status "${commission.status}". Only available commissions can be converted.`);
+            }
             const { error } = await supabase.rpc('convert_commission_to_credit', { commission_id: commissionId });
             if (error) throw error;
         },
@@ -339,7 +347,7 @@ export default function PartnerDashboard() {
                                                 Order #{comm.sale_id?.slice(0, 8) || 'N/A'}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="capitalize text-[10px]">
+                                                <Badge variant="outline" className="capitalize text-xs">
                                                     {comm.type.replace(/_/g, ' ')}
                                                 </Badge>
                                             </TableCell>
@@ -492,7 +500,7 @@ export default function PartnerDashboard() {
                                                 <p className="text-sm font-medium truncate">
                                                     Order #{comm.sale_id?.slice(0, 8) || 'N/A'}
                                                 </p>
-                                                <Badge variant="outline" className="capitalize text-[10px] shrink-0">
+                                                <Badge variant="outline" className="capitalize text-xs shrink-0">
                                                     {comm.type.replace(/_/g, ' ')}
                                                 </Badge>
                                             </div>
@@ -505,9 +513,21 @@ export default function PartnerDashboard() {
                                             }`}>
                                                 ${Number(comm.amount).toFixed(2)}
                                             </span>
-                                            <Badge variant={comm.status === 'paid' ? 'secondary' : comm.status === 'pending' ? 'outline' : 'default'} className="text-[10px]">
+                                            <Badge variant={comm.status === 'paid' ? 'secondary' : comm.status === 'pending' ? 'outline' : 'default'} className="text-xs">
                                                 {comm.status}
                                             </Badge>
+                                            {comm.status === 'available' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 text-xs px-2"
+                                                    disabled={convertToCredit.isPending}
+                                                    onClick={() => convertToCredit.mutate(comm.id)}
+                                                    aria-label={`Convert commission ${comm.id} to store credit`}
+                                                >
+                                                    {convertToCredit.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Convert'}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -562,7 +582,7 @@ export default function PartnerDashboard() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-lg font-bold text-red-500">${m.owed.toFixed(2)}</p>
-                                            <p className="text-[10px] text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground">
                                                 of ${m.subtotal.toFixed(2)}
                                                 {m.paid > 0 && ` (paid $${m.paid.toFixed(2)})`}
                                             </p>
@@ -801,7 +821,7 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                 <User className="h-3.5 w-3.5 text-blue-400" />
             </div>
             <span className="text-sm text-foreground/80 truncate">{client.name}</span>
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-500/30 text-blue-400 shrink-0">
+            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-blue-500/30 text-blue-400 shrink-0">
                 Customer
             </Badge>
         </div>
@@ -820,7 +840,7 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                     <p className="text-sm font-medium truncate">
                         {partner.full_name || partner.email}
                     </p>
-                    <p className="text-[10px] text-primary/70 capitalize">
+                    <p className="text-xs text-primary/70 capitalize">
                         {TIER_INFO[partner.partner_tier]?.label || 'Partner'}
                     </p>
                 </div>
@@ -829,7 +849,7 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                 <p className="text-xs font-medium">
                     ${Number(partner.total_sales).toFixed(2)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Sales</p>
+                <p className="text-xs text-muted-foreground">Sales</p>
             </div>
         </div>
     );
@@ -864,14 +884,14 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                 <span className="text-base">{TIER_INFO[rootTier]?.emoji || '⭐'}</span>
                 <div>
                     <p className="text-sm font-semibold">{rootName}</p>
-                    <p className="text-[10px] text-primary/70 capitalize">{TIER_INFO[rootTier]?.label || 'Partner'}</p>
+                    <p className="text-xs text-primary/70 capitalize">{TIER_INFO[rootTier]?.label || 'Partner'}</p>
                 </div>
             </div>
 
             {/* Root's own direct customers */}
             {rootClients.length > 0 && (
                 <div className="ml-3 mb-1">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
                         My Customers ({rootClients.length})
                     </p>
                     {rootClients.map(client => renderClientRow(client, 1))}
@@ -881,7 +901,7 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
             {/* Partners + their customers */}
             {partners.length > 0 && (
                 <div className="ml-3">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
                         Team Partners ({partners.filter(p => p.depth === 1).length})
                     </p>
                     {renderBranch(null, 1)}
@@ -973,7 +993,7 @@ function DownlineActivity({ downline }: { downline: PartnerNode[] }) {
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="font-bold text-sm text-primary">${Number(sale.total_amount).toFixed(2)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{getTimeAgo(sale.created_at)}</p>
+                                        <p className="text-xs text-muted-foreground">{getTimeAgo(sale.created_at)}</p>
                                     </div>
                                 </div>
                             );

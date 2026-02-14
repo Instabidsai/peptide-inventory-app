@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type ContactType = 'customer' | 'partner' | 'internal';
 
@@ -36,19 +37,13 @@ export interface CreateContactInput {
 }
 
 export function useContacts(type?: ContactType) {
-  return useQuery({
-    queryKey: ['contacts', type],
-    queryFn: async () => {
-      // Get current user to check role
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+  const { user, profile } = useAuth();
 
-      // Check role directly for speed (or rely on RLS, but frontend filtering is safer UI feedback)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+  return useQuery({
+    queryKey: ['contacts', type, profile?.org_id],
+    queryFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      if (!profile?.org_id) throw new Error('No organization found');
 
       let query = supabase
         .from('contacts')
@@ -60,6 +55,7 @@ export function useContacts(type?: ContactType) {
           ),
           sales_orders:sales_orders!client_id (id, created_at)
         `)
+        .eq('org_id', profile.org_id)
         .order('name');
 
       if (type) {
@@ -87,10 +83,13 @@ export function useContacts(type?: ContactType) {
       if (error) throw error;
       return data as Contact[];
     },
+    enabled: !!user && !!profile?.org_id,
   });
 }
 
 export function useContact(id: string) {
+  const { user, profile } = useAuth();
+
   return useQuery({
     queryKey: ['contacts', id],
     queryFn: async () => {
@@ -104,12 +103,13 @@ export function useContact(id: string) {
           )
         `)
         .eq('id', id)
+        .eq('org_id', profile!.org_id!)
         .single();
 
       if (error) throw error;
       return data as Contact;
     },
-    enabled: !!id,
+    enabled: !!id && !!user && !!profile?.org_id,
   });
 }
 
@@ -181,26 +181,29 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Manual Cascade Delete
-      // 1. Delete dependent sales_orders (which caused the error)
+      // IMPORTANT: This cascade delete should ideally be a single DB transaction
+      // (e.g., a Supabase RPC/stored procedure) to guarantee atomicity.
+      // If any step fails, earlier deletes cannot be rolled back from the client.
+
+      // Step 1: Delete dependent sales_orders
       const { error: soError } = await supabase.from('sales_orders').delete().eq('client_id', id);
-      if (soError) console.error('Error deleting sales_orders:', soError); // Log but try proceed? Or throw?
+      if (soError) throw new Error(`Failed to delete related sales orders: ${soError.message}`);
 
-      // 2. Delete dependent movements
+      // Step 2: Delete dependent movements
       const { error: movError } = await supabase.from('movements').delete().eq('contact_id', id);
-      if (movError) console.error('Error deleting movements:', movError);
+      if (movError) throw new Error(`Failed to delete related movements: ${movError.message}`);
 
-      // 3. Delete dependent client_inventory
+      // Step 3: Delete dependent client_inventory
       const { error: invError } = await supabase.from('client_inventory').delete().eq('contact_id', id);
-      if (invError) console.error('Error deleting client_inventory:', invError);
+      if (invError) throw new Error(`Failed to delete related inventory: ${invError.message}`);
 
-      // 4. Finally delete the contact
+      // Step 4: Finally delete the contact
       const { error } = await supabase
         .from('contacts')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) throw new Error(`Failed to delete contact: ${error.message}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });

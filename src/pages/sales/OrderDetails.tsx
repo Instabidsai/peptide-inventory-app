@@ -181,7 +181,7 @@ export default function OrderDetails() {
                                         }`}>
                                             <step.icon className="h-4 w-4" />
                                         </div>
-                                        <span className={`text-[10px] font-medium ${step.done ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                        <span className={`text-xs font-medium ${step.done ? 'text-green-600' : 'text-muted-foreground'}`}>
                                             {step.label}
                                         </span>
                                     </div>
@@ -381,6 +381,7 @@ export default function OrderDetails() {
                                             {order.tracking_number}
                                         </code>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                                            aria-label="Copy tracking number"
                                             onClick={() => {
                                                 navigator.clipboard.writeText(order.tracking_number);
                                                 toast({ title: 'Copied tracking number' });
@@ -534,12 +535,19 @@ export default function OrderDetails() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
+                        {/* Payment methods:
+                            'card'/'processor' -> 5% merchant fee
+                            'zelle', 'cashapp', 'venmo', 'wire', 'cash' -> NO merchant fee
+                            'credit' -> store credit, no fee */}
                         <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Payment method" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="processor">Payment Processor (5% fee)</SelectItem>
+                                <SelectItem value="zelle">Zelle (no fee)</SelectItem>
+                                <SelectItem value="cashapp">Cash App (no fee)</SelectItem>
+                                <SelectItem value="venmo">Venmo (no fee)</SelectItem>
                                 <SelectItem value="cash">Cash (no fee)</SelectItem>
                                 <SelectItem value="wire">Wire Transfer (no fee)</SelectItem>
                                 <SelectItem value="credit">Store Credit (no fee)</SelectItem>

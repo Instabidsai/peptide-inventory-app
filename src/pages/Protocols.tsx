@@ -196,7 +196,7 @@ export default function Protocols() {
                                                 <div className="text-sm">
                                                     <span className="font-semibold">{item.peptideName}</span>: {item.dosageAmount}{item.dosageUnit} {item.frequency} for {item.duration} days ({item.costMultiplier}x)
                                                 </div>
-                                                <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
+                                                <Button variant="ghost" size="icon" aria-label="Remove item" onClick={() => removeItem(idx)}>
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
                                             </div>

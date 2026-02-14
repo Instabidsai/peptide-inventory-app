@@ -234,6 +234,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                 <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Archive request"
                     className="h-8 w-8 text-muted-foreground"
                     title="Archive"
                     onClick={() => onUpdate(req.id, 'archived')}
@@ -246,6 +247,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                 <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Reject request"
                     className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     title="Reject"
                     onClick={() => onUpdate(req.id, 'rejected', notes, voiceBlob)}

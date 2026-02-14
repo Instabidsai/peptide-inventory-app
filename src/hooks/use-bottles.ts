@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type BottleStatus = 'in_stock' | 'sold' | 'given_away' | 'internal_use' | 'lost' | 'returned' | 'expired';
 
@@ -34,12 +35,15 @@ export interface UpdateBottleInput {
 }
 
 export function useBottles(filters?: { status?: BottleStatus; peptide_id?: string }) {
+  const { user, profile } = useAuth();
+
   return useQuery({
-    queryKey: ['bottles', filters],
+    queryKey: ['bottles', filters, profile?.org_id],
     queryFn: async () => {
       let query = supabase
         .from('bottles')
         .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
+        .eq('org_id', profile!.org_id!)
         .order('created_at', { ascending: false });
 
       if (filters?.status) {
@@ -58,10 +62,13 @@ export function useBottles(filters?: { status?: BottleStatus; peptide_id?: strin
 
       return result;
     },
+    enabled: !!user && !!profile?.org_id,
   });
 }
 
 export function useBottle(id: string) {
+  const { user, profile } = useAuth();
+
   return useQuery({
     queryKey: ['bottles', id],
     queryFn: async () => {
@@ -69,16 +76,19 @@ export function useBottle(id: string) {
         .from('bottles')
         .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('id', id)
+        .eq('org_id', profile!.org_id!)
         .single();
 
       if (error) throw error;
       return data as Bottle;
     },
-    enabled: !!id,
+    enabled: !!id && !!user && !!profile?.org_id,
   });
 }
 
 export function useBottleByUid(uid: string) {
+  const { user, profile } = useAuth();
+
   return useQuery({
     queryKey: ['bottles', 'uid', uid],
     queryFn: async () => {
@@ -86,12 +96,13 @@ export function useBottleByUid(uid: string) {
         .from('bottles')
         .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('uid', uid)
+        .eq('org_id', profile!.org_id!)
         .maybeSingle();
 
       if (error) throw error;
       return data as Bottle | null;
     },
-    enabled: !!uid && uid.length >= 3,
+    enabled: !!uid && uid.length >= 3 && !!user && !!profile?.org_id,
   });
 }
 
@@ -147,9 +158,13 @@ export function useUpdateBottles() {
 }
 
 export function useBottleStats() {
+  const { user, profile } = useAuth();
+
   return useQuery({
-    queryKey: ['bottles', 'stats'],
+    queryKey: ['bottles', 'stats', profile?.org_id],
     queryFn: async () => {
+      // TODO: Pass org_id to get_bottle_stats RPC for multi-tenant isolation,
+      // or ensure the RPC uses RLS / auth.uid() internally to scope results.
       const { data, error } = await supabase.rpc('get_bottle_stats');
 
       if (error) throw error;
@@ -176,6 +191,7 @@ export function useBottleStats() {
 
       return stats;
     },
+    enabled: !!user && !!profile?.org_id,
   });
 }
 

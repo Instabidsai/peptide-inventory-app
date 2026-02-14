@@ -80,6 +80,7 @@ export default function Contacts() {
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
+    mode: 'onBlur',
     defaultValues: { name: '', email: '', phone: '', type: 'customer', company: '', address: '', notes: '', assigned_rep_id: '' },
   });
 

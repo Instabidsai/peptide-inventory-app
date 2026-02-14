@@ -49,7 +49,7 @@ export function useFinancialMetrics() {
 
                 if (salesError) throw salesError;
 
-                const salesRevenue = sales?.reduce((sum, s) => sum + (s.amount_paid || 0), 0) || 0;
+                const salesRevenue = Math.round((sales?.reduce((sum, s) => sum + (s.amount_paid || 0), 0) || 0) * 100) / 100;
 
                 // Calculate COGS (Cost of sold items)
                 const saleIds = sales?.map(s => s.id) || [];
@@ -87,11 +87,11 @@ export function useFinancialMetrics() {
                         // We need to map item -> bottle -> lot -> cost
                         const bottleLotMap = new Map(soldBottles?.map(b => [b.id, b.lot_id]) || []);
 
-                        cogs = saleItems?.reduce((sum, item) => {
+                        cogs = Math.round((saleItems?.reduce((sum, item) => {
                             const lotId = bottleLotMap.get(item.bottle_id);
                             if (!lotId) return sum;
                             return sum + (soldLotMap.get(lotId) || 0);
-                        }, 0) || 0;
+                        }, 0) || 0) * 100) / 100;
                     }
                 }
 
@@ -131,10 +131,10 @@ export function useFinancialMetrics() {
                         const overLotMap = new Map(overLots?.map(l => [l.id, l.cost_per_unit]) || []);
                         const bottleLotMap = new Map(overBottles?.map(b => [b.id, b.lot_id]) || []);
 
-                        internalOverhead = overItems?.reduce((sum, item) => {
+                        internalOverhead = Math.round((overItems?.reduce((sum, item) => {
                             const lotId = bottleLotMap.get(item.bottle_id);
                             return sum + (overLotMap.get(lotId!) || 0);
-                        }, 0) || 0;
+                        }, 0) || 0) * 100) / 100;
                     }
                 }
 
@@ -177,12 +177,12 @@ export function useFinancialMetrics() {
                     }
                 });
 
-                const commissionsTotal = commissionsPaid + commissionsOwed + commissionsApplied;
+                const commissionsTotal = Math.round((commissionsPaid + commissionsOwed + commissionsApplied) * 100) / 100;
 
                 // Pending + Applied commissions are real costs not yet in expenses table.
                 // Paid commissions are already recorded as expenses (category: 'commission'),
                 // so they're already inside operatingExpenses. Don't double-count them.
-                const unrealizedCommissionCost = commissionsOwed + commissionsApplied;
+                const unrealizedCommissionCost = Math.round((commissionsOwed + commissionsApplied) * 100) / 100;
 
                 // Total Cash Outflow = Ops + Inventory
                 // Total Overhead (for Cash Flow) = Internal + Ops + Inventory + Unrealized Commissions
@@ -194,21 +194,21 @@ export function useFinancialMetrics() {
                     .select('merchant_fee, profit_amount, cogs_amount')
                     .neq('status', 'cancelled');
 
-                const merchantFees = orderAgg?.reduce((s, o: any) => s + Number(o.merchant_fee || 0), 0) || 0;
-                const orderBasedProfit = orderAgg?.reduce((s, o: any) => s + Number(o.profit_amount || 0), 0) || 0;
-                const orderBasedCogs = orderAgg?.reduce((s, o: any) => s + Number(o.cogs_amount || 0), 0) || 0;
+                const merchantFees = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
+                const orderBasedProfit = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
+                const orderBasedCogs = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
 
                 return {
                     inventoryValue,
                     salesRevenue,
                     cogs,
-                    overhead: internalOverhead + operatingExpenses + unrealizedCommissionCost, // Operational Overhead (now includes commission liability)
+                    overhead: Math.round((internalOverhead + operatingExpenses + unrealizedCommissionCost) * 100) / 100, // Operational Overhead (now includes commission liability)
                     inventoryPurchases: inventoryExpenses,
-                    netProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses + unrealizedCommissionCost), // True Net (Cash Flow)
-                    operatingProfit: salesRevenue - cogs - (internalOverhead + operatingExpenses + unrealizedCommissionCost), // Operational Profit (includes commission liability)
-                    commissionsPaid,
-                    commissionsOwed,
-                    commissionsApplied,
+                    netProfit: Math.round((salesRevenue - cogs - (internalOverhead + operatingExpenses + inventoryExpenses + unrealizedCommissionCost)) * 100) / 100, // True Net (Cash Flow)
+                    operatingProfit: Math.round((salesRevenue - cogs - (internalOverhead + operatingExpenses + unrealizedCommissionCost)) * 100) / 100, // Operational Profit (includes commission liability)
+                    commissionsPaid: Math.round(commissionsPaid * 100) / 100,
+                    commissionsOwed: Math.round(commissionsOwed * 100) / 100,
+                    commissionsApplied: Math.round(commissionsApplied * 100) / 100,
                     commissionsTotal,
                     merchantFees,
                     orderBasedProfit,

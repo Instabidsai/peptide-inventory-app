@@ -26,7 +26,7 @@ export function AppLayout() {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-background/80 z-40 lg:hidden"
+          className="fixed inset-0 bg-background/80 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -50,17 +50,18 @@ export function AppLayout() {
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-          <nav className="flex justify-around items-center h-14">
+          <nav className="flex justify-around items-center h-16">
             {partnerNav.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors"
+                  aria-current={isActive ? 'page' : undefined}
+                  className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                 >
-                  <item.icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
-                  <span className={cn("text-[10px] font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
+                  <item.icon className={cn("h-6 w-6", isActive ? "text-primary" : "text-muted-foreground")} />
+                  <span className={cn("text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
                     {item.name}
                   </span>
                 </NavLink>

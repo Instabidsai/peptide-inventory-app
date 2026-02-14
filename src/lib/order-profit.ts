@@ -38,6 +38,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
     let cogsAmount = 0;
 
     if (peptideIds.length > 0) {
+        // TODO: Use actual FIFO lot cost when bottle->lot mapping is available in order items
         const { data: lots } = await supabase
             .from('lots')
             .select('peptide_id, cost_per_unit')
@@ -57,29 +58,31 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
 
         for (const item of items) {
             const cost = avgCosts.get(item.peptide_id) || 0;
-            cogsAmount += cost * (item.quantity || 0);
+            cogsAmount += Math.round(cost * (item.quantity || 0) * 100) / 100;
         }
     }
 
-    // 3. Determine merchant fee
-    const isPaid = order.payment_status === 'paid';
+    // 3. Determine merchant fee — always calculate for accurate profit estimates,
+    // even before payment is received. Exempt payment methods still skip the fee.
     const isExempt = FEE_EXEMPT_METHODS.includes(order.payment_method || '');
-    const merchantFee = (isPaid && !isExempt)
-        ? (order.total_amount || 0) * MERCHANT_FEE_RATE
+    const merchantFee = !isExempt
+        ? Math.round((order.total_amount || 0) * MERCHANT_FEE_RATE * 100) / 100
         : 0;
 
-    // 4. Calculate profit
-    const profitAmount = (order.total_amount || 0)
+    // 4. Calculate profit (round each component and the final result)
+    const profitAmount = Math.round(
+        ((order.total_amount || 0)
         - cogsAmount
         - (order.shipping_cost || 0)
         - (order.commission_amount || 0)
-        - merchantFee;
+        - merchantFee) * 100
+    ) / 100;
 
     // 5. Update the order
     const { error: updateErr } = await supabase
         .from('sales_orders')
         .update({
-            cogs_amount: cogsAmount,
+            cogs_amount: Math.round(cogsAmount * 100) / 100,
             merchant_fee: merchantFee,
             profit_amount: profitAmount,
         } as any)

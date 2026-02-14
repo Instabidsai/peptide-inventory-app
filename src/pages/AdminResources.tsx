@@ -304,7 +304,7 @@ export default function AdminResources() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     {viewMode === 'list' && (
-                        <Button variant="ghost" size="icon" onClick={() => { setSelectedTheme(null); setViewMode('themes'); }} className="mr-2">
+                        <Button variant="ghost" size="icon" aria-label="Back to themes" onClick={() => { setSelectedTheme(null); setViewMode('themes'); }} className="mr-2">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     )}
@@ -363,6 +363,7 @@ export default function AdminResources() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        aria-label="Edit theme"
                                                         className="h-8 w-8 hover:bg-muted"
                                                         onClick={() => handleEditTheme(theme)}
                                                         title="Edit Theme"
@@ -372,6 +373,7 @@ export default function AdminResources() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        aria-label="Delete theme"
                                                         className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                                                         onClick={() => setDeletingItem({ id: theme.id, name: theme.name, type: 'theme' })}
                                                         title="Delete Theme"
@@ -423,10 +425,10 @@ export default function AdminResources() {
                                                 <Icon className="h-5 w-5 text-foreground" />
                                             </div>
                                             <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditResource(resource)}>
+                                                <Button variant="ghost" size="icon" aria-label="Edit resource" className="h-8 w-8" onClick={() => handleEditResource(resource)}>
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => {
+                                                <Button variant="ghost" size="icon" aria-label="Delete resource" className="h-8 w-8 hover:text-destructive" onClick={() => {
                                                     setDeletingItem({ id: resource.id, name: resource.title, type: 'resource' });
                                                 }}>
                                                     <Trash2 className="h-4 w-4" />

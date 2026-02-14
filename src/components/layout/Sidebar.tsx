@@ -108,6 +108,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           variant="ghost"
           size="icon"
           className="lg:hidden text-sidebar-foreground"
+          aria-label="Close menu"
           onClick={onClose}
         >
           <X className="h-5 w-5" />
@@ -161,7 +162,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
                 <span className="flex-1">{item.name}</span>
                 {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg shadow-red-500/30 px-1">
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-500/30 px-1">
                     {pendingRequestCount}
                   </span>
                 )}

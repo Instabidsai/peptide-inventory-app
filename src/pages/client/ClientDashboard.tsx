@@ -253,21 +253,21 @@ function ClientDashboardContent() {
 
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.protein }}>
+                                        <div className="flex justify-between text-xs font-medium" style={{ color: MACRO_COLORS.protein }}>
                                             <span>Protein</span>
                                             <span>{Math.round(dailyMacros?.protein || 0)}/{userGoals?.protein_target}g</span>
                                         </div>
                                         <Progress value={Math.min(100, ((dailyMacros?.protein || 0) / (userGoals?.protein_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.protein }} />
                                     </div>
                                     <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.carbs }}>
+                                        <div className="flex justify-between text-xs font-medium" style={{ color: MACRO_COLORS.carbs }}>
                                             <span>Carbs</span>
                                             <span>{Math.round(dailyMacros?.carbs || 0)}/{userGoals?.carbs_target}g</span>
                                         </div>
                                         <Progress value={Math.min(100, ((dailyMacros?.carbs || 0) / (userGoals?.carbs_target || 1)) * 100)} className="h-2.5" style={{ backgroundColor: MACRO_COLORS_LIGHT.carbs }} />
                                     </div>
                                     <div className="space-y-1">
-                                        <div className="flex justify-between text-[10px] font-medium" style={{ color: MACRO_COLORS.fat }}>
+                                        <div className="flex justify-between text-xs font-medium" style={{ color: MACRO_COLORS.fat }}>
                                             <span>Fat</span>
                                             <span>{Math.round(dailyMacros?.fat || 0)}/{userGoals?.fat_target}g</span>
                                         </div>
