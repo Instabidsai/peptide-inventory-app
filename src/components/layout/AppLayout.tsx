@@ -4,8 +4,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
-import { AnimatePresence, motion } from 'framer-motion';
-// Note: Page transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
+// Note: framer-motion transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
 import { LayoutDashboard, ShoppingBag, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,18 +23,12 @@ export function AppLayout() {
     <div className="min-h-screen bg-background">
       <CommandPalette />
       {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

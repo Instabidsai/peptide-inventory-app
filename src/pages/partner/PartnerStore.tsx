@@ -624,7 +624,7 @@ export default function PartnerStore() {
             {/* Floating cart summary bar — mobile only, shown when cart has items */}
             {cart.length > 0 && (
                 <div className="fixed bottom-14 left-0 right-0 lg:hidden z-30 px-4 pb-2">
-                    <Card className="shadow-lg border-primary/30 bg-card/95 backdrop-blur-sm">
+                    <Card className="shadow-lg border-primary/30 bg-card">
                         <CardContent className="flex items-center justify-between py-3 px-4">
                             <div>
                                 <p className="text-sm font-bold">
