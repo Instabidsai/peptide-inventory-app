@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, ListChecks, BookOpen, Settings, Utensils, Scale, MessageSquare, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -56,15 +56,11 @@ export function ClientLayout() {
     });
 
     const navItems: Array<{ label: string; icon: typeof Home; path: string; hasBadge?: boolean }> = [
-        { label: 'Home', icon: Home, path: '/dashboard' },
+        { label: 'Today', icon: Home, path: '/dashboard', hasBadge: !!(unreadFeedback && unreadFeedback > 0) },
         { label: 'Store', icon: ShoppingBag, path: '/store' },
+        { label: 'Learn', icon: BookOpen, path: '/resources' },
         { label: 'Orders', icon: Package, path: '/my-orders' },
-        { label: 'Regimen', icon: ListChecks, path: '/my-regimen', hasBadge: !!(unreadFeedback && unreadFeedback > 0) },
-        { label: 'Macros', icon: Utensils, path: '/macro-tracker' },
-        { label: 'Body', icon: Scale, path: '/body-composition' },
-        { label: 'Resources', icon: BookOpen, path: '/resources' },
-        { label: 'Messages', icon: MessageSquare, path: '/messages' },
-        { label: 'Settings', icon: Settings, path: '/account' },
+        { label: 'Menu', icon: Menu, path: '/menu' },
     ];
 
     return (
@@ -112,7 +108,9 @@ export function ClientLayout() {
             <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md z-40 pb-safe">
                 <nav className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
-                        const isActive = location.pathname === item.path;
+                        const isActive = item.path === '/menu'
+                            ? ['/menu', '/account', '/health', '/messages', '/community', '/my-regimen', '/macro-tracker', '/body-composition', '/notifications'].includes(location.pathname)
+                            : location.pathname === item.path;
                         return (
                             <button
                                 key={item.path}

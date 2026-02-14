@@ -68,6 +68,8 @@ const ClientStore = lazyRetry(() => import("./pages/client/ClientStore"));
 const ClientOrders = lazyRetry(() => import("./pages/client/ClientOrders"));
 const CheckoutSuccess = lazyRetry(() => import("./pages/checkout/CheckoutSuccess"));
 const CheckoutCancel = lazyRetry(() => import("./pages/checkout/CheckoutCancel"));
+const ClientMenu = lazyRetry(() => import("./pages/client/ClientMenu"));
+const HealthTracking = lazyRetry(() => import("./pages/client/HealthTracking"));
 
 const queryClient = new QueryClient();
 
@@ -112,6 +114,8 @@ const App = () => (
                                 <Route path="/my-orders" element={<ClientOrders />} />
                                 <Route path="/checkout/success" element={<CheckoutSuccess />} />
                                 <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+                                <Route path="/menu" element={<ClientMenu />} />
+                                <Route path="/health" element={<HealthTracking />} />
                             </Route>
 
                             <Route element={
