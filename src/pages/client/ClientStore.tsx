@@ -263,7 +263,7 @@ export default function ClientStore() {
                             if (price <= 0 && retail <= 0) return null; // Skip items without a price
 
                             return (
-                                <GlassCard key={peptide.id} className="hover:border-primary/30 transition-colors">
+                                <GlassCard key={peptide.id} className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
@@ -329,7 +329,7 @@ export default function ClientStore() {
 
             {/* Cart Summary — Fixed Bottom Card */}
             {cart.length > 0 && (
-                <GlassCard className="border-primary/20 shadow-lg">
+                <GlassCard className="border-primary/20 shadow-lg shadow-primary/5 ring-1 ring-primary/10">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-lg">
                             <ShoppingCart className="h-5 w-5" />
@@ -406,7 +406,7 @@ export default function ClientStore() {
 
                         {/* Checkout with Payment */}
                         <Button
-                            className="w-full"
+                            className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                             size="lg"
                             onClick={handleCheckout}
                             disabled={checkout.isPending || cart.length === 0}
@@ -423,7 +423,7 @@ export default function ClientStore() {
             )}
 
             {/* Info card */}
-            <Card className="bg-muted/30 border-muted">
+            <Card className="bg-muted/20 border-muted/50">
                 <CardContent className="pt-4">
                     <div className="flex items-start gap-3">
                         <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />

@@ -145,7 +145,7 @@ export default function AdminDashboard() {
             </motion.div>
 
             {/* Financial View Toggle */}
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-md w-fit">
+            <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg w-fit border border-border/50">
                 <button
                     onClick={() => setViewMode('operations')}
                     className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${isOps ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
@@ -165,10 +165,10 @@ export default function AdminDashboard() {
             {/* Financial Overview - 4 cards, always in a clean grid */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/lots">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Inventory Asset Value</CardTitle>
-                            <DollarSign className="h-4 w-4 text-primary" />
+                            <DollarSign className="h-5 w-5 text-primary" />
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -180,10 +180,10 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=sale">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Sales Revenue</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-green-500" />
+                            <TrendingUp className="h-5 w-5 text-green-500" />
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -195,12 +195,12 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 {/* Card 3: Overhead / Total Investment */}
-                <motion.div variants={staggerItem}><Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/10 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">
                             {isOps ? 'Operational Overhead' : 'Total Investment'}
                         </CardTitle>
-                        <PieChart className={`h-4 w-4 ${isOps ? 'text-orange-500' : 'text-red-500'}`} />
+                        <PieChart className={`h-5 w-5 ${isOps ? 'text-orange-500' : 'text-red-500'}`} />
                     </CardHeader>
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -218,12 +218,12 @@ export default function AdminDashboard() {
                 </Card></motion.div>
 
                 {/* Card 4: Operating Profit / Net Position */}
-                <motion.div variants={staggerItem}><Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">
                             {isOps ? 'Operating Profit' : 'Net Position'}
                         </CardTitle>
-                        <DollarSign className="h-4 w-4 text-blue-500" />
+                        <DollarSign className="h-5 w-5 text-blue-500" />
                     </CardHeader>
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -246,10 +246,10 @@ export default function AdminDashboard() {
             {/* Pending Orders Row */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/orders?status=pending">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-                            <ClipboardList className="h-4 w-4 text-amber-500" />
+                            <ClipboardList className="h-5 w-5 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             {pendingCountLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -261,10 +261,10 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/orders?status=pending">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">On Order Value</CardTitle>
-                            <DollarSign className="h-4 w-4 text-amber-500" />
+                            <DollarSign className="h-5 w-5 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             {pendingValueLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -276,10 +276,10 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/admin/commissions">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Commissions</CardTitle>
-                            <Users className="h-4 w-4 text-purple-500" />
+                            <Users className="h-5 w-5 text-purple-500" />
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
@@ -311,10 +311,10 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/sales?source=woocommerce">
-                    <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">WooCommerce</CardTitle>
-                            <ShoppingCart className="h-4 w-4 text-purple-500" />
+                            <ShoppingCart className="h-5 w-5 text-purple-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{wooOrderCount.data || 0}</div>
@@ -331,7 +331,7 @@ export default function AdminDashboard() {
             {/* Per-Order Profit Summary */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}>
             <Link to="/sales">
-                <Card className="bg-card border-border hover:bg-accent/50 transition-colors cursor-pointer">
+                <Card className="bg-card/80 border-border/50 hover:border-primary/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">Sales Order P&L</CardTitle>
                         <CardDescription>Aggregated from individual order profit tracking</CardDescription>
@@ -636,7 +636,7 @@ export default function AdminDashboard() {
                                 {recentMovements.map((movement) => (
                                     <div
                                         key={movement.id}
-                                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
+                                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/30"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 rounded-full bg-primary/10">

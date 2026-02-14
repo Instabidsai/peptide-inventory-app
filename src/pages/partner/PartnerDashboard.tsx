@@ -204,7 +204,7 @@ export default function PartnerDashboard() {
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-muted-foreground">Manage your team and track your earnings.</p>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs border-primary/30 bg-primary/5">
                         {tierInfo.emoji} {tierInfo.label}
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
@@ -220,7 +220,7 @@ export default function PartnerDashboard() {
             {/* Stats Overview — Clickable Cards */}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 <Card
-                    className="border-green-500/20 bg-green-500/5 cursor-pointer hover:bg-green-500/10 transition-colors"
+                    className="border-green-500/20 bg-gradient-to-br from-green-500/10 to-green-500/5 cursor-pointer hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300"
                     onClick={() => setActiveSheet('commissions')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -236,7 +236,7 @@ export default function PartnerDashboard() {
                     </CardContent>
                 </Card>
                 <Card
-                    className="border-amber-500/20 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                    className="border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 cursor-pointer hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300"
                     onClick={() => setActiveSheet('commissions')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -249,7 +249,7 @@ export default function PartnerDashboard() {
                     </CardContent>
                 </Card>
                 <Card
-                    className={`cursor-pointer transition-colors ${(totalOwed) > 0 ? 'border-red-500/20 bg-red-500/5 hover:bg-red-500/10' : 'border-border hover:bg-muted/50'}`}
+                    className={`cursor-pointer transition-all duration-300 ${(totalOwed) > 0 ? 'border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/10' : 'border-border hover:bg-muted/30 hover:border-border/60'}`}
                     onClick={() => setActiveSheet('owed')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -266,7 +266,7 @@ export default function PartnerDashboard() {
                     </CardContent>
                 </Card>
                 <Card
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer hover:bg-muted/30 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
                     onClick={() => setActiveSheet('earnings')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -278,7 +278,7 @@ export default function PartnerDashboard() {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">All time <ChevronRight className="h-3 w-3" /></p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">My Network</CardTitle>
                         <Users className="h-4 w-4 text-blue-500" />
@@ -294,7 +294,7 @@ export default function PartnerDashboard() {
 
             {/* Apply Commission Banner — shown when available commissions AND owed exist */}
             {(stats.available + creditBalance) > 0 && totalOwed > 0 && (
-                <Card className="border-primary/30 bg-primary/5">
+                <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 shadow-sm shadow-primary/5">
                     <CardContent className="flex items-center justify-between py-4">
                         <div className="flex items-center gap-3">
                             <ArrowRightLeft className="h-5 w-5 text-primary" />
@@ -979,7 +979,7 @@ function DownlineActivity({ downline }: { downline: PartnerNode[] }) {
                             const itemCount = sale.sales_order_items?.reduce((s: number, i: any) => s + (i.quantity || 0), 0) || 0;
 
                             return (
-                                <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                                <div key={sale.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-muted/10 hover:bg-muted/20 hover:border-border transition-all duration-200">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary shrink-0">
                                             <DollarSign className="h-4 w-4" />

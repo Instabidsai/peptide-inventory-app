@@ -101,6 +101,10 @@ export default {
           "0%": { backgroundPosition: "-1000px 0" },
           "100%": { backgroundPosition: "1000px 0" },
         },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 15px hsl(160 84% 39% / 0.1)" },
+          "50%": { boxShadow: "0 0 25px hsl(160 84% 39% / 0.2)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,6 +113,7 @@ export default {
         "slide-up": "slide-up 0.4s ease-out",
         "scale-in": "scale-in 0.3s ease-out",
         "shimmer": "shimmer 2s infinite linear",
+        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
       },
     },
   },

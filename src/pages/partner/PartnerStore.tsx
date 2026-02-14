@@ -325,7 +325,7 @@ export default function PartnerStore() {
                                 const stock = stockCounts?.[peptide.id] ?? null;
 
                                 return (
-                                    <Card key={peptide.id} className="bg-card border-border hover:border-primary/30 transition-colors">
+                                    <Card key={peptide.id} className="bg-card border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
                                         <CardHeader className="pb-3">
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -361,7 +361,7 @@ export default function PartnerStore() {
                                             <div className="flex items-end justify-between">
                                                 <div>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-2xl font-bold text-primary">
+                                                        <span className="text-2xl font-bold text-primary group-hover:text-primary/90">
                                                             ${yourPrice.toFixed(2)}
                                                         </span>
                                                         {savings > 0 && (
@@ -396,7 +396,7 @@ export default function PartnerStore() {
 
                 {/* Cart Sidebar */}
                 <div id="partner-cart" className="space-y-4">
-                    <Card className="bg-card border-border sticky top-4">
+                    <Card className="bg-card/90 border-border/50 sticky top-4 backdrop-blur-sm shadow-lg ring-1 ring-border/30">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <ShoppingCart className="h-5 w-5" />
@@ -566,7 +566,7 @@ export default function PartnerStore() {
                                             )}
 
                                             <Button
-                                                className="w-full"
+                                                className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                                 size="lg"
                                                 onClick={handleCheckout}
                                                 disabled={checkout.isPending || placingOrder || cart.length === 0}
@@ -641,7 +641,7 @@ export default function PartnerStore() {
                     </Card>
 
                     {/* Savings summary card */}
-                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
+                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 shadow-sm shadow-green-500/5">
                         <CardContent className="pt-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Tag className="h-4 w-4 text-green-500" />
@@ -662,7 +662,7 @@ export default function PartnerStore() {
             {/* Floating cart summary bar — mobile only, shown when cart has items */}
             {cart.length > 0 && (
                 <div className="fixed bottom-14 left-0 right-0 lg:hidden z-30 px-4 pb-2">
-                    <Card className="shadow-lg border-primary/30 bg-card">
+                    <Card className="shadow-xl shadow-black/30 border-primary/30 bg-card/95 backdrop-blur-md ring-1 ring-border/20">
                         <CardContent className="flex items-center justify-between py-3 px-4">
                             <div>
                                 <p className="text-sm font-bold">

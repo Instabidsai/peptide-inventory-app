@@ -85,7 +85,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border/50">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/10">
+          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-sm shadow-primary/10">
             <FlaskConical className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col">
@@ -96,7 +96,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
-              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/20">
+              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/30 shadow-sm shadow-emerald-500/10">
                 <DollarSign className="h-3 w-3" />
                 <span>${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>
@@ -149,8 +149,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent text-sidebar-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
               )
             }
           >

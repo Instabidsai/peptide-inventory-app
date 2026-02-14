@@ -179,7 +179,7 @@ function ClientDashboardContent() {
 
                 <TabsContent value="overview" className="space-y-6">
                     {/* Today's Overview Card */}
-                    <GlassCard className="border-l-4 border-l-primary shadow-sm">
+                    <GlassCard className="border-l-4 border-l-primary shadow-sm shadow-primary/5">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-lg flex justify-between items-center">
                                 Today's Regimen
@@ -236,7 +236,7 @@ function ClientDashboardContent() {
                     <WeeklyCompliance />
 
                     {/* Daily Macros Widget */}
-                    <GlassCard className="shadow-sm">
+                    <GlassCard className="shadow-sm border-border/50 hover:border-border transition-colors duration-200">
                         <CardHeader className="pb-2 flex flex-row items-center justify-between">
                             <CardTitle className="text-lg">Today's Nutrition</CardTitle>
                             <Utensils className="h-4 w-4 text-muted-foreground" />
@@ -297,16 +297,16 @@ function ClientDashboardContent() {
 
                     {/* Streak / Stats */}
                     <div className="grid grid-cols-2 gap-4">
-                        <GlassCard>
+                        <GlassCard className="border-primary/20 hover:border-primary/30 transition-all duration-300">
                             <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
                                 <div className="text-3xl font-bold text-primary">{contact?.notes?.match(/streak:(\d+)/i)?.[1] || 0}</div>
                                 {/* Placeholder for streak logic */}
                                 <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Day Streak</div>
                             </CardContent>
                         </GlassCard>
-                        <GlassCard>
+                        <GlassCard className="border-green-500/20 hover:border-green-500/30 transition-all duration-300">
                             <CardContent className="pt-6 flex flex-col items-center justify-center gap-2">
-                                <div className="text-3xl font-bold text-green-600">{adherenceRate}%</div>
+                                <div className="text-3xl font-bold text-green-500">{adherenceRate}%</div>
                                 <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Daily Adherence</div>
                             </CardContent>
                         </GlassCard>
@@ -317,7 +317,7 @@ function ClientDashboardContent() {
 
                     <div className="space-y-3">
                         <h3 className="font-semibold text-lg">Quick Actions</h3>
-                        <Button variant="secondary" className="w-full justify-between h-auto py-4" onClick={() => navigate('/my-regimen')}>
+                        <Button variant="secondary" className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent" onClick={() => navigate('/my-regimen')}>
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-background rounded-full">
                                     <Clock className="h-4 w-4" />
