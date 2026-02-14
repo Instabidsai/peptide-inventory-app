@@ -87,5 +87,21 @@ export function useVialActions(contactId?: string) {
         onError: (e: Error) => toast({ variant: 'destructive', title: 'Error', description: e.message }),
     });
 
-    return { reconstitute, setSchedule, logDose, markEmpty };
+    const toggleFridge = useMutation({
+        mutationFn: async ({ vialId, inFridge }: { vialId: string; inFridge: boolean }) => {
+            const { error } = await supabase
+                .from('client_inventory')
+                .update({ in_fridge: inFridge })
+                .eq('id', vialId);
+            if (error) throw error;
+            return { inFridge };
+        },
+        onSuccess: (data) => {
+            invalidate();
+            toast({ title: data.inFridge ? 'Moved to Fridge' : 'Moved to Storage' });
+        },
+        onError: (e: Error) => toast({ variant: 'destructive', title: 'Error', description: e.message }),
+    });
+
+    return { reconstitute, setSchedule, logDose, markEmpty, toggleFridge };
 }

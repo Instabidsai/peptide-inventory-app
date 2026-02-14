@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { GlassCard } from '@/components/ui/glass-card';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Droplets, ShoppingBag, Syringe, Check, XCircle, Beaker } from 'lucide-react';
+import { Droplets, ShoppingBag, Syringe, Check, XCircle, Beaker, ChevronDown, ChevronUp, Plus, ArrowUpFromLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { DAYS_OF_WEEK } from '@/types/regimen';
@@ -113,7 +113,6 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
                 </Badge>
             </div>
 
-            {/* Dose amount */}
             <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Dose per injection (mg)</label>
                 <Input
@@ -133,7 +132,6 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
                 )}
             </div>
 
-            {/* Day-of-week picker */}
             <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Injection days</label>
                 <div className="flex gap-1">
@@ -198,7 +196,6 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                 </Badge>
             </div>
 
-            {/* Progress bar */}
             <div className="space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{Number(vial.current_quantity_mg).toFixed(1)}mg / {vial.vial_size_mg}mg</span>
@@ -210,7 +207,6 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                 />
             </div>
 
-            {/* Dose info — shown when due today */}
             {isDueToday && doseMg > 0 && (
                 <div className="flex items-center gap-2 text-xs">
                     <Syringe className="h-3.5 w-3.5 text-emerald-400" />
@@ -218,12 +214,10 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                 </div>
             )}
 
-            {/* Schedule text — shown when not due today */}
             {!isDueToday && daysLabel && (
                 <p className="text-xs text-muted-foreground">{daysLabel}</p>
             )}
 
-            {/* Low stock warning */}
             {isLow && (
                 <Button
                     variant="ghost"
@@ -236,7 +230,6 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                 </Button>
             )}
 
-            {/* Action buttons */}
             <div className="flex gap-2">
                 {isDueToday && doseMg > 0 && (
                     <Button
@@ -273,67 +266,161 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
     );
 }
 
+// ─── Storage Vial Row (compact, for the expandable storage list) ─
+function StorageRow({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
+    const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
+    const isMixed = !!vial.concentration_mg_ml;
+
+    return (
+        <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/30 p-2.5">
+            <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{vial.peptide?.name || 'Unknown'}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <span>{vial.vial_size_mg}mg</span>
+                    <span>•</span>
+                    {isMixed ? (
+                        <span className="text-emerald-400">{Number(vial.concentration_mg_ml).toFixed(2)} mg/ml</span>
+                    ) : (
+                        <span className="text-amber-400">Unmixed</span>
+                    )}
+                    <span>•</span>
+                    <span>{Math.round(pct)}% left</span>
+                </div>
+            </div>
+            <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 shrink-0"
+                disabled={actions.toggleFridge.isPending}
+                onClick={() => actions.toggleFridge.mutate({ vialId: vial.id, inFridge: true })}
+            >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                To Fridge
+            </Button>
+        </div>
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────
 export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
     const actions = useVialActions(contactId);
     const todayAbbr = format(new Date(), 'EEE');
+    const [storageOpen, setStorageOpen] = useState(false);
 
     const activeVials = inventory.filter(
         (v) => v.status === 'active' && v.vial_size_mg > 0
     );
 
-    if (activeVials.length === 0) {
-        return (
-            <GlassCard className="border-emerald-500/10">
-                <CardContent className="py-6 text-center text-muted-foreground">
-                    <Droplets className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">No active vials in your fridge.</p>
-                    <p className="text-xs mt-1">Vials from your orders will appear here.</p>
-                </CardContent>
-            </GlassCard>
-        );
-    }
+    // Split into fridge vs storage
+    const fridgeVials = activeVials.filter(v => v.in_fridge);
+    const storageVials = activeVials.filter(v => !v.in_fridge);
 
-    // Sort vials by state priority
-    const sortedVials = [...activeVials].sort((a, b) => {
+    // Sort fridge vials by state priority
+    const sortedFridge = [...fridgeVials].sort((a, b) => {
         const stateA = getVialState(a, todayAbbr);
         const stateB = getVialState(b, todayAbbr);
         return STATE_ORDER[stateA] - STATE_ORDER[stateB];
     });
 
     return (
-        <GlassCard className="border-emerald-500/10">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400">
-                        <Droplets className="w-4 h-4" />
-                    </div>
-                    My Vials
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                        {activeVials.length} active
-                    </Badge>
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {sortedVials.map((vial) => {
-                    const state = getVialState(vial, todayAbbr);
+        <div className="space-y-4">
+            {/* ─── Fridge (active vials you're using) ─── */}
+            <GlassCard className="border-emerald-500/10">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400">
+                            <Droplets className="w-4 h-4" />
+                        </div>
+                        My Fridge
+                        {fridgeVials.length > 0 && (
+                            <Badge variant="secondary" className="ml-auto text-xs">
+                                {fridgeVials.length} vial{fridgeVials.length !== 1 ? 's' : ''}
+                            </Badge>
+                        )}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {sortedFridge.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground border-2 border-dashed border-border/50 rounded-lg">
+                            <Droplets className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                            <p className="text-sm">Your fridge is empty.</p>
+                            <p className="text-xs mt-0.5">
+                                {storageVials.length > 0
+                                    ? 'Tap "My Vials" below to move vials to your fridge.'
+                                    : 'Vials from your orders will appear here.'}
+                            </p>
+                        </div>
+                    ) : (
+                        sortedFridge.map((vial) => {
+                            const state = getVialState(vial, todayAbbr);
+                            switch (state) {
+                                case 'unmixed':
+                                    return <UnmixedCard key={vial.id} vial={vial} actions={actions} />;
+                                case 'needs_schedule':
+                                    return <NeedsScheduleCard key={vial.id} vial={vial} actions={actions} />;
+                                case 'due_today':
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday isLow={false} actions={actions} />;
+                                case 'low_stock': {
+                                    const isDue = vial.dose_days?.includes(todayAbbr) ?? false;
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={isDue} isLow actions={actions} />;
+                                }
+                                case 'not_today':
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={false} isLow={false} actions={actions} />;
+                            }
+                        })
+                    )}
 
-                    switch (state) {
-                        case 'unmixed':
-                            return <UnmixedCard key={vial.id} vial={vial} actions={actions} />;
-                        case 'needs_schedule':
-                            return <NeedsScheduleCard key={vial.id} vial={vial} actions={actions} />;
-                        case 'due_today':
-                            return <ActiveCard key={vial.id} vial={vial} isDueToday isLow={false} actions={actions} />;
-                        case 'low_stock': {
-                            const isDue = vial.dose_days?.includes(todayAbbr) ?? false;
-                            return <ActiveCard key={vial.id} vial={vial} isDueToday={isDue} isLow actions={actions} />;
+                    {/* Remove from fridge buttons (shown on fridge vials) */}
+                    {sortedFridge.length > 0 && (
+                        <div className="pt-1 border-t border-border/30">
+                            <p className="text-[10px] text-muted-foreground/60 text-center mb-2">
+                                Tap a vial name to move it back to storage
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {sortedFridge.map(vial => (
+                                    <button
+                                        key={vial.id}
+                                        onClick={() => actions.toggleFridge.mutate({ vialId: vial.id, inFridge: false })}
+                                        className="text-[10px] px-2 py-1 rounded-full bg-secondary/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                        title={`Remove ${vial.peptide?.name} from fridge`}
+                                    >
+                                        {vial.peptide?.name || 'Unknown'} ×
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </GlassCard>
+
+            {/* ─── Storage (all other vials, collapsible) ─── */}
+            {storageVials.length > 0 && (
+                <GlassCard className="border-border/30">
+                    <button
+                        onClick={() => setStorageOpen(prev => !prev)}
+                        className="w-full flex items-center justify-between p-4 text-left"
+                    >
+                        <div className="flex items-center gap-2">
+                            <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">My Vials</span>
+                            <Badge variant="secondary" className="text-xs">
+                                {storageVials.length}
+                            </Badge>
+                        </div>
+                        {storageOpen
+                            ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         }
-                        case 'not_today':
-                            return <ActiveCard key={vial.id} vial={vial} isDueToday={false} isLow={false} actions={actions} />;
-                    }
-                })}
-            </CardContent>
-        </GlassCard>
+                    </button>
+                    {storageOpen && (
+                        <CardContent className="pt-0 space-y-2">
+                            {storageVials.map(vial => (
+                                <StorageRow key={vial.id} vial={vial} actions={actions} />
+                            ))}
+                        </CardContent>
+                    )}
+                </GlassCard>
+            )}
+        </div>
     );
 }

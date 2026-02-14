@@ -16,7 +16,7 @@ export function WeekStrip({ inventory }: WeekStripProps) {
     DAYS_OF_WEEK.forEach(d => { dosesPerDay[d] = 0; });
 
     inventory.forEach((vial) => {
-        if (vial.concentration_mg_ml && vial.dose_days?.length) {
+        if (vial.in_fridge && vial.concentration_mg_ml && vial.dose_days?.length) {
             vial.dose_days.forEach((day: string) => {
                 if (dosesPerDay[day] !== undefined) {
                     dosesPerDay[day]++;
