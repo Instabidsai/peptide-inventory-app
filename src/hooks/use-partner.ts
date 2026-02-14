@@ -69,6 +69,7 @@ export function useCommissions() {
 
             if (!profile?.id) return [];
 
+            // TODO: Generate Supabase types to remove this cast
             const { data, error } = await (supabase as any)
                 .from('commissions')
                 .select(`
@@ -250,7 +251,7 @@ export interface DownlineClient {
 
 export function useDownlineClients(repIds: string[]) {
     return useQuery({
-        queryKey: ['downline_clients', repIds],
+        queryKey: ['downline_clients', JSON.stringify(repIds?.sort())],
         queryFn: async () => {
             if (repIds.length === 0) return [];
             const { data, error } = await supabase

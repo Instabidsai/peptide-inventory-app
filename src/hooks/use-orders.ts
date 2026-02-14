@@ -326,6 +326,18 @@ export function useMarkOrderReceived() {
 
             if (lotError) throw lotError;
 
+            // Auto-generate bottle records for the new lot
+            if (lot && lot.quantity_received > 0) {
+                const bottles = Array.from({ length: lot.quantity_received }, (_, i) => ({
+                    lot_id: lot.id,
+                    org_id: lot.org_id,
+                    status: 'in_stock' as const,
+                    uid: `${lot.id.slice(0, 8)}-${String(i + 1).padStart(3, '0')}`,
+                }));
+                const { error: bottleError } = await supabase.from('bottles').insert(bottles);
+                if (bottleError) throw new Error(`Lot created but failed to generate bottles: ${bottleError.message}`);
+            }
+
             // Update order status to received
             const { error: updateError } = await supabase
                 .from('orders')

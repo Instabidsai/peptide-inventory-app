@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useContact, useUpdateContact } from '@/hooks/use-contacts';
 import { useContactNotes, useCreateContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes';
 import { useProtocols } from '@/hooks/use-protocols';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -56,6 +56,7 @@ import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { Textarea } from '@/components/ui/textarea';
 
 export default function ContactDetails() {
+    const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { data: contact, isLoading: isLoadingContact } = useContact(id!);
     const {
@@ -406,6 +407,7 @@ export default function ContactDetails() {
         queryKey: ['contact_order_stats', id],
         queryFn: async () => {
             if (!id) return null;
+            // TODO: Generate Supabase types to remove this cast
             const { data, error } = await (supabase as any)
                 .from('sales_orders')
                 .select('id, total_amount, created_at, status')
@@ -423,6 +425,8 @@ export default function ContactDetails() {
             };
         },
         enabled: !!id,
+        staleTime: 60_000, // 1 minute
+        gcTime: 5 * 60_000, // 5 minutes
     });
 
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -430,6 +434,9 @@ export default function ContactDetails() {
 
     return (
         <div className="space-y-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')} className="mb-4">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Contacts
+            </Button>
             <nav className="flex items-center text-sm text-muted-foreground">
                 <Link to="/contacts" className="hover:text-foreground transition-colors">Contacts</Link>
                 <span className="mx-2">/</span>
@@ -1092,6 +1099,8 @@ export default function ContactDetails() {
 }
 
 function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: any[] | undefined, movements?: any[] }) {
+    if (!protocol?.protocol_items) return null;
+
     // Determine Status Logic
     const { latestMovement, statusColor, statusLabel } = useMemo(() => {
         if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No History' };
@@ -1647,6 +1656,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
         if (!inventory) return {};
         const groups: Record<string, any[]> = {};
         inventory.forEach((item: any) => {
+            if (!item.peptide_id) return;
             const key = item.movement_id || 'unassigned';
             if (!groups[key]) groups[key] = [];
             groups[key].push(item);

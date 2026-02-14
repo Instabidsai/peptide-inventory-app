@@ -18,6 +18,7 @@ export interface MacroTotals {
 }
 
 export const calculateMealTotals = (foods: FoodItem[]): MacroTotals => {
+    if (!foods || foods.length === 0) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     return foods.reduce((acc, item) => ({
         calories: acc.calories + Number(item.calories || 0),
         protein: acc.protein + Number(item.protein || 0),
@@ -27,6 +28,7 @@ export const calculateMealTotals = (foods: FoodItem[]): MacroTotals => {
 };
 
 export const aggregateDailyLogs = (logs: any[]): MacroTotals => {
+    if (!logs || logs.length === 0) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     return logs.reduce((acc, log) => ({
         calories: acc.calories + Number(log.total_calories || 0),
         protein: acc.protein + Number(log.total_protein || 0),
@@ -43,6 +45,7 @@ export interface DailyChartData {
 }
 
 export const processWeeklyChartData = (logs: any[], referenceDate: Date = new Date()): DailyChartData[] => {
+    if (!logs || logs.length === 0) return [];
     const dailyMap = new Map();
 
     // Initialize last 7 days with 0

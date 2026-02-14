@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Star, Reply, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminFeedback() {
     const { toast } = useToast();
@@ -92,7 +93,13 @@ export default function AdminFeedback() {
         setReplyOpen(true);
     };
 
-    if (isLoading) return <div className="p-8"><Loader2 className="animate-spin" /></div>;
+    if (isLoading) return (
+        <div className="space-y-3 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+            ))}
+        </div>
+    );
 
     const needsAttention = feedbacks?.filter((f: any) => !f.admin_response && (f.rating <= 3 || f.comment?.length > 10)).length || 0;
 
@@ -124,46 +131,54 @@ export default function AdminFeedback() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {feedbacks?.map((fb: any) => {
-                            const clientName = fb.protocols?.contacts?.name || 'Unknown';
-                            const protocolName = fb.protocols?.name || 'Unknown';
-                            const isNegative = fb.rating <= 3;
+                        {(!feedbacks || feedbacks.length === 0) ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                    No feedback received yet.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            feedbacks.map((fb: any) => {
+                                const clientName = fb.protocols?.contacts?.name || 'Unknown';
+                                const protocolName = fb.protocols?.name || 'Unknown';
+                                const isNegative = fb.rating <= 3;
 
-                            return (
-                                <TableRow key={fb.id}>
-                                    <TableCell className="font-medium">{clientName}</TableCell>
-                                    <TableCell>{protocolName}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            {fb.rating} <Star className={`h-3 w-3 ${isNegative ? 'text-destructive fill-current' : 'text-yellow-400 fill-current'}`} />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="max-w-xs truncate" title={fb.comment}>
-                                        {fb.comment || '-'}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                                        {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true })}
-                                    </TableCell>
-                                    <TableCell>
-                                        {fb.admin_response ? (
-                                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                                                <CheckCircle2 className="h-3 w-3 mr-1" /> Replied
-                                            </Badge>
-                                        ) : isNegative ? (
-                                            <Badge variant="destructive">Needs Review</Badge>
-                                        ) : (
-                                            <Badge variant="secondary">Pending</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button size="sm" variant={fb.admin_response ? "ghost" : "default"} onClick={() => handleReplyClick(fb)}>
-                                            <Reply className="h-4 w-4 mr-1" />
-                                            {fb.admin_response ? 'Edit Reply' : 'Reply'}
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
+                                return (
+                                    <TableRow key={fb.id}>
+                                        <TableCell className="font-medium">{clientName}</TableCell>
+                                        <TableCell>{protocolName}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-1">
+                                                {fb.rating} <Star className={`h-3 w-3 ${isNegative ? 'text-destructive fill-current' : 'text-yellow-400 fill-current'}`} />
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="max-w-xs truncate" title={fb.comment}>
+                                            {fb.comment || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                                            {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true })}
+                                        </TableCell>
+                                        <TableCell>
+                                            {fb.admin_response ? (
+                                                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                                                    <CheckCircle2 className="h-3 w-3 mr-1" /> Replied
+                                                </Badge>
+                                            ) : isNegative ? (
+                                                <Badge variant="destructive">Needs Review</Badge>
+                                            ) : (
+                                                <Badge variant="secondary">Pending</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" variant={fb.admin_response ? "ghost" : "default"} onClick={() => handleReplyClick(fb)}>
+                                                <Reply className="h-4 w-4 mr-1" />
+                                                {fb.admin_response ? 'Edit Reply' : 'Reply'}
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
+                        )}
                     </TableBody>
                 </Table>
             </Card>

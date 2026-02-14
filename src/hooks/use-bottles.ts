@@ -38,7 +38,7 @@ export function useBottles(filters?: { status?: BottleStatus; peptide_id?: strin
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['bottles', filters, profile?.org_id],
+    queryKey: ['bottles', filters?.status, filters?.peptide_id, profile?.org_id],
     queryFn: async () => {
       let query = supabase
         .from('bottles')

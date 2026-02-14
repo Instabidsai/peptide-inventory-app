@@ -9,6 +9,24 @@
 
 import { supabase } from '@/integrations/sb_client/client';
 
+export interface OrderWithItems {
+    id: string;
+    total_amount?: number;
+    shipping_cost?: number;
+    commission_amount?: number;
+    payment_status?: string;
+    payment_method?: string;
+    sales_order_items?: Array<{
+        peptide_id: string;
+        quantity: number;
+    }>;
+}
+
+interface LotCostRow {
+    peptide_id: string;
+    cost_per_unit: number;
+}
+
 export const MERCHANT_FEE_RATE = 0.05; // 5%
 
 // Payment methods that are exempt from merchant fee
@@ -32,8 +50,9 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
     }
 
     // 2. Calculate COGS from average lot costs
-    const items = (order as any).sales_order_items || [];
-    const peptideIds = [...new Set(items.map((i: any) => i.peptide_id).filter(Boolean))];
+    const typedOrder = order as unknown as OrderWithItems;
+    const items = typedOrder.sales_order_items || [];
+    const peptideIds = [...new Set(items.map((i) => i.peptide_id).filter(Boolean))];
 
     let cogsAmount = 0;
 
@@ -46,7 +65,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
 
         // Build avg cost per peptide
         const grouped: Record<string, number[]> = {};
-        lots?.forEach((l: any) => {
+        lots?.forEach((l: LotCostRow) => {
             if (!grouped[l.peptide_id]) grouped[l.peptide_id] = [];
             grouped[l.peptide_id].push(Number(l.cost_per_unit || 0));
         });
@@ -79,13 +98,15 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
     ) / 100;
 
     // 5. Update the order
+    // Fields cogs_amount, merchant_fee, profit_amount exist in the DB but may not
+    // be in generated Supabase types yet — cast needed until types are regenerated.
     const { error: updateErr } = await supabase
         .from('sales_orders')
         .update({
             cogs_amount: Math.round(cogsAmount * 100) / 100,
             merchant_fee: merchantFee,
             profit_amount: profitAmount,
-        } as any)
+        } as Record<string, number>)
         .eq('id', orderId);
 
     if (updateErr) {
