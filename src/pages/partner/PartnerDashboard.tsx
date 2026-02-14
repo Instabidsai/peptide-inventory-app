@@ -272,12 +272,14 @@ export default function PartnerDashboard() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">My Downline</CardTitle>
+                        <CardTitle className="text-sm font-medium">My Network</CardTitle>
                         <Users className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{downline?.length || 0}</div>
-                        <p className="text-xs text-muted-foreground">Active partners</p>
+                        <div className="text-2xl font-bold">{(downline?.length || 0) + (clients?.length || 0)}</div>
+                        <p className="text-xs text-muted-foreground">
+                            {downline?.length || 0} partners · {clients?.length || 0} customers
+                        </p>
                     </CardContent>
                 </Card>
             </div>
