@@ -376,18 +376,19 @@ export default function PartnerDashboard() {
                                 <Skeleton className="h-8 w-full" />
                                 <Skeleton className="h-8 w-full" />
                             </div>
-                        ) : downline && downline.length > 0 ? (
+                        ) : (downline && downline.length > 0) || (clients && clients.length > 0) ? (
                             <NetworkTree
                                 rootName={(authProfile as any)?.full_name || 'You'}
                                 rootTier={tier}
                                 rootProfileId={myProfileId || null}
-                                partners={downline}
+                                partners={downline || []}
                                 clients={clients || []}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center py-8 text-center">
                                 <Network className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                                <p className="text-sm text-muted-foreground">You haven't recruited any partners yet.</p>
+                                <p className="text-sm text-muted-foreground">No partners or customers yet.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Use "Add Person" to add customers to your network.</p>
                             </div>
                         )}
                     </CardContent>
@@ -722,15 +723,19 @@ export default function PartnerDashboard() {
                                 value={newPerson.assignedTo}
                                 onChange={e => setNewPerson(p => ({ ...p, assignedTo: e.target.value }))}
                             >
-                                <option value="">Me ({(authProfile as any)?.full_name || 'You'})</option>
-                                {downline?.map(partner => (
-                                    <option key={partner.id} value={partner.id}>
-                                        {partner.full_name || partner.email} ({partner.partner_tier})
-                                    </option>
-                                ))}
+                                <option value="">Directly under me ({(authProfile as any)?.full_name || 'You'})</option>
+                                {downline && downline.length > 0 && (
+                                    <optgroup label="Under a team partner">
+                                        {downline.map(partner => (
+                                            <option key={partner.id} value={partner.id}>
+                                                {partner.full_name || partner.email} — {TIER_INFO[partner.partner_tier]?.label || 'Partner'}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
                             </select>
                             <p className="text-xs text-muted-foreground">
-                                Choose who this person is assigned to. Leave as "Me" to add them directly under you.
+                                Choose who this customer is assigned to. Default is directly under you.
                             </p>
                         </div>
                         <Button
@@ -761,9 +766,12 @@ interface NetworkTreeProps {
 }
 
 function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: NetworkTreeProps) {
-    // Exclude contacts who are also partners in the downline (e.g. James Kuhlman)
-    const partnerNames = new Set(partners.map(p => p.full_name?.toLowerCase()));
-    const filteredClients = clients.filter(c => !partnerNames.has(c.name?.toLowerCase()));
+    // Exclude contacts who are also partners in the downline
+    const partnerIds = new Set(partners.map(p => p.id));
+    const partnerNames = new Set(partners.map(p => p.full_name?.toLowerCase()).filter(Boolean));
+    const filteredClients = clients.filter(c =>
+        !partnerIds.has(c.id) && !partnerNames.has(c.name?.toLowerCase())
+    );
 
     // Group clients by assigned rep
     const clientsByRep = new Map<string, DownlineClient[]>();
@@ -781,6 +789,49 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
         return null; // depth 1 nodes are direct children of root
     };
 
+    const renderClientRow = (client: DownlineClient, indent: number) => (
+        <div
+            key={client.id}
+            className="flex items-center gap-2 py-1.5 border-l-2 border-muted/40"
+            style={{ paddingLeft: indent * 20 + 8 }}
+        >
+            <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                <User className="h-3.5 w-3.5 text-blue-400" />
+            </div>
+            <span className="text-sm text-foreground/80 truncate">{client.name}</span>
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-500/30 text-blue-400 shrink-0">
+                Customer
+            </Badge>
+        </div>
+    );
+
+    const renderPartnerRow = (partner: PartnerNode, indent: number) => (
+        <div
+            className="flex items-center justify-between py-2 border-l-2 border-primary/30"
+            style={{ paddingLeft: indent * 20 + 8 }}
+        >
+            <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm shrink-0">
+                    {TIER_INFO[partner.partner_tier]?.emoji || '🥈'}
+                </span>
+                <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                        {partner.full_name || partner.email}
+                    </p>
+                    <p className="text-[10px] text-primary/70 capitalize">
+                        {TIER_INFO[partner.partner_tier]?.label || 'Partner'}
+                    </p>
+                </div>
+            </div>
+            <div className="text-right shrink-0 ml-2">
+                <p className="text-xs font-medium">
+                    ${Number(partner.total_sales).toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Sales</p>
+            </div>
+        </div>
+    );
+
     const renderBranch = (parentId: string | null, indent: number): React.ReactNode => {
         const childPartners = parentId === null
             ? partners.filter(p => p.depth === 1)
@@ -792,47 +843,8 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                     const partnerClients = clientsByRep.get(partner.id) || [];
                     return (
                         <React.Fragment key={partner.id}>
-                            {/* Partner row */}
-                            <div
-                                className="flex items-center justify-between py-2 border-l-2 border-primary/20"
-                                style={{ paddingLeft: indent * 20 + 8 }}
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-sm shrink-0">
-                                        {TIER_INFO[partner.partner_tier]?.emoji || '🥈'}
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">
-                                            {partner.full_name || partner.email}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground capitalize">
-                                            {partner.partner_tier} Partner
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right shrink-0 ml-2">
-                                    <p className="text-xs font-medium">
-                                        ${Number(partner.total_sales).toFixed(2)}
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground">Vol</p>
-                                </div>
-                            </div>
-                            {/* This partner's clients */}
-                            {partnerClients.map(client => (
-                                <div
-                                    key={client.id}
-                                    className="flex items-center gap-2 py-1 border-l-2 border-muted"
-                                    style={{ paddingLeft: (indent + 1) * 20 + 8 }}
-                                >
-                                    <div className="w-5 h-5 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
-                                        <User className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                    <span className="text-sm text-muted-foreground truncate">
-                                        {client.name}
-                                    </span>
-                                </div>
-                            ))}
-                            {/* Sub-partners (recursive) */}
+                            {renderPartnerRow(partner, indent)}
+                            {partnerClients.map(client => renderClientRow(client, indent + 1))}
                             {renderBranch(partner.id, indent + 1)}
                         </React.Fragment>
                     );
@@ -850,26 +862,29 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                 <span className="text-base">{TIER_INFO[rootTier]?.emoji || '⭐'}</span>
                 <div>
                     <p className="text-sm font-semibold">{rootName}</p>
-                    <p className="text-[10px] text-muted-foreground capitalize">{rootTier} Partner</p>
+                    <p className="text-[10px] text-primary/70 capitalize">{TIER_INFO[rootTier]?.label || 'Partner'}</p>
                 </div>
             </div>
-            {/* Root's own clients */}
-            {rootClients.map(client => (
-                <div
-                    key={client.id}
-                    className="flex items-center gap-2 py-1 border-l-2 border-primary/20"
-                    style={{ paddingLeft: 28 }}
-                >
-                    <div className="w-5 h-5 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                    <span className="text-sm text-muted-foreground truncate">
-                        {client.name}
-                    </span>
+
+            {/* Root's own direct customers */}
+            {rootClients.length > 0 && (
+                <div className="ml-3 mb-1">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
+                        My Customers ({rootClients.length})
+                    </p>
+                    {rootClients.map(client => renderClientRow(client, 1))}
                 </div>
-            ))}
-            {/* Partner tree from depth 1 down */}
-            {renderBranch(null, 1)}
+            )}
+
+            {/* Partners + their customers */}
+            {partners.length > 0 && (
+                <div className="ml-3">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pl-2 py-1">
+                        Team Partners ({partners.filter(p => p.depth === 1).length})
+                    </p>
+                    {renderBranch(null, 1)}
+                </div>
+            )}
         </div>
     );
 }
