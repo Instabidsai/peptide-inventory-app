@@ -22,11 +22,88 @@ export interface ClientInventoryItem {
     // Dose scheduling fields
     dose_amount_mg: number | null;
     dose_days: string[] | null;
+    dose_frequency: string | null;  // 'daily' | 'every_other_day' | 'every_x_days' | 'x_on_y_off' | 'specific_days'
+    dose_interval: number | null;   // for every_x_days: the X
+    dose_off_days: number | null;   // for x_on_y_off: the off count
+    in_fridge: boolean;
 
     // Joined fields (optional)
     peptide?: {
         name: string;
     };
+}
+
+export type DoseFrequency = 'daily' | 'every_other_day' | 'every_x_days' | 'x_on_y_off' | 'specific_days';
+
+export const FREQUENCY_OPTIONS: { value: DoseFrequency; label: string }[] = [
+    { value: 'daily', label: 'Every day' },
+    { value: 'every_other_day', label: 'Every other day' },
+    { value: 'every_x_days', label: 'Every X days' },
+    { value: 'x_on_y_off', label: 'X days on, Y days off' },
+    { value: 'specific_days', label: 'Specific days of week' },
+];
+
+/** Check if a given date is a dose day for a vial schedule.
+ *  @param referenceDate - optional date to check (defaults to now) */
+export function isDoseDay(vial: {
+    dose_frequency?: string | null;
+    dose_days?: string[] | null;
+    dose_interval?: number | null;
+    dose_off_days?: number | null;
+    reconstituted_at?: string | null;
+}, todayAbbr: string, referenceDate?: Date): boolean {
+    const freq = vial.dose_frequency;
+    if (!freq) return false;
+
+    if (freq === 'daily') return true;
+
+    if (freq === 'specific_days') {
+        return (vial.dose_days || []).includes(todayAbbr);
+    }
+
+    // Interval-based frequencies need a start date
+    const startDate = vial.reconstituted_at ? new Date(vial.reconstituted_at) : null;
+    if (!startDate) return false;
+
+    const checkDate = referenceDate || new Date();
+    const daysSinceStart = Math.floor((checkDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (freq === 'every_other_day') {
+        return daysSinceStart % 2 === 0;
+    }
+
+    if (freq === 'every_x_days') {
+        const interval = vial.dose_interval || 1;
+        return daysSinceStart % interval === 0;
+    }
+
+    if (freq === 'x_on_y_off') {
+        const onDays = vial.dose_interval || 1;
+        const offDays = vial.dose_off_days || 0;
+        const cycle = onDays + offDays;
+        if (cycle <= 0) return true;
+        const position = daysSinceStart % cycle;
+        return position < onDays;
+    }
+
+    return false;
+}
+
+/** Get a human-readable label for a vial's schedule */
+export function getScheduleLabel(vial: {
+    dose_frequency?: string | null;
+    dose_days?: string[] | null;
+    dose_interval?: number | null;
+    dose_off_days?: number | null;
+}): string {
+    const freq = vial.dose_frequency;
+    if (!freq) return '';
+    if (freq === 'daily') return 'Every day';
+    if (freq === 'every_other_day') return 'Every other day';
+    if (freq === 'every_x_days') return `Every ${vial.dose_interval || '?'} days`;
+    if (freq === 'x_on_y_off') return `${vial.dose_interval || '?'} on, ${vial.dose_off_days || '?'} off`;
+    if (freq === 'specific_days') return (vial.dose_days || []).join(', ');
+    return freq;
 }
 
 export interface ClientDailyLog {

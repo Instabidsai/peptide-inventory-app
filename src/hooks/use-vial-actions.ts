@@ -34,13 +34,24 @@ export function useVialActions(contactId?: string) {
     });
 
     const setSchedule = useMutation({
-        mutationFn: async ({ vialId, doseAmountMg, doseDays }: {
-            vialId: string; doseAmountMg: number; doseDays: string[];
+        mutationFn: async (params: {
+            vialId: string;
+            doseAmountMg: number;
+            doseFrequency: string;
+            doseDays?: string[];
+            doseInterval?: number;
+            doseOffDays?: number;
         }) => {
             const { error } = await supabase
                 .from('client_inventory')
-                .update({ dose_amount_mg: doseAmountMg, dose_days: doseDays })
-                .eq('id', vialId);
+                .update({
+                    dose_amount_mg: params.doseAmountMg,
+                    dose_frequency: params.doseFrequency,
+                    dose_days: params.doseDays || null,
+                    dose_interval: params.doseInterval || null,
+                    dose_off_days: params.doseOffDays || null,
+                })
+                .eq('id', params.vialId);
             if (error) throw error;
         },
         onSuccess: () => {

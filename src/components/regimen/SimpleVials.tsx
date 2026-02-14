@@ -8,7 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Droplets, ShoppingBag, Syringe, Check, XCircle, Beaker, ChevronDown, ChevronUp, Plus, ArrowUpFromLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
-import { DAYS_OF_WEEK } from '@/types/regimen';
+import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, isDoseDay, getScheduleLabel } from '@/types/regimen';
+import type { DoseFrequency } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -21,10 +22,11 @@ type VialState = 'unmixed' | 'needs_schedule' | 'due_today' | 'not_today' | 'low
 
 function getVialState(vial: any, todayAbbr: string): VialState {
     if (!vial.concentration_mg_ml || !vial.reconstituted_at) return 'unmixed';
-    if (!vial.dose_amount_mg || !vial.dose_days?.length) return 'needs_schedule';
+    if (!vial.dose_amount_mg || !vial.dose_frequency) return 'needs_schedule';
     const pct = (vial.current_quantity_mg / vial.vial_size_mg) * 100;
+    const dueToday = isDoseDay(vial, todayAbbr);
     if (pct < 20) return 'low_stock';
-    if (vial.dose_days.includes(todayAbbr)) return 'due_today';
+    if (dueToday) return 'due_today';
     return 'not_today';
 }
 
@@ -92,7 +94,11 @@ function UnmixedCard({ vial, actions }: { vial: any; actions: ReturnType<typeof 
 // ─── Needs Schedule Card ──────────────────────────────────────
 function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
     const [doseMg, setDoseMg] = useState('');
+    const [frequency, setFrequency] = useState<DoseFrequency | ''>('');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
+    const [interval, setInterval] = useState('');
+    const [onDays, setOnDays] = useState('');
+    const [offDays, setOffDays] = useState('');
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -104,6 +110,26 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
     const doseNum = parseFloat(doseMg) || 0;
     const units = concentration > 0 && doseNum > 0 ? Math.round((doseNum / concentration) * 100) : 0;
 
+    const canSave = (): boolean => {
+        if (!doseMg || parseFloat(doseMg) <= 0 || !frequency) return false;
+        if (frequency === 'specific_days' && selectedDays.length === 0) return false;
+        if (frequency === 'every_x_days' && (!interval || parseInt(interval) < 1)) return false;
+        if (frequency === 'x_on_y_off' && (!onDays || parseInt(onDays) < 1 || !offDays || parseInt(offDays) < 1)) return false;
+        return true;
+    };
+
+    const handleSave = () => {
+        actions.setSchedule.mutate({
+            vialId: vial.id,
+            doseAmountMg: parseFloat(doseMg),
+            doseFrequency: frequency,
+            doseDays: frequency === 'specific_days' ? selectedDays : undefined,
+            doseInterval: frequency === 'every_x_days' ? parseInt(interval)
+                : frequency === 'x_on_y_off' ? parseInt(onDays) : undefined,
+            doseOffDays: frequency === 'x_on_y_off' ? parseInt(offDays) : undefined,
+        });
+    };
+
     return (
         <div className="rounded-lg border border-blue-500/20 bg-card/50 p-3 space-y-3">
             <div className="flex items-center justify-between">
@@ -113,6 +139,7 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
                 </Badge>
             </div>
 
+            {/* Dose amount */}
             <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Dose per injection (mg)</label>
                 <Input
@@ -132,38 +159,98 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
                 )}
             </div>
 
+            {/* Frequency selector */}
             <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Injection days</label>
-                <div className="flex gap-1">
-                    {DAYS_OF_WEEK.map(day => (
+                <label className="text-xs text-muted-foreground">How often?</label>
+                <div className="flex flex-wrap gap-1.5">
+                    {FREQUENCY_OPTIONS.map(opt => (
                         <button
-                            key={day}
+                            key={opt.value}
                             type="button"
-                            onClick={() => toggleDay(day)}
+                            onClick={() => setFrequency(opt.value)}
                             className={cn(
-                                "flex-1 h-8 rounded-md text-[10px] font-medium transition-all border",
-                                selectedDays.includes(day)
+                                "px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all border",
+                                frequency === opt.value
                                     ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
                                     : "bg-secondary/50 border-transparent text-muted-foreground hover:bg-secondary"
                             )}
                         >
-                            {day.charAt(0)}
+                            {opt.label}
                         </button>
                     ))}
                 </div>
             </div>
 
+            {/* Conditional inputs based on frequency */}
+            {frequency === 'every_x_days' && (
+                <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">Every how many days?</label>
+                    <Input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 5"
+                        value={interval}
+                        onChange={e => setInterval(e.target.value)}
+                        className="h-8 text-sm"
+                    />
+                </div>
+            )}
+
+            {frequency === 'x_on_y_off' && (
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Days on</label>
+                        <Input
+                            type="number"
+                            min="1"
+                            placeholder="e.g. 5"
+                            value={onDays}
+                            onChange={e => setOnDays(e.target.value)}
+                            className="h-8 text-sm"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Days off</label>
+                        <Input
+                            type="number"
+                            min="1"
+                            placeholder="e.g. 2"
+                            value={offDays}
+                            onChange={e => setOffDays(e.target.value)}
+                            className="h-8 text-sm"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {frequency === 'specific_days' && (
+                <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">Which days?</label>
+                    <div className="flex gap-1">
+                        {DAYS_OF_WEEK.map(day => (
+                            <button
+                                key={day}
+                                type="button"
+                                onClick={() => toggleDay(day)}
+                                className={cn(
+                                    "flex-1 h-8 rounded-md text-[10px] font-medium transition-all border",
+                                    selectedDays.includes(day)
+                                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                                        : "bg-secondary/50 border-transparent text-muted-foreground hover:bg-secondary"
+                                )}
+                            >
+                                {day.charAt(0)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <Button
                 size="sm"
                 className="w-full h-8 text-xs"
-                disabled={!doseMg || parseFloat(doseMg) <= 0 || selectedDays.length === 0 || actions.setSchedule.isPending}
-                onClick={() => {
-                    actions.setSchedule.mutate({
-                        vialId: vial.id,
-                        doseAmountMg: parseFloat(doseMg),
-                        doseDays: selectedDays,
-                    });
-                }}
+                disabled={!canSave() || actions.setSchedule.isPending}
+                onClick={handleSave}
             >
                 <Check className="h-3.5 w-3.5 mr-1" />
                 Save Schedule
@@ -182,7 +269,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseMg = Number(vial.dose_amount_mg) || 0;
     const units = concentration > 0 && doseMg > 0 ? Math.round((doseMg / concentration) * 100) : 0;
-    const daysLabel = (vial.dose_days || []).join(', ');
+    const scheduleLabel = getScheduleLabel(vial);
 
     return (
         <div className={cn(
@@ -214,8 +301,8 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                 </div>
             )}
 
-            {!isDueToday && daysLabel && (
-                <p className="text-xs text-muted-foreground">{daysLabel}</p>
+            {scheduleLabel && (
+                <p className="text-xs text-muted-foreground">{scheduleLabel}</p>
             )}
 
             {isLow && (
@@ -266,7 +353,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
     );
 }
 
-// ─── Storage Vial Row (compact, for the expandable storage list) ─
+// ─── Storage Vial Row ─────────────────────────────────────────
 function StorageRow({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
     const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
     const isMixed = !!vial.concentration_mg_ml;
@@ -277,13 +364,13 @@ function StorageRow({ vial, actions }: { vial: any; actions: ReturnType<typeof u
                 <p className="font-medium text-sm truncate">{vial.peptide?.name || 'Unknown'}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                     <span>{vial.vial_size_mg}mg</span>
-                    <span>•</span>
+                    <span>·</span>
                     {isMixed ? (
                         <span className="text-emerald-400">{Number(vial.concentration_mg_ml).toFixed(2)} mg/ml</span>
                     ) : (
                         <span className="text-amber-400">Unmixed</span>
                     )}
-                    <span>•</span>
+                    <span>·</span>
                     <span>{Math.round(pct)}% left</span>
                 </div>
             </div>
@@ -311,11 +398,9 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
         (v) => v.status === 'active' && v.vial_size_mg > 0
     );
 
-    // Split into fridge vs storage
     const fridgeVials = activeVials.filter(v => v.in_fridge);
     const storageVials = activeVials.filter(v => !v.in_fridge);
 
-    // Sort fridge vials by state priority
     const sortedFridge = [...fridgeVials].sort((a, b) => {
         const stateA = getVialState(a, todayAbbr);
         const stateB = getVialState(b, todayAbbr);
@@ -324,7 +409,7 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
 
     return (
         <div className="space-y-4">
-            {/* ─── Fridge (active vials you're using) ─── */}
+            {/* ─── Fridge ─── */}
             <GlassCard className="border-emerald-500/10">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -361,7 +446,7 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                                 case 'due_today':
                                     return <ActiveCard key={vial.id} vial={vial} isDueToday isLow={false} actions={actions} />;
                                 case 'low_stock': {
-                                    const isDue = vial.dose_days?.includes(todayAbbr) ?? false;
+                                    const isDue = isDoseDay(vial, todayAbbr);
                                     return <ActiveCard key={vial.id} vial={vial} isDueToday={isDue} isLow actions={actions} />;
                                 }
                                 case 'not_today':
@@ -370,11 +455,10 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                         })
                     )}
 
-                    {/* Remove from fridge buttons (shown on fridge vials) */}
                     {sortedFridge.length > 0 && (
                         <div className="pt-1 border-t border-border/30">
                             <p className="text-[10px] text-muted-foreground/60 text-center mb-2">
-                                Tap a vial name to move it back to storage
+                                Tap to move back to storage
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                                 {sortedFridge.map(vial => (
@@ -382,7 +466,6 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                                         key={vial.id}
                                         onClick={() => actions.toggleFridge.mutate({ vialId: vial.id, inFridge: false })}
                                         className="text-[10px] px-2 py-1 rounded-full bg-secondary/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                                        title={`Remove ${vial.peptide?.name} from fridge`}
                                     >
                                         {vial.peptide?.name || 'Unknown'} ×
                                     </button>
@@ -393,7 +476,7 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                 </CardContent>
             </GlassCard>
 
-            {/* ─── Storage (all other vials, collapsible) ─── */}
+            {/* ─── Storage (collapsible) ─── */}
             {storageVials.length > 0 && (
                 <GlassCard className="border-border/30">
                     <button

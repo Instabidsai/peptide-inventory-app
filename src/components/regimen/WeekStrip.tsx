@@ -1,8 +1,8 @@
 import { GlassCard } from '@/components/ui/glass-card';
 import { CardContent } from '@/components/ui/card';
-import { DAYS_OF_WEEK } from '@/types/regimen';
+import { DAYS_OF_WEEK, isDoseDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, addDays, startOfWeek } from 'date-fns';
 
 interface WeekStripProps {
     inventory: any[];
@@ -11,21 +11,29 @@ interface WeekStripProps {
 export function WeekStrip({ inventory }: WeekStripProps) {
     const todayAbbr = format(new Date(), 'EEE'); // 'Mon', 'Tue', etc.
 
-    // Count how many active vials have a dose scheduled per day
+    // Build dates for each day of the current week (Mon-Sun)
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+    const weekDates = DAYS_OF_WEEK.map((_, i) => addDays(weekStart, i));
+
+    // Count how many scheduled fridge vials dose on each day of the week
     const dosesPerDay: Record<string, number> = {};
     DAYS_OF_WEEK.forEach(d => { dosesPerDay[d] = 0; });
 
-    inventory.forEach((vial) => {
-        if (vial.in_fridge && vial.concentration_mg_ml && vial.dose_days?.length) {
-            vial.dose_days.forEach((day: string) => {
-                if (dosesPerDay[day] !== undefined) {
-                    dosesPerDay[day]++;
-                }
-            });
-        }
+    const scheduledVials = inventory.filter(
+        (v) => v.in_fridge && v.concentration_mg_ml && v.dose_frequency
+    );
+
+    DAYS_OF_WEEK.forEach((day, i) => {
+        const dateForDay = weekDates[i];
+        scheduledVials.forEach((vial) => {
+            if (isDoseDay(vial, day, dateForDay)) {
+                dosesPerDay[day]++;
+            }
+        });
     });
 
-    const hasAnySchedule = Object.values(dosesPerDay).some(c => c > 0);
+    const hasAnySchedule = scheduledVials.length > 0;
     if (!hasAnySchedule) return null;
 
     return (
