@@ -100,11 +100,22 @@ export function useAIKnowledge() {
         },
     });
 
+    // Refresh all knowledge data (called after each chat message)
+    const refreshKnowledge = () => {
+        // Small delay to let background extraction complete
+        setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['ai-insights', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['ai-health-profile', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['ai-documents', user?.id] });
+        }, 3000);
+    };
+
     return {
         documents,
         insights,
         healthProfile,
         isLoading: isLoadingDocs || isLoadingInsights || isLoadingProfile,
         uploadDocument,
+        refreshKnowledge,
     };
 }

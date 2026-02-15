@@ -89,6 +89,12 @@ export const useAI = () => {
             // Clear optimistic messages and refetch from DB
             setOptimisticMessages([]);
             queryClient.invalidateQueries({ queryKey: ['ai-conversation', user?.id] });
+            // Refresh knowledge panel after AI processes the message
+            // (background extraction needs a few seconds to complete)
+            setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ['ai-insights', user?.id] });
+                queryClient.invalidateQueries({ queryKey: ['ai-health-profile', user?.id] });
+            }, 3000);
         },
         onError: () => {
             // Replace optimistic messages with error

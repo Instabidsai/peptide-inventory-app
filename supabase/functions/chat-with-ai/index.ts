@@ -319,11 +319,28 @@ async function extractKnowledge(
 User said: "${userMessage}"
 Assistant replied: "${assistantReply}"
 
-Return JSON with two fields:
-1. "profile_updates" — any new health facts about the user (conditions, goals, medications, allergies, supplements, lab_values as key-value pairs, notes). Only include fields that have NEW information. Use empty arrays/objects for fields with no updates.
-2. "insights" — array of research findings, protocol observations, or health correlations discovered. Each with: category (one of: research, protocol_note, lab_interpretation, side_effect, interaction, recommendation), title (short), content (1-2 sentences). Empty array if nothing notable.
+Return JSON with exactly this structure:
+{
+  "profile_updates": {
+    "conditions": [],       // string array of medical conditions, e.g. ["type 2 diabetes", "hypertension"]
+    "goals": [],            // string array, e.g. ["fat loss", "muscle preservation"]
+    "medications": [],      // string array, e.g. ["metformin 500mg daily"]
+    "allergies": [],        // string array, e.g. ["sulfa drugs"]
+    "supplements": [],      // string array, e.g. ["BPC-157", "TB-500"]
+    "lab_values": {},       // object with string values, e.g. {"testosterone": "450 ng/dL", "fasting_glucose": "105 mg/dL"}
+    "notes": ""             // string, any other relevant info
+  },
+  "insights": []            // array of {category, title, content} objects
+}
 
-Only extract genuinely new information. If the exchange is casual/greeting, return empty updates.`;
+RULES:
+- conditions, goals, medications, allergies, supplements MUST be string arrays (never objects)
+- lab_values MUST be an object with string values
+- notes MUST be a string (never an object)
+- Only include fields with NEW information. Use empty arrays/objects/strings for fields with no updates.
+- insights category must be one of: research, protocol_note, lab_interpretation, side_effect, interaction, recommendation
+- Each insight needs: category (string), title (short string), content (1-2 sentence string)
+- If the exchange is casual/greeting, return all empty values.`;
 
     try {
         const extraction = await openai.chat.completions.create({
@@ -339,13 +356,42 @@ Only extract genuinely new information. If the exchange is casual/greeting, retu
 
         const result = JSON.parse(extraction.choices[0].message.content || '{}');
 
-        // Merge profile updates
+        // Normalize profile updates — coerce to correct types
         const updates = result.profile_updates;
-        if (updates && Object.keys(updates).some(k => {
+        if (updates) {
+            // Ensure array fields are actually arrays of strings
+            for (const field of ['conditions', 'goals', 'medications', 'allergies', 'supplements']) {
+                if (updates[field] && !Array.isArray(updates[field])) {
+                    // If it's an object, try to extract values
+                    if (typeof updates[field] === 'object') {
+                        updates[field] = Object.values(updates[field]).map(String);
+                    } else if (typeof updates[field] === 'string') {
+                        updates[field] = [updates[field]];
+                    } else {
+                        updates[field] = [];
+                    }
+                }
+            }
+            // Ensure lab_values is an object with string values
+            if (updates.lab_values && typeof updates.lab_values !== 'object') {
+                updates.lab_values = {};
+            }
+            if (Array.isArray(updates.lab_values)) {
+                updates.lab_values = {};
+            }
+            // Ensure notes is a string
+            if (updates.notes && typeof updates.notes !== 'string') {
+                updates.notes = String(updates.notes);
+                if (updates.notes === '[object Object]') updates.notes = '';
+            }
+        }
+
+        const hasUpdates = updates && Object.keys(updates).some(k => {
             const v = updates[k];
             return Array.isArray(v) ? v.length > 0 : (typeof v === 'object' ? Object.keys(v).length > 0 : !!v);
-        })) {
-            // Get existing profile
+        });
+
+        if (hasUpdates) {
             const { data: existing } = await supabase
                 .from('ai_health_profiles')
                 .select('*')
@@ -353,19 +399,21 @@ Only extract genuinely new information. If the exchange is casual/greeting, retu
                 .single();
 
             if (existing) {
-                // Merge arrays (union), merge objects, append notes
                 const merged: any = {};
                 for (const field of ['conditions', 'goals', 'medications', 'allergies', 'supplements']) {
                     if (updates[field]?.length) {
-                        const existingArr = (existing[field] as string[]) || [];
+                        const existingArr = Array.isArray(existing[field]) ? existing[field] : [];
                         merged[field] = [...new Set([...existingArr, ...updates[field]])];
                     }
                 }
                 if (updates.lab_values && Object.keys(updates.lab_values).length) {
-                    merged.lab_values = { ...(existing.lab_values as object || {}), ...updates.lab_values };
+                    const existingLabs = (typeof existing.lab_values === 'object' && !Array.isArray(existing.lab_values))
+                        ? existing.lab_values : {};
+                    merged.lab_values = { ...existingLabs, ...updates.lab_values };
                 }
-                if (updates.notes) {
-                    merged.notes = existing.notes ? `${existing.notes}\n${updates.notes}` : updates.notes;
+                if (updates.notes && updates.notes.trim()) {
+                    const existingNotes = (typeof existing.notes === 'string') ? existing.notes : '';
+                    merged.notes = existingNotes ? `${existingNotes}\n${updates.notes}` : updates.notes;
                 }
                 merged.updated_at = new Date().toISOString();
 
@@ -373,10 +421,15 @@ Only extract genuinely new information. If the exchange is casual/greeting, retu
                     .update(merged)
                     .eq('user_id', userId);
             } else {
-                // Create new profile
                 await supabase.from('ai_health_profiles').insert({
                     user_id: userId,
-                    ...updates,
+                    conditions: updates.conditions || [],
+                    goals: updates.goals || [],
+                    medications: updates.medications || [],
+                    allergies: updates.allergies || [],
+                    supplements: updates.supplements || [],
+                    lab_values: updates.lab_values || {},
+                    notes: updates.notes || '',
                     updated_at: new Date().toISOString(),
                 });
             }

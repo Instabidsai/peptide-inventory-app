@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import {
     X, FileText, Image, Loader2, CheckCircle2, AlertCircle,
     Brain, Beaker, Pill, Activity, Zap, BookOpen, ChevronDown,
+    Heart, Target, Shield, Syringe, FlaskConical, Stethoscope,
+    TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -24,6 +26,14 @@ const CATEGORY_CONFIG: Record<string, { icon: typeof Brain; label: string; color
     recommendation: { icon: BookOpen, label: 'Recommendations', color: 'text-purple-400' },
 };
 
+const PROFILE_SECTIONS: { key: string; label: string; icon: typeof Heart; color: string; emptyText: string }[] = [
+    { key: 'conditions', label: 'Conditions', icon: Stethoscope, color: 'text-red-400', emptyText: 'No conditions recorded' },
+    { key: 'goals', label: 'Goals', icon: Target, color: 'text-emerald-400', emptyText: 'No goals set' },
+    { key: 'medications', label: 'Medications', icon: Pill, color: 'text-blue-400', emptyText: 'No medications' },
+    { key: 'allergies', label: 'Allergies', icon: Shield, color: 'text-orange-400', emptyText: 'No allergies' },
+    { key: 'supplements', label: 'Supplements', icon: FlaskConical, color: 'text-purple-400', emptyText: 'No supplements' },
+];
+
 const FILE_ICONS: Record<string, typeof FileText> = {
     pdf: FileText,
     jpg: Image,
@@ -32,9 +42,20 @@ const FILE_ICONS: Record<string, typeof FileText> = {
     webp: Image,
 };
 
+function getLabFlag(value: string): 'high' | 'low' | 'normal' {
+    const lower = value.toLowerCase();
+    if (lower.includes('(h)') || lower.includes('high') || lower.includes('(h,')) return 'high';
+    if (lower.includes('(l)') || lower.includes('low') || lower.includes('(l,')) return 'low';
+    return 'normal';
+}
+
+function formatLabKey(key: string): string {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
 export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePanelProps) {
     const { documents, insights, healthProfile, isLoading } = useAIKnowledge();
-    const [expandedSection, setExpandedSection] = useState<string | null>('documents');
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['profile']));
 
     if (!open) return null;
 
@@ -46,8 +67,32 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
     }
 
     const toggleSection = (section: string) => {
-        setExpandedSection(prev => prev === section ? null : section);
+        setExpandedSections(prev => {
+            const next = new Set(prev);
+            if (next.has(section)) next.delete(section);
+            else next.add(section);
+            return next;
+        });
     };
+
+    const hasProfile = healthProfile && (
+        (healthProfile.conditions as string[])?.length > 0 ||
+        (healthProfile.goals as string[])?.length > 0 ||
+        (healthProfile.medications as string[])?.length > 0 ||
+        (healthProfile.allergies as string[])?.length > 0 ||
+        (healthProfile.supplements as string[])?.length > 0 ||
+        (healthProfile.lab_values && Object.keys(healthProfile.lab_values as object).length > 0) ||
+        healthProfile.notes
+    );
+
+    const labEntries = healthProfile?.lab_values
+        ? Object.entries(healthProfile.lab_values as Record<string, string>)
+        : [];
+
+    const profileFieldCount = PROFILE_SECTIONS.reduce((count, s) => {
+        const items = healthProfile?.[s.key as keyof typeof healthProfile] as string[] | undefined;
+        return count + (items?.length || 0);
+    }, 0) + labEntries.length;
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -60,7 +105,12 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                 <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-emerald-400" />
-                        <h2 className="font-semibold text-sm">AI Knowledge</h2>
+                        <div>
+                            <h2 className="font-semibold text-sm">AI Knowledge Base</h2>
+                            <p className="text-[10px] text-muted-foreground/50">
+                                {profileFieldCount} data points · {insights.length} insights · {documents.length} docs
+                            </p>
+                        </div>
                     </div>
                     <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 rounded-lg">
                         <X className="h-4 w-4" />
@@ -68,28 +118,163 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                 </div>
 
                 <ScrollArea className="h-[calc(100vh-52px)]">
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 space-y-3">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12">
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
                             </div>
                         ) : (
                             <>
-                                {/* Documents Section */}
+                                {/* ── Health Profile (Always First, Prominent) ── */}
+                                <section>
+                                    <button
+                                        onClick={() => toggleSection('profile')}
+                                        className="flex items-center justify-between w-full py-2"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Heart className="h-3.5 w-3.5 text-rose-400" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                                                Health Profile
+                                            </h3>
+                                            {hasProfile && (
+                                                <span className="text-[9px] font-medium text-emerald-400/70 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                                                    ACTIVE
+                                                </span>
+                                            )}
+                                        </div>
+                                        <ChevronDown className={cn(
+                                            "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
+                                            expandedSections.has('profile') && "rotate-180"
+                                        )} />
+                                    </button>
+                                    {expandedSections.has('profile') && (
+                                        <div className="space-y-3 mt-1">
+                                            {!hasProfile ? (
+                                                <div className="text-center py-6">
+                                                    <div className="h-10 w-10 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-2">
+                                                        <Heart className="h-5 w-5 text-muted-foreground/30" />
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground/40">
+                                                        No health profile yet.
+                                                    </p>
+                                                    <p className="text-[11px] text-muted-foreground/30 mt-1">
+                                                        Tell Peptide AI about your conditions, goals,<br />medications, and it will build your profile.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {/* Profile fields as cards */}
+                                                    {PROFILE_SECTIONS.map(({ key, label, icon: Icon, color }) => {
+                                                        const items = healthProfile?.[key as keyof typeof healthProfile] as string[] | undefined;
+                                                        if (!items?.length) return null;
+                                                        return (
+                                                            <div key={key} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                                <div className="flex items-center gap-1.5 mb-2">
+                                                                    <Icon className={cn("h-3 w-3", color)} />
+                                                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                                                        {label}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {items.map((item, i) => (
+                                                                        <span
+                                                                            key={i}
+                                                                            className={cn(
+                                                                                "text-[11px] px-2 py-0.5 rounded-full border text-foreground/80",
+                                                                                key === 'allergies'
+                                                                                    ? "bg-orange-500/10 border-orange-500/20 text-orange-300"
+                                                                                    : key === 'goals'
+                                                                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                                                                                        : "bg-white/[0.04] border-white/[0.06]"
+                                                                            )}
+                                                                        >
+                                                                            {item}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* Lab Values — styled like a real lab report */}
+                                                    {labEntries.length > 0 && (
+                                                        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                            <div className="flex items-center gap-1.5 mb-2">
+                                                                <Activity className="h-3 w-3 text-amber-400" />
+                                                                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                                                    Lab Values
+                                                                </span>
+                                                                <span className="text-[9px] text-muted-foreground/30 ml-auto">
+                                                                    {labEntries.length} markers
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {labEntries.map(([key, value]) => {
+                                                                    const flag = getLabFlag(value);
+                                                                    return (
+                                                                        <div
+                                                                            key={key}
+                                                                            className={cn(
+                                                                                "flex items-center justify-between py-1 px-2 rounded-lg text-xs",
+                                                                                flag === 'high' && "bg-red-500/[0.06]",
+                                                                                flag === 'low' && "bg-amber-500/[0.06]",
+                                                                            )}
+                                                                        >
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                {flag === 'high' ? (
+                                                                                    <TrendingUp className="h-3 w-3 text-red-400" />
+                                                                                ) : flag === 'low' ? (
+                                                                                    <TrendingDown className="h-3 w-3 text-amber-400" />
+                                                                                ) : (
+                                                                                    <Minus className="h-3 w-3 text-muted-foreground/30" />
+                                                                                )}
+                                                                                <span className="text-muted-foreground/70">{formatLabKey(key)}</span>
+                                                                            </div>
+                                                                            <span className={cn(
+                                                                                "font-medium tabular-nums",
+                                                                                flag === 'high' && "text-red-400",
+                                                                                flag === 'low' && "text-amber-400",
+                                                                            )}>
+                                                                                {value}
+                                                                            </span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Notes */}
+                                                    {healthProfile?.notes && (
+                                                        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Notes</span>
+                                                            <p className="text-xs text-muted-foreground/60 mt-1 whitespace-pre-line">{healthProfile.notes}</p>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ── Documents ── */}
                                 <section>
                                     <button
                                         onClick={() => toggleSection('documents')}
                                         className="flex items-center justify-between w-full py-2"
                                     >
-                                        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-                                            Documents ({documents.length})
-                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-blue-400" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                                                Documents ({documents.length})
+                                            </h3>
+                                        </div>
                                         <ChevronDown className={cn(
                                             "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
-                                            expandedSection === 'documents' && "rotate-180"
+                                            expandedSections.has('documents') && "rotate-180"
                                         )} />
                                     </button>
-                                    {expandedSection === 'documents' && (
+                                    {expandedSections.has('documents') && (
                                         <div className="space-y-2 mt-1">
                                             {documents.length === 0 ? (
                                                 <p className="text-xs text-muted-foreground/40 py-2">
@@ -135,21 +320,24 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                     )}
                                 </section>
 
-                                {/* Learned Insights Section */}
+                                {/* ── Learned Insights ── */}
                                 <section>
                                     <button
                                         onClick={() => toggleSection('insights')}
                                         className="flex items-center justify-between w-full py-2"
                                     >
-                                        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-                                            Learned Insights ({insights.length})
-                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <Syringe className="h-3.5 w-3.5 text-emerald-400" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                                                Learned Insights ({insights.length})
+                                            </h3>
+                                        </div>
                                         <ChevronDown className={cn(
                                             "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
-                                            expandedSection === 'insights' && "rotate-180"
+                                            expandedSections.has('insights') && "rotate-180"
                                         )} />
                                     </button>
-                                    {expandedSection === 'insights' && (
+                                    {expandedSections.has('insights') && (
                                         <div className="space-y-3 mt-1">
                                             {Object.keys(groupedInsights).length === 0 ? (
                                                 <p className="text-xs text-muted-foreground/40 py-2">
@@ -166,6 +354,9 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                 <span className="text-[11px] font-semibold text-muted-foreground/70">
                                                                     {config.label}
                                                                 </span>
+                                                                <span className="text-[9px] text-muted-foreground/30 ml-auto">
+                                                                    {items.length}
+                                                                </span>
                                                             </div>
                                                             <div className="space-y-1.5 pl-4">
                                                                 {items.map((insight: any) => (
@@ -178,7 +369,9 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                             {insight.content}
                                                                         </p>
                                                                         <span className="text-[9px] text-muted-foreground/30 mt-1 block">
-                                                                            {insight.source} · {format(new Date(insight.created_at), 'MMM d')}
+                                                                            {insight.source === 'document' ? 'From document' : 'From conversation'}
+                                                                            {' · '}
+                                                                            {format(new Date(insight.created_at), 'MMM d')}
                                                                         </span>
                                                                     </div>
                                                                 ))}
@@ -190,78 +383,10 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                         </div>
                                     )}
                                 </section>
-
-                                {/* Health Profile Section */}
-                                <section>
-                                    <button
-                                        onClick={() => toggleSection('profile')}
-                                        className="flex items-center justify-between w-full py-2"
-                                    >
-                                        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-                                            Health Profile
-                                        </h3>
-                                        <ChevronDown className={cn(
-                                            "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
-                                            expandedSection === 'profile' && "rotate-180"
-                                        )} />
-                                    </button>
-                                    {expandedSection === 'profile' && (
-                                        <div className="space-y-2.5 mt-1">
-                                            {!healthProfile ? (
-                                                <p className="text-xs text-muted-foreground/40 py-2">
-                                                    No health profile yet. Tell Peptide AI about your conditions, goals, medications, and it will build your profile automatically.
-                                                </p>
-                                            ) : (
-                                                <>
-                                                    <ProfileField label="Conditions" items={healthProfile.conditions as string[]} />
-                                                    <ProfileField label="Goals" items={healthProfile.goals as string[]} />
-                                                    <ProfileField label="Medications" items={healthProfile.medications as string[]} />
-                                                    <ProfileField label="Allergies" items={healthProfile.allergies as string[]} />
-                                                    <ProfileField label="Supplements" items={healthProfile.supplements as string[]} />
-                                                    {healthProfile.lab_values && Object.keys(healthProfile.lab_values as object).length > 0 && (
-                                                        <div>
-                                                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Lab Values</span>
-                                                            <div className="mt-1 space-y-0.5">
-                                                                {Object.entries(healthProfile.lab_values as Record<string, string>).map(([k, v]) => (
-                                                                    <div key={k} className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground/60">{k}</span>
-                                                                        <span className="font-medium">{v}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {healthProfile.notes && (
-                                                        <div>
-                                                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Notes</span>
-                                                            <p className="text-xs text-muted-foreground/60 mt-0.5">{healthProfile.notes}</p>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </section>
                             </>
                         )}
                     </div>
                 </ScrollArea>
-            </div>
-        </div>
-    );
-}
-
-function ProfileField({ label, items }: { label: string; items: string[] | null }) {
-    if (!items?.length) return null;
-    return (
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">{label}</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-                {items.map((item, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-foreground/80">
-                        {item}
-                    </span>
-                ))}
             </div>
         </div>
     );
