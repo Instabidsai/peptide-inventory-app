@@ -181,14 +181,16 @@ serve(async (req) => {
             ragContext && `\n## Expert Knowledge Base\n${ragContext}`,
         ].filter(Boolean).join('\n');
 
-        // 10. Call GPT-4o with web search
+        // 10. Call GPT-4o with web search capability
         const chatResponse = await openai.chat.completions.create({
-            model: 'gpt-4o',
+            model: 'gpt-4o-search-preview',
+            web_search_options: {
+                search_context_size: 'medium',
+            },
             messages: [
                 { role: 'system', content: fullSystemPrompt },
                 ...conversationHistory,
             ],
-            temperature: 0.6,
         });
 
         const reply = chatResponse.choices[0].message.content || "I couldn't generate a response.";
