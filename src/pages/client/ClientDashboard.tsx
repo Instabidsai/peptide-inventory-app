@@ -55,7 +55,7 @@ function ClientDashboardContent() {
                 <div className="w-full max-w-md border rounded-lg p-4 mt-8">
                     <h3 className="font-medium mb-4 flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        Debug: AI Coach
+                        Debug: Peptide AI
                     </h3>
                     <div className="h-[400px]">
                         <AIChatInterface />
@@ -116,7 +116,7 @@ function ClientDashboardContent() {
                     </TabsTrigger>
                     <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-sm">
                         <Sparkles className="h-3.5 w-3.5" />
-                        AI Coach
+                        Peptide AI
                     </TabsTrigger>
                 </TabsList>
 
