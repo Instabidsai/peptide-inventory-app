@@ -15,6 +15,12 @@ export interface Peptide {
   stock_count?: number;
   avg_cost?: number;
   retail_price: number | null;
+  default_dose_amount?: number | null;
+  default_dose_unit?: string | null;
+  default_frequency?: string | null;
+  default_timing?: string | null;
+  default_concentration_mg_ml?: number | null;
+  reconstitution_notes?: string | null;
 }
 
 export interface CreatePeptideInput {
