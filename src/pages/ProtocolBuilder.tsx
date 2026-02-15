@@ -33,6 +33,8 @@ interface ProtocolItem {
 // ── Helpers ────────────────────────────────────────────
 function calcMl(item: ProtocolItem): number | null {
     if (!item.concentrationMgMl || item.concentrationMgMl <= 0) return null;
+    // IU can't be converted to mg without peptide-specific factors — skip calc
+    if (item.doseUnit === 'iu') return null;
     const doseMg = item.doseUnit === 'mcg' ? item.doseAmount / 1000 : item.doseAmount;
     return doseMg / item.concentrationMgMl;
 }
@@ -68,10 +70,10 @@ const FREQUENCIES = [
     'weekly', 'twice weekly', 'monthly', 'as needed',
 ];
 
-const TIMINGS = ['AM', 'PM', 'Before bed', 'With meals', ''];
+const TIMINGS = ['AM', 'PM', 'Before bed', 'With meals', 'none'];
 
 // ── Format protocol for email ──────────────────────────
-function generateEmailText(items: ProtocolItem[], clientName: string): string {
+function generateEmailText(items: ProtocolItem[], clientName: string, orgName: string): string {
     const lines: string[] = [];
     lines.push(`Hi ${clientName || 'there'},`);
     lines.push('');
@@ -84,18 +86,19 @@ function generateEmailText(items: ProtocolItem[], clientName: string): string {
         lines.push(item.peptideName);
         const ml = calcMl(item);
         const units = calcUnits(ml);
-        let doseLine = `  Dose: ${item.doseAmount} ${item.doseUnit}`;
+        const unitLabel = item.doseUnit === 'iu' ? 'IU' : item.doseUnit;
+        let doseLine = `• Dose: ${item.doseAmount} ${unitLabel}`;
         if (ml !== null && units !== null) {
             doseLine += ` (${formatMl(ml)} mL / ${units} units)`;
         }
         lines.push(doseLine);
 
-        let freqLine = `  Frequency: ${formatFrequency(item.frequency)}`;
-        if (item.timing) freqLine += ` — ${item.timing}`;
+        let freqLine = `• Frequency: ${formatFrequency(item.frequency)}`;
+        if (item.timing && item.timing !== 'none') freqLine += ` — ${item.timing}`;
         lines.push(freqLine);
 
         if (item.notes) {
-            lines.push(`  Notes: ${item.notes}`);
+            lines.push(`• Notes: ${item.notes}`);
         }
     }
 
@@ -107,7 +110,7 @@ function generateEmailText(items: ProtocolItem[], clientName: string): string {
     lines.push('');
     lines.push('Questions? Reply to this email anytime.');
     lines.push('');
-    lines.push('- NextGen Research Labs');
+    lines.push(`- ${orgName || 'NextGen Research Labs'}`);
 
     return lines.join('\n');
 }
@@ -115,7 +118,7 @@ function generateEmailText(items: ProtocolItem[], clientName: string): string {
 // ── Component ──────────────────────────────────────────
 export default function ProtocolBuilder() {
     const { data: peptides } = usePeptides();
-    const { profile } = useAuth();
+    const { profile, organization } = useAuth();
     const { toast } = useToast();
 
     // Client picker
@@ -158,7 +161,7 @@ export default function ProtocolBuilder() {
             doseAmount: p.default_dose_amount || 0,
             doseUnit: p.default_dose_unit || 'mcg',
             frequency: p.default_frequency || 'daily',
-            timing: p.default_timing || '',
+            timing: p.default_timing || 'none',
             concentrationMgMl: p.default_concentration_mg_ml || 0,
             notes: '',
         }]);
@@ -173,7 +176,7 @@ export default function ProtocolBuilder() {
     };
 
     // Generate email text
-    const emailText = useMemo(() => generateEmailText(items, clientName), [items, clientName]);
+    const emailText = useMemo(() => generateEmailText(items, clientName, organization?.name || ''), [items, clientName, organization?.name]);
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(emailText);
@@ -348,8 +351,8 @@ export default function ProtocolBuilder() {
                                                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                                                         <SelectContent>
                                                             {TIMINGS.map(t => (
-                                                                <SelectItem key={t || 'none'} value={t || 'none'}>
-                                                                    {t || 'No preference'}
+                                                                <SelectItem key={t} value={t}>
+                                                                    {t === 'none' ? 'No preference' : t}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
