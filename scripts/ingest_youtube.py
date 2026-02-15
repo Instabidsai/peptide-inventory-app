@@ -72,11 +72,30 @@ def extract_video_id(url_or_id: str) -> str:
     sys.exit(1)
 
 
-def fetch_transcript(video_id: str) -> str:
-    """Fetch YouTube transcript using youtube-transcript-api."""
+def _build_ytt(cookies_path: str = ""):
+    """Build YouTubeTranscriptApi instance, optionally with cookies for IP ban bypass."""
+    if cookies_path:
+        import http.cookiejar
+        import requests
+        cj = http.cookiejar.MozillaCookieJar(cookies_path)
+        cj.load(ignore_discard=True, ignore_expires=True)
+        session = requests.Session()
+        session.cookies = cj
+        return YouTubeTranscriptApi(http_client=session)
+    return YouTubeTranscriptApi()
+
+
+def fetch_transcript(video_id: str, cookies_path: str = "") -> str:
+    """Fetch YouTube transcript using youtube-transcript-api.
+
+    If cookies_path is provided, uses browser cookies to bypass IP bans.
+    Export cookies from Chrome with a cookie export extension (Netscape format).
+    """
     print(f"  [1/5] Fetching transcript for {video_id}...")
     try:
-        ytt = YouTubeTranscriptApi()
+        ytt = _build_ytt(cookies_path)
+        if cookies_path:
+            print(f"         (using cookies from {cookies_path})")
         transcript = ytt.fetch(video_id, languages=["en"])
         # Combine all segments
         full_text = " ".join([segment.text for segment in transcript])
@@ -84,7 +103,12 @@ def fetch_transcript(video_id: str) -> str:
         return full_text
     except Exception as e:
         print(f"  ERROR fetching transcript: {e}")
-        print("  TIP: Video may not have captions, or may be private/age-restricted.")
+        if "blocking" in str(e).lower() or "ip" in str(e).lower():
+            print("  TIP: YouTube is blocking your IP. Try --cookies <path> to bypass.")
+            print("       Export cookies from Chrome: use 'Get cookies.txt LOCALLY' extension")
+            print("       Save as cookies.txt, then: --cookies cookies.txt")
+        else:
+            print("  TIP: Video may not have captions, or may be private/age-restricted.")
         raise RuntimeError(f"Transcript fetch failed for {video_id}: {e}")
 
 
@@ -260,7 +284,7 @@ def save_transcript(video_id: str, raw: str, cleaned: str):
 
 
 # ── Main pipeline ───────────────────────────────────────
-def process_video(url_or_id: str, force: bool = False, video_title: str = ""):
+def process_video(url_or_id: str, force: bool = False, video_title: str = "", cookies_path: str = ""):
     """Full pipeline: transcript -> clean -> chunk -> embed -> store."""
     video_id = extract_video_id(url_or_id)
     video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -275,7 +299,7 @@ def process_video(url_or_id: str, force: bool = False, video_title: str = ""):
         return
 
     # Step 1: Get transcript
-    raw_text = fetch_transcript(video_id)
+    raw_text = fetch_transcript(video_id, cookies_path=cookies_path)
 
     # Step 2: Preprocess
     preprocessed = preprocess(raw_text)
@@ -318,7 +342,7 @@ def purge_video(video_id: str):
 
 
 # ── Channel batch processing ────────────────────────────
-def process_channel(channel_url: str, limit: int = 100, force: bool = False, delay: int = 10):
+def process_channel(channel_url: str, limit: int = 100, force: bool = False, delay: int = 10, cookies_path: str = ""):
     """Pull video IDs from a YouTube channel and process them."""
     try:
         import scrapetube
@@ -376,7 +400,7 @@ def process_channel(channel_url: str, limit: int = 100, force: bool = False, del
             continue
 
         try:
-            process_video(video["id"], force=force, video_title=video.get("title", ""))
+            process_video(video["id"], force=force, video_title=video.get("title", ""), cookies_path=cookies_path)
             succeeded += 1
             # Delay between videos to avoid YouTube rate limiting
             if delay > 0 and i < len(video_list) - 1:
@@ -427,19 +451,38 @@ YouTube -> Peptide AI Pipeline
 Usage:
   uv run python scripts/ingest_youtube.py <VIDEO_URL_OR_ID>
   uv run python scripts/ingest_youtube.py <URL> --force          (re-ingest even if exists)
-  uv run python scripts/ingest_youtube.py --channel <CHANNEL_URL> [--limit N]
+  uv run python scripts/ingest_youtube.py --channel <CHANNEL_URL> [--limit N] [--delay N]
   uv run python scripts/ingest_youtube.py --purge <VIDEO_ID>     (delete all chunks for video)
   uv run python scripts/ingest_youtube.py --status               (show ingested videos)
 
+Options:
+  --force       Re-ingest even if video already exists
+  --limit N     Max videos to fetch from channel (default: 100)
+  --delay N     Seconds between videos to avoid rate limit (default: 10)
+  --cookies F   Path to cookies.txt file to bypass YouTube IP bans
+                Export from Chrome: use 'Get cookies.txt LOCALLY' extension
+
 Examples:
   uv run python scripts/ingest_youtube.py "https://www.youtube.com/watch?v=VIDEO_ID"
-  uv run python scripts/ingest_youtube.py --channel "https://www.youtube.com/@drtrevorbachmeyer/videos" --limit 100
+  uv run python scripts/ingest_youtube.py --channel "https://www.youtube.com/@drtrevorbachmeyer/videos" --limit 100 --delay 15
+  uv run python scripts/ingest_youtube.py --channel "URL" --cookies cookies.txt
   uv run python scripts/ingest_youtube.py --purge e_p5nJ48_6I
 """)
         sys.exit(0)
 
     force = "--force" in args
     args = [a for a in args if a != "--force"]
+
+    # Parse --cookies flag
+    cookies_path = ""
+    if "--cookies" in args:
+        idx = args.index("--cookies")
+        if idx + 1 < len(args):
+            cookies_path = args[idx + 1]
+            args = args[:idx] + args[idx + 2:]
+        else:
+            print("ERROR: Provide a path after --cookies")
+            sys.exit(1)
 
     if args[0] == "--channel":
         channel_url = args[1] if len(args) > 1 else ""
@@ -456,7 +499,7 @@ Examples:
         if not channel_url:
             print("ERROR: Provide a channel URL after --channel")
             sys.exit(1)
-        process_channel(channel_url, limit=limit, force=force, delay=delay)
+        process_channel(channel_url, limit=limit, force=force, delay=delay, cookies_path=cookies_path)
     elif args[0] == "--purge" and len(args) > 1:
         purge_video(extract_video_id(args[1]))
     elif args[0] == "--status":
@@ -483,4 +526,4 @@ Examples:
             print(f"\nTotal: {sum(v['count'] for v in videos.values())} chunks across {len(videos)} videos")
     else:
         for url in args:
-            process_video(url, force=force)
+            process_video(url, force=force, cookies_path=cookies_path)
