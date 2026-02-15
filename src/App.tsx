@@ -39,6 +39,7 @@ const Reps = lazyRetry(() => import("./pages/admin/Reps"));
 const Contacts = lazyRetry(() => import("./pages/Contacts"));
 const Protocols = lazyRetry(() => import("./pages/Protocols"));
 const ProtocolBuilder = lazyRetry(() => import("./pages/ProtocolBuilder"));
+const FulfillmentCenter = lazyRetry(() => import("./pages/FulfillmentCenter"));
 const ContactDetails = lazyRetry(() => import("./pages/ContactDetails"));
 const Movements = lazyRetry(() => import("./pages/Movements"));
 const MovementWizard = lazyRetry(() => import("./pages/MovementWizard"));
@@ -155,6 +156,7 @@ const App = () => (
                                 <Route path="/contacts" element={<Contacts />} />
                                 <Route path="/protocols" element={<Protocols />} />
                                 <Route path="/protocol-builder" element={<ProtocolBuilder />} />
+                                <Route path="/fulfillment" element={<FulfillmentCenter />} />
                                 <Route path="/contacts/:id" element={<ContactDetails />} />
 
                                 <Route path="/movements" element={<Movements />} />
