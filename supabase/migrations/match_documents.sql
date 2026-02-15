@@ -1,5 +1,6 @@
 
 -- Create a function to similarity search for documents
+-- Supports optional metadata filtering via the filter parameter
 create or replace function match_documents (
   query_embedding vector(1536),
   match_threshold float,
@@ -22,8 +23,7 @@ begin
     1 - (embeddings.embedding <=> query_embedding) as similarity
   from embeddings
   where 1 - (embeddings.embedding <=> query_embedding) > match_threshold
-  -- Optional: Add metadata filtering logic here if needed, e.g.
-  -- and (metadata @> filter)
+    and (filter = '{}'::jsonb or embeddings.metadata @> filter)
   order by embeddings.embedding <=> query_embedding
   limit match_count;
 end;

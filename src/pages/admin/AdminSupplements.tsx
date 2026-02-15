@@ -139,6 +139,7 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
     }, [initialData?.id]);
 
     const handleSubmit = () => {
+        if (!formData.name.trim()) return;
         onSubmit(formData);
     };
 
@@ -160,11 +161,12 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
 
                     <TabsContent value="details" className="pt-4 space-y-4">
                         <div className="grid gap-2">
-                            <Label>Name</Label>
+                            <Label>Name <span className="text-destructive">*</span></Label>
                             <Input
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="e.g. Vitamin D3 + K2"
+                                required
                             />
                         </div>
                         <div className="grid gap-2">

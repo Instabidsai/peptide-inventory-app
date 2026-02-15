@@ -80,7 +80,7 @@ async function ingestVideo(videoId: string) {
                     embedding: embedding,
                     metadata: {
                         type: 'global',
-                        author: 'Dr. Bochman',
+                        author: 'Dr. Bachmeyer',
                         source_url: `https://www.youtube.com/watch?v=${videoId}`,
                         chunk_index: index,
                         ingested_at: new Date().toISOString()

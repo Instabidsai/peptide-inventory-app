@@ -129,7 +129,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           // Special: Sales Rep Restriction
           if (effectiveRole === 'sales_rep') {
-            const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Movements', 'Orders'];
+            const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Orders'];
 
             // Only Senior partners can see Peptides
             // Default to 'standard' if undefined

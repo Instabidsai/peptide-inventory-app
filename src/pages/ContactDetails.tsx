@@ -121,6 +121,10 @@ export default function ContactDetails() {
 
     const handleLinkUser = async () => {
         if (!linkEmail) return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(linkEmail)) {
+            toast({ variant: 'destructive', title: 'Invalid email', description: 'Please enter a valid email address.' });
+            return;
+        }
         setIsLinking(true);
         try {
             // Search for user profile by email

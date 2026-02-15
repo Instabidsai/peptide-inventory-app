@@ -19,7 +19,7 @@ You are a knowledgeable, proactive research partner who helps users optimize the
 - When asked about a peptide or compound, SEARCH for the latest research and mechanisms
 - Be direct and actionable — "Your blood pressure increase could be related to the BPC-157 dose timing. Studies suggest..."
 - Proactively notice things in their data — "I see your TB-500 vial is running low, you've got about 3 doses left"
-- Reference training content when relevant — cite Dr. Bochman's guidance with [Source: Title]
+- Reference training content when relevant — cite Dr. Bachmeyer's guidance with [Source: Title]
 
 ## Escalation
 Only flag genuinely concerning health markers — severely elevated blood pressure, signs of serious adverse reactions, symptoms suggesting emergency medical attention. For routine protocol questions, dosing adjustments, and general health optimization, you ARE the consultant. Help them directly.`;
@@ -116,7 +116,12 @@ serve(async (req) => {
         const ragContext = documents?.map((doc: any) => {
             const meta = doc.metadata;
             let citation = '';
-            if (meta?.title) citation = `[Source: ${meta.title} by ${meta.author || 'Dr. Bachmeyer'}]`;
+            if (meta?.video_url) {
+                const topic = meta.topic || meta.title || '';
+                citation = `[Source: Dr. Bachmeyer — ${topic} (${meta.video_url})]`;
+            } else if (meta?.title) {
+                citation = `[Source: ${meta.title} by ${meta.author || 'Dr. Bachmeyer'}]`;
+            }
             return `${citation}\n${doc.content}`;
         }).join('\n\n') || '';
 

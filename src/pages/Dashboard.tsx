@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import PartnerDashboard from './partner/PartnerDashboard';
-import AdminDashboard from './admin/AdminDashboard'; // Assuming we created this in the previous step
+
+const PartnerDashboard = lazy(() => import('./partner/PartnerDashboard'));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 
 export default function Dashboard() {
   const { userRole, profile } = useAuth();
@@ -10,9 +11,8 @@ export default function Dashboard() {
   const previewRole = searchParams.get('preview_role');
 
   if (userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || previewRole === 'sales_rep') {
-    return <PartnerDashboard />;
+    return <Suspense fallback={null}><PartnerDashboard /></Suspense>;
   }
 
-  // Default to Admin Dashboard for admins and staff
-  return <AdminDashboard />;
+  return <Suspense fallback={null}><AdminDashboard /></Suspense>;
 }

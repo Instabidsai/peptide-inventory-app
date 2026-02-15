@@ -25,7 +25,7 @@ using (
   (metadata->>'client_id') = auth.uid()::text
 );
 
--- 2. Clients can read GLOBAL data (Dr. Bochman, Research, etc.)
+-- 2. Clients can read GLOBAL data (Dr. Bachmeyer, Research, etc.)
 create policy "Clients can read global data"
 on embeddings for select
 to authenticated
