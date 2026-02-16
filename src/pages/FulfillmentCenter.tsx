@@ -777,6 +777,17 @@ export default function FulfillmentCenter() {
                                                     </Button>
                                                 )}
 
+                                                {/* Skip shipping — mark as already complete */}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-green-500/40 text-green-500"
+                                                    disabled={busy}
+                                                    onClick={() => handleMarkDelivered(order.id)}
+                                                >
+                                                    <CheckCircle className="mr-1 h-3 w-3" /> Already Done
+                                                </Button>
+
                                                 {/* Packing slip */}
                                                 <Button
                                                     variant="outline"
