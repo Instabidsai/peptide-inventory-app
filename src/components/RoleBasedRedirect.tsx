@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
@@ -10,6 +10,7 @@ interface RoleBasedRedirectProps {
 export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectProps) {
     const { userRole, loading, user } = useAuth();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
 
     if (loading) {
         return <div className="h-screen flex items-center justify-center bg-background text-foreground">
@@ -44,11 +45,8 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         }
 
         // 2. Fulfillment users land on /fulfillment by default
-        if (roleName === 'fulfillment' && !allowedRoles) {
-            const currentPath = window.location.hash.replace('#', '') || '/';
-            if (currentPath === '/' || currentPath === '') {
-                return <Navigate to="/fulfillment" replace />;
-            }
+        if (roleName === 'fulfillment' && location.pathname === '/') {
+            return <Navigate to="/fulfillment" replace />;
         }
 
         // 3. Enforce strict allowedRoles if provided
