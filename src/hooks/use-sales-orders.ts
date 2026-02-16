@@ -606,24 +606,14 @@ export function useCreateShippingLabel() {
 
     return useMutation({
         mutationFn: async (orderId: string) => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error('Not authenticated');
-
-            const res = await fetch('/api/shipping/create-label', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ orderId }),
+            const { data, error } = await supabase.functions.invoke('create-shipping-label', {
+                body: { orderId },
             });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || `Shipping failed (${res.status})`);
-            }
+            if (error) throw new Error(error.message || 'Shipping label creation failed');
+            if (data?.error) throw new Error(data.error);
 
-            return res.json();
+            return data;
         },
         onSuccess: async (data, orderId) => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
