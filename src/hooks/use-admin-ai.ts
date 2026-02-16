@@ -48,10 +48,19 @@ export function useAdminAI() {
     onSuccess: () => {
       setOptimisticMessages([]);
       queryClient.invalidateQueries({ queryKey: ['admin-chat', user?.id] });
-      // Refresh data the AI might have changed
+      // Refresh data the AI might have changed (covers all admin features)
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
     },
     onError: () => {
       setOptimisticMessages(prev => [
