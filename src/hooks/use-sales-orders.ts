@@ -291,7 +291,7 @@ export function useCreateSalesOrder() {
             // Auto-fulfill: deduct inventory + create movement (like contacts flow)
             let fulfilled = false;
             try {
-                // Create movement record
+                // Create movement record (created_by FK targets profiles.id, not auth user id)
                 const { data: movement, error: movError } = await supabase
                     .from('movements')
                     .insert({
@@ -300,7 +300,7 @@ export function useCreateSalesOrder() {
                         contact_id: input.client_id,
                         movement_date: new Date().toISOString().split('T')[0],
                         notes: `[SO:${order.id}] Sales Order #${order.id.slice(0, 8)}`,
-                        created_by: repId || user.id,
+                        created_by: repId || profile.id,
                         payment_status: 'unpaid',
                         amount_paid: 0,
                     })
@@ -466,6 +466,14 @@ export function useFulfillOrder() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
+            // Look up profiles.id (FK target) from auth user id
+            const { data: currentProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+            const profileId = currentProfile?.id || user.id;
+
             // 2. Prepare Movement Data
             // We create ONE movement for the whole order
             const { data: movement, error: movError } = await supabase
@@ -476,7 +484,7 @@ export function useFulfillOrder() {
                     contact_id: order.client_id,
                     movement_date: new Date().toISOString().split('T')[0],
                     notes: `[SO:${orderId}] Fulfilled Sales Order #${orderId.slice(0, 8)}`,
-                    created_by: order.rep_id || user.id, // Attribute to rep if exists
+                    created_by: order.rep_id || profileId, // Attribute to rep if exists
                     payment_status: order.payment_status || 'unpaid',
                     amount_paid: order.amount_paid || 0,
                     payment_date: order.payment_date,
