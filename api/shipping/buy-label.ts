@@ -9,9 +9,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const { orderId } = req.body;
+        const { orderId, rateId } = req.body;
         if (!orderId) {
             return res.status(400).json({ error: 'orderId is required' });
+        }
+        if (!rateId) {
+            return res.status(400).json({ error: 'rateId is required' });
         }
 
         // Authenticate via Supabase JWT
@@ -37,14 +40,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ error: 'Invalid or expired token' });
         }
 
-        // Fetch the order
+        // Validate order exists and is ready for labeling
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')
-            .select(`
-                *,
-                contacts (id, name, email, phone, address),
-                sales_order_items (quantity, peptides (name))
-            `)
+            .select('id, status, tracking_number')
             .eq('id', orderId)
             .single();
 
@@ -60,71 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Order already has a shipping label' });
         }
 
-        // Parse shipping address
-        const rawAddress = order.shipping_address || (order.contacts as any)?.address;
-        if (!rawAddress) {
-            return res.status(400).json({ error: 'No shipping address on order or contact' });
-        }
+        // Fetch the rate details from Shippo so we can get carrier/cost info
+        const rateDetails = await shippoGet(`/rates/${rateId}`, shippoApiKey);
+        const carrier = rateDetails.provider || 'Unknown';
+        const shippingCost = parseFloat(rateDetails.amount || '0');
 
-        const toAddr = parseAddress(rawAddress);
-        if (!toAddr) {
-            return res.status(400).json({
-                error: `Could not parse address: "${rawAddress}". Format: Street, City, ST ZIP`
-            });
-        }
-
-        // Ship-from address from env
-        const fromAddress = {
-            name: process.env.SHIP_FROM_NAME || 'NextGen Research Labs',
-            street1: process.env.SHIP_FROM_STREET || '2432 SW 12th St',
-            city: process.env.SHIP_FROM_CITY || 'Deerfield Beach',
-            state: process.env.SHIP_FROM_STATE || 'FL',
-            zip: process.env.SHIP_FROM_ZIP || '33442',
-            country: process.env.SHIP_FROM_COUNTRY || 'US',
-            phone: process.env.SHIP_FROM_PHONE || '',
-            email: process.env.SHIP_FROM_EMAIL || '',
-        };
-
-        // Estimate weight
-        const totalItems = (order.sales_order_items || [])
-            .reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
-        const weight = String(Math.max(8, totalItems * 2));
-
-        // 1. Create Shippo shipment
-        const shipment = await shippoPost('/shipments', shippoApiKey, {
-            address_from: fromAddress,
-            address_to: {
-                name: (order.contacts as any)?.name || 'Customer',
-                ...toAddr,
-                phone: (order.contacts as any)?.phone || '',
-                email: (order.contacts as any)?.email || '',
-            },
-            parcels: [{
-                length: '8', width: '6', height: '4',
-                distance_unit: 'in',
-                weight,
-                mass_unit: 'oz',
-            }],
-            async: false,
-        });
-
-        const rates = shipment.rates || [];
-        if (rates.length === 0) {
-            await markShippingError(supabase, orderId, 'Shippo returned no rates');
-            return res.status(502).json({ error: 'No shipping rates available' });
-        }
-
-        // 2. Pick rate: prefer USPS Priority, else cheapest
-        const preferred = rates.find((r: any) =>
-            r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
-        );
-        const selectedRate = preferred || rates.sort((a: any, b: any) =>
-            parseFloat(a.amount) - parseFloat(b.amount)
-        )[0];
-
-        // 3. Purchase label
+        // Purchase label via Shippo
         const transaction = await shippoPost('/transactions', shippoApiKey, {
-            rate: selectedRate.object_id,
+            rate: rateId,
             label_file_type: 'PDF',
             async: false,
         });
@@ -135,15 +77,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(502).json({ error: `Label purchase failed: ${msg}` });
         }
 
-        // 4. Update order in Supabase
+        // Update order in Supabase
         const { error: updateError } = await supabase
             .from('sales_orders')
             .update({
                 tracking_number: transaction.tracking_number,
-                carrier: selectedRate.provider,
+                carrier,
                 shipping_status: 'label_created',
                 ship_date: new Date().toISOString(),
-                shipping_cost: parseFloat(selectedRate.amount),
+                shipping_cost: shippingCost,
                 label_url: transaction.label_url,
                 shipping_error: null,
             })
@@ -151,40 +93,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (updateError) {
             console.error('DB update failed:', updateError);
+            // Label was purchased — return data anyway so it's not lost
         }
 
         return res.status(200).json({
             tracking_number: transaction.tracking_number,
-            carrier: selectedRate.provider,
+            carrier,
             label_url: transaction.label_url,
-            shipping_cost: parseFloat(selectedRate.amount),
+            shipping_cost: shippingCost,
         });
 
     } catch (error: any) {
-        console.error('Shipping label creation failed:', error);
+        console.error('Buy label failed:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });
     }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseAddress(raw: string) {
-    if (!raw || raw.trim().length < 10) return null;
-    const cleaned = raw.replace(/\n/g, ', ').replace(/\s+/g, ' ').trim();
-    const match = cleaned.match(
-        /^(.+?),\s*(.+?),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)(?:,?\s*(?:US|USA|United States))?$/i
-    );
-    if (match) {
-        return {
-            street1: match[1].trim(),
-            city: match[2].trim(),
-            state: match[3].toUpperCase(),
-            zip: match[4],
-            country: 'US',
-        };
-    }
-    return null;
-}
 
 async function shippoPost(endpoint: string, apiKey: string, body: object) {
     const resp = await fetch(`${SHIPPO_API}${endpoint}`, {
@@ -198,6 +123,19 @@ async function shippoPost(endpoint: string, apiKey: string, body: object) {
     if (!resp.ok) {
         const text = await resp.text();
         throw new Error(`Shippo ${endpoint} failed (${resp.status}): ${text}`);
+    }
+    return resp.json();
+}
+
+async function shippoGet(endpoint: string, apiKey: string) {
+    const resp = await fetch(`${SHIPPO_API}${endpoint}`, {
+        headers: {
+            'Authorization': `ShippoToken ${apiKey}`,
+        },
+    });
+    if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Shippo GET ${endpoint} failed (${resp.status}): ${text}`);
     }
     return resp.json();
 }

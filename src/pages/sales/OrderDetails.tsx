@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
+import printJS from 'print-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -420,20 +421,14 @@ export default function OrderDetails() {
                                 </Button>
                             )}
 
-                            {/* Print label - opens PDF in new tab for printing */}
+                            {/* Print label - triggers print dialog via print-js */}
                             {order.label_url && !['delivered'].includes(order.shipping_status) && (
                                 <Button
                                     variant="default"
                                     size="sm"
                                     className="w-full bg-indigo-600 hover:bg-indigo-700"
                                     onClick={() => {
-                                        const printWin = window.open(order.label_url, '_blank');
-                                        if (printWin) {
-                                            printWin.addEventListener('afterprint', () => {
-                                                // Auto-prompt to mark as printed after print dialog closes
-                                            });
-                                        }
-                                        toast({ title: 'Label opened for printing' });
+                                        printJS({ printable: order.label_url!, type: 'pdf' });
                                     }}
                                 >
                                     <Printer className="mr-2 h-4 w-4" /> Print Shipping Label

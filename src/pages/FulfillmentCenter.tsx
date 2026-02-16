@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
+import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
+import printJS from 'print-js';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +36,8 @@ export default function FulfillmentCenter() {
     const { data: allOrders, isLoading } = useSalesOrders();
     const fulfillOrder = useFulfillOrder();
     const updateOrder = useUpdateSalesOrder();
-    const shipLabel = useCreateShippingLabel();
+    const getRates = useGetShippingRates();
+    const buyLabel = useBuyShippingLabel();
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -44,6 +46,10 @@ export default function FulfillmentCenter() {
     // Track which order is being acted on (prevents shared loading state bug)
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [confirmFulfillOrder, setConfirmFulfillOrder] = useState<SalesOrder | null>(null);
+
+    // Per-order rate fetching state for 3-step label flow
+    const [orderRates, setOrderRates] = useState<Record<string, ShippingRate[]>>({});
+    const [selectedRates, setSelectedRates] = useState<Record<string, string>>({});
 
     // Hours logging state
     const [hoursInput, setHoursInput] = useState('');
@@ -204,11 +210,39 @@ export default function FulfillmentCenter() {
         });
     };
 
-    const handleCreateLabel = (orderId: string) => {
+    const handleGetRates = (orderId: string) => {
         setActiveOrderId(orderId);
-        shipLabel.mutate(orderId, {
+        setOrderRates(prev => ({ ...prev, [orderId]: [] }));
+        setSelectedRates(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+
+        getRates.mutate(orderId, {
+            onSuccess: (data) => {
+                setOrderRates(prev => ({ ...prev, [orderId]: data.rates }));
+            },
             onSettled: () => setActiveOrderId(null),
         });
+    };
+
+    const handleSelectRate = (orderId: string, rateId: string) => {
+        setSelectedRates(prev => ({ ...prev, [orderId]: rateId }));
+    };
+
+    const handleBuyLabel = (orderId: string) => {
+        const rateId = selectedRates[orderId];
+        if (!rateId) return;
+
+        setActiveOrderId(orderId);
+        buyLabel.mutate({ orderId, rateId }, {
+            onSuccess: () => {
+                setOrderRates(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+                setSelectedRates(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+            },
+            onSettled: () => setActiveOrderId(null),
+        });
+    };
+
+    const handlePrintLabel = (labelUrl: string) => {
+        printJS({ printable: labelUrl, type: 'pdf' });
     };
 
     const handleMarkPrinted = (orderId: string) => {
@@ -728,60 +762,136 @@ export default function FulfillmentCenter() {
                                                 </div>
                                             )}
 
-                                            {/* Shipping Actions - Step by step */}
-                                            <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                                                {/* Create Label (if no tracking yet) or Retry on error */}
-                                                {(!order.tracking_number || hasError) && (
-                                                    <Button
-                                                        className={`flex-1 ${hasError ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                                        size="lg"
-                                                        disabled={busy || !order.shipping_address}
-                                                        onClick={() => handleCreateLabel(order.id)}
-                                                    >
-                                                        {busy ? 'Creating...' : hasError ? (
-                                                            <><RefreshCw className="mr-2 h-4 w-4" /> Retry Label</>
-                                                        ) : (
-                                                            <>Create Shipping Label <Truck className="ml-2 h-4 w-4" /></>
-                                                        )}
-                                                    </Button>
-                                                )}
+                                            {/* ── 3-Step Label Flow ── */}
 
-                                                {/* Print Label */}
-                                                {order.label_url && !hasError && (
-                                                    <Button
-                                                        variant="outline"
-                                                        className="border-indigo-500/40 text-indigo-400"
-                                                        onClick={() => window.open(order.label_url!, '_blank')}
-                                                    >
-                                                        <Printer className="mr-2 h-4 w-4" /> Print Label
-                                                    </Button>
-                                                )}
+                                            {/* STEP 1: Get Rates (no label yet, no rates fetched) */}
+                                            {!order.tracking_number && !orderRates[order.id]?.length && (
+                                                <Button
+                                                    className={`w-full ${hasError ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                                    size="lg"
+                                                    disabled={busy || !order.shipping_address}
+                                                    onClick={() => handleGetRates(order.id)}
+                                                >
+                                                    {busy ? (
+                                                        <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Fetching Rates...</>
+                                                    ) : hasError ? (
+                                                        <><RefreshCw className="mr-2 h-4 w-4" /> Retry — Get New Rates</>
+                                                    ) : (
+                                                        <><Truck className="mr-2 h-4 w-4" /> Get Shipping Rates</>
+                                                    )}
+                                                </Button>
+                                            )}
 
-                                                {/* Confirm Printed */}
-                                                {order.shipping_status === 'label_created' && (
-                                                    <Button
-                                                        variant="outline"
-                                                        disabled={busy}
-                                                        onClick={() => handleMarkPrinted(order.id)}
-                                                    >
-                                                        <CheckCircle className="mr-2 h-4 w-4" /> Confirm Printed
-                                                    </Button>
-                                                )}
+                                            {/* STEP 2: Rate Selection + Buy */}
+                                            {!order.tracking_number && orderRates[order.id]?.length > 0 && (
+                                                <div className="space-y-3">
+                                                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                                                        <Truck className="h-4 w-4" /> Select Shipping Rate
+                                                    </h4>
+                                                    <div className="grid gap-2">
+                                                        {orderRates[order.id].map((rate) => {
+                                                            const isSelected = selectedRates[order.id] === rate.object_id;
+                                                            return (
+                                                                <div
+                                                                    key={rate.object_id}
+                                                                    onClick={() => handleSelectRate(order.id, rate.object_id)}
+                                                                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer border transition-all ${
+                                                                        isSelected
+                                                                            ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/30'
+                                                                            : 'border-muted hover:border-blue-500/40 bg-muted/30'
+                                                                    }`}
+                                                                >
+                                                                    <div>
+                                                                        <p className="font-medium text-sm">
+                                                                            {rate.provider} {rate.servicelevel_name}
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {rate.estimated_days
+                                                                                ? `${rate.estimated_days} day${rate.estimated_days > 1 ? 's' : ''}`
+                                                                                : rate.duration_terms || 'Delivery time varies'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <p className={`text-lg font-bold ${isSelected ? 'text-blue-400' : ''}`}>
+                                                                        ${parseFloat(rate.amount).toFixed(2)}
+                                                                    </p>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
 
-                                                {/* Mark Shipped — available at any pre-ship stage */}
-                                                {(!order.shipping_status || order.shipping_status === 'pending' || order.shipping_status === 'label_created' || order.shipping_status === 'printed') && (
-                                                    <Button
-                                                        className="flex-1 bg-amber-600 hover:bg-amber-700"
-                                                        size="lg"
-                                                        disabled={busy}
-                                                        onClick={() => handleMarkShipped(order.id)}
-                                                    >
-                                                        {busy ? 'Updating...' : 'Mark as Shipped'}
-                                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                                    {/* Buy Label button */}
+                                                    {selectedRates[order.id] && (
+                                                        <Button
+                                                            className="w-full bg-green-600 hover:bg-green-700"
+                                                            size="lg"
+                                                            disabled={busy}
+                                                            onClick={() => handleBuyLabel(order.id)}
+                                                        >
+                                                            {busy ? 'Purchasing Label...' : (
+                                                                <>Buy Label — ${parseFloat(
+                                                                    orderRates[order.id].find(r => r.object_id === selectedRates[order.id])?.amount || '0'
+                                                                ).toFixed(2)}</>
+                                                            )}
+                                                        </Button>
+                                                    )}
 
-                                                {/* Skip shipping — mark as already complete */}
+                                                    {/* Cancel link */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="w-full text-xs text-muted-foreground"
+                                                        onClick={() => {
+                                                            setOrderRates(prev => { const n = { ...prev }; delete n[order.id]; return n; });
+                                                            setSelectedRates(prev => { const n = { ...prev }; delete n[order.id]; return n; });
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {/* STEP 3: Post-Purchase Actions (label exists) */}
+                                            {order.tracking_number && (
+                                                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                                                    {/* Print Label */}
+                                                    {order.label_url && (
+                                                        <Button
+                                                            className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                                                            size="lg"
+                                                            onClick={() => handlePrintLabel(order.label_url!)}
+                                                        >
+                                                            <Printer className="mr-2 h-4 w-4" /> Print Label
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Confirm Printed */}
+                                                    {order.shipping_status === 'label_created' && (
+                                                        <Button
+                                                            variant="outline"
+                                                            disabled={busy}
+                                                            onClick={() => handleMarkPrinted(order.id)}
+                                                        >
+                                                            <CheckCircle className="mr-2 h-4 w-4" /> Confirm Printed
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Mark Shipped */}
+                                                    {(order.shipping_status === 'label_created' || order.shipping_status === 'printed') && (
+                                                        <Button
+                                                            className="flex-1 bg-amber-600 hover:bg-amber-700"
+                                                            size="lg"
+                                                            disabled={busy}
+                                                            onClick={() => handleMarkShipped(order.id)}
+                                                        >
+                                                            {busy ? 'Updating...' : 'Mark as Shipped'}
+                                                            <ArrowRight className="ml-2 h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Utility buttons (always visible) */}
+                                            <div className="flex gap-2 pt-1">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -791,8 +901,6 @@ export default function FulfillmentCenter() {
                                                 >
                                                     <CheckCircle className="mr-1 h-3 w-3" /> Already Done
                                                 </Button>
-
-                                                {/* Packing slip */}
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -800,7 +908,6 @@ export default function FulfillmentCenter() {
                                                 >
                                                     <Printer className="mr-2 h-4 w-4" /> Slip
                                                 </Button>
-
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

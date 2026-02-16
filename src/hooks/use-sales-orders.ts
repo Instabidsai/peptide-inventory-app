@@ -6,6 +6,30 @@ import { recalculateOrderProfit } from '@/lib/order-profit';
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded';
 
+export interface ShippingRate {
+    object_id: string;
+    provider: string;
+    servicelevel_name: string;
+    servicelevel_token: string;
+    amount: string;
+    currency: string;
+    estimated_days: number | null;
+    duration_terms: string;
+}
+
+export interface GetRatesResponse {
+    shipment_id: string;
+    rates: ShippingRate[];
+    has_existing_label: boolean;
+}
+
+export interface BuyLabelResponse {
+    tracking_number: string;
+    carrier: string;
+    label_url: string;
+    shipping_cost: number;
+}
+
 export interface SalesOrderItem {
     id: string;
     sales_order_id: string;
@@ -649,6 +673,101 @@ export function useCreateShippingLabel() {
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Shipping Failed', description: error.message });
+        },
+    });
+}
+
+export function useGetShippingRates() {
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (orderId: string): Promise<GetRatesResponse> => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Session expired. Please log in again.');
+            }
+
+            const response = await fetch('/api/shipping/get-rates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ orderId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to get rates (${response.status})`);
+            }
+
+            return response.json();
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to get rates', description: error.message });
+        },
+    });
+}
+
+export function useBuyShippingLabel() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async ({ orderId, rateId }: { orderId: string; rateId: string }): Promise<BuyLabelResponse> => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Session expired. Please log in again.');
+            }
+
+            const response = await fetch('/api/shipping/buy-label', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ orderId, rateId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to buy label (${response.status})`);
+            }
+
+            return response.json();
+        },
+        onSuccess: async (data, { orderId }) => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            toast({
+                title: 'Shipping Label Purchased',
+                description: `Tracking: ${data.tracking_number} via ${data.carrier} — $${data.shipping_cost.toFixed(2)}`,
+            });
+
+            // Create in-app notification for customer
+            try {
+                const { data: orderData } = await supabase
+                    .from('sales_orders')
+                    .select('client_id, contacts!inner(linked_user_id, name)')
+                    .eq('id', orderId)
+                    .single();
+
+                const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                if (clientUserId) {
+                    await supabase.from('notifications').insert({
+                        user_id: clientUserId,
+                        title: 'Your order has shipped!',
+                        message: `Your order is on the way! Tracking: ${data.tracking_number} via ${data.carrier}.`,
+                        type: 'success',
+                        is_read: false,
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Failed to create shipping notification:', notifErr);
+            }
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Label Purchase Failed', description: error.message });
         },
     });
 }

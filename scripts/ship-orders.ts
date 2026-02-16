@@ -34,6 +34,8 @@ const FROM_ADDRESS = {
     state: process.env.SHIP_FROM_STATE || 'FL',
     zip: process.env.SHIP_FROM_ZIP || '33442',
     country: process.env.SHIP_FROM_COUNTRY || 'US',
+    phone: process.env.SHIP_FROM_PHONE || '',
+    email: process.env.SHIP_FROM_EMAIL || '',
 };
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);

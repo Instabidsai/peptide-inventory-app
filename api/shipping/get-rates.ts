@@ -56,10 +56,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Order must be fulfilled before shipping' });
         }
 
-        if (order.tracking_number) {
-            return res.status(400).json({ error: 'Order already has a shipping label' });
-        }
-
         // Parse shipping address
         const rawAddress = order.shipping_address || (order.contacts as any)?.address;
         if (!rawAddress) {
@@ -90,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
         const weight = String(Math.max(8, totalItems * 2));
 
-        // 1. Create Shippo shipment
+        // Create Shippo shipment (returns rates synchronously)
         const shipment = await shippoPost('/shipments', shippoApiKey, {
             address_from: fromAddress,
             address_to: {
@@ -110,58 +106,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const rates = shipment.rates || [];
         if (rates.length === 0) {
-            await markShippingError(supabase, orderId, 'Shippo returned no rates');
-            return res.status(502).json({ error: 'No shipping rates available' });
+            return res.status(502).json({ error: 'No shipping rates available for this address' });
         }
 
-        // 2. Pick rate: prefer USPS Priority, else cheapest
-        const preferred = rates.find((r: any) =>
-            r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
-        );
-        const selectedRate = preferred || rates.sort((a: any, b: any) =>
-            parseFloat(a.amount) - parseFloat(b.amount)
-        )[0];
-
-        // 3. Purchase label
-        const transaction = await shippoPost('/transactions', shippoApiKey, {
-            rate: selectedRate.object_id,
-            label_file_type: 'PDF',
-            async: false,
-        });
-
-        if (transaction.status !== 'SUCCESS') {
-            const msg = JSON.stringify(transaction.messages);
-            await markShippingError(supabase, orderId, `Label failed: ${msg}`);
-            return res.status(502).json({ error: `Label purchase failed: ${msg}` });
-        }
-
-        // 4. Update order in Supabase
-        const { error: updateError } = await supabase
-            .from('sales_orders')
-            .update({
-                tracking_number: transaction.tracking_number,
-                carrier: selectedRate.provider,
-                shipping_status: 'label_created',
-                ship_date: new Date().toISOString(),
-                shipping_cost: parseFloat(selectedRate.amount),
-                label_url: transaction.label_url,
-                shipping_error: null,
-            })
-            .eq('id', orderId);
-
-        if (updateError) {
-            console.error('DB update failed:', updateError);
-        }
+        // Map and sort rates cheapest-first
+        const cleanRates = rates
+            .filter((r: any) => r.amount)
+            .map((r: any) => ({
+                object_id: r.object_id,
+                provider: r.provider,
+                servicelevel_name: r.servicelevel?.name || r.servicelevel?.token || 'Standard',
+                servicelevel_token: r.servicelevel?.token || '',
+                amount: r.amount,
+                currency: r.currency || 'USD',
+                estimated_days: r.estimated_days || null,
+                duration_terms: r.duration_terms || '',
+            }))
+            .sort((a: any, b: any) => parseFloat(a.amount) - parseFloat(b.amount));
 
         return res.status(200).json({
-            tracking_number: transaction.tracking_number,
-            carrier: selectedRate.provider,
-            label_url: transaction.label_url,
-            shipping_cost: parseFloat(selectedRate.amount),
+            shipment_id: shipment.object_id,
+            rates: cleanRates,
+            has_existing_label: !!order.tracking_number,
         });
 
     } catch (error: any) {
-        console.error('Shipping label creation failed:', error);
+        console.error('Get rates failed:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });
     }
 }
@@ -200,14 +170,4 @@ async function shippoPost(endpoint: string, apiKey: string, body: object) {
         throw new Error(`Shippo ${endpoint} failed (${resp.status}): ${text}`);
     }
     return resp.json();
-}
-
-async function markShippingError(supabase: any, orderId: string, message: string) {
-    await supabase
-        .from('sales_orders')
-        .update({
-            shipping_status: 'error',
-            shipping_error: message.slice(0, 500),
-        })
-        .eq('id', orderId);
 }
