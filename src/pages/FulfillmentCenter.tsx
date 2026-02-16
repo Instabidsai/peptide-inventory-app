@@ -143,16 +143,16 @@ export default function FulfillmentCenter() {
             if (o.status === 'cancelled') continue;
             const isPickup = o.delivery_method === 'local_pickup';
 
-            // Ready to pick: submitted + paid, not yet fulfilled
-            if (o.status === 'submitted' && o.payment_status === 'paid') {
+            // Ready to pick: submitted, not yet fulfilled (any payment status)
+            if (o.status === 'submitted') {
                 pick.push(o);
             }
             // Fulfilled + local_pickup → ready for pickup
             else if (o.status === 'fulfilled' && isPickup && o.shipping_status !== 'delivered') {
                 pickup.push(o);
             }
-            // Ready to ship: fulfilled, delivery=ship, not yet shipped (includes error state for retry)
-            else if (o.status === 'fulfilled' && !isPickup && (!o.shipping_status || o.shipping_status === 'label_created' || o.shipping_status === 'printed' || o.shipping_status === 'error')) {
+            // Ready to ship: fulfilled, delivery=ship, not yet shipped (includes error/pending state)
+            else if (o.status === 'fulfilled' && !isPickup && (!o.shipping_status || o.shipping_status === 'pending' || o.shipping_status === 'label_created' || o.shipping_status === 'printed' || o.shipping_status === 'error')) {
                 ship.push(o);
             }
             // Completed: shipped/delivered OR picked-up in last 7 days
@@ -500,8 +500,12 @@ export default function FulfillmentCenter() {
                                                             <AlertTriangle className="h-3 w-3 mr-1" /> Overdue
                                                         </Badge>
                                                     )}
-                                                    <Badge variant="outline" className="bg-green-500/15 text-green-500 border-green-500/30">
-                                                        Paid
+                                                    <Badge variant="outline" className={
+                                                        order.payment_status === 'paid' ? "bg-green-500/15 text-green-500 border-green-500/30" :
+                                                        order.payment_status === 'partial' ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                                                        "bg-red-500/15 text-red-400 border-red-500/30"
+                                                    }>
+                                                        {order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'partial' ? 'Partial' : 'Unpaid'}
                                                     </Badge>
                                                     {order.delivery_method === 'local_pickup' ? (
                                                         <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">
@@ -764,15 +768,15 @@ export default function FulfillmentCenter() {
                                                     </Button>
                                                 )}
 
-                                                {/* Mark Shipped */}
-                                                {order.shipping_status === 'printed' && (
+                                                {/* Mark Shipped — available at any pre-ship stage */}
+                                                {(!order.shipping_status || order.shipping_status === 'pending' || order.shipping_status === 'label_created' || order.shipping_status === 'printed') && (
                                                     <Button
                                                         className="flex-1 bg-amber-600 hover:bg-amber-700"
                                                         size="lg"
                                                         disabled={busy}
                                                         onClick={() => handleMarkShipped(order.id)}
                                                     >
-                                                        Mark as Shipped
+                                                        {busy ? 'Updating...' : 'Mark as Shipped'}
                                                         <ArrowRight className="ml-2 h-4 w-4" />
                                                     </Button>
                                                 )}
