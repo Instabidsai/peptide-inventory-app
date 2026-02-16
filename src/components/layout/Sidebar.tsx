@@ -22,11 +22,11 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff'] },
+  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
+  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'fulfillment'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
@@ -40,7 +40,7 @@ const navigation = [
   { name: 'Requests', href: '/requests', icon: MessageSquare, roles: ['admin', 'staff'] },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
-  { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
   { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },
   { name: 'My Orders', href: '/partner/orders', icon: ClipboardList, roles: ['sales_rep', 'admin'] },
@@ -194,7 +194,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         )}
 
         {/* Family Portal Switcher */}
-        <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
+        {effectiveRole !== 'fulfillment' && <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
           <NavLink
             to="/dashboard?preview_role=customer"
             onClick={onClose}
@@ -205,7 +205,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <span>Family Portal</span>
           </NavLink>
-        </div>
+        </div>}
       </nav>
     </aside>
   );

@@ -43,7 +43,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             }
         }
 
-        // 2. Enforce strict allowedRoles if provided
+        // 2. Fulfillment users land on /fulfillment by default
+        if (roleName === 'fulfillment' && !allowedRoles) {
+            const currentPath = window.location.hash.replace('#', '') || '/';
+            if (currentPath === '/' || currentPath === '') {
+                return <Navigate to="/fulfillment" replace />;
+            }
+        }
+
+        // 3. Enforce strict allowedRoles if provided
         if (allowedRoles && roleName && !allowedRoles.includes(roleName)) {
             return <Navigate to="/" replace />;
         }
