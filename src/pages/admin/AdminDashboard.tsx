@@ -60,7 +60,7 @@ export default function AdminDashboard() {
                 .eq('order_source', 'woocommerce')
                 .order('created_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
             return data;
         },
     });
