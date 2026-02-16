@@ -16,7 +16,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -65,6 +65,7 @@ export default function NewOrder() {
 
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
+    const [deliveryMethod, setDeliveryMethod] = useState<'ship' | 'local_pickup'>('ship');
     const [openCombobox, setOpenCombobox] = useState(false);
 
     const location = useLocation();
@@ -228,7 +229,8 @@ export default function NewOrder() {
                 client_id: selectedContactId,
                 status: 'submitted',
                 notes: notes,
-                shipping_address: shippingAddress || selectedContact?.address || undefined,
+                shipping_address: deliveryMethod === 'ship' ? (shippingAddress || selectedContact?.address || undefined) : undefined,
+                delivery_method: deliveryMethod,
                 items: cart.map(item => ({
                     peptide_id: item.peptide.id,
                     quantity: item.quantity,
@@ -480,14 +482,39 @@ export default function NewOrder() {
 
                     <div className="space-y-3">
                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Shipping Address</label>
-                            <Textarea
-                                placeholder="Enter shipping address if different..."
-                                value={shippingAddress}
-                                onChange={e => setShippingAddress(e.target.value)}
-                                className="min-h-[60px]"
-                            />
+                            <label className="text-sm font-medium">Delivery Method</label>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={deliveryMethod === 'ship' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => setDeliveryMethod('ship')}
+                                >
+                                    <Truck className="mr-2 h-4 w-4" /> Ship
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={deliveryMethod === 'local_pickup' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => setDeliveryMethod('local_pickup')}
+                                >
+                                    <MapPin className="mr-2 h-4 w-4" /> Local Pickup
+                                </Button>
+                            </div>
                         </div>
+                        {deliveryMethod === 'ship' && (
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Shipping Address</label>
+                                <Textarea
+                                    placeholder="Enter shipping address if different..."
+                                    value={shippingAddress}
+                                    onChange={e => setShippingAddress(e.target.value)}
+                                    className="min-h-[60px]"
+                                />
+                            </div>
+                        )}
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Notes</label>
                             <Textarea

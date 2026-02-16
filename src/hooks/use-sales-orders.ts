@@ -43,6 +43,8 @@ export interface SalesOrder {
     shipping_cost?: number | null;
     label_url?: string | null;
     shipping_error?: string | null;
+    // Delivery method
+    delivery_method?: string;
     // WooCommerce + profit fields
     order_source?: string;
     woo_order_id?: number | null;
@@ -72,6 +74,7 @@ export interface CreateSalesOrderInput {
     notes?: string;
     status?: SalesOrderStatus;
     payment_method?: string;
+    delivery_method?: string;
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
@@ -232,6 +235,7 @@ export function useCreateSalesOrder() {
                     shipping_address: input.shipping_address,
                     notes: input.notes,
                     payment_method: input.payment_method || null,
+                    delivery_method: input.delivery_method || 'ship',
                 })
                 .select()
                 .single();

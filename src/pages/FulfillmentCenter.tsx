@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -24,7 +27,7 @@ import {
     Package, Truck, CheckCircle, Printer,
     MapPin, User, AlertCircle, PackageCheck,
     ClipboardList, ArrowRight, ExternalLink, Copy,
-    AlertTriangle, RefreshCw, Pill
+    AlertTriangle, RefreshCw, Pill, Clock, Save, HandMetal
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,10 +39,71 @@ export default function FulfillmentCenter() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const navigate = useNavigate();
+    const { user, organization } = useAuth();
 
     // Track which order is being acted on (prevents shared loading state bug)
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [confirmFulfillOrder, setConfirmFulfillOrder] = useState<SalesOrder | null>(null);
+
+    // Hours logging state
+    const [hoursInput, setHoursInput] = useState('');
+    const [hoursNotes, setHoursNotes] = useState('');
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    // Fetch today's hours
+    const { data: todayHours } = useQuery({
+        queryKey: ['daily_hours', todayStr],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('daily_hours')
+                .select('*')
+                .eq('user_id', user?.id)
+                .eq('work_date', todayStr)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!user,
+    });
+
+    // Fetch this week's total
+    const weekStart = format(subDays(new Date(), new Date().getDay()), 'yyyy-MM-dd');
+    const { data: weekHours } = useQuery({
+        queryKey: ['weekly_hours', weekStart],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('daily_hours')
+                .select('hours')
+                .eq('user_id', user?.id)
+                .gte('work_date', weekStart);
+            return (data || []).reduce((sum, r) => sum + Number(r.hours), 0);
+        },
+        enabled: !!user,
+    });
+
+    const saveHours = useMutation({
+        mutationFn: async () => {
+            const hours = parseFloat(hoursInput);
+            if (isNaN(hours) || hours < 0 || hours > 24) throw new Error('Invalid hours');
+            const { error } = await supabase
+                .from('daily_hours')
+                .upsert({
+                    user_id: user!.id,
+                    org_id: organization?.id,
+                    work_date: todayStr,
+                    hours,
+                    notes: hoursNotes || null,
+                }, { onConflict: 'user_id,work_date' });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['daily_hours'] });
+            queryClient.invalidateQueries({ queryKey: ['weekly_hours'] });
+            toast({ title: 'Hours saved' });
+        },
+        onError: (e: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to save hours', description: e.message });
+        },
+    });
 
     // Get stock counts per peptide for pick list
     const { data: stockCounts } = useQuery({
@@ -66,39 +130,45 @@ export default function FulfillmentCenter() {
     });
 
     // Categorize orders — sevenDaysAgo computed inside useMemo to avoid re-render loop
-    const { readyToPick, readyToShip, recentlyShipped } = useMemo(() => {
-        if (!allOrders) return { readyToPick: [], readyToShip: [], recentlyShipped: [] };
+    const { readyToPick, readyToShip, readyForPickup, recentlyCompleted } = useMemo(() => {
+        if (!allOrders) return { readyToPick: [], readyToShip: [], readyForPickup: [], recentlyCompleted: [] };
 
         const cutoff = subDays(new Date(), 7);
         const pick: SalesOrder[] = [];
         const ship: SalesOrder[] = [];
-        const shipped: SalesOrder[] = [];
+        const pickup: SalesOrder[] = [];
+        const completed: SalesOrder[] = [];
 
         for (const o of allOrders) {
             if (o.status === 'cancelled') continue;
+            const isPickup = o.delivery_method === 'local_pickup';
 
             // Ready to pick: submitted + paid, not yet fulfilled
             if (o.status === 'submitted' && o.payment_status === 'paid') {
                 pick.push(o);
             }
-            // Ready to ship: fulfilled but not yet shipped (includes error state for retry)
-            else if (o.status === 'fulfilled' && (!o.shipping_status || o.shipping_status === 'label_created' || o.shipping_status === 'printed' || o.shipping_status === 'error')) {
+            // Fulfilled + local_pickup → ready for pickup
+            else if (o.status === 'fulfilled' && isPickup && o.shipping_status !== 'delivered') {
+                pickup.push(o);
+            }
+            // Ready to ship: fulfilled, delivery=ship, not yet shipped (includes error state for retry)
+            else if (o.status === 'fulfilled' && !isPickup && (!o.shipping_status || o.shipping_status === 'label_created' || o.shipping_status === 'printed' || o.shipping_status === 'error')) {
                 ship.push(o);
             }
-            // Recently shipped: in_transit or delivered in last 7 days
+            // Completed: shipped/delivered OR picked-up in last 7 days
             else if (
                 o.status === 'fulfilled' &&
                 (o.shipping_status === 'in_transit' || o.shipping_status === 'delivered') &&
                 isAfter(new Date(o.updated_at || o.created_at), cutoff)
             ) {
-                shipped.push(o);
+                completed.push(o);
             }
         }
 
         // Sort pick list oldest first — fulfill in order received
         pick.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        return { readyToPick: pick, readyToShip: ship, recentlyShipped: shipped };
+        return { readyToPick: pick, readyToShip: ship, readyForPickup: pickup, recentlyCompleted: completed };
     }, [allOrders]);
 
     // Total bottles to pull across all pick orders
@@ -174,6 +244,17 @@ export default function FulfillmentCenter() {
         );
     };
 
+    const handleMarkPickedUp = (orderId: string) => {
+        setActiveOrderId(orderId);
+        updateOrder.mutate(
+            { id: orderId, shipping_status: 'delivered' },
+            {
+                onSuccess: () => toast({ title: 'Marked as picked up!' }),
+                onSettled: () => setActiveOrderId(null),
+            }
+        );
+    };
+
     const printPackingSlip = (order: SalesOrder) => {
         const items = order.sales_order_items?.map(item =>
             `<tr><td style="padding:8px;border-bottom:1px solid #eee">${item.peptides?.name || 'Unknown'}</td>` +
@@ -228,8 +309,55 @@ export default function FulfillmentCenter() {
                 <p className="text-muted-foreground">Pick, pack, and ship orders.</p>
             </div>
 
+            {/* Hours Logging Card */}
+            <Card className="border-primary/20">
+                <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-primary/10">
+                                <Clock className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="font-semibold">{format(new Date(), 'EEEE, MMMM d')}</p>
+                                {todayHours ? (
+                                    <p className="text-sm text-muted-foreground">Logged: <strong>{todayHours.hours}h</strong> today | Week: <strong>{weekHours || 0}h</strong></p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No hours logged today | Week: <strong>{weekHours || 0}h</strong></p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 sm:justify-end w-full sm:w-auto">
+                            <Input
+                                type="number"
+                                min="0"
+                                max="24"
+                                step="0.5"
+                                placeholder="Hours"
+                                value={hoursInput || (todayHours?.hours?.toString() ?? '')}
+                                onChange={e => setHoursInput(e.target.value)}
+                                className="w-20"
+                            />
+                            <Input
+                                placeholder="Notes (optional)"
+                                value={hoursNotes || (todayHours?.notes ?? '')}
+                                onChange={e => setHoursNotes(e.target.value)}
+                                className="flex-1 min-w-[120px] max-w-[200px]"
+                            />
+                            <Button
+                                size="sm"
+                                disabled={saveHours.isPending}
+                                onClick={() => saveHours.mutate()}
+                            >
+                                <Save className="h-4 w-4 mr-1" />
+                                {saveHours.isPending ? 'Saving...' : 'Save'}
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 <Card>
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="p-3 rounded-xl bg-amber-500/10">
@@ -265,12 +393,23 @@ export default function FulfillmentCenter() {
                 </Card>
                 <Card>
                     <CardContent className="p-4 flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-green-500/10">
-                            <Truck className="h-6 w-6 text-green-500" />
+                        <div className="p-3 rounded-xl bg-orange-500/10">
+                            <HandMetal className="h-6 w-6 text-orange-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{recentlyShipped.length}</p>
-                            <p className="text-sm text-muted-foreground">Shipped (7d)</p>
+                            <p className="text-2xl font-bold">{readyForPickup.length}</p>
+                            <p className="text-sm text-muted-foreground">Pickup</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-green-500/10">
+                            <CheckCircle className="h-6 w-6 text-green-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{recentlyCompleted.length}</p>
+                            <p className="text-sm text-muted-foreground">Done (7d)</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -297,9 +436,18 @@ export default function FulfillmentCenter() {
                             </span>
                         )}
                     </TabsTrigger>
-                    <TabsTrigger value="shipped" className="gap-2">
-                        <Truck className="h-4 w-4" />
-                        Shipped
+                    <TabsTrigger value="pickup" className="gap-2">
+                        <HandMetal className="h-4 w-4" />
+                        Ready for Pickup
+                        {readyForPickup.length > 0 && (
+                            <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white px-1">
+                                {readyForPickup.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="completed" className="gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Completed
                     </TabsTrigger>
                 </TabsList>
 
@@ -355,6 +503,15 @@ export default function FulfillmentCenter() {
                                                     <Badge variant="outline" className="bg-green-500/15 text-green-500 border-green-500/30">
                                                         Paid
                                                     </Badge>
+                                                    {order.delivery_method === 'local_pickup' ? (
+                                                        <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">
+                                                            <MapPin className="h-3 w-3 mr-1" /> Pickup
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="bg-blue-500/15 text-blue-400 border-blue-500/30">
+                                                            <Truck className="h-3 w-3 mr-1" /> Ship
+                                                        </Badge>
+                                                    )}
                                                     {order.order_source === 'woocommerce' && (
                                                         <Badge variant="outline" className="bg-purple-500/15 text-purple-400 border-purple-500/30">
                                                             WC
@@ -645,18 +802,84 @@ export default function FulfillmentCenter() {
                     )}
                 </TabsContent>
 
-                {/* ========== TAB 3: SHIPPED ========== */}
-                <TabsContent value="shipped" className="space-y-4">
-                    {recentlyShipped.length === 0 ? (
+                {/* ========== TAB 3: READY FOR PICKUP ========== */}
+                <TabsContent value="pickup" className="space-y-4">
+                    {readyForPickup.length === 0 ? (
                         <Card>
                             <CardContent className="py-12 text-center">
-                                <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-                                <p className="text-lg font-medium text-muted-foreground">No recent shipments</p>
-                                <p className="text-sm text-muted-foreground">Shipped orders from the last 7 days will appear here.</p>
+                                <HandMetal className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
+                                <p className="text-lg font-medium text-muted-foreground">No orders waiting for pickup</p>
+                                <p className="text-sm text-muted-foreground">Local pickup orders will appear here after fulfillment.</p>
                             </CardContent>
                         </Card>
                     ) : (
-                        recentlyShipped.map((order, index) => {
+                        readyForPickup.map((order, index) => {
+                            const busy = isOrderBusy(order.id);
+                            return (
+                                <motion.div
+                                    key={order.id}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                                >
+                                    <Card className="border-orange-500/30">
+                                        <CardContent className="p-4">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 rounded-lg bg-orange-500/10">
+                                                        <MapPin className="h-5 w-5 text-orange-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{order.contacts?.name}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Order #{order.id.slice(0, 8)} —{' '}
+                                                            {order.sales_order_items?.map(i => `${i.quantity}x ${i.peptides?.name}`).join(', ')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">
+                                                        <MapPin className="h-3 w-3 mr-1" /> Local Pickup
+                                                    </Badge>
+                                                    <Button
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                        size="sm"
+                                                        disabled={busy}
+                                                        onClick={() => handleMarkPickedUp(order.id)}
+                                                    >
+                                                        {busy ? 'Updating...' : 'Picked Up'}
+                                                        <CheckCircle className="ml-1 h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => navigate(`/sales/${order.id}`)}
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            );
+                        })
+                    )}
+                </TabsContent>
+
+                {/* ========== TAB 4: COMPLETED ========== */}
+                <TabsContent value="completed" className="space-y-4">
+                    {recentlyCompleted.length === 0 ? (
+                        <Card>
+                            <CardContent className="py-12 text-center">
+                                <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
+                                <p className="text-lg font-medium text-muted-foreground">No recent completions</p>
+                                <p className="text-sm text-muted-foreground">Shipped and picked-up orders from the last 7 days will appear here.</p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        recentlyCompleted.map((order, index) => {
                             const busy = isOrderBusy(order.id);
 
                             return (
@@ -702,13 +925,19 @@ export default function FulfillmentCenter() {
                                                             </Button>
                                                         </div>
                                                     )}
-                                                    <Badge variant="outline" className={
-                                                        order.shipping_status === 'delivered'
-                                                            ? 'bg-green-500/15 text-green-500 border-green-500/30'
-                                                            : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                                                    }>
-                                                        {order.shipping_status === 'delivered' ? 'Delivered' : 'In Transit'}
-                                                    </Badge>
+                                                    {order.delivery_method === 'local_pickup' ? (
+                                                        <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">
+                                                            <MapPin className="h-3 w-3 mr-1" /> Picked Up
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className={
+                                                            order.shipping_status === 'delivered'
+                                                                ? 'bg-green-500/15 text-green-500 border-green-500/30'
+                                                                : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                                                        }>
+                                                            {order.shipping_status === 'delivered' ? 'Delivered' : 'In Transit'}
+                                                        </Badge>
+                                                    )}
 
                                                     {order.shipping_status === 'in_transit' && (
                                                         <Button

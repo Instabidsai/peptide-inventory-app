@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Select,
@@ -165,14 +165,19 @@ export default function OrderDetails() {
                 <Card className="overflow-hidden">
                     <CardContent className="py-4">
                         <div className="flex items-center justify-between">
-                            {[
+                            {(order.delivery_method === 'local_pickup' ? [
+                                { label: 'Created', done: true, icon: CircleDot },
+                                { label: 'Paid', done: order.payment_status === 'paid', icon: CreditCard },
+                                { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
+                                { label: 'Picked Up', done: order.shipping_status === 'delivered', icon: MapPin },
+                            ] : [
                                 { label: 'Created', done: true, icon: CircleDot },
                                 { label: 'Paid', done: order.payment_status === 'paid', icon: CreditCard },
                                 { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
                                 { label: 'Label', done: !!order.tracking_number, icon: Truck },
                                 { label: 'Printed', done: ['printed','in_transit','delivered'].includes(order.shipping_status), icon: Printer },
                                 { label: 'Delivered', done: order.shipping_status === 'delivered', icon: CheckCircle },
-                            ].map((step, i, arr) => (
+                            ]).map((step, i, arr) => (
                                 <div key={step.label} className="flex items-center flex-1 last:flex-none">
                                     <div className="flex flex-col items-center gap-1">
                                         <div className={`flex items-center justify-center h-8 w-8 rounded-full border-2 transition-colors ${
@@ -208,6 +213,15 @@ export default function OrderDetails() {
                                 </div>
                             </div>
                             <div className="flex gap-2">
+                                {order.delivery_method === 'local_pickup' ? (
+                                    <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30 py-1 px-3">
+                                        <MapPin className="h-3 w-3 mr-1" /> Local Pickup
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline" className="bg-blue-500/15 text-blue-400 border-blue-500/30 py-1 px-3">
+                                        <Truck className="h-3 w-3 mr-1" /> Ship
+                                    </Badge>
+                                )}
                                 {order.order_source === 'woocommerce' && (
                                     <Badge variant="outline" className="bg-purple-500/15 text-purple-400 border-purple-500/30 py-1 px-3">
                                         WooCommerce
@@ -353,8 +367,8 @@ export default function OrderDetails() {
                         </CardContent>
                     </Card>
 
-                    {/* Shipping Status Card */}
-                    <Card>
+                    {/* Shipping Status Card — hidden for local pickup */}
+                    {order.delivery_method !== 'local_pickup' && <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
                                 <Truck className="h-4 w-4" /> Shipping
@@ -516,7 +530,7 @@ export default function OrderDetails() {
                                 </Button>
                             )}
                         </CardContent>
-                    </Card>
+                    </Card>}
 
                     <Card>
                         <CardHeader className="pb-2">

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -226,6 +226,11 @@ export default function OrderList() {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant={getStatusColor(order.status) as any} className="text-xs">{order.status}</Badge>
                                         <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
+                                        {order.delivery_method === 'local_pickup' && (
+                                            <Badge variant="outline" className="text-xs bg-orange-500/15 text-orange-400 border-orange-500/30">
+                                                <MapPin className="h-2.5 w-2.5 mr-0.5" /> Pickup
+                                            </Badge>
+                                        )}
                                         {order.order_source === 'woocommerce' && (
                                             <Badge variant="outline" className="text-xs bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                         )}
@@ -272,6 +277,11 @@ export default function OrderList() {
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
                                                 <Badge variant="outline" className="ml-1 text-xs py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
+                                            )}
+                                            {order.delivery_method === 'local_pickup' && (
+                                                <Badge variant="outline" className="ml-1 text-xs py-0 bg-orange-500/15 text-orange-400 border-orange-500/30">
+                                                    <MapPin className="h-2.5 w-2.5" />
+                                                </Badge>
                                             )}
                                         </TableCell>
                                         <TableCell>
