@@ -240,6 +240,15 @@ export default function Auth() {
   const roleParam = (searchParams.get('role') || sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
   const isPartnerInvite = roleParam === 'partner';
 
+  // Show OAuth error if redirected back with one (see main.tsx interceptor)
+  useEffect(() => {
+    const oauthError = sessionStorage.getItem('sb_oauth_error');
+    if (oauthError) {
+      sessionStorage.removeItem('sb_oauth_error');
+      toast({ variant: 'destructive', title: 'Sign in failed', description: oauthError });
+    }
+  }, []);
+
   // Auto-switch to signup mode when coming via referral link
   useEffect(() => {
     if (refParam && mode === 'login') {

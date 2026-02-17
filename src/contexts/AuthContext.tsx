@@ -180,9 +180,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session: existingSession }, error }) => {
       if (!mounted) return;
       if (error) console.error("AuthProvider: GetSession Error", error);
+
+      // If no existing session, check for intercepted OAuth tokens
+      // (see main.tsx OAuth Hash Interceptor — stashed before HashRouter renders)
+      if (!existingSession) {
+        const accessToken = sessionStorage.getItem('sb_oauth_access_token');
+        const refreshToken = sessionStorage.getItem('sb_oauth_refresh_token');
+
+        if (accessToken && refreshToken) {
+          sessionStorage.removeItem('sb_oauth_access_token');
+          sessionStorage.removeItem('sb_oauth_refresh_token');
+
+          const { data: restored, error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!mounted) return;
+
+          if (restored.session) {
+            setSession(restored.session);
+            setUser(restored.session.user);
+            fetchUserData(restored.session.user.id)
+              .catch(e => console.error("AuthProvider: OAuth User Data Fetch Failed", e))
+              .finally(() => { if (mounted) setLoading(false); });
+            return;
+          }
+
+          if (setErr) {
+            console.error("AuthProvider: Failed to restore OAuth session", setErr);
+          }
+        }
+      }
 
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
