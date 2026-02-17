@@ -108,7 +108,13 @@ export function useCheckout() {
                 throw new Error('No checkout URL received from payment processor');
             }
 
-            // 5. Redirect to PsiFi checkout
+            // 5. Validate and redirect to checkout
+            try {
+                const parsed = new URL(checkout_url);
+                if (parsed.protocol !== 'https:') throw new Error('Unsafe checkout URL');
+            } catch {
+                throw new Error('Invalid checkout URL received');
+            }
             window.location.href = checkout_url;
 
             // Return the order for the mutation's onSuccess (won't fire due to redirect)
