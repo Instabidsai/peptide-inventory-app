@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart, UserX } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -68,6 +69,90 @@ export default function Reps() {
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+    // ── Add Client Under Partner ──
+    const [addingToRep, setAddingToRep] = useState<UserProfile | null>(null);
+    const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', address: '' });
+    const [assignContactId, setAssignContactId] = useState('');
+    const [isAddingClient, setIsAddingClient] = useState(false);
+
+    // Fetch unassigned customer contacts
+    const { data: unassignedContacts, refetch: refetchUnassigned } = useQuery({
+        queryKey: ['unassigned_contacts'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, type')
+                .is('assigned_rep_id', null)
+                .eq('type', 'customer')
+                .order('name');
+            if (error) throw error;
+            return data || [];
+        },
+    });
+
+    // Assign existing contact to a partner
+    const assignContact = useMutation({
+        mutationFn: async ({ contactId, repId }: { contactId: string; repId: string }) => {
+            const { error } = await supabase
+                .from('contacts')
+                .update({ assigned_rep_id: repId })
+                .eq('id', contactId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['rep_customers_list'] });
+            queryClient.invalidateQueries({ queryKey: ['rep_performance'] });
+            queryClient.invalidateQueries({ queryKey: ['full_network'] });
+            queryClient.invalidateQueries({ queryKey: ['unassigned_contacts'] });
+            toast({ title: 'Client assigned to partner' });
+            setAddingToRep(null);
+            setAssignContactId('');
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to assign client', description: error.message });
+        },
+    });
+
+    // Create new client under a partner
+    const handleCreateClient = async () => {
+        if (!addingToRep || !newClient.name.trim()) {
+            toast({ variant: 'destructive', title: 'Name required' });
+            return;
+        }
+        setIsAddingClient(true);
+        try {
+            const { data: repProfile } = await supabase
+                .from('profiles')
+                .select('org_id')
+                .eq('id', addingToRep.id)
+                .single();
+
+            const { error } = await supabase
+                .from('contacts')
+                .insert({
+                    name: newClient.name.trim(),
+                    email: newClient.email.trim() || null,
+                    phone: newClient.phone.trim() || null,
+                    address: newClient.address.trim() || null,
+                    type: 'customer',
+                    assigned_rep_id: addingToRep.id,
+                    org_id: repProfile?.org_id || null,
+                });
+            if (error) throw error;
+
+            queryClient.invalidateQueries({ queryKey: ['rep_customers_list'] });
+            queryClient.invalidateQueries({ queryKey: ['rep_performance'] });
+            queryClient.invalidateQueries({ queryKey: ['full_network'] });
+            toast({ title: 'Client added', description: `${newClient.name} added under ${addingToRep.full_name}` });
+            setNewClient({ name: '', email: '', phone: '', address: '' });
+            setAddingToRep(null);
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Failed to add client', description: err.message });
+        } finally {
+            setIsAddingClient(false);
+        }
+    };
 
     // Fetch per-rep performance: sales volume + commission earned (from commissions table, not orders)
     const { data: repStats } = useQuery({
@@ -224,6 +309,9 @@ export default function Reps() {
                                                             <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
                                                                 <Eye className="h-4 w-4 mr-1" /> View
                                                             </Button>
+                                                            <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950" onClick={() => { setAddingToRep(rep); setNewClient({ name: '', email: '', phone: '', address: '' }); setAssignContactId(''); }}>
+                                                                <UserPlus className="h-4 w-4 mr-1" /> Client
+                                                            </Button>
                                                             <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
@@ -353,6 +441,84 @@ export default function Reps() {
                 onOpenChange={setIsInviteOpen}
                 allReps={reps || []}
             />
+
+            {/* Add Client Under Partner Dialog */}
+            <Dialog open={!!addingToRep} onOpenChange={(open) => !open && setAddingToRep(null)}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Add Client Under {addingToRep?.full_name}</DialogTitle>
+                        <DialogDescription>
+                            Create a new client or assign an existing unassigned contact to this partner.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <Tabs defaultValue="new" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="new">New Client</TabsTrigger>
+                            <TabsTrigger value="assign">Assign Existing{unassignedContacts?.length ? ` (${unassignedContacts.length})` : ''}</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="new" className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Name *</Label>
+                                <Input placeholder="Client name" value={newClient.name} onChange={e => setNewClient(prev => ({ ...prev, name: e.target.value }))} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Email</Label>
+                                <Input type="email" placeholder="client@example.com" value={newClient.email} onChange={e => setNewClient(prev => ({ ...prev, email: e.target.value }))} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Phone</Label>
+                                <Input placeholder="555-123-4567" value={newClient.phone} onChange={e => setNewClient(prev => ({ ...prev, phone: e.target.value }))} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Address</Label>
+                                <Textarea placeholder="123 Main St, City, ST 12345" value={newClient.address} onChange={e => setNewClient(prev => ({ ...prev, address: e.target.value }))} />
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleCreateClient} disabled={isAddingClient || !newClient.name.trim()} className="w-full">
+                                    {isAddingClient && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Add Client Under {addingToRep?.full_name}
+                                </Button>
+                            </DialogFooter>
+                        </TabsContent>
+
+                        <TabsContent value="assign" className="space-y-4 py-4">
+                            {unassignedContacts && unassignedContacts.length > 0 ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Select Unassigned Contact</Label>
+                                        <Select value={assignContactId} onValueChange={setAssignContactId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Choose a contact..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {unassignedContacts.map(c => (
+                                                    <SelectItem key={c.id} value={c.id}>
+                                                        {c.name}{c.email ? ` (${c.email})` : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button
+                                            onClick={() => addingToRep && assignContact.mutate({ contactId: assignContactId, repId: addingToRep.id })}
+                                            disabled={!assignContactId || assignContact.isPending}
+                                            className="w-full"
+                                        >
+                                            {assignContact.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Assign to {addingToRep?.full_name}
+                                        </Button>
+                                    </DialogFooter>
+                                </>
+                            ) : (
+                                <p className="text-center text-muted-foreground py-4">No unassigned customer contacts found.</p>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 }
