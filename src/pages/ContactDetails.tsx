@@ -51,6 +51,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useMemo, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
@@ -1086,6 +1096,8 @@ interface RegimenPeptide {
 }
 
 function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: Protocol, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: { itemId: string }) => void, onAddSupplement: (args: { protocol_id: string; supplement_id: string; dosage: string; frequency: string; notes: string }) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: RegimenPeptide[] | undefined, movements?: Movement[] }) {
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
     if (!protocol?.protocol_items) return null;
 
     // Determine Status Logic
@@ -1223,6 +1235,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     }, [protocol.protocol_items, assignedBottles]);
 
     return (
+        <>
         <Card className={`hover:border-primary/50 transition-colors cursor-pointer group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`} onClick={onEdit}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -1234,11 +1247,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                         <Button variant="outline" size="icon" aria-label="Edit regimen" onClick={onEdit}>
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                            if (window.confirm('Are you sure you want to delete this regimen? All usage logs and history will be permanently removed.')) {
-                                onDelete(protocol.id);
-                            }
-                        }}>
+                        <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteConfirmOpen(true); }}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
@@ -1461,10 +1470,28 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                 </div>
             </CardContent>
         </Card>
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Regimen</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to delete this regimen? All usage logs and history will be permanently removed.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => onDelete(protocol.id)}>
+                        Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
 
-// 
+//
 function AddResourceForm({ contactId, onComplete }: { contactId: string, onComplete: () => void }) {
     const queryClient = useQueryClient();
     const [title, setTitle] = useState('');
