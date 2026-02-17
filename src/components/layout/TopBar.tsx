@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Menu, LogOut, User, Settings, Search } from 'lucide-react';
+import { Menu, LogOut, Settings, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
@@ -83,10 +83,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           <DropdownMenuItem onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/settings')}>
-            <User className="mr-2 h-4 w-4" />
-            Profile
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">

@@ -282,6 +282,11 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: a
                         {/* Header row: client name + badges */}
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {!isDownlineOrder && <span className="font-medium text-sm">{clientName}</span>}
+                            {isSelfOrder && (
+                                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                                    Personal Order
+                                </Badge>
+                            )}
                             {isDownlineOrder && !isSelfOrder && (
                                 <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
                                     via {repFullName}

@@ -370,6 +370,8 @@ export function useCreateSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['movements'] });
             queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             toast({ title: 'Order created and inventory deducted' });
         },
         onError: (error: Error) => {

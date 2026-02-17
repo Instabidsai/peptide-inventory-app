@@ -143,6 +143,7 @@ export default function PartnerDashboard() {
             });
             // Refresh everything
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             queryClient.invalidateQueries({ queryKey: ['partner_owed_movements'] });
             queryClient.invalidateQueries({ queryKey: ['partner_amount_owed'] });
             queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
@@ -170,6 +171,7 @@ export default function PartnerDashboard() {
         onSuccess: () => {
             toast({ title: 'Converted', description: 'Commission added to your store credit.' });
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
             refreshProfile?.();
         },

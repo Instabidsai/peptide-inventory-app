@@ -69,6 +69,7 @@ export default function Contacts() {
   const deleteContact = useDeleteContact();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [repFilter, setRepFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
@@ -84,13 +85,20 @@ export default function Contacts() {
     defaultValues: { name: '', email: '', phone: '', type: 'customer', company: '', address: '', notes: '', assigned_rep_id: '' },
   });
 
-  const filteredContacts = contacts?.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    // Search by Assigned Rep Name too
-    (c as any).assigned_rep?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = contacts?.filter((c) => {
+    // Text search
+    const matchesSearch = !searchQuery ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c as any).assigned_rep?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Rep filter
+    const matchesRep = repFilter === 'all' ||
+      (repFilter === 'unassigned' ? !c.assigned_rep_id : c.assigned_rep_id === repFilter);
+
+    return matchesSearch && matchesRep;
+  });
 
   const handleCreate = async (data: ContactFormData) => {
     // For sales_rep: always customer type, auto-assign to self
@@ -374,6 +382,26 @@ export default function Contacts() {
                 <SelectItem value="internal">Internal</SelectItem>
               </SelectContent>
             </Select>
+            {isAdmin && reps && reps.length > 0 && (
+              <Select
+                value={repFilter}
+                onValueChange={setRepFilter}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="All Reps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Reps</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {reps.map(rep => (
+                    <SelectItem key={rep.id} value={rep.id}>
+                      {rep.full_name || 'Unnamed'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardHeader>
         <CardContent>

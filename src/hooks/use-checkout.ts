@@ -96,6 +96,8 @@ export function useCheckout() {
             });
 
             if (!response.ok) {
+                // Clean up the orphaned order since payment session creation failed
+                await (supabase as any).from('sales_orders').delete().eq('id', order.id);
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `Checkout failed (${response.status})`);
             }
@@ -140,6 +142,11 @@ export function useOrderPaymentStatus(orderId: string | null) {
             return data;
         },
         enabled: !!orderId,
-        refetchInterval: 3000, // Poll every 3 seconds to catch webhook updates
+        refetchInterval: (query: any) => {
+            // Stop polling once payment is confirmed
+            const d = query?.state?.data;
+            if (d?.payment_status === 'paid' || d?.status === 'cancelled') return false;
+            return 3000;
+        },
     });
 }

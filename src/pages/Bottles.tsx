@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pill, Search, Filter, MoreHorizontal, Trash2, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -68,11 +69,17 @@ export default function Bottles() {
   });
 
   const deleteBottle = useDeleteBottle();
+  const { toast } = useToast();
   const [bottleToDelete, setBottleToDelete] = useState<string | null>(null);
 
   const handleDeleteConfirm = async () => {
     if (bottleToDelete) {
-      await deleteBottle.mutateAsync(bottleToDelete);
+      try {
+        await deleteBottle.mutateAsync(bottleToDelete);
+        toast({ title: 'Bottle deleted' });
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Delete failed', description: err.message });
+      }
       setBottleToDelete(null);
     }
   };

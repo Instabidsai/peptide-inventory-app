@@ -566,7 +566,7 @@ export default function OrderDetails() {
                                 <span>-${(order.commission_amount || 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-red-500">
-                                <span>Merchant Fee (5%)</span>
+                                <span>Merchant Fee{order.merchant_fee > 0 && order.total_amount > 0 ? ` (${(order.merchant_fee / order.total_amount * 100).toFixed(0)}%)` : ''}</span>
                                 <span>-${(order.merchant_fee || 0).toFixed(2)}</span>
                             </div>
                             <Separator />
