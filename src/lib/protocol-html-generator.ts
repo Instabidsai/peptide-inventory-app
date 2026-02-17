@@ -2,7 +2,7 @@
 // Generates professional HTML + plain-text protocol documents
 // for email, print, and clipboard delivery.
 
-import type { SupplementNote } from '@/data/protocol-knowledge';
+import type { SupplementNote, DosingTier } from '@/data/protocol-knowledge';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -24,6 +24,9 @@ export interface EnrichedProtocolItem {
     dosageSchedule: string | null;
     notes: string;
     supplements: SupplementNote[];
+    // Dosing tier support
+    selectedTierId: string | null;
+    availableTiers: DosingTier[];
 }
 
 interface GeneratorOptions {
@@ -56,10 +59,12 @@ export function formatFrequency(freq: string): string {
         'daily': 'once daily',
         'daily_am_pm': 'twice daily (AM & PM)',
         'twice daily': 'twice daily',
+        'every other day': 'every other day',
         'every 3 days': 'every three days',
         'every 5 days': 'every five days',
         'weekly': 'once weekly',
         'twice weekly': 'twice weekly',
+        '3x weekly': 'three times per week',
         'biweekly': 'twice per week',
         'monthly': 'once monthly',
         'as needed': 'as needed',
@@ -72,10 +77,12 @@ export function formatFrequencyShort(freq: string): string {
         'daily': 'Daily',
         'daily_am_pm': 'Daily (AM & PM)',
         'twice daily': 'Twice Daily',
+        'every other day': 'Every Other Day',
         'every 3 days': 'Every 3 Days',
         'every 5 days': 'Every 5 Days',
         'weekly': 'Weekly',
         'twice weekly': 'Twice Weekly',
+        '3x weekly': '3x / Week',
         'biweekly': '2x / Week',
         'monthly': 'Monthly',
         'as needed': 'As Needed',
@@ -115,8 +122,14 @@ export function generateProtocolHtml({ items, clientName, orgName = 'NextGen Res
         const units = calcUnits(ml);
         const vialLabel = item.vialSizeMg ? ` (${item.vialSizeMg} mg Vial)` : '';
         const stackLabel = item.stackLabel ? ` - ${escapeHtml(item.stackLabel)}` : '';
+        const selectedTier = item.availableTiers?.find(t => t.id === item.selectedTierId);
 
         let sections = '';
+
+        // Tier badge
+        if (selectedTier) {
+            sections += `<p style="margin:0 0 8px;"><span style="display:inline-block;padding:2px 8px;background:#EEF2FF;color:#4338CA;border-radius:4px;font-size:11px;font-weight:600;">${escapeHtml(selectedTier.label)}</span></p>`;
+        }
 
         // Description
         if (item.protocolDescription) {
@@ -150,6 +163,11 @@ export function generateProtocolHtml({ items, clientName, orgName = 'NextGen Res
         // Cycle pattern
         if (item.cyclePattern) {
             sections += `<p style="margin:4px 0;color:#374151;"><strong>Cycle:</strong> ${escapeHtml(item.cyclePattern)}</p>`;
+        }
+
+        // Tier notes
+        if (selectedTier?.notes) {
+            sections += `<p style="margin:4px 0;color:#4B5563;font-size:13px;font-style:italic;"><strong>Protocol Notes:</strong> ${escapeHtml(selectedTier.notes)}</p>`;
         }
 
         // Warning
@@ -262,8 +280,13 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'NextGe
         const vialLabel = item.vialSizeMg ? ` (${item.vialSizeMg} mg Vial)` : '';
         const stackLabel = item.stackLabel ? ` - ${item.stackLabel}` : '';
 
+        const selectedTierTxt = item.availableTiers?.find(t => t.id === item.selectedTierId);
+
         lines.push('');
         lines.push(`${i + 1}. ${item.peptideName}${vialLabel}${stackLabel}`);
+        if (selectedTierTxt) {
+            lines.push(`   [${selectedTierTxt.label}]`);
+        }
         lines.push('');
 
         if (item.protocolDescription) {
@@ -294,6 +317,10 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'NextGe
 
         if (item.cyclePattern) {
             lines.push(`Cycle: ${item.cyclePattern}`);
+        }
+
+        if (selectedTierTxt?.notes) {
+            lines.push(`Protocol Notes: ${selectedTierTxt.notes}`);
         }
 
         if (item.warningText) {

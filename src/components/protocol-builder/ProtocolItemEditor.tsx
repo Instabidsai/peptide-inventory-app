@@ -13,8 +13,8 @@ import {
 import { cn } from '@/lib/utils';
 
 const FREQUENCIES = [
-    'daily', 'daily_am_pm', 'twice daily', 'every 3 days', 'every 5 days',
-    'weekly', 'twice weekly', 'monthly', 'as needed',
+    'daily', 'daily_am_pm', 'twice daily', 'every other day', 'every 3 days', 'every 5 days',
+    'weekly', 'twice weekly', '3x weekly', 'monthly', 'as needed',
 ];
 
 const TIMINGS = ['AM', 'PM', 'Before bed', 'With meals', 'none'];
@@ -26,9 +26,10 @@ interface ProtocolItemEditorProps {
     index: number;
     onUpdate: (index: number, field: keyof EnrichedProtocolItem, value: string | number | null) => void;
     onRemove: (index: number) => void;
+    onSelectTier: (index: number, tierId: string) => void;
 }
 
-export function ProtocolItemEditor({ item, index, onUpdate, onRemove }: ProtocolItemEditorProps) {
+export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier }: ProtocolItemEditorProps) {
     const [expanded, setExpanded] = useState(false);
     const ml = calcMl(item);
     const units = calcUnits(ml);
@@ -64,6 +65,29 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove }: Protocol
                         <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                     )}
                 </div>
+
+                {/* Dosing Tier Selector */}
+                {item.availableTiers.length > 1 && (
+                    <div className="mb-3">
+                        <Label className="text-xs text-muted-foreground mb-1 block">Dosing Tier</Label>
+                        <div className="flex gap-1.5 flex-wrap">
+                            {item.availableTiers.map(tier => (
+                                <button
+                                    key={tier.id}
+                                    onClick={() => onSelectTier(index, tier.id)}
+                                    className={cn(
+                                        'px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors',
+                                        item.selectedTierId === tier.id
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : 'bg-background border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                                    )}
+                                >
+                                    {tier.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Core fields: dose, frequency, timing, reconstitution */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -178,6 +202,16 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove }: Protocol
                                 <Label className="text-xs text-muted-foreground">Description</Label>
                                 <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
                                     {item.protocolDescription}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Tier notes */}
+                        {item.selectedTierId && item.availableTiers.find(t => t.id === item.selectedTierId)?.notes && (
+                            <div className="p-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+                                <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                                    <span className="font-medium">Protocol Notes:</span>{' '}
+                                    {item.availableTiers.find(t => t.id === item.selectedTierId)!.notes}
                                 </p>
                             </div>
                         )}

@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
-import { lookupKnowledge, PROTOCOL_TEMPLATES, type PeptideKnowledge } from '@/data/protocol-knowledge';
+import { lookupKnowledge, PROTOCOL_TEMPLATES, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 import {
     type EnrichedProtocolItem,
     generateProtocolHtml,
@@ -49,11 +49,17 @@ export function useProtocolBuilder() {
 
     // ── Enrichment: peptide → EnrichedProtocolItem ─────────────
 
-    const enrichPeptide = useCallback((peptide: Peptide): EnrichedProtocolItem => {
+    const enrichPeptide = useCallback((peptide: Peptide, preferredTierId?: string): EnrichedProtocolItem => {
         const knowledge = lookupKnowledge(peptide.name);
+        const tiers = knowledge?.dosingTiers ?? [];
         const concentrationMgMl = knowledge
             ? (knowledge.vialSizeMg / knowledge.reconstitutionMl)
             : (peptide.default_concentration_mg_ml || 0);
+
+        // Select tier: preferred > 'standard' > first available > null
+        const tier = tiers.find(t => t.id === preferredTierId)
+            ?? tiers.find(t => t.id === 'standard')
+            ?? (tiers.length > 0 ? tiers[0] : null);
 
         return {
             peptideId: peptide.id,
@@ -61,18 +67,20 @@ export function useProtocolBuilder() {
             vialSizeMg: knowledge?.vialSizeMg ?? null,
             protocolDescription: knowledge?.description ?? peptide.description ?? null,
             reconstitutionMl: knowledge?.reconstitutionMl ?? 2,
-            doseAmount: knowledge?.defaultDoseAmount ?? peptide.default_dose_amount ?? 0,
-            doseUnit: knowledge?.defaultDoseUnit ?? peptide.default_dose_unit ?? 'mcg',
+            doseAmount: tier?.doseAmount ?? knowledge?.defaultDoseAmount ?? peptide.default_dose_amount ?? 0,
+            doseUnit: tier?.doseUnit ?? knowledge?.defaultDoseUnit ?? peptide.default_dose_unit ?? 'mcg',
             administrationRoute: knowledge?.administrationRoute ?? 'subcutaneous',
-            frequency: knowledge?.defaultFrequency ?? peptide.default_frequency ?? 'daily',
-            timing: knowledge?.defaultTiming ?? peptide.default_timing ?? 'none',
+            frequency: tier?.frequency ?? knowledge?.defaultFrequency ?? peptide.default_frequency ?? 'daily',
+            timing: tier?.timing ?? knowledge?.defaultTiming ?? peptide.default_timing ?? 'none',
             concentrationMgMl,
             warningText: knowledge?.warningText ?? null,
-            cyclePattern: knowledge?.cyclePattern ?? null,
+            cyclePattern: tier?.cyclePattern ?? knowledge?.cyclePattern ?? null,
             stackLabel: knowledge?.stackLabel ?? null,
-            dosageSchedule: knowledge?.dosageSchedule ?? null,
+            dosageSchedule: tier?.dosageSchedule ?? knowledge?.dosageSchedule ?? null,
             notes: '',
             supplements: knowledge?.supplementNotes ?? [],
+            selectedTierId: tier?.id ?? null,
+            availableTiers: tiers,
         };
     }, []);
 
@@ -115,6 +123,29 @@ export function useProtocolBuilder() {
         setItems([]);
     }, []);
 
+    const selectTier = useCallback((idx: number, tierId: string) => {
+        setItems(prev => prev.map((item, i) => {
+            if (i !== idx) return item;
+            const tier = item.availableTiers.find(t => t.id === tierId);
+            if (!tier) return item;
+            const updated = {
+                ...item,
+                selectedTierId: tier.id,
+                doseAmount: tier.doseAmount,
+                doseUnit: tier.doseUnit,
+                frequency: tier.frequency,
+                timing: tier.timing,
+                dosageSchedule: tier.dosageSchedule ?? item.dosageSchedule,
+                cyclePattern: tier.cyclePattern ?? item.cyclePattern,
+            };
+            // Recalculate concentration
+            if (updated.vialSizeMg && updated.reconstitutionMl > 0) {
+                updated.concentrationMgMl = updated.vialSizeMg / updated.reconstitutionMl;
+            }
+            return updated;
+        }));
+    }, []);
+
     // ── Template Loading ───────────────────────────────────────
 
     const loadTemplate = useCallback((templateName: string) => {
@@ -130,7 +161,7 @@ export function useProtocolBuilder() {
                 name.toLowerCase().includes(p.name.toLowerCase())
             );
             if (peptide) {
-                newItems.push(enrichPeptide(peptide));
+                newItems.push(enrichPeptide(peptide, template.defaultTierId));
             }
         }
         setItems(newItems);
@@ -259,6 +290,7 @@ export function useProtocolBuilder() {
         addPeptideByName,
         removeItem,
         updateItem,
+        selectTier,
         clearAll,
         loadTemplate,
         loadFromOrder,

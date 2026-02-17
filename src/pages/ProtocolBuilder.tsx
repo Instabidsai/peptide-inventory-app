@@ -178,6 +178,7 @@ export default function ProtocolBuilder() {
                                     index={idx}
                                     onUpdate={builder.updateItem}
                                     onRemove={builder.removeItem}
+                                    onSelectTier={builder.selectTier}
                                 />
                             ))}
                         </div>
