@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
     DollarSign, AlertCircle, CheckCircle2, Clock, Receipt,
     ChevronDown, ChevronUp, CreditCard, Hash, Calendar,
+    Award, Zap, Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -53,6 +54,23 @@ interface Transaction {
     items: LineItem[];
 }
 
+interface PartnerInfo {
+    profile_id: string;
+    partner_tier: string;
+    commission_rate: number;
+    credit_balance: number;
+}
+
+interface CommissionRecord {
+    id: string;
+    amount: number;
+    commission_rate: number;
+    type: string;       // direct, second_tier_override, etc.
+    status: string;     // pending, available, paid
+    created_at: string;
+    sale_id: string;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Helper: currency formatter                                         */
 /* ------------------------------------------------------------------ */
@@ -71,6 +89,11 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     const [loading, setLoading] = useState(true);
     const [txns, setTxns] = useState<Transaction[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    // Partner / commission state
+    const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null);
+    const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
+    const [applyingCredit, setApplyingCredit] = useState(false);
 
     // Payment dialog
     const [payTarget, setPayTarget] = useState<Transaction | null>(null);
@@ -265,6 +288,49 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             // Sort by date descending
             assembled.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setTxns(assembled);
+
+            /* ========== 3. Partner / Commission lookup ========== */
+            // Resolve contact → partner profile via email match
+            const { data: contactRow } = await supabase
+                .from("contacts")
+                .select("email, linked_user_id")
+                .eq("id", contactId)
+                .single();
+
+            if (contactRow?.email) {
+                const { data: profile } = await (supabase as any)
+                    .from("profiles")
+                    .select("id, partner_tier, commission_rate, credit_balance")
+                    .ilike("email", contactRow.email)
+                    .not("partner_tier", "is", null)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (profile?.id) {
+                    setPartnerInfo({
+                        profile_id: profile.id,
+                        partner_tier: profile.partner_tier || "standard",
+                        commission_rate: Number(profile.commission_rate) || 0,
+                        credit_balance: Number(profile.credit_balance) || 0,
+                    });
+
+                    // Fetch their commissions
+                    const { data: comms } = await (supabase as any)
+                        .from("commissions")
+                        .select("id, amount, commission_rate, type, status, created_at, sale_id")
+                        .eq("partner_id", profile.id)
+                        .order("created_at", { ascending: false });
+
+                    setCommissions((comms || []).map((c: any) => ({
+                        ...c,
+                        amount: Number(c.amount) || 0,
+                        commission_rate: Number(c.commission_rate) || 0,
+                    })));
+                } else {
+                    setPartnerInfo(null);
+                    setCommissions([]);
+                }
+            }
         } catch (err) {
             console.error("FinancialOverview fetch error:", err);
         } finally {
@@ -287,6 +353,49 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     const totalDiscount = txns.reduce((s, t) => s + t.discount_amt, 0);
     const paidCount = txns.filter((t) => t.payment_status === "paid").length;
     const unpaidCount = txns.filter((t) => t.payment_status !== "paid").length;
+
+    // Commission stats
+    const commEarned = commissions.reduce((s, c) => s + c.amount, 0);
+    const commAvailable = commissions.filter((c) => c.status === "available").reduce((s, c) => s + c.amount, 0);
+    const commPending = commissions.filter((c) => c.status === "pending").reduce((s, c) => s + c.amount, 0);
+    const commPaidOut = commissions.filter((c) => c.status === "paid").reduce((s, c) => s + c.amount, 0);
+    const creditBalance = partnerInfo?.credit_balance || 0;
+
+    /* -------------------------------------------------------------- */
+    /*  Apply commission credit to outstanding balance                   */
+    /* -------------------------------------------------------------- */
+
+    const handleApplyCommissions = async () => {
+        if (!partnerInfo?.profile_id || commAvailable <= 0) return;
+        try {
+            setApplyingCredit(true);
+            const { data, error } = await supabase.rpc("apply_commissions_to_owed", {
+                partner_profile_id: partnerInfo.profile_id,
+            });
+            if (error) throw error;
+
+            const result = data as { applied: number; movements_paid: number; remaining_credit: number };
+            await fetchAll();
+            queryClient.invalidateQueries({ queryKey: ["movements"] });
+            queryClient.invalidateQueries({ queryKey: ["commissions"] });
+            queryClient.invalidateQueries({ queryKey: ["sales_orders"] });
+
+            toast({
+                title: "Commission Credit Applied",
+                description: `${fmt(result.applied)} applied to ${result.movements_paid} order${result.movements_paid !== 1 ? "s" : ""}${result.remaining_credit > 0 ? `. ${fmt(result.remaining_credit)} added to credit balance.` : "."}`,
+                className: "bg-green-50 border-green-200 text-green-900",
+            });
+        } catch (err: any) {
+            console.error("Apply commission error:", err);
+            toast({
+                title: "Commission Apply Failed",
+                description: err.message || "Could not apply commissions.",
+                variant: "destructive",
+            });
+        } finally {
+            setApplyingCredit(false);
+        }
+    };
 
     /* -------------------------------------------------------------- */
     /*  Record payment for a single order                               */
@@ -522,6 +631,102 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         className={hasOutstanding ? "text-amber-700" : "text-emerald-700"}
                     />
                 </div>
+
+                {/* ---- Commission Section (partners only) ---- */}
+                {partnerInfo && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Award className="h-4 w-4 text-purple-600" />
+                                <span className="text-sm font-semibold text-purple-900">
+                                    Partner Commissions
+                                </span>
+                                <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[10px] px-1.5 py-0">
+                                    {partnerInfo.partner_tier} · {(partnerInfo.commission_rate * 100).toFixed(0)}%
+                                </Badge>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <StatBox
+                                icon={<DollarSign className="h-3.5 w-3.5" />}
+                                label="Total Earned"
+                                value={fmt(commEarned)}
+                                className="text-purple-700"
+                            />
+                            <StatBox
+                                icon={<Zap className="h-3.5 w-3.5" />}
+                                label="Available"
+                                value={fmt(commAvailable)}
+                                sub={commPending > 0 ? `${fmt(commPending)} pending` : undefined}
+                                className="text-emerald-700"
+                            />
+                            <StatBox
+                                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                                label="Paid Out"
+                                value={fmt(commPaidOut)}
+                            />
+                            <StatBox
+                                icon={<Wallet className="h-3.5 w-3.5" />}
+                                label="Credit Balance"
+                                value={fmt(creditBalance)}
+                                className={creditBalance > 0 ? "text-blue-700" : undefined}
+                            />
+                        </div>
+
+                        {/* Apply commissions button */}
+                        {commAvailable > 0 && hasOutstanding && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-purple-300 text-purple-700 hover:bg-purple-100"
+                                onClick={handleApplyCommissions}
+                                disabled={applyingCredit}
+                            >
+                                {applyingCredit ? "Applying..." : `Apply ${fmt(commAvailable)} Commission to Outstanding Balance`}
+                            </Button>
+                        )}
+
+                        {/* Commission history */}
+                        {commissions.length > 0 && (
+                            <details className="group">
+                                <summary className="text-[11px] text-purple-600 cursor-pointer hover:text-purple-800 font-medium">
+                                    View {commissions.length} commission record{commissions.length !== 1 ? "s" : ""}
+                                </summary>
+                                <div className="mt-2 max-h-[160px] overflow-y-auto space-y-1">
+                                    {commissions.map((c) => (
+                                        <div key={c.id} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-card border border-border/30">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-muted-foreground">
+                                                    {format(new Date(c.created_at), "MMM d, yyyy")}
+                                                </span>
+                                                <Badge className={cn(
+                                                    "text-[9px] px-1 py-0",
+                                                    c.type === "direct"
+                                                        ? "bg-blue-100 text-blue-600 border-blue-200"
+                                                        : "bg-orange-100 text-orange-600 border-orange-200",
+                                                )}>
+                                                    {c.type === "direct" ? "Direct" : "Override"}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium">{fmt(c.amount)}</span>
+                                                <Badge className={cn(
+                                                    "text-[9px] px-1 py-0",
+                                                    c.status === "available" ? "bg-emerald-100 text-emerald-600" :
+                                                    c.status === "pending" ? "bg-amber-100 text-amber-600" :
+                                                    "bg-gray-100 text-gray-500",
+                                                )}>
+                                                    {c.status}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </details>
+                        )}
+                    </div>
+                )}
 
                 {/* ---- Mark All Paid button ---- */}
                 {hasOutstanding && (
