@@ -1,5 +1,6 @@
 
 import { useState, useMemo } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useExpenses, useCreateExpense, useDeleteExpense, ExpenseCategory } from '@/hooks/use-expenses';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -127,9 +128,14 @@ export default function Finance() {
     // ... existing submit ...
 
     const handleSubmit = async () => {
+        const parsedAmount = Number(formData.amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid amount', description: 'Please enter a valid expense amount.' });
+            return;
+        }
         await createExpense.mutateAsync({
             ...formData,
-            amount: Number(formData.amount),
+            amount: parsedAmount,
             status: 'paid'
         });
         setIsAddOpen(false);

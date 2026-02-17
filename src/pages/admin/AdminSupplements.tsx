@@ -108,6 +108,7 @@ export default function AdminSupplements() {
                 open={isCreateOpen}
                 onOpenChange={setIsCreateOpen}
                 onSubmit={handleCreate}
+                isSubmitting={createSupplement.isPending}
                 title="Add New Supplement"
             />
 
@@ -115,6 +116,7 @@ export default function AdminSupplements() {
                 open={!!editingItem}
                 onOpenChange={(open) => !open && setEditingItem(null)}
                 onSubmit={handleUpdate}
+                isSubmitting={updateSupplement.isPending}
                 initialData={editingItem || undefined}
                 title="Edit Supplement"
             />
@@ -133,12 +135,13 @@ interface SupplementFormData {
 interface SupplementDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    isSubmitting?: boolean;
     onSubmit: (data: SupplementFormData) => void;
     initialData?: Supplement;
     title: string;
 }
 
-function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: SupplementDialogProps) {
+function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title, isSubmitting }: SupplementDialogProps) {
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
         description: initialData?.description || '',
@@ -229,7 +232,9 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
                             </div>
                         </div>
                         <DialogFooter className="mt-4">
-                            <Button onClick={handleSubmit} disabled={!formData.name}>Save Details</Button>
+                            <Button onClick={handleSubmit} disabled={!formData.name || isSubmitting}>
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Details'}
+                            </Button>
                         </DialogFooter>
                     </TabsContent>
 

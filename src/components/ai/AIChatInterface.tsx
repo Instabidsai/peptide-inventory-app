@@ -185,6 +185,7 @@ export const AIChatInterface = () => {
                         type="button"
                         variant="ghost"
                         size="icon"
+                        aria-label="Upload document"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadDocument.isPending}
                         className="h-10 w-10 rounded-xl text-muted-foreground/40 hover:text-foreground shrink-0"

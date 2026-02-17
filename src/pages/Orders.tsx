@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder, useMarkOrderReceived, useCancelOrder, useRecordOrderPayment, type Order, type OrderStatus } from '@/hooks/use-orders';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
@@ -247,6 +248,10 @@ export default function Orders() {
     const handlePaymentSubmit = async () => {
         if (!paymentOrder) return;
         const amount = Number(paymentData.amount);
+        if (isNaN(amount) || amount <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid amount', description: 'Please enter a valid payment amount.' });
+            return;
+        }
 
         // Determine if full payment
         // Heuristic: If amount >= remaining estimated cost

@@ -269,6 +269,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label="Delete template"
                                                             className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();

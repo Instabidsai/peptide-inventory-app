@@ -780,7 +780,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     type="number"
                     className="col-span-3"
                     value={comm}
-                    onChange={e => setComm(parseFloat(e.target.value))}
+                    onChange={e => { const v = parseFloat(e.target.value); setComm(isNaN(v) ? 0 : v); }}
                 />
             </div>
             <p className="text-xs text-muted-foreground text-right">
@@ -794,7 +794,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     step="0.01"
                     className="col-span-3"
                     value={mult}
-                    onChange={e => setMult(parseFloat(e.target.value))}
+                    onChange={e => { const v = parseFloat(e.target.value); setMult(isNaN(v) ? 1 : v); }}
                 />
             </div>
             <p className="text-xs text-muted-foreground text-right">

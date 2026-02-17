@@ -72,6 +72,7 @@ export function AdminAIChat() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Clear chat"
                 onClick={clearChat}
                 className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
                 title="Clear chat"
