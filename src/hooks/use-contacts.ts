@@ -21,6 +21,9 @@ export interface Contact {
   tier?: 'family' | 'network' | 'public';
   invite_link?: string | null;
   assigned_rep_id?: string | null;
+  // Joined data from useContacts list query
+  assigned_rep?: { id: string; full_name: string | null } | null;
+  sales_orders?: { id: string; created_at: string }[];
 }
 
 export interface CreateContactInput {
@@ -64,16 +67,12 @@ export function useContacts(type?: ContactType) {
 
       // If user is sales_rep, restrict to their network (self + downline partners)
       if (profile?.role === 'sales_rep') {
-        const { data: myProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (myProfile) {
+        // profile.id is already available from useAuth — no extra query needed
+        const profileId = (profile as any).id;
+        if (profileId) {
           const { data: downline } = await supabase
             .rpc('get_partner_downline', { root_id: user.id });
-          const allRepIds = [myProfile.id, ...(downline || []).map((d: any) => d.id)];
+          const allRepIds = [profileId, ...(downline || []).map((d: any) => d.id)];
           query = query.in('assigned_rep_id', allRepIds);
         }
       }
