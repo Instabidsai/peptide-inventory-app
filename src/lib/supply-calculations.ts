@@ -1,4 +1,4 @@
-export interface SupplyCalculation {
+interface SupplyCalculation {
     totalSupplyMg: number;
     dailyUsageMg: number;
     daysRemaining: number;

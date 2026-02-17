@@ -3,7 +3,7 @@
 
 const OPENFOODFACTS_API_BASE = 'https://world.openfoodfacts.org/api/v0';
 
-export interface OpenFoodFactsProduct {
+interface OpenFoodFactsProduct {
     status: number;
     status_verbose?: string;
     product?: {
@@ -25,7 +25,7 @@ export interface OpenFoodFactsProduct {
     };
 }
 
-export interface ParsedNutrition {
+interface ParsedNutrition {
     name: string;
     brand?: string;
     quantity: string;
@@ -38,7 +38,7 @@ export interface ParsedNutrition {
 /**
  * Fetch product data from OpenFoodFacts by barcode
  */
-export async function fetchProductByBarcode(barcode: string): Promise<OpenFoodFactsProduct> {
+async function fetchProductByBarcode(barcode: string): Promise<OpenFoodFactsProduct> {
     const response = await fetch(`${OPENFOODFACTS_API_BASE}/product/${barcode}.json`);
 
     if (!response.ok) {
@@ -52,7 +52,7 @@ export async function fetchProductByBarcode(barcode: string): Promise<OpenFoodFa
 /**
  * Parse OpenFoodFacts product data into our app's nutrition format
  */
-export function parseProductNutrition(data: OpenFoodFactsProduct): ParsedNutrition | null {
+function parseProductNutrition(data: OpenFoodFactsProduct): ParsedNutrition | null {
     if (data.status !== 1 || !data.product) {
         return null; // Product not found
     }

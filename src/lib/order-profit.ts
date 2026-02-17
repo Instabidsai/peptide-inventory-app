@@ -9,7 +9,7 @@
 
 import { supabase } from '@/integrations/sb_client/client';
 
-export interface OrderWithItems {
+interface OrderWithItems {
     id: string;
     total_amount?: number;
     shipping_cost?: number;

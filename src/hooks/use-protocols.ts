@@ -223,12 +223,6 @@ export function useProtocols(contactId?: string) {
     };
 }
 
-// ... (keep useProtocolItems as is) ...
-
-export function useProtocolSupplements() {
-    // Helper hook if needed, but managing via useProtocols is fine for now
-}
-
 export function useProtocolItems(protocolId: string) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
