@@ -451,6 +451,7 @@ export default function Lots() {
               <p className="text-sm">Receive your first inventory lot to get started</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -550,6 +551,7 @@ export default function Lots() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

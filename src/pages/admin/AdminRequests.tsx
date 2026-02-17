@@ -264,7 +264,8 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                         onClick={() => onFulfill(req)}
                         disabled={processing}
                     >
-                        Fulfill <ArrowRight className="ml-1 h-3 w-3" />
+                        {processing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                        {processing ? 'Fulfilling...' : <>Fulfill <ArrowRight className="ml-1 h-3 w-3" /></>}
                     </Button>
                 ) : (
                     req.status === 'pending' && (
@@ -273,7 +274,8 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                             onClick={() => onUpdate(req.id, 'approved', notes, voiceBlob)}
                             disabled={processing}
                         >
-                            Mark Done <CheckCircle2 className="ml-1 h-3 w-3" />
+                            {processing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                            {processing ? 'Processing...' : <>Mark Done <CheckCircle2 className="ml-1 h-3 w-3" /></>}
                         </Button>
                     )
                 )}

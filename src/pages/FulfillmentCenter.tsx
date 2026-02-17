@@ -361,7 +361,7 @@ export default function FulfillmentCenter() {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-1 sm:justify-end w-full sm:w-auto">
+                        <div className="flex items-center gap-2 flex-wrap flex-1 sm:justify-end w-full sm:w-auto">
                             <Input
                                 type="number"
                                 min="0"
@@ -376,7 +376,7 @@ export default function FulfillmentCenter() {
                                 placeholder="Notes (optional)"
                                 value={hoursNotes || (todayHours?.notes ?? '')}
                                 onChange={e => setHoursNotes(e.target.value)}
-                                className="flex-1 min-w-[120px] max-w-[200px]"
+                                className="flex-1 min-w-[80px] sm:max-w-[200px]"
                             />
                             <Button
                                 size="sm"
