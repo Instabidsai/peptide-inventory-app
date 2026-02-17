@@ -240,18 +240,32 @@ function ClientDashboardContent() {
 
     if (!contact && !isLoadingContact) {
         return (
-            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4 p-8">
-                <div className="p-4 bg-muted rounded-full">
-                    <User className="h-8 w-8 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center h-[60vh] space-y-4 p-8">
+                <div className="p-4 bg-primary/10 rounded-full">
+                    <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold">No Client Profile Found</h2>
+                <h2 className="text-xl font-semibold">Welcome to ThePeptideAI</h2>
                 <p className="text-muted-foreground text-center max-w-md">
-                    We couldn't find a client profile linked to this account. If you are an admin previewing, ensure the Contact is linked.
+                    Your account is set up! Your profile is being finalized by your provider. In the meantime, feel free to explore or chat with our AI assistant.
                 </p>
-                <div className="w-full max-w-md border rounded-lg p-4 mt-8">
+                <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => navigate('/store')}
+                        className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                        Browse Store
+                    </button>
+                    <button
+                        onClick={() => navigate('/messages')}
+                        className="px-4 py-2 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+                    >
+                        Contact Support
+                    </button>
+                </div>
+                <div className="w-full max-w-md border border-border/50 rounded-lg p-4 mt-6">
                     <h3 className="font-medium mb-4 flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        Debug: Peptide AI
+                        Peptide AI Assistant
                     </h3>
                     <div className="h-[400px]">
                         <AIChatInterface />

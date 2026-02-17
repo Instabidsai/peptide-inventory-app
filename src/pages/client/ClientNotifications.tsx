@@ -34,7 +34,7 @@ export default function ClientNotifications() {
             .from('notifications')
             .update({ is_read: true })
             .eq('user_id', user.id)
-            .eq('is_read', false); // Only update unread
+            .eq('is_read', false);
 
         if (error) {
             toast.error("Failed to update notifications");
@@ -42,6 +42,14 @@ export default function ClientNotifications() {
             toast.success("All marked as read");
             refetch();
         }
+    };
+
+    const markOneRead = async (id: string) => {
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', id);
+        if (!error) refetch();
     };
 
     const getIcon = (type: string) => {
@@ -87,7 +95,11 @@ export default function ClientNotifications() {
             ) : (
                 <div className="space-y-4">
                     {notifications?.map((notification) => (
-                        <Card key={notification.id} className={`transition-colors ${!notification.is_read ? 'bg-secondary/30 border-primary/30' : ''}`}>
+                        <Card
+                            key={notification.id}
+                            className={`transition-colors cursor-pointer hover:border-primary/20 ${!notification.is_read ? 'bg-secondary/30 border-primary/30' : ''}`}
+                            onClick={() => !notification.is_read && markOneRead(notification.id)}
+                        >
                             <CardContent className="p-4 flex gap-4 items-start">
                                 <div className="mt-1">
                                     {getIcon(notification.type)}
@@ -105,7 +117,7 @@ export default function ClientNotifications() {
                                         {notification.message}
                                     </p>
                                     {!notification.is_read && (
-                                        <Badge variant="secondary" className="mt-2 text-[10px] h-5">New</Badge>
+                                        <Badge variant="secondary" className="mt-2 text-[10px] h-5">Tap to dismiss</Badge>
                                     )}
                                 </div>
                             </CardContent>

@@ -19,7 +19,18 @@ import {
     Loader2,
     Search,
     Info,
+    Percent,
 } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface CartItem {
     peptide_id: string;
@@ -36,6 +47,7 @@ export default function ClientStore() {
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
@@ -213,6 +225,16 @@ export default function ClientStore() {
                     Browse and order peptides directly from your portal
                 </p>
             </div>
+
+            {/* Partner discount banner */}
+            {assignedRep && Number(assignedRep.price_multiplier || 1) < 1 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06]">
+                    <Percent className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <p className="text-xs text-emerald-300">
+                        Partner pricing active — you're getting <strong>{Math.round((1 - Number(assignedRep.price_multiplier)) * 100)}% off</strong> retail on all products.
+                    </p>
+                </div>
+            )}
 
             {/* Search */}
             <div className="relative">
@@ -407,7 +429,7 @@ export default function ClientStore() {
                         <Button
                             className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                             size="lg"
-                            onClick={handleCheckout}
+                            onClick={() => setShowCheckoutConfirm(true)}
                             disabled={checkout.isPending || cart.length === 0}
                         >
                             {checkout.isPending ? (
@@ -433,6 +455,25 @@ export default function ClientStore() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Checkout confirmation dialog */}
+            <AlertDialog open={showCheckoutConfirm} onOpenChange={setShowCheckoutConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Order</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You're about to checkout with {itemCount} item{itemCount !== 1 ? 's' : ''} for <span className="font-semibold text-foreground">${cartTotal.toFixed(2)}</span>. You'll be redirected to our secure payment page.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Go Back</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCheckout}>
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Proceed to Payment
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

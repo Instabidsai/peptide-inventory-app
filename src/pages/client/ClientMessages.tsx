@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag, Trash2 } from "lucide-react";
+import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag, HeartPulse, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
     AlertDialog,
@@ -66,7 +66,7 @@ export default function ClientMessages() {
             case 'product_request':
                 return <ShoppingBag className="h-4 w-4 text-purple-500" />;
             case 'regimen_help':
-                return <ShoppingBag className="h-4 w-4 text-blue-500" />;
+                return <HeartPulse className="h-4 w-4 text-blue-500" />;
             default:
                 return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
         }

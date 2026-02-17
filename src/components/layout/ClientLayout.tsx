@@ -55,12 +55,14 @@ export function ClientLayout() {
         refetchInterval: 15000,
     });
 
-    const navItems: Array<{ label: string; icon: typeof Home; path: string; hasBadge?: boolean }> = [
+    const totalUnread = (unreadFeedback || 0) + (unreadNotifications || 0);
+
+    const navItems: Array<{ label: string; icon: typeof Home; path: string; hasBadge?: boolean; badgeCount?: number }> = [
         { label: 'Today', icon: Home, path: '/dashboard', hasBadge: !!(unreadFeedback && unreadFeedback > 0) },
         { label: 'Store', icon: ShoppingBag, path: '/store' },
         { label: 'Learn', icon: BookOpen, path: '/resources' },
         { label: 'Orders', icon: Package, path: '/my-orders' },
-        { label: 'Menu', icon: Menu, path: '/menu' },
+        { label: 'Menu', icon: Menu, path: '/menu', hasBadge: totalUnread > 0, badgeCount: totalUnread },
     ];
 
     return (
@@ -74,7 +76,7 @@ export function ClientLayout() {
                     <div className="p-1.5 bg-primary/10 rounded-lg">
                         <Home className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="font-semibold text-lg text-foreground">Family Hub</span>
+                    <span className="font-semibold text-lg text-foreground">ThePeptideAI</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
@@ -127,7 +129,9 @@ export function ClientLayout() {
                                 <div className={cn("relative p-1.5 rounded-xl transition-colors", isActive && "bg-primary/10")}>
                                     <item.icon className={cn("h-5 w-5", isActive && "fill-current")} />
                                     {item.hasBadge && (
-                                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
+                                        item.badgeCount && item.badgeCount > 0
+                                            ? <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-600 border-2 border-background text-[10px] font-bold text-white leading-none px-1">{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>
+                                            : <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
                                     )}
                                 </div>
                                 <span className="text-xs font-medium">{item.label}</span>

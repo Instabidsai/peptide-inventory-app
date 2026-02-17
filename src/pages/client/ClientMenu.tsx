@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { GlassCard, CardContent } from '@/components/ui/glass-card';
 import {
     User,
@@ -13,18 +16,60 @@ import {
     ChevronRight,
 } from 'lucide-react';
 
-const menuItems = [
+interface MenuItem {
+    label: string;
+    description: string;
+    icon: typeof User;
+    path: string;
+    badgeKey?: 'messages' | 'notifications';
+}
+
+const menuItems: MenuItem[] = [
     { label: 'Account & Profile', description: 'Manage your settings', icon: User, path: '/account' },
     { label: 'Full Regimen', description: 'Detailed protocol view', icon: ListChecks, path: '/my-regimen' },
     { label: 'Health Tracking', description: 'Macros, body comp & hydration', icon: Activity, path: '/health' },
-    { label: 'Messages & Requests', description: 'Contact your care team', icon: MessageSquare, path: '/messages' },
-    { label: 'Notifications', description: 'Updates and alerts', icon: Bell, path: '/notifications' },
+    { label: 'Messages & Requests', description: 'Contact your care team', icon: MessageSquare, path: '/messages', badgeKey: 'messages' },
+    { label: 'Notifications', description: 'Updates and alerts', icon: Bell, path: '/notifications', badgeKey: 'notifications' },
     { label: 'Community Forum', description: 'Connect with others', icon: Users, path: '/community' },
 ];
 
 export default function ClientMenu() {
     const navigate = useNavigate();
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
+
+    const { data: unreadNotifications } = useQuery({
+        queryKey: ['unread-notifications-menu', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return 0;
+            const { count } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .eq('is_read', false);
+            return count || 0;
+        },
+        enabled: !!user?.id,
+    });
+
+    const { data: unreadMessages } = useQuery({
+        queryKey: ['unread-messages-menu', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return 0;
+            const { count } = await supabase
+                .from('client_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .not('admin_notes', 'is', null)
+                .eq('status', 'pending');
+            return count || 0;
+        },
+        enabled: !!user?.id,
+    });
+
+    const badgeCounts: Record<string, number> = {
+        messages: unreadMessages || 0,
+        notifications: unreadNotifications || 0,
+    };
 
     return (
         <div className="space-y-6 pb-20">
@@ -36,25 +81,34 @@ export default function ClientMenu() {
             </div>
 
             <div className="space-y-3">
-                {menuItems.map((item) => (
-                    <Button
-                        key={item.path}
-                        variant="secondary"
-                        className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
-                        onClick={() => navigate(item.path)}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-background rounded-full">
-                                <item.icon className="h-4 w-4" />
+                {menuItems.map((item) => {
+                    const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+                    return (
+                        <Button
+                            key={item.path}
+                            variant="secondary"
+                            className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
+                            onClick={() => navigate(item.path)}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-background rounded-full relative">
+                                    <item.icon className="h-4 w-4" />
+                                    {count > 0 && (
+                                        <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white leading-none px-0.5">{count > 9 ? '9+' : count}</span>
+                                    )}
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-medium flex items-center gap-2">
+                                        {item.label}
+                                        {count > 0 && <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-red-500/10 text-red-400 border-red-500/20">{count} new</Badge>}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">{item.description}</div>
+                                </div>
                             </div>
-                            <div className="text-left">
-                                <div className="font-medium">{item.label}</div>
-                                <div className="text-xs text-muted-foreground">{item.description}</div>
-                            </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                ))}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                    );
+                })}
             </div>
 
             {/* Sign Out */}

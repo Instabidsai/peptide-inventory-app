@@ -100,6 +100,7 @@ export default function ClientSettings() {
                             <div className="space-y-2">
                                 <FormLabel>Email</FormLabel>
                                 <Input value={profile?.email || ''} disabled className="bg-muted text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">Email is linked to your login and cannot be changed here. Contact support if you need to update it.</p>
                             </div>
 
                             <Button type="submit" disabled={isUpdatingProfile} className="w-full">
@@ -129,7 +130,7 @@ export default function ClientSettings() {
             </Card>
 
             <div className="text-center text-xs text-muted-foreground">
-                Version 2.7 • Peptide Inventory App
+                Version 2.8 • ThePeptideAI
             </div>
         </div>
     );
