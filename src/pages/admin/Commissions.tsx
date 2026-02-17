@@ -36,29 +36,29 @@ export default function Commissions() {
             if (!rawCommissions?.length) return [] as CommissionRow[];
 
             // 2. Batch-fetch sales orders
-            const saleIds = [...new Set(rawCommissions.map((c: any) => c.sale_id).filter(Boolean))] as string[];
+            const saleIds = [...new Set(rawCommissions.map((c) => c.sale_id).filter(Boolean))] as string[];
             const { data: orders } = saleIds.length
                 ? await supabase.from('sales_orders').select('id, total_amount, client_id').in('id', saleIds)
                 : { data: [] };
-            const orderMap = new Map((orders || []).map((o: any) => [o.id, o]));
+            const orderMap = new Map((orders || []).map((o) => [o.id, o]));
 
             // 3. Batch-fetch partner profiles
-            const partnerIds = [...new Set(rawCommissions.map((c: any) => c.partner_id).filter(Boolean))] as string[];
+            const partnerIds = [...new Set(rawCommissions.map((c) => c.partner_id).filter(Boolean))] as string[];
             const { data: profiles } = await supabase
                 .from('profiles')
                 .select('id, full_name, credit_balance, partner_tier')
                 .in('id', partnerIds);
-            const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+            const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
             // 4. Batch-fetch customer contacts
-            const contactIds = [...new Set((orders || []).map((o: any) => o.client_id).filter(Boolean))] as string[];
+            const contactIds = [...new Set((orders || []).map((o) => o.client_id).filter(Boolean))] as string[];
             const { data: contacts } = contactIds.length
                 ? await supabase.from('contacts').select('id, name').in('id', contactIds)
                 : { data: [] };
             const contactMap = new Map((contacts || []).map(c => [c.id, c]));
 
             // 5. Merge into final rows
-            return rawCommissions.map((c: any) => {
+            return rawCommissions.map((c) => {
                 const order = orderMap.get(c.sale_id) || null;
                 return {
                     ...c,

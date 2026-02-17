@@ -55,7 +55,7 @@ export default function PartnerOrders() {
 
             // 2. Get downline via RPC
             const { data: downline } = await supabase.rpc('get_partner_downline', { root_id: user.id });
-            const downlineIds = (downline || []).map((d: any) => d.id);
+            const downlineIds = (downline || []).map((d: { id: string }) => d.id);
 
             // 3. Build network rep IDs
             const networkRepIds = [profile.id, ...downlineIds];
@@ -63,7 +63,7 @@ export default function PartnerOrders() {
             // 4. Build name map
             const repNames = new Map<string, string>();
             repNames.set(profile.id, 'You');
-            (downline || []).forEach((d: any) => { if (d.full_name) repNames.set(d.id, d.full_name); });
+            (downline || []).forEach((d: { id: string; full_name?: string }) => { if (d.full_name) repNames.set(d.id, d.full_name); });
 
             // 5. Fetch all orders for the network
             const { data: orders, error } = await supabase
@@ -85,13 +85,13 @@ export default function PartnerOrders() {
             }
 
             // 6. Fetch rep profile names for orders (batch)
-            const repIds = [...new Set((orders || []).map((o: any) => o.rep_id).filter(Boolean))] as string[];
+            const repIds = [...new Set((orders || []).map((o) => o.rep_id).filter(Boolean))] as string[];
             if (repIds.length > 0) {
                 const { data: repProfiles } = await supabase
                     .from('profiles')
                     .select('id, full_name')
                     .in('id', repIds);
-                (repProfiles || []).forEach((p: any) => {
+                (repProfiles || []).forEach((p) => {
                     if (p.full_name && !repNames.has(p.id)) repNames.set(p.id, p.full_name);
                 });
             }
@@ -128,20 +128,20 @@ export default function PartnerOrders() {
 
     // Build commission lookup by sale_id
     const commissionBySale = new Map<string, number>();
-    commissions?.forEach((c: any) => {
+    commissions?.forEach((c) => {
         const current = commissionBySale.get(c.sale_id) || 0;
         commissionBySale.set(c.sale_id, current + Number(c.amount || 0));
     });
 
-    const selfOrders = orders.filter((o: any) => o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER'));
-    const networkOrders = orders.filter((o: any) => !(o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER')));
+    const selfOrders = orders.filter((o) => o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER'));
+    const networkOrders = orders.filter((o) => !(o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER')));
 
     const getStatus = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
-    const totalRevenue = orders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
-    const totalCommission = orders?.reduce((s: number, o: any) => s + (commissionBySale.get(o.id) || 0), 0) || 0;
-    const paidCount = orders?.filter((o: any) => o.payment_status === 'paid').length || 0;
-    const pendingCount = orders?.filter((o: any) => o.status === 'submitted' || o.status === 'draft').length || 0;
+    const totalRevenue = orders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
+    const totalCommission = orders?.reduce((s, o) => s + (commissionBySale.get(o.id) || 0), 0) || 0;
+    const paidCount = orders?.filter((o) => o.payment_status === 'paid').length || 0;
+    const pendingCount = orders?.filter((o) => o.status === 'submitted' || o.status === 'draft').length || 0;
 
     return (
         <div className="space-y-6">
@@ -204,7 +204,7 @@ export default function PartnerOrders() {
                                 My Personal Orders
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
-                            {selfOrders.map((order: any) => (
+                            {selfOrders.map((order) => (
                                 <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} />
                             ))}
                         </div>
@@ -226,7 +226,7 @@ export default function PartnerOrders() {
                                 </CardContent>
                             </Card>
                         ) : (
-                            networkOrders.map((order: any) => (
+                            networkOrders.map((order) => (
                                 <OrderCard
                                     key={order.id}
                                     order={order}
@@ -244,7 +244,28 @@ export default function PartnerOrders() {
     );
 }
 
-function OrderCard({ order, getStatus, commission, repName, myName }: { order: any; getStatus: (s: string) => any; commission?: number; repName?: string | null; myName?: string }) {
+interface OrderCardOrder {
+    id: string;
+    status: string;
+    rep_id: string | null;
+    total_amount: number | null;
+    payment_status: string | null;
+    shipping_status: string | null;
+    tracking_number: string | null;
+    carrier: string | null;
+    notes: string | null;
+    created_at: string;
+    contacts?: { name: string | null } | null;
+    profiles?: { full_name: string | null } | null;
+    sales_order_items?: Array<{
+        id: string;
+        quantity: number;
+        unit_price: number | null;
+        peptides?: { name: string } | null;
+    }>;
+}
+
+function OrderCard({ order, getStatus, commission, repName, myName }: { order: OrderCardOrder; getStatus: (s: string) => { label: string; color: string; icon: React.ReactNode }; commission?: number; repName?: string | null; myName?: string }) {
     const statusInfo = getStatus(order.status);
     const items = order.sales_order_items || [];
     const clientName = order.contacts?.name || (order.notes?.includes('PARTNER SELF-ORDER') ? 'Self Order' : 'Unknown');
@@ -311,7 +332,7 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: a
                         {/* Items list */}
                         {items.length > 0 && (
                             <div className="mt-1 space-y-0.5">
-                                {items.map((i: any) => (
+                                {items.map((i) => (
                                     <div key={i.id} className="flex justify-between text-xs text-muted-foreground">
                                         <span>{i.peptides?.name || 'Unknown'} x{i.quantity}</span>
                                         <span>${(Number(i.unit_price) * i.quantity).toFixed(2)}</span>
@@ -347,7 +368,7 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: a
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {items.reduce((s: number, i: any) => s + Number(i.quantity || 0), 0)} items
+                            {items.reduce((s, i) => s + Number(i.quantity || 0), 0)} items
                         </p>
                     </div>
                 </div>

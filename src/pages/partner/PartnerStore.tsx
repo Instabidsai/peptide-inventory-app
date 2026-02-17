@@ -102,7 +102,7 @@ export default function PartnerStore() {
             const { data, error } = await supabase.rpc('get_peptide_stock_counts');
             if (error) return {};
             const result: Record<string, number> = {};
-            (data || []).forEach((item: any) => {
+            (data || []).forEach((item: { peptide_id: string; stock_count: number }) => {
                 result[item.peptide_id] = Number(item.stock_count);
             });
             return result;
@@ -125,7 +125,7 @@ export default function PartnerStore() {
                 .gt('cost_per_unit', 0);
             if (!lots) return {};
             const costMap: Record<string, { total: number; count: number }> = {};
-            lots.forEach((l: any) => {
+            lots.forEach((l) => {
                 const pid = l.peptide_id;
                 if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
                 costMap[pid].total += Number(l.cost_per_unit);
@@ -141,7 +141,7 @@ export default function PartnerStore() {
     });
 
     // Calculate partner price based on pricing mode
-    const getPartnerPrice = (peptide: any): number => {
+    const getPartnerPrice = (peptide: { id: string; retail_price?: number | null }): number => {
         if (pricingMode === 'cost_plus' && lotCosts) {
             const avgCost = lotCosts[peptide.id] || 0;
             if (avgCost > 0) {
@@ -153,7 +153,7 @@ export default function PartnerStore() {
         return Math.round(retail * priceMultiplier * 100) / 100;
     };
 
-    const addToCart = (peptide: any) => {
+    const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
@@ -239,8 +239,8 @@ export default function PartnerStore() {
             setNotes('');
             setShippingAddress('');
             toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Order failed', description: err.message });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });
         } finally {
             setPlacingOrder(false);
         }
@@ -305,7 +305,7 @@ export default function PartnerStore() {
                             <p className="text-sm">Failed to load products. Please try refreshing the page.</p>
                         </div>
                     ) : (() => {
-                        const filtered = peptides?.filter((p: any) => {
+                        const filtered = peptides?.filter((p) => {
                             if (!searchQuery) return true;
                             const q = searchQuery.toLowerCase();
                             return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);

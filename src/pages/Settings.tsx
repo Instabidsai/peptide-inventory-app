@@ -84,8 +84,8 @@ export default function Settings() {
 
       await refreshProfile();
       toast({ title: 'Profile updated successfully' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to update profile', description: error.message });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to update profile', description: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -105,8 +105,8 @@ export default function Settings() {
 
       await refreshProfile();
       toast({ title: 'Organization updated successfully' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to update organization', description: error.message });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to update organization', description: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsUpdatingOrg(false);
     }
@@ -237,7 +237,7 @@ export default function Settings() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {teamMembers?.map((member: any) => (
+                  {teamMembers?.map((member) => (
                     <div
                       key={member.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"

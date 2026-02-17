@@ -5,7 +5,8 @@ import { useProtocols } from '@/hooks/use-protocols';
 import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
-import { useCreateMovement, useMovements, useDeleteMovement } from '@/hooks/use-movements';
+import { useCreateMovement, useMovements, useDeleteMovement, type Movement } from '@/hooks/use-movements';
+import type { Protocol, ProtocolItem, ProtocolFeedback } from '@/types/regimen';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
@@ -220,7 +221,7 @@ export default function ContactDetails() {
         }
     };
 
-    const handleEditClick = (protocol: any) => {
+    const handleEditClick = (protocol: Protocol) => {
         if (!protocol.protocol_items?.[0]) return;
 
         const item = protocol.protocol_items[0];
@@ -245,7 +246,7 @@ export default function ContactDetails() {
     };
 
     // Client Portal Invite State
-    const [inviteTier, setInviteTier] = useState<string>('family');
+    const [inviteTier, setInviteTier] = useState<'family' | 'network' | 'public'>('family');
     const [inviteLink, setInviteLink] = useState<string>('');
     const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
@@ -272,15 +273,16 @@ export default function ContactDetails() {
                 setInviteLink(data.action_link);
                 toast({ title: 'Invite Link Generated', description: 'Copy and send this link to the client.' });
                 // Optimistically update tier
-                updateContact.mutate({ id: contact!.id, tier: inviteTier as any });
+                updateContact.mutate({ id: contact!.id, tier: inviteTier });
             } else {
                 throw new Error(data?.error || 'No link returned');
             }
 
-        } catch (err: any) {
+        } catch (err) {
             console.error('Invite failed:', err);
             // Fallback/Simulate for Dev without deployed function
-            if (err.message?.includes('FunctionsFetchError') || err.message?.includes('Failed to send request')) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            if (errMsg?.includes('FunctionsFetchError') || errMsg?.includes('Failed to send request')) {
                 toast({
                     variant: 'destructive',
                     title: 'Function Not Deployed',
@@ -289,12 +291,10 @@ export default function ContactDetails() {
                 });
             } else {
                 // Try to extract more details from the Edge Function error
-                let errorDetails = err.message;
-                if (err.context && typeof err.context === 'object') {
-                    // Supabase functions often return the body in 'context' or similar
-                    errorDetails = JSON.stringify(err.context) || err.message;
-                } else if (err instanceof Error) {
-                    errorDetails = err.message;
+                let errorDetails = errMsg;
+                const errObj = err as Record<string, unknown>;
+                if (errObj.context && typeof errObj.context === 'object') {
+                    errorDetails = JSON.stringify(errObj.context) || errMsg;
                 }
 
                 // If the error message is just "Edge Function returned a non-2xx status code",
@@ -406,8 +406,8 @@ export default function ContactDetails() {
                 .neq('status', 'cancelled');
             if (error) throw error;
             if (!data || data.length === 0) return null;
-            const totalSpend = data.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
-            const lastOrder = data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            const totalSpend = data.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+            const lastOrder = data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
             return {
                 orderCount: data.length,
                 totalSpend,
@@ -996,7 +996,7 @@ export default function ContactDetails() {
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-end">
                             <div className="space-y-2">
                                 <Label>Access Tier</Label>
-                                <Select value={inviteTier} onValueChange={setInviteTier}>
+                                <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as typeof inviteTier)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -1052,7 +1052,7 @@ export default function ContactDetails() {
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold tracking-tight">Recent Feedback & Logs</h2>
                 <div className="grid gap-4 md:grid-cols-2">
-                    {assignedProtocols?.flatMap(p => p.protocol_feedback).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5).map((fb: any) => (
+                    {assignedProtocols?.flatMap(p => p.protocol_feedback || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5).map((fb) => (
                         <Card key={fb.id} className="bg-muted/20">
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between">
@@ -1089,7 +1089,14 @@ export default function ContactDetails() {
     );
 }
 
-function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: any, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: any) => void, onAddSupplement: (args: any) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: any[] | undefined, movements?: any[] }) {
+interface RegimenPeptide {
+    id: string;
+    name: string;
+    avg_cost?: number | null;
+    [key: string]: unknown;
+}
+
+function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: Protocol, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: { itemId: string }) => void, onAddSupplement: (args: { protocol_id: string; supplement_id: string; dosage: string; frequency: string; notes: string }) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: RegimenPeptide[] | undefined, movements?: Movement[] }) {
     if (!protocol?.protocol_items) return null;
 
     // Determine Status Logic
@@ -1099,7 +1106,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
         const peptideId = protocol.protocol_items[0].peptide_id;
 
         const relevant = movements.filter(m =>
-            m.movement_items?.some((item: any) => {
+            m.movement_items?.some((item) => {
                 const lot = item.bottles?.lots;
                 return lot?.peptide_id === peptideId || lot?.peptides?.id === peptideId;
             })
@@ -1126,7 +1133,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     const lastSoldDetails = useMemo(() => {
         if (!latestMovement || !protocol.protocol_items?.[0]) return null;
         const peptideId = protocol.protocol_items[0].peptide_id;
-        const item = latestMovement.movement_items?.find((i: any) => {
+        const item = latestMovement.movement_items?.find((i) => {
             const lot = i.bottles?.lots;
             return lot?.peptide_id === peptideId || lot?.peptides?.id === peptideId;
         });
@@ -1139,7 +1146,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
     const totalCost = useMemo(() => {
         if (!protocol.protocol_items || !peptides) return 0;
-        return protocol.protocol_items.reduce((acc: number, item: any) => {
+        return protocol.protocol_items.reduce((acc: number, item) => {
             const peptide = peptides.find(p => p.id === item.peptide_id);
             if (!peptide) return acc;
 
@@ -1193,7 +1200,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     created_at
                 `)
                 .eq('contact_id', protocol.contact_id)
-                .in('peptide_id', protocolItems.map((item: any) => item.peptide_id));
+                .in('peptide_id', protocolItems.map((item) => item.peptide_id));
 
             if (error) throw error;
             return data || [];
@@ -1204,9 +1211,9 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
     const supplyCalculations = useMemo(() => {
         if (!protocol.protocol_items || !assignedBottles) return [];
 
-        return protocol.protocol_items.map((item: any) => {
+        return protocol.protocol_items.map((item) => {
             const itemBottles = assignedBottles.filter(
-                (b: any) => b.peptide_id === item.peptide_id
+                (b) => b.peptide_id === item.peptide_id
             );
 
             return {
@@ -1250,7 +1257,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    {protocol.protocol_items?.map((item: any) => (
+                    {protocol.protocol_items?.map((item) => (
                         <div key={item.id} className="flex justify-between items-center p-3 bg-muted rounded-lg md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
                             <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-2 rounded-full">
@@ -1299,7 +1306,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-2">
-                        {protocol.protocol_supplements?.map((supp: any) => (
+                        {protocol.protocol_supplements?.map((supp) => (
                             <div key={supp.id} className="relative group border rounded-md p-3 hover:bg-muted/50 transition-colors">
                                 <div className="flex gap-3">
                                     {supp.supplements?.image_url ? (
@@ -1512,7 +1519,7 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
             </div>
             <div className="space-y-2">
                 <Label>Type</Label>
-                <Select value={type} onValueChange={(v: any) => setType(v)}>
+                <Select value={type} onValueChange={(v) => setType(v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="video">Video</SelectItem>
@@ -1591,7 +1598,7 @@ function ResourceList({ contactId }: { contactId: string }) {
 
 
 
-function ClientInventoryList({ contactId, contactName, assignedProtocols }: { contactId: string, contactName?: string, assignedProtocols?: any[] }) {
+function ClientInventoryList({ contactId, contactName, assignedProtocols }: { contactId: string, contactName?: string, assignedProtocols?: Protocol[] }) {
     const queryClient = useQueryClient();
     const { data: inventory, isLoading } = useQuery({
         queryKey: ['client-inventory-admin', contactId],
@@ -1610,7 +1617,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
         }
     });
 
-    const [linkingItem, setLinkingItem] = useState<any | null>(null);
+    const [linkingItem, setLinkingItem] = useState<{ id: string; peptide_id: string; peptide?: { name: string } | null; [key: string]: unknown } | null>(null);
 
     const linkToRegimen = useMutation({
         mutationFn: async ({ inventoryId, protocolItemId }: { inventoryId: string, protocolItemId: string }) => {
@@ -1665,8 +1672,8 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
     // Grouping Logic for "Order History" (Existing)
     const groupedByOrder = useMemo(() => {
         if (!inventory) return {};
-        const groups: Record<string, any[]> = {};
-        inventory.forEach((item: any) => {
+        const groups: Record<string, typeof inventory> = {};
+        inventory.forEach((item) => {
             if (!item.peptide_id) return;
             const key = item.movement_id || 'unassigned';
             if (!groups[key]) groups[key] = [];
@@ -1690,16 +1697,16 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
         if (!inventory) return {};
 
         // Filter: Active items only (Stock > 0, not returned/cancelled)
-        const activeItems = inventory.filter((item: any) => {
+        const activeItems = inventory.filter((item) => {
             const status = item.movement?.status;
             const isInactive = status === 'returned' || status === 'cancelled';
             return item.current_quantity_mg > 0 && !isInactive && item.status !== 'archived';
         });
 
         // Group by Peptide Name
-        const groups: Record<string, { totalMg: number; items: any[] }> = {};
+        const groups: Record<string, { totalMg: number; items: typeof activeItems }> = {};
 
-        activeItems.forEach((item: any) => {
+        activeItems.forEach((item) => {
             const name = item.peptide?.name || 'Unknown';
             if (!groups[name]) {
                 groups[name] = { totalMg: 0, items: [] };
@@ -1760,7 +1767,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                         </div>
                                     </div>
                                     <div className="divide-y">
-                                        {group.items.map((item: any) => (
+                                        {group.items.map((item) => (
                                             <div key={item.id} className="p-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
                                                 <div className="flex flex-col gap-0.5">
                                                     <div className="text-xs font-mono text-muted-foreground">
@@ -1844,7 +1851,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                     ? 'Unassigned / Manual Adds'
                                     : `Order from ${format(new Date(movementDate), 'MMMM d, yyyy')}`;
 
-                                const peptideNames = Array.from(new Set(items.map((i: any) => i.peptide?.name))).filter(Boolean);
+                                const peptideNames = Array.from(new Set(items.map((i) => i.peptide?.name))).filter(Boolean);
 
                                 return (
                                     <AccordionItem value={key} key={key} className={`border rounded-lg px-4 mb-2 bg-card ${isInactive ? 'opacity-60' : ''}`}>
@@ -1871,7 +1878,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                         </AccordionTrigger>
                                         <AccordionContent className="pt-2 pb-4">
                                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                                {items.map((item: any) => (
+                                                {items.map((item) => (
                                                     <Card key={item.id} className="relative overflow-hidden group border shadow-sm">
                                                         <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
@@ -1981,8 +1988,8 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                         <div className="space-y-2">
                             {assignedProtocols?.flatMap(p =>
                                 p.protocol_items
-                                    ?.filter((item: any) => item.peptide_id === linkingItem?.peptide_id)
-                                    .map((item: any) => (
+                                    ?.filter((item) => item.peptide_id === linkingItem?.peptide_id)
+                                    .map((item) => (
                                         <Button
                                             key={item.id}
                                             variant="outline"
@@ -2001,7 +2008,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                             )}
 
                             {/* If no matching protocol items found */}
-                            {(!assignedProtocols || assignedProtocols.every(p => !p.protocol_items?.some((i: any) => i.peptide_id === linkingItem?.peptide_id))) && (
+                            {(!assignedProtocols || assignedProtocols.every(p => !p.protocol_items?.some((i) => i.peptide_id === linkingItem?.peptide_id))) && (
                                 <div className="text-sm text-amber-400 bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
                                     No active regimen found for <strong>{linkingItem?.peptide?.name}</strong>.
                                     Please create a regimen for this peptide first.

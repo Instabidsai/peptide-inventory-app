@@ -194,9 +194,9 @@ export function useFinancialMetrics() {
                     .select('merchant_fee, profit_amount, cogs_amount')
                     .neq('status', 'cancelled');
 
-                const merchantFees = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
-                const orderBasedProfit = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
-                const orderBasedCogs = Math.round((orderAgg?.reduce((s, o: any) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
+                const merchantFees = Math.round((orderAgg?.reduce((s, o) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
+                const orderBasedProfit = Math.round((orderAgg?.reduce((s, o) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
+                const orderBasedCogs = Math.round((orderAgg?.reduce((s, o) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
 
                 return {
                     inventoryValue,

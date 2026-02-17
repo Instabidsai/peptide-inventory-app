@@ -33,8 +33,13 @@ export interface ClientInventoryItem {
         name: string;
     };
     movement_id?: string | null;
+    protocol_item_id?: string | null;
+    initial_quantity_mg?: number;
+    expiration_date?: string | null;
     movement?: {
         movement_date: string;
+        id?: string;
+        status?: string;
     };
 }
 
@@ -164,6 +169,25 @@ export interface ProtocolItem {
     frequency: string;
     duration_days: number | null;
     duration_weeks: number;
+    cost_multiplier?: number | null;
+    // Joined fields from useProtocols query
+    peptides?: {
+        name: string;
+        sku?: string | null;
+    };
+    protocol_logs?: Array<{
+        created_at: string;
+        status: string;
+    }>;
+}
+
+export interface ProtocolFeedback {
+    id: string;
+    protocol_id: string;
+    rating: number;
+    comment: string | null;
+    admin_response: string | null;
+    created_at: string;
 }
 
 export interface ProtocolSupplement {
@@ -185,6 +209,9 @@ export interface Protocol {
     id: string;
     name: string;
     description: string | null;
+    contact_id?: string | null;
+    created_at?: string;
     protocol_items: ProtocolItem[];
     protocol_supplements?: ProtocolSupplement[];
+    protocol_feedback?: ProtocolFeedback[];
 }

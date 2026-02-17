@@ -242,7 +242,7 @@ export default function Protocols() {
                                     )}
                                     {items.length > 0 && (
                                         <div className="space-y-1">
-                                            {items.slice(0, 4).map((item: any) => (
+                                            {items.slice(0, 4).map((item) => (
                                                 <div key={item.id} className="text-xs flex justify-between">
                                                     <span className="font-medium truncate mr-2">{item.peptides?.name || 'Unknown'}</span>
                                                     <span className="text-muted-foreground whitespace-nowrap">

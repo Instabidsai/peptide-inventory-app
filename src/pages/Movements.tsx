@@ -66,7 +66,7 @@ function MovementDetailsDialog({
   movement: Movement | null;
   open: boolean;
   onClose: () => void;
-  onUpdate: (id: string, updates: any) => Promise<void>;
+  onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>;
 }) {
   const { data: items, isLoading } = useMovementItems(movement?.id || '');
 
@@ -130,7 +130,7 @@ function MovementDetailsDialog({
 
   const handleSave = async () => {
     setSaving(true);
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       discount_percent: Math.round(discountPercent * 100) / 100,
       discount_amount: Math.round(discountDollars * 100) / 100,
       notes: notes || null,
@@ -284,7 +284,7 @@ function MovementDetailsDialog({
                   <span className="text-muted-foreground">Commissions</span>
                   <span className="text-orange-600">${totalCommission.toFixed(2)}</span>
                 </div>
-                {commissions?.map((c: any) => (
+                {commissions?.map((c) => (
                   <div key={c.id} className="flex justify-between text-xs text-muted-foreground pl-3">
                     <span>{c.profiles?.full_name || 'Unknown'} ({c.type === 'direct' ? 'Direct' : 'Override'} {((c.commission_rate || 0) * 100).toFixed(0)}%)</span>
                     <span>${Number(c.amount).toFixed(2)}</span>
@@ -402,7 +402,7 @@ export default function Movements() {
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleUpdate = async (id: string, updates: any) => {
+  const handleUpdate = async (id: string, updates: Record<string, unknown>) => {
     const { error } = await supabase
       .from('movements')
       .update(updates)
@@ -482,13 +482,13 @@ export default function Movements() {
     const esc = (v: string) => (v.includes(',') || v.includes('"') || v.includes('\n')) ? `"${v.replace(/"/g, '""')}"` : v;
     const headers = ['Date', 'Type', 'Contact', 'Items', 'Cost', 'Amount Paid', 'Payment Status', 'Notes'];
     const rows = filteredMovements.map(m => {
-      const itemsSummary = m.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+      const itemsSummary = m.movement_items?.reduce((acc: Record<string, number>, item) => {
         const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
         acc[name] = (acc[name] || 0) + 1;
         return acc;
       }, {});
       const itemsStr = itemsSummary ? Object.entries(itemsSummary).map(([n, c]) => `${n} (${c})`).join('; ') : '';
-      const cost = m.movement_items?.reduce((s: number, item: any) => s + (item.bottles?.lots?.cost_per_unit || 0), 0) || 0;
+      const cost = m.movement_items?.reduce((s: number, item) => s + (item.bottles?.lots?.cost_per_unit || 0), 0) || 0;
       return [
         m.movement_date ? format(new Date(m.movement_date), 'yyyy-MM-dd') : '',
         esc(typeLabels[m.type]),
@@ -513,7 +513,7 @@ export default function Movements() {
   // Calculating totals for the filtered list for quick view
   const totalRevenue = filteredMovements.reduce((sum, m) => sum + (m.amount_paid || 0), 0);
   const totalCost = filteredMovements.reduce((sum, m) => {
-    const moveCost = m.movement_items?.reduce((itemSum, item: any) => {
+    const moveCost = m.movement_items?.reduce((itemSum, item) => {
       return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
     }, 0) || 0;
     return sum + moveCost;
@@ -630,11 +630,11 @@ export default function Movements() {
           ) : isMobile ? (
             <div className="space-y-3">
               {filteredMovements.map((movement, index) => {
-                const moveCost = movement.movement_items?.reduce((itemSum, item: any) => {
+                const moveCost = movement.movement_items?.reduce((itemSum, item) => {
                   return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                 }, 0) || 0;
 
-                const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+                const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item) => {
                   const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
                   acc[name] = (acc[name] || 0) + 1;
                   return acc;
@@ -644,7 +644,7 @@ export default function Movements() {
                   ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
                   : '-';
 
-                const mobileSubtotal = movement.movement_items?.reduce((s, item: any) => s + (Number(item.price_at_sale) || 0), 0) || 0;
+                const mobileSubtotal = movement.movement_items?.reduce((s, item) => s + (Number(item.price_at_sale) || 0), 0) || 0;
                 const mobileDiscount = Number(movement.discount_amount) || 0;
                 const mobileOwed = Math.max(0, mobileSubtotal - mobileDiscount - (Number(movement.amount_paid) || 0));
 
@@ -706,12 +706,12 @@ export default function Movements() {
               </TableHeader>
               <TableBody>
                 {filteredMovements.map((movement, index) => {
-                  const moveCost = movement.movement_items?.reduce((itemSum, item: any) => {
+                  const moveCost = movement.movement_items?.reduce((itemSum, item) => {
                     return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                   }, 0) || 0;
 
                   // Extract peptide names and counts
-                  const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item: any) => {
+                  const itemsSummary = movement.movement_items?.reduce((acc: Record<string, number>, item) => {
                     const name = item.bottles?.lots?.peptides?.name || item.description || 'Unknown';
                     acc[name] = (acc[name] || 0) + 1;
                     return acc;
@@ -721,7 +721,7 @@ export default function Movements() {
                     ? Object.entries(itemsSummary).map(([name, count]) => `${name} (${count})`).join(', ')
                     : '-';
 
-                  const moveSubtotal = movement.movement_items?.reduce((s, item: any) => s + (Number(item.price_at_sale) || 0), 0) || 0;
+                  const moveSubtotal = movement.movement_items?.reduce((s, item) => s + (Number(item.price_at_sale) || 0), 0) || 0;
                   const moveDiscount = Number(movement.discount_amount) || 0;
                   const moveTotal = moveSubtotal - moveDiscount;
                   const moveOwed = Math.max(0, moveTotal - (Number(movement.amount_paid) || 0));

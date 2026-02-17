@@ -49,7 +49,7 @@ export default function AdminRequests() {
         setProcessingId(id);
         try {
             // 1. Upload Voice Note (if any)
-            const adminAttachments: any[] = [];
+            const adminAttachments: Array<{ name: string; type: string; url: string }> = [];
             if (voiceBlob) {
                 const fileName = `admin_voice_${Date.now()}.webm`;
                 const { data: uploadData, error: uploadError } = await supabase.storage
@@ -73,7 +73,7 @@ export default function AdminRequests() {
                 }
             }
 
-            const updateData: any = { status: newStatus };
+            const updateData: Record<string, unknown> = { status: newStatus };
             if (notes) updateData.admin_notes = notes;
             if (adminAttachments.length > 0) updateData.admin_attachments = adminAttachments;
 
@@ -85,7 +85,7 @@ export default function AdminRequests() {
             if (error) throw error;
 
             // Trigger Notification for Client
-            const targetReq = requests?.find((r: any) => r.id === id);
+            const targetReq = requests?.find((r) => r.id === id);
             if (targetReq) {
                 const message = notes
                     ? `Admin update: ${notes}`
@@ -102,14 +102,14 @@ export default function AdminRequests() {
 
             toast.success(`Request ${newStatus}`);
             refetch();
-        } catch (error: any) {
-            toast.error("Error updating request: " + error.message);
+        } catch (error) {
+            toast.error("Error updating request: " + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setProcessingId(null);
         }
     };
 
-    const handleFulfill = (req: any) => {
+    const handleFulfill = (req: ClientRequest) => {
         navigate('/sales/new', {
             state: {
                 prefill: {
@@ -144,7 +144,7 @@ export default function AdminRequests() {
                         <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">No requests found.</div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {requests?.map((req: any) => (
+                            {requests?.map((req) => (
                                 <RequestCard
                                     key={req.id}
                                     req={req}
@@ -161,7 +161,23 @@ export default function AdminRequests() {
     );
 }
 
-function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
+interface ClientRequest {
+    id: string;
+    user_id: string;
+    type: string;
+    subject: string;
+    message: string;
+    status: string;
+    created_at: string;
+    admin_notes?: string | null;
+    peptide_id?: string | null;
+    requested_quantity?: number | null;
+    attachments?: Array<{ name?: string; type?: string; url: string }>;
+    profile?: { full_name?: string; email?: string } | null;
+    peptide?: { name?: string; id?: string } | null;
+}
+
+function RequestCard({ req, onUpdate, onFulfill, processing }: { req: ClientRequest; onUpdate: (id: string, status: string, notes?: string, voiceBlob?: Blob) => void; onFulfill: (req: ClientRequest) => void; processing: boolean }) {
     const [notes, setNotes] = useState(req.admin_notes || "");
     const [showReply, setShowReply] = useState(false);
     const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
@@ -196,7 +212,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: any) {
                 {/* Attachments Display */}
                 {req.attachments && Array.isArray(req.attachments) && req.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {req.attachments.map((att: any, idx: number) => (
+                        {req.attachments.map((att, idx) => (
                             <a
                                 key={idx}
                                 href={att.url}

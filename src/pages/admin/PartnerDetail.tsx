@@ -238,8 +238,8 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading sales orders...</div>;
 
-    const totalVolume = orders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
-    const totalCommission = orders?.reduce((s: number, o: any) => s + Number(o.commission_amount || 0), 0) || 0;
+    const totalVolume = orders?.reduce((s: number, o) => s + Number(o.total_amount || 0), 0) || 0;
+    const totalCommission = orders?.reduce((s: number, o) => s + Number(o.commission_amount || 0), 0) || 0;
     const orderCount = orders?.length || 0;
 
     const statusColor = (s: string) => {
@@ -299,9 +299,9 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {orders?.map((order: any) => {
+                            {orders?.map((order) => {
                                 const items = order.sales_order_items || [];
-                                const itemSummary = items.map((i: any) =>
+                                const itemSummary = items.map((i) =>
                                     `${i.peptides?.name || '?'} ×${i.quantity}`
                                 ).join(', ');
 
@@ -460,16 +460,16 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 title: 'Applied to Balance',
                 description: `$${appliedAmount.toFixed(2)} applied to outstanding balance.${remaining > 0 ? ` $${remaining.toFixed(2)} excess added to credit.` : ''}`
             });
-        } catch (err: any) {
+        } catch (err) {
             console.error('Apply to balance error:', err);
-            toast({ title: 'Error', description: err.message || 'Failed to apply commission to balance.', variant: 'destructive' });
+            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to apply commission to balance.', variant: 'destructive' });
         }
     };
 
     if (isLoading) return <div>Loading commissions...</div>;
 
-    const pending = commissions?.filter((c: any) => c.status === 'pending') || [];
-    const history = commissions?.filter((c: any) => c.status !== 'pending') || [];
+    const pending = commissions?.filter((c) => c.status === 'pending') || [];
+    const history = commissions?.filter((c) => c.status !== 'pending') || [];
 
     const getStatusLabel = (status: string) => {
         switch (status) {
@@ -504,7 +504,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                     <TableCell colSpan={6} className="text-center text-muted-foreground">No pending commissions</TableCell>
                                 </TableRow>
                             )}
-                            {pending.map((c: any) => (
+                            {pending.map((c) => (
                                 <TableRow key={c.id}>
                                     <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
                                     <TableCell className="font-medium">{c.sales_orders?.contacts?.name || 'N/A'}</TableCell>
@@ -557,7 +557,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                     <TableCell colSpan={6} className="text-center text-muted-foreground">No history found</TableCell>
                                 </TableRow>
                             )}
-                            {history.map((c: any) => {
+                            {history.map((c) => {
                                 const statusInfo = getStatusLabel(c.status);
                                 return (
                                     <TableRow key={c.id}>
@@ -586,7 +586,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [promoteOpen, setPromoteOpen] = useState(false);
-    const [selectedContact, setSelectedContact] = useState<any>(null);
+    const [selectedContact, setSelectedContact] = useState<{ id: string; name: string; email?: string | null } | null>(null);
     const [isPromoting, setIsPromoting] = useState(false);
 
     const [addClientOpen, setAddClientOpen] = useState(false);
@@ -695,11 +695,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
             setNewClient({ name: '', email: '', phone: '', address: '', notes: '' });
             setAddClientOpen(false);
             refetch();
-        } catch (err: any) {
+        } catch (err) {
             toast({
                 variant: 'destructive',
                 title: 'Failed to add client',
-                description: err.message || 'Something went wrong.',
+                description: err instanceof Error ? err.message : 'Something went wrong.',
             });
         } finally {
             setIsAdding(false);
@@ -733,18 +733,18 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
 
             setPromoteOpen(false);
             refetch();
-        } catch (err: any) {
+        } catch (err) {
             toast({
                 variant: 'destructive',
                 title: "Promotion Failed",
-                description: err.message || "Could not promote contact."
+                description: err instanceof Error ? err.message : "Could not promote contact."
             });
         } finally {
             setIsPromoting(false);
         }
     };
 
-    const openPromote = (contact: any) => {
+    const openPromote = (contact: { id: string; name: string; email?: string | null }) => {
         setSelectedContact(contact);
         setPromoteEmail('');
         setPromoteOpen(true);

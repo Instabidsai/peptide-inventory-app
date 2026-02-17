@@ -305,7 +305,7 @@ export default function Finance() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Category</Label>
-                                    <Select value={formData.category} onValueChange={(v: any) => setFormData({ ...formData, category: v })}>
+                                    <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="startup">Startup Cost</SelectItem>

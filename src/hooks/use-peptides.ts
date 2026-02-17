@@ -85,7 +85,7 @@ export function usePeptides() {
       });
 
       // Apply stock counts from RPC
-      stockCounts?.forEach((item: any) => {
+      stockCounts?.forEach((item: { peptide_id: string; stock_count: number }) => {
         if (peptideStats[item.peptide_id]) {
           peptideStats[item.peptide_id].totalStock = Number(item.stock_count);
         }

@@ -352,12 +352,12 @@ export function useCreateSalesOrder() {
                     .eq('id', order.id);
 
                 fulfilled = true;
-            } catch (fulfillErr: any) {
+            } catch (fulfillErr) {
                 // If fulfillment fails (e.g. insufficient stock), order stays as submitted
                 console.warn('Auto-fulfillment failed:', fulfillErr);
                 toast({
                     title: "Order created — fulfillment pending",
-                    description: fulfillErr?.message || "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
+                    description: fulfillErr instanceof Error ? fulfillErr.message : "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
                     variant: "destructive",
                 });
             }

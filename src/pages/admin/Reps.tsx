@@ -147,8 +147,8 @@ export default function Reps() {
             toast({ title: 'Client added', description: `${newClient.name} added under ${addingToRep.full_name}` });
             setNewClient({ name: '', email: '', phone: '', address: '' });
             setAddingToRep(null);
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Failed to add client', description: err.message });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Failed to add client', description: err instanceof Error ? err.message : 'Unknown error' });
         } finally {
             setIsAddingClient(false);
         }
@@ -182,7 +182,7 @@ export default function Reps() {
             const stats = new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
 
             // Aggregate order volume by rep
-            (orders || []).forEach((o: any) => {
+            (orders || []).forEach((o) => {
                 const existing = stats.get(o.rep_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
                 existing.volume += Number(o.total_amount || 0);
                 existing.orders += 1;
@@ -190,14 +190,14 @@ export default function Reps() {
             });
 
             // Aggregate commission earned from commissions table (direct + overrides)
-            (commissions || []).forEach((c: any) => {
+            (commissions || []).forEach((c) => {
                 const existing = stats.get(c.partner_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
                 existing.commission += Number(c.amount || 0);
                 stats.set(c.partner_id, existing);
             });
 
             // Count customers
-            (contacts || []).forEach((c: any) => {
+            (contacts || []).forEach((c) => {
                 const existing = stats.get(c.assigned_rep_id) || { volume: 0, commission: 0, orders: 0, customers: 0 };
                 existing.customers += 1;
                 stats.set(c.assigned_rep_id, existing);
@@ -726,7 +726,7 @@ function EditRepDialog({
     );
 }
 
-function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: any) => void }) {
+function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
     // Tier → default commission rate and price multiplier
     const TIER_DEFAULTS: Record<string, { commission: number; multiplier: number; label: string }> = {
         senior: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },

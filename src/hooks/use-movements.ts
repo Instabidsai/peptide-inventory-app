@@ -42,6 +42,7 @@ export interface Movement {
         id: string;
         lot_number?: string;
         cost_per_unit: number;
+        peptide_id?: string;
         peptides?: {
           id: string;
           name: string;

@@ -111,20 +111,21 @@ export default function PartnerDashboard() {
             }
             if (!movements?.length) return [];
 
-            return movements.map((m: any) => {
-                const subtotal = (m.movement_items || []).reduce((s: number, i: any) => s + (Number(i.price_at_sale) || 0), 0);
+            return movements.map((m) => {
+                const items = (m.movement_items || []) as { price_at_sale: number }[];
+                const subtotal = items.reduce((s, i) => s + (Number(i.price_at_sale) || 0), 0);
                 const discount = Number(m.discount_amount) || 0;
                 const paid = Number(m.amount_paid) || 0;
                 const owed = Math.max(0, subtotal - discount - paid);
-                const itemCount = (m.movement_items || []).length;
+                const itemCount = items.length;
                 return { ...m, subtotal, discount, paid, owed, itemCount, items: [] };
             });
         },
         enabled: !!user?.id,
     });
 
-    const totalOwed = owedMovements?.reduce((s: number, m: any) => s + m.owed, 0) || 0;
-    const unpaidMovements = owedMovements?.filter((m: any) => m.owed > 0) || [];
+    const totalOwed = owedMovements?.reduce((s, m) => s + m.owed, 0) || 0;
+    const unpaidMovements = owedMovements?.filter((m) => m.owed > 0) || [];
 
     // Apply commissions to amount owed mutation
     const applyCommissions = useMutation({
@@ -136,10 +137,11 @@ export default function PartnerDashboard() {
             if (error) throw error;
             return data;
         },
-        onSuccess: (data: any) => {
+        onSuccess: (data) => {
+            const result = data as { applied: number; remaining_credit: number };
             toast({
                 title: 'Commissions Applied',
-                description: `$${Number(data.applied).toFixed(2)} applied to owed balance. ${data.remaining_credit > 0 ? `$${Number(data.remaining_credit).toFixed(2)} added to store credit.` : ''}`,
+                description: `$${Number(result.applied).toFixed(2)} applied to owed balance. ${result.remaining_credit > 0 ? `$${Number(result.remaining_credit).toFixed(2)} added to store credit.` : ''}`,
             });
             // Refresh everything
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
@@ -149,8 +151,8 @@ export default function PartnerDashboard() {
             queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
             refreshProfile?.();
         },
-        onError: (err: any) => {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        onError: (err) => {
+            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
         }
     });
 
@@ -158,7 +160,7 @@ export default function PartnerDashboard() {
     const convertToCredit = useMutation({
         mutationFn: async (commissionId: string) => {
             // Validate commission status before converting
-            const commission = commissions?.find((c: any) => c.id === commissionId);
+            const commission = commissions?.find((c) => c.id === commissionId);
             if (commission?.status === 'paid') {
                 throw new Error('Commission already converted');
             }
@@ -175,8 +177,8 @@ export default function PartnerDashboard() {
             queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
             refreshProfile?.();
         },
-        onError: (err: any) => {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        onError: (err) => {
+            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
         }
     });
 
@@ -342,7 +344,7 @@ export default function PartnerDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {commissions.slice(0, 10).map((comm: any) => (
+                                    {commissions.slice(0, 10).map((comm) => (
                                         <TableRow key={comm.id}>
                                             <TableCell>{format(new Date(comm.created_at), 'MMM d')}</TableCell>
                                             <TableCell className="font-medium">
@@ -440,8 +442,8 @@ export default function PartnerDashboard() {
                         )}
                         <div className="space-y-2">
                             <h4 className="text-sm font-semibold">Recent Activity</h4>
-                            {commissions?.filter((c: any) => c.status === 'paid').length ? (
-                                commissions.filter((c: any) => c.status === 'paid').slice(0, 10).map((c: any) => (
+                            {commissions?.filter((c) => c.status === 'paid').length ? (
+                                commissions.filter((c) => c.status === 'paid').slice(0, 10).map((c) => (
                                     <div key={c.id} className="flex justify-between items-center p-2 rounded border border-border/50">
                                         <div>
                                             <p className="text-sm font-medium">Commission converted</p>
@@ -495,7 +497,7 @@ export default function PartnerDashboard() {
                         <div className="space-y-2">
                             <h4 className="text-sm font-semibold">All Commissions</h4>
                             {commissions && commissions.length > 0 ? (
-                                commissions.map((comm: any) => (
+                                commissions.map((comm) => (
                                     <div key={comm.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
@@ -574,7 +576,7 @@ export default function PartnerDashboard() {
                             <h4 className="text-sm font-semibold">
                                 {unpaidMovements.length > 0 ? 'Unpaid Orders' : 'All Paid Up!'}
                             </h4>
-                            {unpaidMovements.map((m: any) => (
+                            {unpaidMovements.map((m) => (
                                 <div key={m.id} className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 space-y-2">
                                     <div className="flex justify-between items-start">
                                         <div>
@@ -594,10 +596,10 @@ export default function PartnerDashboard() {
                             ))}
 
                             {/* Show paid movements too */}
-                            {owedMovements && owedMovements.filter((m: any) => m.owed === 0).length > 0 && (
+                            {owedMovements && owedMovements.filter((m) => m.owed === 0).length > 0 && (
                                 <>
                                     <h4 className="text-sm font-semibold text-muted-foreground mt-4">Paid Orders</h4>
-                                    {owedMovements.filter((m: any) => m.owed === 0).slice(0, 10).map((m: any) => (
+                                    {owedMovements.filter((m) => m.owed === 0).slice(0, 10).map((m) => (
                                         <div key={m.id} className="p-3 rounded-lg border border-border/50 space-y-1">
                                             <div className="flex justify-between items-center">
                                                 <div>
@@ -653,7 +655,7 @@ export default function PartnerDashboard() {
                             <h4 className="text-sm font-semibold">Breakdown by Type</h4>
                             {commissions && commissions.length > 0 ? (() => {
                                 const byType: Record<string, number> = {};
-                                commissions.forEach((c: any) => {
+                                commissions.forEach((c) => {
                                     const label = c.type.replace(/_/g, ' ');
                                     byType[label] = (byType[label] || 0) + Number(c.amount);
                                 });
@@ -975,10 +977,12 @@ function DownlineActivity({ downline }: { downline: PartnerNode[] }) {
                     </div>
                 ) : downlineSales && downlineSales.length > 0 ? (
                     <div className="space-y-3">
-                        {downlineSales.map((sale: any) => {
+                        {downlineSales.map((sale) => {
                             const repName = nameMap.get(sale.rep_id) || 'Unknown';
-                            const clientName = sale.contacts?.name || (sale.notes?.includes('SELF-ORDER') ? 'Self' : '—');
-                            const itemCount = sale.sales_order_items?.reduce((s: number, i: any) => s + (i.quantity || 0), 0) || 0;
+                            const contacts = sale.contacts as { name: string } | null;
+                            const clientName = contacts?.name || (sale.notes?.includes('SELF-ORDER') ? 'Self' : '—');
+                            const saleItems = (sale.sales_order_items || []) as { quantity: number }[];
+                            const itemCount = saleItems.reduce((s, i) => s + (i.quantity || 0), 0);
 
                             return (
                                 <div key={sale.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-muted/10 hover:bg-muted/20 hover:border-border transition-all duration-200">

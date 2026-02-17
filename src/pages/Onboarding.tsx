@@ -78,11 +78,11 @@ export default function Onboarding() {
       });
 
       navigate('/', { replace: true });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Setup failed',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setIsLoading(false);
