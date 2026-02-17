@@ -23,6 +23,9 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
+        Skip to main content
+      </a>
       <CommandPalette />
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -38,7 +41,7 @@ export function AppLayout() {
       {/* Main content */}
       <div className="lg:pl-64">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
-        <main className={cn(
+        <main id="main-content" className={cn(
           "p-4 md:p-6 lg:p-8",
           isPartnerRoute && "pb-24 lg:pb-8" // extra bottom padding for mobile nav
         )}>

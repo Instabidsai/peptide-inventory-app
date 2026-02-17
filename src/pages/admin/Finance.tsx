@@ -441,8 +441,8 @@ export default function Finance() {
                                         contentStyle={{ background: 'hsl(222 47% 8%)', border: '1px solid hsl(217 33% 17%)', borderRadius: '8px', color: 'hsl(210 40% 98%)' }}
                                     />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                                        {categoryChartData.map((entry, i) => (
-                                            <Cell key={i} fill={entry.fill} />
+                                        {categoryChartData.map((entry) => (
+                                            <Cell key={entry.name} fill={entry.fill} />
                                         ))}
                                     </Bar>
                                 </BarChart>

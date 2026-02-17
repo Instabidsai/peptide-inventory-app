@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import {
@@ -200,6 +201,7 @@ export default function ClientResources() {
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
+                                aria-label="Search resources"
                                 placeholder="Search peptides, studies, videos..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -618,7 +620,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                                 <iframe src={`https://www.youtube.com/embed/${resource.url.match(/(?:youtu.be\/|v=)([^#&?]*)/)?.[1]}`} className="w-full h-full" allowFullScreen />
                             </div>
                         ) : resource.content ? (
-                            <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: resource.content }} />
+                            <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.content) }} />
                         ) : (
                             <div className="flex flex-col gap-4">
                                 <p className="text-gray-400">This resource is available externally.</p>

@@ -65,6 +65,9 @@ export function ClientLayout() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
+                Skip to main content
+            </a>
             {/* Top Bar */}
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/30 bg-card/80 backdrop-blur-md px-4 justify-between">
                 <div className="flex items-center gap-3">
@@ -98,7 +101,7 @@ export function ClientLayout() {
             </header>
 
             {/* Content */}
-            <main className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
+            <main id="main-content" className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
                 <ErrorBoundary>
                     <Outlet />
                 </ErrorBoundary>
