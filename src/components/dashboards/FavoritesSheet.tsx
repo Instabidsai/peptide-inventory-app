@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,12 +130,15 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
     };
 
     // Group templates by meal type
-    const groupedTemplates = templates?.reduce((acc, template) => {
-        const type = template.meal_type || 'other';
-        if (!acc[type]) acc[type] = [];
-        acc[type].push(template);
-        return acc;
-    }, {} as Record<string, Template[]>);
+    const groupedTemplates = useMemo(() => {
+        if (!templates) return {};
+        return templates.reduce((acc, template) => {
+            const type = template.meal_type || 'other';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(template);
+            return acc;
+        }, {} as Record<string, Template[]>);
+    }, [templates]);
 
     return (
         <>

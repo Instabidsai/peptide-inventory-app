@@ -91,20 +91,18 @@ export function useRestockInventory() {
 
                 return "Restocked successfully";
             } else {
-                if (confirm("Could not find the original bottle in the system history (it might be old data). Just delete it from the fridge?")) {
-                    let dQuery = supabase.from('client_inventory').delete();
-                    if (item.id && item.id !== 'virtual-id') {
-                        dQuery = dQuery.eq('id', item.id);
-                    } else if (item.movement_id) {
-                        dQuery = dQuery.eq('movement_id', item.movement_id);
-                    } else {
-                        throw new Error("Cannot identify inventory item to delete");
-                    }
-                    const { error: dError } = await dQuery;
-                    if (dError) throw dError;
-                    return "Removed (No bottle found to restock)";
+                // No matching bottle found — remove from fridge anyway
+                let dQuery = supabase.from('client_inventory').delete();
+                if (item.id && item.id !== 'virtual-id') {
+                    dQuery = dQuery.eq('id', item.id);
+                } else if (item.movement_id) {
+                    dQuery = dQuery.eq('movement_id', item.movement_id);
+                } else {
+                    throw new Error("Cannot identify inventory item to delete");
                 }
-                throw new Error("Action cancelled");
+                const { error: dError } = await dQuery;
+                if (dError) throw dError;
+                return "Removed from fridge (no matching bottle found to restock)";
             }
         },
         onSuccess: (msg) => {
