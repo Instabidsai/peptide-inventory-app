@@ -99,13 +99,13 @@ export function ClientLayout() {
 
             {/* Content */}
             <main className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
-                <ErrorBoundary name="Page">
+                <ErrorBoundary>
                     <Outlet />
                 </ErrorBoundary>
             </main>
 
             {/* Bottom Navigation (Mobile First) */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md z-40 pb-safe">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 <nav className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = item.path === '/menu'

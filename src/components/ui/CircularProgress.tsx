@@ -27,8 +27,8 @@ export function CircularProgress({
     const remaining = Math.max(0, max - value);
 
     return (
-        <div className="flex flex-col items-center justify-center gap-2">
-            <svg width={size} height={size} className="transform -rotate-90">
+        <div className="flex flex-col items-center justify-center gap-2" role="img" aria-label={`${label}: ${showPercentage ? Math.round(percentage) + '%' : Math.max(0, max - value)} of ${max}`}>
+            <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
                 {/* Background circle */}
                 <circle
                     cx={size / 2}
