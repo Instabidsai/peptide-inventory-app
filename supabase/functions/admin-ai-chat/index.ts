@@ -25,6 +25,10 @@ You can help with:
 - PROTOCOLS: List/create treatment protocols with peptide items
 - REQUESTS: View and respond to client requests
 - DASHBOARD: Quick stats (orders, revenue, stock, contacts)
+- ANALYTICS: Top sellers by revenue/quantity, revenue by period (day/week/month), low stock alerts
+- CUSTOMER HISTORY: Full contact profile with all orders, total spent, balance owed
+- GIVEAWAYS/LOSSES: Record giveaways, internal use, or losses with automatic FIFO bottle allocation
+- VOID ORDERS: Cancel orders and auto-restore inventory + void commissions
 
 RULES:
 1. ALWAYS confirm before creating or modifying data. Show a clear summary and ask "Should I proceed?" or similar.
@@ -33,7 +37,7 @@ RULES:
 4. Default delivery method is 'ship' unless they say pickup/local.
 5. Keep responses concise - use bullet points for summaries.
 6. If a contact already exists (found via search), use them instead of creating a duplicate.
-7. For peptide names, be flexible with matching (BPC = BPC-157, TB = TB-500, Tirz = Tirzepatide, Sema = Semaglutide, etc.)
+7. SMART MATCHING: Your context includes the FULL peptide catalog (with pricing & stock), recent contacts, and recent orders — loaded fresh every message. When the user mentions a peptide or person, match it using your reasoning against the loaded data. Use IDs from the catalog directly. Examples: "TB-500"=TB500, "BPC"=BPC-157, "tirz"=Tirzepatide, "disp"=DSIP. NEVER say "not found" without checking the catalog and suggesting the closest match.
 8. IMPORTANT: Orders are created as 'submitted' status. They do NOT auto-fulfill. Chad picks, packs, and fulfills orders manually from the Fulfillment Center.
 9. For purchase orders, when marking as received you create a lot + auto-generate bottles.
 10. When showing financial data, format currency nicely and use clear labels.
@@ -44,6 +48,8 @@ RULES:
 15. When the user says "10% off" or a discount, calculate the discounted price BEFORE creating the order. Apply the discount to each item's unit_price.
 16. IMPORTANT: When referencing order IDs, ALWAYS use the full UUID (the long ID), not the shortened #xxxxxxxx display version. Tools require the full UUID to work.
 17. When an error occurs, ALWAYS tell the user what the error was. Never say "contact technical support" — you ARE the technical support. Show the actual error message.
+18. ONE-STEP ORDERS: You have peptide IDs, all pricing tiers, contact IDs, and addresses pre-loaded. Create orders directly without searching first — you already have the data. Don't waste tool calls on search_peptides or search_contacts when you can see the answer in your context.
+19. NEVER give up after one failed search. If a tool returns "not found", check the pre-loaded catalog and suggest the closest match. Always offer alternatives.
 
 PRICING TIERS:
 - Cost = avg_cost (base wholesale cost from lots)
@@ -58,6 +64,60 @@ PAYMENT: unpaid > partial > paid > refunded
 SHIPPING: pending > label_created > printed > in_transit > delivered
 BOTTLE: in_stock, sold, given_away, internal_use, lost, returned, expired
 MOVEMENT TYPES: sale, giveaway, internal_use, loss, return`;
+
+// Fuzzy peptide search: strips hyphens, handles common abbreviations
+async function findPeptides(supabase: any, orgId: string, query: string, limit = 10) {
+  // Try exact ilike first
+  let { data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).ilike("name", "%" + query + "%").limit(limit);
+  if (data?.length) return data;
+
+  // Strip hyphens/spaces and try again (TB-500 → TB500, BPC-157 → BPC157)
+  const stripped = query.replace(/[-\s]/g, "");
+  if (stripped !== query) {
+    ({ data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).ilike("name", "%" + stripped + "%").limit(limit));
+    if (data?.length) return data;
+  }
+
+  // Try common abbreviation mappings
+  const aliases: Record<string, string> = {
+    "tb": "TB500", "tb500": "TB500", "tb-500": "TB500",
+    "bpc": "BPC-157", "bpc157": "BPC-157",
+    "tirz": "Tirzepatide", "tirzepatide": "Tirzepatide",
+    "sema": "Semax", "semax": "Semax",
+    "reta": "Retatrutide", "ret": "Retatrutide",
+    "dsip": "DSIP", "disp": "DSIP",
+    "ghk": "GHK-CU", "ghkcu": "GHK-CU",
+    "kpv": "KPV", "ll37": "LL-37", "ll-37": "LL-37",
+    "ipa": "Ipamorelin", "cjc": "CJC",
+    "mt2": "Melanotan", "melanotan": "Melanotan",
+    "pt141": "PT-141", "pt-141": "PT-141",
+    "mots": "MOTS-C", "motsc": "MOTS-C",
+    "nad": "NAD+", "nad+": "NAD+",
+    "oxy": "Oxytocin", "oxytocin": "Oxytocin",
+    "kiss": "Kisspeptin", "selank": "Selank",
+    "foxo": "FOXO4", "foxo4": "FOXO4",
+    "aod": "AOD-9604", "aod9604": "AOD-9604",
+    "trt": "TRT Cypionate", "test": "TRT Cypionate", "testosterone": "TRT Cypionate",
+    "bac": "Bacteriostatic", "bacwater": "Bacteriostatic",
+    "vip": "VIP", "ara": "ARA-290",
+    "glut": "Glutathione", "glutathione": "Glutathione",
+    "epi": "Epithalon", "epithalon": "Epithalon",
+    "tesa": "Tesamorelin", "tesamorelin": "Tesamorelin",
+    "serm": "Sermorelin", "sermorelin": "Sermorelin",
+    "cag": "Cagriniltide", "amino": "5-Amino",
+    "ss31": "SS-31", "ss-31": "SS-31",
+    "thy": "Thy Alpha", "thymosin": "Thy Alpha",
+    "blend": "Blend",
+  };
+  const lower = query.toLowerCase().replace(/[-\s]/g, "");
+  const mapped = aliases[lower];
+  if (mapped) {
+    ({ data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).ilike("name", "%" + mapped + "%").limit(limit));
+    if (data?.length) return data;
+  }
+
+  return [];
+}
 
 const tools = [
   { type: "function" as const, function: { name: "search_contacts", description: "Search for contacts/clients by name, email, or phone.", parameters: { type: "object", properties: { query: { type: "string", description: "Name, email, or phone to search" } }, required: ["query"] } } },
@@ -94,6 +154,12 @@ const tools = [
   { type: "function" as const, function: { name: "list_requests", description: "List client requests (e.g. 'is X in stock?', 'can you make Y?'). Can filter by status.", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "answered", "archived"] }, limit: { type: "number" } } } } },
   { type: "function" as const, function: { name: "respond_to_request", description: "Respond to a client request and update its status.", parameters: { type: "object", properties: { request_id: { type: "string" }, status: { type: "string", enum: ["pending", "answered", "archived"] }, admin_notes: { type: "string" } }, required: ["request_id", "status"] } } },
   { type: "function" as const, function: { name: "get_dashboard_stats", description: "Get quick dashboard: orders today/week, revenue, stock, contacts, pending requests/POs.", parameters: { type: "object", properties: {} } } },
+  { type: "function" as const, function: { name: "get_contact_history", description: "Get a contact's full history: all orders, total spent, total paid, balance owed, last order date.", parameters: { type: "object", properties: { contact_id: { type: "string" } }, required: ["contact_id"] } } },
+  { type: "function" as const, function: { name: "low_stock_report", description: "Show peptides with stock at or below a threshold. Essential for reorder planning.", parameters: { type: "object", properties: { threshold: { type: "number", description: "Stock level threshold (default 5)" } } } } },
+  { type: "function" as const, function: { name: "top_sellers", description: "Show best-selling peptides ranked by revenue or quantity. Can filter by date range.", parameters: { type: "object", properties: { by: { type: "string", enum: ["revenue", "quantity"], description: "Sort metric (default revenue)" }, days: { type: "number", description: "Look back N days (default all time)" }, limit: { type: "number", description: "Top N results (default 10)" } } } } },
+  { type: "function" as const, function: { name: "revenue_by_period", description: "Show revenue broken down by day, week, or month for trend analysis.", parameters: { type: "object", properties: { period: { type: "string", enum: ["day", "week", "month"], description: "Grouping period (default month)" }, periods: { type: "number", description: "Number of periods to show (default 6)" } } } } },
+  { type: "function" as const, function: { name: "record_inventory_movement", description: "Record a giveaway, internal use, or loss. Auto-allocates bottles FIFO and updates inventory.", parameters: { type: "object", properties: { type: { type: "string", enum: ["giveaway", "internal_use", "loss"], description: "Type of movement" }, peptide_id: { type: "string" }, quantity: { type: "number" }, contact_id: { type: "string", description: "Optional: recipient (for giveaways)" }, reason: { type: "string", description: "Reason/notes" } }, required: ["type", "peptide_id", "quantity"] } } },
+  { type: "function" as const, function: { name: "void_order", description: "Cancel/void an order. If fulfilled, restores bottles to in_stock. Also voids any commissions.", parameters: { type: "object", properties: { order_id: { type: "string" }, reason: { type: "string" } }, required: ["order_id"] } } },
 ];
 
 // Resolve partial/truncated UUIDs to full UUIDs by prefix match
@@ -145,7 +211,8 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
   try {
     switch (name) {
       case "search_contacts": {
-        const { data } = await supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).ilike("name", "%" + args.query + "%").limit(10);
+        const q = args.query;
+        const { data } = await supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).or("name.ilike.%" + q + "%,email.ilike.%" + q + "%,phone.ilike.%" + q + "%").limit(10);
         if (!data?.length) return "No contacts found matching '" + args.query + "'.";
         return data.map((c: any) => (c.name || "Unnamed") + " (" + c.type + ") | Email: " + (c.email || "—") + " | Phone: " + (c.phone || "—") + " | Address: " + (c.address || "—") + " | ID: " + c.id).join("\n");
       }
@@ -162,8 +229,8 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         return "Contact updated: " + Object.keys(u).join(", ");
       }
       case "search_peptides": {
-        const { data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).ilike("name", "%" + args.query + "%").limit(10);
-        if (!data?.length) return "No peptides found matching '" + args.query + "'.";
+        const data = await findPeptides(supabase, orgId, args.query);
+        if (!data?.length) return "No peptides found matching '" + args.query + "'. Try a different spelling or use list_all_peptides to see everything.";
         const withStock = await Promise.all(data.map(async (p: any) => {
           const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("peptide_id", p.id).eq("status", "in_stock");
           return (p.name || "Unnamed") + " | Stock: " + (count || 0) + " bottles | MSRP: $" + Number(p.retail_price).toFixed(2) + " | ID: " + p.id;
@@ -180,8 +247,9 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         return withStock.join("\n");
       }
       case "get_pricing": {
-        const { data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).ilike("name", "%" + args.peptide_name + "%").limit(1).single();
-        if (!data) return "Peptide '" + args.peptide_name + "' not found.";
+        const matches = await findPeptides(supabase, orgId, args.peptide_name, 1);
+        const data = matches?.[0];
+        if (!data) return "Peptide '" + args.peptide_name + "' not found. Try a different spelling or use list_all_peptides.";
         const { data: lots } = await supabase.from("lots").select("cost_per_unit").eq("peptide_id", data.id);
         const avgCost = lots?.length ? lots.reduce((s: number, l: any) => s + Number(l.cost_per_unit), 0) / lots.length : 0;
         return "Pricing for " + data.name + ":\n  Cost: $" + avgCost.toFixed(2) + "\n  2x: $" + (avgCost * 2).toFixed(2) + "\n  3x: $" + (avgCost * 3).toFixed(2) + "\n  MSRP: $" + Number(data.retail_price).toFixed(2);
@@ -459,6 +527,111 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         const { count: pendingPOs } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending");
         return "Dashboard:\n  Orders today: " + (todayOrders || 0) + "\n  Orders this week: " + (weekOrders || 0) + "\n  Revenue this week: $" + revenue.toFixed(2) + "\n  Bottles in stock: " + (totalStock || 0) + "\n  Total contacts: " + (totalContacts || 0) + "\n  Pending client requests: " + (pendingRequests || 0) + "\n  Pending purchase orders: " + (pendingPOs || 0);
       }
+      case "get_contact_history": {
+        const { data: contact } = await supabase.from("contacts").select("id, name, email, phone, address, type, notes, created_at").eq("id", args.contact_id).single();
+        if (!contact) return "Contact not found.";
+        const { data: orders } = await supabase.from("sales_orders").select("id, status, payment_status, total_amount, amount_paid, created_at, sales_order_items(quantity, peptides(name))").eq("client_id", args.contact_id).order("created_at", { ascending: false });
+        const totalSpent = orders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
+        const totalPaid = orders?.reduce((s: number, o: any) => s + Number(o.amount_paid || 0), 0) || 0;
+        const orderSummary = orders?.map((o: any) => {
+          const items = o.sales_order_items?.map((i: any) => i.quantity + "x " + (i.peptides?.name || "?")).join(", ") || "no items";
+          return "#" + o.id.slice(0, 8) + " | " + o.status + "/" + o.payment_status + " | $" + Number(o.total_amount).toFixed(2) + " | " + items + " | " + new Date(o.created_at).toLocaleDateString();
+        }).join("\n") || "No orders.";
+        return "Customer: " + contact.name + "\n  Email: " + (contact.email || "—") + " | Phone: " + (contact.phone || "—") + "\n  Address: " + (contact.address || "—") + "\n  Type: " + contact.type + " | Since: " + new Date(contact.created_at).toLocaleDateString() + "\n  Notes: " + (contact.notes || "none") + "\n\n  Total Orders: " + (orders?.length || 0) + " | Total Spent: $" + totalSpent.toFixed(2) + " | Paid: $" + totalPaid.toFixed(2) + " | Balance Owed: $" + (totalSpent - totalPaid).toFixed(2) + "\n\nOrder History:\n" + orderSummary;
+      }
+      case "low_stock_report": {
+        const threshold = args.threshold || 5;
+        const { data: peptides } = await supabase.from("peptides").select("id, name").eq("org_id", orgId).eq("active", true).order("name");
+        if (!peptides?.length) return "No active peptides.";
+        const lowStock: string[] = [];
+        for (const p of peptides) {
+          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("peptide_id", p.id).eq("status", "in_stock");
+          const stock = count || 0;
+          if (stock <= threshold) lowStock.push(p.name + " | Stock: " + stock + (stock === 0 ? " *** OUT OF STOCK ***" : " (low)") + " | ID: " + p.id);
+        }
+        if (!lowStock.length) return "All peptides have stock above " + threshold + ". No reorders needed.";
+        return "Low Stock Report (threshold: " + threshold + "):\n" + lowStock.join("\n");
+      }
+      case "top_sellers": {
+        const by = args.by || "revenue";
+        const limit = args.limit || 10;
+        let query = supabase.from("sales_order_items").select("quantity, unit_price, peptide_id, peptides(name), sales_orders!inner(status, created_at)").neq("sales_orders.status", "cancelled");
+        if (args.days) {
+          const since = new Date(Date.now() - args.days * 86400000).toISOString();
+          query = query.gte("sales_orders.created_at", since);
+        }
+        const { data } = await query;
+        if (!data?.length) return "No sales data found.";
+        const agg: Record<string, { name: string; revenue: number; quantity: number }> = {};
+        data.forEach((i: any) => {
+          const pid = i.peptide_id;
+          if (!agg[pid]) agg[pid] = { name: i.peptides?.name || "?", revenue: 0, quantity: 0 };
+          agg[pid].revenue += i.quantity * Number(i.unit_price);
+          agg[pid].quantity += i.quantity;
+        });
+        const sorted = Object.values(agg).sort((a, b) => by === "revenue" ? b.revenue - a.revenue : b.quantity - a.quantity).slice(0, limit);
+        return "Top Sellers" + (args.days ? " (last " + args.days + " days)" : " (all time)") + " by " + by + ":\n" + sorted.map((s, i) => (i + 1) + ". " + s.name + " | Revenue: $" + s.revenue.toFixed(2) + " | Qty Sold: " + s.quantity).join("\n");
+      }
+      case "revenue_by_period": {
+        const period = args.period || "month";
+        const periods = args.periods || 6;
+        const { data: orders } = await supabase.from("sales_orders").select("total_amount, created_at").eq("org_id", orgId).neq("status", "cancelled").order("created_at", { ascending: false });
+        if (!orders?.length) return "No orders found.";
+        const buckets: Record<string, number> = {};
+        orders.forEach((o: any) => {
+          const d = new Date(o.created_at);
+          let key: string;
+          if (period === "day") key = d.toISOString().split("T")[0];
+          else if (period === "week") { const ws = new Date(d); ws.setDate(d.getDate() - d.getDay()); key = "Week of " + ws.toISOString().split("T")[0]; }
+          else key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+          buckets[key] = (buckets[key] || 0) + Number(o.total_amount);
+        });
+        const sorted = Object.entries(buckets).sort((a, b) => b[0].localeCompare(a[0])).slice(0, periods);
+        const total = sorted.reduce((s, [, v]) => s + v, 0);
+        return "Revenue by " + period + " (last " + periods + "):\n" + sorted.map(([k, v]) => "  " + k + ": $" + v.toFixed(2)).join("\n") + "\n  ---\n  Total: $" + total.toFixed(2);
+      }
+      case "record_inventory_movement": {
+        const statusMap: Record<string, string> = { giveaway: "given_away", internal_use: "internal_use", loss: "lost" };
+        const bottleStatus = statusMap[args.type];
+        if (!bottleStatus) return "Invalid movement type. Use: giveaway, internal_use, or loss.";
+        const { data: bottles } = await supabase.from("bottles").select("id, lots!inner(peptide_id)").eq("status", "in_stock").eq("lots.peptide_id", args.peptide_id).order("created_at", { ascending: true }).limit(args.quantity);
+        if (!bottles || bottles.length < args.quantity) return "Insufficient stock. Need " + args.quantity + ", have " + (bottles?.length || 0) + " in stock.";
+        const { data: movement, error: mErr } = await supabase.from("movements").insert({ org_id: orgId, type: args.type, contact_id: args.contact_id || null, movement_date: new Date().toISOString().split("T")[0], notes: args.reason || args.type, payment_status: "n/a", amount_paid: 0 }).select().single();
+        if (mErr) return "Error creating movement: " + mErr.message;
+        const ids = bottles.map((b: any) => b.id);
+        await supabase.from("movement_items").insert(ids.map((bid: string) => ({ movement_id: movement.id, bottle_id: bid, price_at_sale: 0 })));
+        await supabase.from("bottles").update({ status: bottleStatus }).in("id", ids);
+        const { data: pep } = await supabase.from("peptides").select("name").eq("id", args.peptide_id).single();
+        return args.type.replace("_", " ") + " recorded: " + args.quantity + "x " + (pep?.name || "?") + ". " + args.quantity + " bottles marked as " + bottleStatus + "." + (args.reason ? " Reason: " + args.reason : "");
+      }
+      case "void_order": {
+        const resolvedId = await resolveOrderId(supabase, args.order_id);
+        if (!resolvedId) return "Error: Could not find order with ID '" + args.order_id + "'.";
+        const { data: order } = await supabase.from("sales_orders").select("id, status, total_amount, notes").eq("id", resolvedId).single();
+        if (!order) return "Order not found.";
+        if (order.status === "cancelled") return "Order is already cancelled.";
+        let restored = 0;
+        if (order.status === "fulfilled") {
+          const { data: movements } = await supabase.from("movements").select("id").ilike("notes", "%[SO:" + order.id + "]%");
+          if (movements?.length) {
+            for (const m of movements) {
+              const { data: items } = await supabase.from("movement_items").select("bottle_id").eq("movement_id", m.id);
+              if (items?.length) {
+                const bottleIds = items.map((i: any) => i.bottle_id);
+                await supabase.from("bottles").update({ status: "in_stock" }).in("id", bottleIds);
+                restored += bottleIds.length;
+              }
+              await supabase.from("movement_items").delete().eq("movement_id", m.id);
+            }
+            for (const m of movements) { await supabase.from("movements").delete().eq("id", m.id); }
+          }
+        }
+        const { data: comms } = await supabase.from("commissions").select("id").eq("sale_id", order.id);
+        if (comms?.length) await supabase.from("commissions").update({ status: "void" }).eq("sale_id", order.id);
+        const voidNote = (order.notes ? order.notes + "\n" : "") + "VOIDED" + (args.reason ? ": " + args.reason : "");
+        await supabase.from("sales_orders").update({ status: "cancelled", notes: voidNote }).eq("id", order.id);
+        return "Order #" + order.id.slice(0, 8) + " CANCELLED ($" + Number(order.total_amount).toFixed(2) + ")." + (restored ? " " + restored + " bottles restored to inventory." : "") + (comms?.length ? " " + comms.length + " commission(s) voided." : "") + (args.reason ? " Reason: " + args.reason : "");
+      }
       default:
         return "Unknown tool: " + name;
     }
@@ -477,7 +650,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return json({ error: "Invalid token" }, 401);
-    const { data: profile } = await supabase.from("profiles").select("org_id, role").eq("id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("org_id, role").eq("user_id", user.id).single();
     if (!profile?.org_id) return json({ error: "No organization" }, 400);
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
@@ -485,8 +658,54 @@ Deno.serve(async (req) => {
     const { message } = await req.json();
     if (!message) return json({ error: "message required" }, 400);
     await supabase.from("admin_chat_messages").insert({ user_id: user.id, role: "user", content: message });
-    const { data: history } = await supabase.from("admin_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30);
-    const messages = [{ role: "system" as const, content: SYSTEM_PROMPT }, ...(history || []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }))];
+    // === SMART CONTEXT: Load everything in parallel so the AI can THINK ===
+    const [
+      { data: history },
+      { data: allPeptides },
+      { data: allLots },
+      { data: stockBottles },
+      { data: recentContacts },
+      { data: recentOrders },
+    ] = await Promise.all([
+      supabase.from("admin_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30),
+      supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", profile.org_id).order("name"),
+      supabase.from("lots").select("peptide_id, cost_per_unit").eq("org_id", profile.org_id),
+      supabase.from("bottles").select("peptide_id").eq("status", "in_stock"),
+      supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", profile.org_id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", profile.org_id).order("created_at", { ascending: false }).limit(10),
+    ]);
+
+    // Build stock counts from bottles (1 query instead of N)
+    const stockMap: Record<string, number> = {};
+    stockBottles?.forEach((b: any) => { stockMap[b.peptide_id] = (stockMap[b.peptide_id] || 0) + 1; });
+
+    // Build avg cost per peptide from lots
+    const costMap: Record<string, { total: number; count: number }> = {};
+    allLots?.forEach((l: any) => {
+      if (!costMap[l.peptide_id]) costMap[l.peptide_id] = { total: 0, count: 0 };
+      costMap[l.peptide_id].total += Number(l.cost_per_unit);
+      costMap[l.peptide_id].count++;
+    });
+
+    // Format peptide catalog with FULL pricing
+    const catalogLines = (allPeptides || []).map((p: any) => {
+      const stock = stockMap[p.id] || 0;
+      const avg = costMap[p.id] ? costMap[p.id].total / costMap[p.id].count : 0;
+      return p.name + " | Stock: " + stock + " | Cost: $" + avg.toFixed(2) + " | 2x: $" + (avg * 2).toFixed(2) + " | 3x: $" + (avg * 3).toFixed(2) + " | MSRP: $" + Number(p.retail_price).toFixed(2) + (p.active === false ? " | INACTIVE" : "") + " | ID: " + p.id;
+    });
+
+    const contactLines = (recentContacts || []).map((c: any) =>
+      c.name + " (" + c.type + ") | " + (c.email || "—") + " | " + (c.phone || "—") + " | " + (c.address || "no address") + " | ID: " + c.id
+    );
+
+    const orderLines = (recentOrders || []).map((o: any) => {
+      const items = o.sales_order_items?.map((i: any) => i.quantity + "x " + (i.peptides?.name || "?")).join(", ") || "no items";
+      return "#" + o.id.slice(0, 8) + " | " + (o.contacts?.name || "?") + " | " + o.status + "/" + o.payment_status + " | $" + Number(o.total_amount).toFixed(2) + " | " + items + " | " + new Date(o.created_at).toLocaleDateString() + " | ID: " + o.id;
+    });
+
+    const dynamicContext = "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n");
+
+    const messages = [{ role: "system" as const, content: SYSTEM_PROMPT + dynamicContext }, ...(history || []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }))];
     let response;
     let loopCount = 0;
     while (loopCount < 8) {
