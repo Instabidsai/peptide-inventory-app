@@ -48,6 +48,7 @@ export function useCreateExpense() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
             toast({ title: 'Expense recorded' });
         },
         onError: (err) => {
@@ -71,6 +72,7 @@ export function useDeleteExpense() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
             toast({ title: 'Expense deleted' });
         },
         onError: (err) => {

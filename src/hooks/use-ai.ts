@@ -30,7 +30,7 @@ export const useAI = () => {
                 .eq('user_id', user.id)
                 .order('updated_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             if (!convo) return { conversationId: null, messages: [] };
 

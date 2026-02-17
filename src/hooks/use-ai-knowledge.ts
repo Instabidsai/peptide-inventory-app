@@ -47,7 +47,7 @@ export function useAIKnowledge() {
                 .from('ai_health_profiles')
                 .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
             return data;
         },
         enabled: !!user?.id,

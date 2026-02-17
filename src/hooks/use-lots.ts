@@ -105,6 +105,8 @@ export function useCreateLot() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['lots'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
       toast({
         title: 'Lot received successfully',
         description: `${data.quantity_received} bottles created automatically`
@@ -167,7 +169,7 @@ export function useDeleteLot() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lots'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
-      queryClient.invalidateQueries({ queryKey: ['bottle-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
       toast({ title: 'Lot deleted successfully' });
     },
     onError: (error: Error) => {

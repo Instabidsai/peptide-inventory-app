@@ -206,6 +206,9 @@ export function useDeleteContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
       toast({ title: 'Contact deleted successfully' });
     },
     onError: (error: Error) => {

@@ -372,8 +372,10 @@ export function useCreateSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['movements'] });
             queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
             toast({ title: 'Order created and inventory deducted' });
         },
         onError: (error: Error) => {
@@ -560,6 +562,9 @@ export function useFulfillOrder() {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['bottles'] });
             queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
             toast({ title: 'Order fulfilled', description: 'Inventory has been deducted and movement recorded.' });
         },
         onError: (error: Error) => {

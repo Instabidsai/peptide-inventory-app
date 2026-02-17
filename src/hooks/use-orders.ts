@@ -352,7 +352,7 @@ export function useMarkOrderReceived() {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
             queryClient.invalidateQueries({ queryKey: ['lots'] });
             queryClient.invalidateQueries({ queryKey: ['bottles'] });
-            queryClient.invalidateQueries({ queryKey: ['bottle-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
             toast({
                 title: 'Order received!',
                 description: `Created lot with ${data.lot.quantity_received} bottles`
