@@ -8,14 +8,14 @@ import { cn } from '@/lib/utils';
 import { MessageSquare, X, Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
 
 export function AdminAIChat() {
-  const { profile } = useAuth();
+  const { profile, userRole } = useAuth();
   const { messages, sendMessage, clearChat, isLoading, isLoadingHistory } = useAdminAI();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Only show for admin/staff
-  const role = profile?.role;
+  // Only show for admin/staff (check both profile.role and user_roles.role)
+  const role = userRole?.role || profile?.role;
   if (role !== 'admin' && role !== 'staff') return null;
 
   // Auto-scroll on new messages
