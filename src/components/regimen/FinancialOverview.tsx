@@ -19,6 +19,7 @@ interface FinancialOverviewProps {
 
 interface OrderWithItems {
     id: string;
+    source: 'sales_order' | 'movement'; // track origin for payment updates
     status: string;
     payment_status: string;
     total_amount: number;
@@ -40,7 +41,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
     const fetchFinancials = async () => {
         try {
-            // Fetch ALL orders for this contact (except cancelled)
+            // === 1. Fetch sales_orders (primary/new system) ===
             const { data: rawOrders, error } = await (supabase as any)
                 .from('sales_orders')
                 .select('id, status, payment_status, total_amount, amount_paid, payment_method, payment_date, created_at, notes')
@@ -49,50 +50,116 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            if (!rawOrders?.length) { setOrders([]); return; }
 
-            // Fetch line items for all orders in one query
-            const orderIds = rawOrders.map((o: any) => o.id);
-            const { data: allItems, error: itemsErr } = await (supabase as any)
-                .from('sales_order_items')
-                .select('sales_order_id, quantity, unit_price, peptide_id')
-                .in('sales_order_id', orderIds);
+            let assembled: OrderWithItems[] = [];
 
-            if (itemsErr) console.error("Error fetching order items:", itemsErr);
+            if (rawOrders?.length) {
+                // Fetch line items for all orders in one query
+                const orderIds = rawOrders.map((o: any) => o.id);
+                const { data: allItems, error: itemsErr } = await (supabase as any)
+                    .from('sales_order_items')
+                    .select('sales_order_id, quantity, unit_price, peptide_id')
+                    .in('sales_order_id', orderIds);
 
-            // Fetch peptide names in one batch
-            const peptideIds = [...new Set((allItems || []).map((i: any) => i.peptide_id))];
-            let nameMap: Record<string, string> = {};
-            if (peptideIds.length > 0) {
-                const { data: peptides } = await supabase
-                    .from('peptides')
-                    .select('id, name')
-                    .in('id', peptideIds as string[]);
-                nameMap = Object.fromEntries((peptides || []).map((p: any) => [p.id, p.name]));
+                if (itemsErr) console.error("Error fetching order items:", itemsErr);
+
+                // Fetch peptide names in one batch
+                const peptideIds = [...new Set((allItems || []).map((i: any) => i.peptide_id))];
+                let nameMap: Record<string, string> = {};
+                if (peptideIds.length > 0) {
+                    const { data: peptides } = await supabase
+                        .from('peptides')
+                        .select('id, name')
+                        .in('id', peptideIds as string[]);
+                    nameMap = Object.fromEntries((peptides || []).map((p: any) => [p.id, p.name]));
+                }
+
+                // Assemble orders with items
+                assembled = rawOrders.map((o: any) => {
+                    const orderItems = (allItems || [])
+                        .filter((i: any) => i.sales_order_id === o.id)
+                        .map((i: any) => ({
+                            peptide_name: nameMap[i.peptide_id] || "Item",
+                            quantity: Number(i.quantity) || 0,
+                            unit_price: Number(i.unit_price) || 0,
+                        }));
+                    return {
+                        id: o.id,
+                        source: 'sales_order' as const,
+                        status: o.status,
+                        payment_status: o.payment_status || 'unpaid',
+                        total_amount: Number(o.total_amount) || 0,
+                        amount_paid: Number(o.amount_paid) || 0,
+                        payment_method: o.payment_method,
+                        payment_date: o.payment_date,
+                        created_at: o.created_at,
+                        notes: o.notes,
+                        items: orderItems,
+                    };
+                });
             }
 
-            // Assemble orders with items
-            const assembled: OrderWithItems[] = rawOrders.map((o: any) => {
-                const orderItems = (allItems || [])
-                    .filter((i: any) => i.sales_order_id === o.id)
-                    .map((i: any) => ({
-                        peptide_name: nameMap[i.peptide_id] || "Item",
-                        quantity: Number(i.quantity) || 0,
-                        unit_price: Number(i.unit_price) || 0,
-                    }));
-                return {
-                    id: o.id,
-                    status: o.status,
-                    payment_status: o.payment_status || 'unpaid',
-                    total_amount: Number(o.total_amount) || 0,
-                    amount_paid: Number(o.amount_paid) || 0,
-                    payment_method: o.payment_method,
-                    payment_date: o.payment_date,
-                    created_at: o.created_at,
-                    notes: o.notes,
-                    items: orderItems,
-                };
-            });
+            // === 2. Fetch legacy movements NOT linked to any sales_order ===
+            const { data: legacyMoves } = await supabase
+                .from('movements')
+                .select('id, payment_status, amount_paid, movement_date, notes, created_at, payment_date, movement_items(price_at_sale, bottles(lots(peptide_id, peptides(name))))')
+                .eq('contact_id', contactId)
+                .eq('type', 'sale')
+                .order('created_at', { ascending: false });
+
+            if (legacyMoves?.length) {
+                // Get set of movement IDs already linked to sales_orders (avoid double-count)
+                const linkedIds = new Set<string>();
+                // Linked movements have notes like "[SO:xxx]" or "Sales Order #xxx"
+                for (const m of legacyMoves) {
+                    const n = m.notes || '';
+                    if (n.includes('[SO:') || n.match(/^Sales Order #/)) {
+                        linkedIds.add(m.id);
+                    }
+                }
+
+                // Convert unlinked legacy movements to OrderWithItems format
+                for (const m of legacyMoves) {
+                    if (linkedIds.has(m.id)) continue;
+
+                    const items: { peptide_name: string; quantity: number; unit_price: number }[] = [];
+                    let totalPrice = 0;
+                    const movItems = (m as any).movement_items || [];
+                    for (const mi of movItems) {
+                        const price = Number(mi.price_at_sale) || 0;
+                        totalPrice += price;
+                        const pepName = mi.bottles?.lots?.peptides?.name || 'Item';
+                        // Group by peptide name
+                        const existing = items.find(i => i.peptide_name === pepName);
+                        if (existing) {
+                            existing.quantity += 1;
+                        } else {
+                            items.push({ peptide_name: pepName, quantity: 1, unit_price: price });
+                        }
+                    }
+
+                    // Extract payment method from notes (e.g. "Paid via cash")
+                    const methodMatch = (m.notes || '').match(/Paid via (\w+)/i);
+                    const method = methodMatch ? methodMatch[1] : null;
+
+                    assembled.push({
+                        id: m.id,
+                        source: 'movement',
+                        status: 'fulfilled', // Legacy movements were always fulfilled
+                        payment_status: m.payment_status || 'unpaid',
+                        total_amount: totalPrice,
+                        amount_paid: Number(m.amount_paid) || 0,
+                        payment_method: method,
+                        payment_date: m.payment_date || null,
+                        created_at: m.created_at,
+                        notes: m.notes,
+                        items,
+                    });
+                }
+            }
+
+            // Sort combined results by date descending
+            assembled.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
             setOrders(assembled);
         } catch (error) {
@@ -122,42 +189,60 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             const toMark = fulfilledUnpaid;
             if (toMark.length === 0) return;
 
-            // Update sales orders
-            const orderUpdates = toMark.map(o =>
-                (supabase as any)
-                    .from('sales_orders')
-                    .update({
-                        payment_status: 'paid',
-                        amount_paid: o.total_amount,
-                        payment_method: paymentMethod,
-                        payment_date: new Date().toISOString(),
-                    })
-                    .eq('id', o.id)
-                    .select()
-            );
+            // Separate by source type
+            const salesOrderItems = toMark.filter(o => o.source === 'sales_order');
+            const movementItems = toMark.filter(o => o.source === 'movement');
 
-            const results = await Promise.all(orderUpdates);
-            const failed = results.filter((r: any) => r.error || !r.data?.length);
-            if (failed.length > 0) {
-                const firstErr = (failed[0] as any).error;
-                throw firstErr || new Error("Unable to update payment. Check permissions.");
+            // Update sales_orders
+            if (salesOrderItems.length > 0) {
+                const orderUpdates = salesOrderItems.map(o =>
+                    (supabase as any)
+                        .from('sales_orders')
+                        .update({
+                            payment_status: 'paid',
+                            amount_paid: o.total_amount,
+                            payment_method: paymentMethod,
+                            payment_date: new Date().toISOString(),
+                        })
+                        .eq('id', o.id)
+                        .select()
+                );
+                const results = await Promise.all(orderUpdates);
+                const failed = results.filter((r: any) => r.error || !r.data?.length);
+                if (failed.length > 0) {
+                    const firstErr = (failed[0] as any).error;
+                    throw firstErr || new Error("Unable to update payment. Check permissions.");
+                }
+
+                // Also mark linked movements as paid
+                const { data: relatedMoves } = await supabase
+                    .from('movements')
+                    .select('id')
+                    .eq('contact_id', contactId)
+                    .eq('payment_status', 'unpaid');
+
+                if (relatedMoves?.length) {
+                    await Promise.all(relatedMoves.map(m =>
+                        supabase.from('movements').update({
+                            payment_status: 'paid',
+                            payment_date: new Date().toISOString(),
+                            notes: `Paid via ${paymentMethod}`,
+                        }).eq('id', m.id)
+                    ));
+                }
             }
 
-            // Also mark corresponding movements as paid (if they exist)
-            const { data: relatedMoves } = await supabase
-                .from('movements')
-                .select('id')
-                .eq('contact_id', contactId)
-                .eq('payment_status', 'unpaid');
-
-            if (relatedMoves?.length) {
-                await Promise.all(relatedMoves.map(m =>
+            // Update legacy movements directly
+            if (movementItems.length > 0) {
+                const moveUpdates = movementItems.map(o =>
                     supabase.from('movements').update({
                         payment_status: 'paid',
+                        amount_paid: o.total_amount,
                         payment_date: new Date().toISOString(),
-                        notes: `Paid via ${paymentMethod}`,
-                    }).eq('id', m.id)
-                ));
+                        notes: (o.notes ? o.notes + ' | ' : '') + `Paid via ${paymentMethod}`,
+                    }).eq('id', o.id)
+                );
+                await Promise.all(moveUpdates);
             }
 
             await fetchFinancials();
