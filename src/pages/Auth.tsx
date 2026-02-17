@@ -230,6 +230,7 @@ async function linkReferralUser(
   email: string,
   fullName: string,
   referrerProfileId: string,
+  inviteRole: 'customer' | 'partner' = 'customer',
 ) {
   // 1. Look up referrer's profile for org_id
   const { data: referrer } = await supabase
@@ -240,14 +241,24 @@ async function linkReferralUser(
 
   if (!referrer?.org_id) return false;
 
-  // 2. Update new user's profile with org_id + parent_rep_id
+  const isPartner = inviteRole === 'partner';
+  const appRole = isPartner ? 'sales_rep' : 'client';
+
+  // 2. Update new user's profile
+  const profileUpdate: Record<string, unknown> = {
+    org_id: referrer.org_id,
+    parent_rep_id: referrer.id,
+    role: appRole,
+  };
+  if (isPartner) {
+    profileUpdate.partner_tier = 'associate';
+    profileUpdate.commission_rate = 0.075;
+    profileUpdate.price_multiplier = 0.75;
+  }
+
   const { error: profileErr } = await supabase
     .from('profiles')
-    .update({
-      org_id: referrer.org_id,
-      parent_rep_id: referrer.id,
-      role: 'client',
-    })
+    .update(profileUpdate)
     .eq('user_id', userId);
 
   if (profileErr) {
@@ -255,14 +266,14 @@ async function linkReferralUser(
     return false;
   }
 
-  // 3. Create user_role as 'client'
+  // 3. Create user_role
   await supabase.from('user_roles').upsert({
     user_id: userId,
     org_id: referrer.org_id,
-    role: 'client',
+    role: appRole,
   }, { onConflict: 'user_id,org_id' });
 
-  // 4. Create contact record linked to partner
+  // 4. Create contact record linked to referrer
   const { data: existingContact } = await supabase
     .from('contacts')
     .select('id')
@@ -274,14 +285,14 @@ async function linkReferralUser(
     await supabase.from('contacts').insert({
       name: fullName || email,
       email,
-      type: 'customer',
+      type: isPartner ? 'partner' : 'customer',
       org_id: referrer.org_id,
       assigned_rep_id: referrer.id,
       linked_user_id: userId,
     });
   }
 
-  return true;
+  return isPartner ? 'partner' : 'customer';
 }
 
 export default function Auth() {
@@ -299,7 +310,8 @@ export default function Auth() {
 
   // Detect referral param from URL or sessionStorage (persists across Google OAuth redirect)
   const refParam = searchParams.get('ref') || sessionStorage.getItem('partner_ref');
-  const referrerName = searchParams.get('name'); // optional display name
+  const roleParam = (searchParams.get('role') || sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
+  const isPartnerInvite = roleParam === 'partner';
 
   // Auto-switch to signup mode when coming via referral link
   useEffect(() => {
@@ -323,12 +335,13 @@ export default function Auth() {
       const email = user.email || '';
       const name = profile.full_name || user.user_metadata?.full_name || email;
 
-      linkReferralUser(user.id, email, name, refParam).then(async (ok) => {
+      linkReferralUser(user.id, email, name, refParam, roleParam).then(async (result) => {
         sessionStorage.removeItem('partner_ref');
-        if (ok) {
+        sessionStorage.removeItem('partner_ref_role');
+        if (result) {
           await refreshProfile();
-          toast({ title: 'Welcome!', description: 'Your account has been connected.' });
-          navigate('/store', { replace: true });
+          toast({ title: 'Welcome!', description: result === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
+          navigate(result === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
           navigate('/onboarding', { replace: true });
         }
@@ -394,13 +407,14 @@ export default function Auth() {
       // Get the just-created user
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
-        const linked = await linkReferralUser(newUser.id, data.email, data.fullName, refParam);
+        const result = await linkReferralUser(newUser.id, data.email, data.fullName, refParam, roleParam);
         sessionStorage.removeItem('partner_ref');
-        if (linked) {
+        sessionStorage.removeItem('partner_ref_role');
+        if (result) {
           await refreshProfile();
           setIsLoading(false);
-          toast({ title: 'Welcome!', description: 'Your account has been created and connected.' });
-          navigate('/store', { replace: true });
+          toast({ title: 'Welcome!', description: result === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
+          navigate(result === 'partner' ? '/partner' : '/store', { replace: true });
           return;
         }
       }
@@ -444,9 +458,10 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    // Persist referral param across OAuth redirect
+    // Persist referral params across OAuth redirect
     if (refParam) {
       sessionStorage.setItem('partner_ref', refParam);
+      sessionStorage.setItem('partner_ref_role', roleParam);
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -498,12 +513,14 @@ export default function Auth() {
             >
               <CardTitle className="text-2xl font-bold text-foreground">
                 {refParam
-                  ? "You've Been Invited"
+                  ? isPartnerInvite ? 'Join as a Partner' : "You've Been Invited"
                   : mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-1">
                 {refParam
-                  ? 'Create an account to access exclusive partner pricing'
+                  ? isPartnerInvite
+                    ? 'Create your partner account to start earning'
+                    : 'Create an account to access exclusive partner pricing'
                   : mode === 'login'
                     ? 'Sign in to your peptide inventory account'
                     : 'Get started with your inventory tracker'}
@@ -517,7 +534,9 @@ export default function Auth() {
               <div className="flex items-center gap-2 p-3 rounded-lg border border-violet-500/20 bg-violet-500/[0.06]">
                 <UserPlus className="h-4 w-4 text-violet-400 shrink-0" />
                 <p className="text-xs text-violet-300">
-                  Sign up to get connected with your partner and access the store.
+                  {isPartnerInvite
+                    ? 'Sign up to join as a partner — you\'ll get your own store, referral link, and commissions.'
+                    : 'Sign up to get connected with your partner and access the store.'}
                 </p>
               </div>
             )}

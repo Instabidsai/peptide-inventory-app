@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/hooks/use-profiles';
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
+import { useAuth } from '@/contexts/AuthContext';
 import DownlineVisualizer from './components/DownlineVisualizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -562,10 +563,10 @@ export default function Reps() {
 }
 
 function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
-    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const { profile: authProfile } = useAuth();
 
-    const handleCopy = async (profileId: string) => {
-        const url = `${window.location.origin}/#/auth?ref=${profileId}`;
+    const handleCopy = async (url: string, key: string) => {
         try {
             await navigator.clipboard.writeText(url);
         } catch {
@@ -576,63 +577,108 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
             document.execCommand('copy');
             document.body.removeChild(input);
         }
-        setCopiedId(profileId);
-        setTimeout(() => setCopiedId(null), 2000);
+        setCopiedKey(key);
+        setTimeout(() => setCopiedKey(null), 2000);
     };
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Link2 className="h-5 w-5" /> Partner Invite Links
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                    Copy a partner's invite link and share it. Anyone who signs up through it is automatically connected under that partner as a client.
-                </p>
-            </CardHeader>
-            <CardContent>
-                {reps.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No partners yet.</p>
+    const CopyBtn = ({ url, copyKey, label }: { url: string; copyKey: string; label: string }) => {
+        const isCopied = copiedKey === copyKey;
+        return (
+            <Button
+                variant="outline"
+                size="sm"
+                className={isCopied
+                    ? 'border-emerald-500/30 text-emerald-400 min-w-[140px]'
+                    : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300 min-w-[140px]'
+                }
+                onClick={() => handleCopy(url, copyKey)}
+            >
+                {isCopied ? (
+                    <><Check className="h-4 w-4 mr-1.5" /> Copied!</>
                 ) : (
-                    <div className="space-y-3">
-                        {reps.map(rep => {
-                            const url = `${window.location.origin}/#/auth?ref=${rep.id}`;
-                            const isCopied = copiedId === rep.id;
-                            return (
-                                <div
-                                    key={rep.id}
-                                    className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-muted/10 hover:bg-muted/20 transition-colors"
-                                >
-                                    <div className="flex-1 min-w-0">
+                    <><Copy className="h-4 w-4 mr-1.5" /> {label}</>
+                )}
+            </Button>
+        );
+    };
+
+    // Admin's own partner invite link (for recruiting new partners under yourself)
+    const adminProfileId = authProfile?.id;
+
+    return (
+        <div className="space-y-4">
+            {/* Admin's Own Partner Recruit Link */}
+            {adminProfileId && (
+                <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-purple-500/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <UserPlus className="h-5 w-5 text-violet-400" /> Recruit New Partners
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Send this link to someone and they sign up as a <strong>partner</strong> under you.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center gap-3">
+                            <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-violet-300 truncate">
+                                {`${window.location.origin}/#/auth?ref=${adminProfileId}&role=partner`}
+                            </code>
+                            <CopyBtn
+                                url={`${window.location.origin}/#/auth?ref=${adminProfileId}&role=partner`}
+                                copyKey="admin-partner"
+                                label="Copy Link"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Per-Partner Links */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Link2 className="h-5 w-5" /> Partner Invite Links
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        Each partner has two links: one that creates <strong>customers</strong> under them, and one that recruits new <strong>partners</strong> under them.
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    {reps.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No partners yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {reps.map(rep => {
+                                const customerUrl = `${window.location.origin}/#/auth?ref=${rep.id}`;
+                                const partnerUrl = `${window.location.origin}/#/auth?ref=${rep.id}&role=partner`;
+                                return (
+                                    <div
+                                        key={rep.id}
+                                        className="p-4 rounded-lg border border-border/60 bg-muted/10 hover:bg-muted/20 transition-colors space-y-3"
+                                    >
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-sm">{rep.full_name || 'Unnamed'}</p>
                                             <Badge variant="secondary" className="text-xs capitalize">{rep.partner_tier || 'standard'}</Badge>
+                                            <span className="text-xs text-muted-foreground ml-auto">{rep.email}</span>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{rep.email}</p>
-                                        <p className="text-xs text-muted-foreground/60 mt-1 truncate font-mono">{url}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground w-20 shrink-0">Customer:</span>
+                                            <code className="flex-1 text-[11px] bg-black/10 rounded px-2 py-1 text-muted-foreground/70 truncate">{customerUrl}</code>
+                                            <CopyBtn url={customerUrl} copyKey={`${rep.id}-cust`} label="Customer" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-violet-400 w-20 shrink-0">Partner:</span>
+                                            <code className="flex-1 text-[11px] bg-violet-500/10 rounded px-2 py-1 text-violet-300/70 truncate">{partnerUrl}</code>
+                                            <CopyBtn url={partnerUrl} copyKey={`${rep.id}-partner`} label="Partner" />
+                                        </div>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className={isCopied
-                                            ? 'border-emerald-500/30 text-emerald-400 min-w-[110px]'
-                                            : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300 min-w-[110px]'
-                                        }
-                                        onClick={() => handleCopy(rep.id)}
-                                    >
-                                        {isCopied ? (
-                                            <><Check className="h-4 w-4 mr-1.5" /> Copied!</>
-                                        ) : (
-                                            <><Copy className="h-4 w-4 mr-1.5" /> Copy Link</>
-                                        )}
-                                    </Button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                                );
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
