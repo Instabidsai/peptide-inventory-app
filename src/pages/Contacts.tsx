@@ -74,7 +74,7 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
 
-  const isSalesRep = userRole?.role === 'sales_rep' || (authProfile as any)?.role === 'sales_rep';
+  const isSalesRep = userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep';
   const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
   const canEdit = isAdmin || isSalesRep;
   const canDelete = userRole?.role === 'admin';
@@ -103,7 +103,7 @@ export default function Contacts() {
   const handleCreate = async (data: ContactFormData) => {
     // For sales_rep: always customer type, auto-assign to self
     const assignedRepId = isSalesRep
-      ? ((authProfile as any)?.id || null)
+      ? (authProfile?.id || null)
       : ((!data.assigned_rep_id || data.assigned_rep_id === 'none') ? null : data.assigned_rep_id);
 
     await createContact.mutateAsync({

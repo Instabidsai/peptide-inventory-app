@@ -39,8 +39,8 @@ export default function ClientStore() {
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
-        if (contact && (contact as any).address && !shippingAddress) {
-            setShippingAddress((contact as any).address);
+        if (contact && contact.address && !shippingAddress) {
+            setShippingAddress(contact.address);
         }
     }, [contact]);
 
@@ -54,7 +54,7 @@ export default function ClientStore() {
                 .eq('active', true)
                 .order('name');
             if (error) throw error;
-            return data as any[];
+            return data;
         },
     });
 
@@ -64,12 +64,11 @@ export default function ClientStore() {
         queryFn: async () => {
             if (!contact?.id) return null;
             // The contact's assigned_rep_id field links to a profile
-            const contactData = contact as any;
-            if (!contactData.assigned_rep_id) return null;
+            if (!contact.assigned_rep_id) return null;
             const { data } = await supabase
                 .from('profiles')
                 .select('id, full_name, commission_rate, price_multiplier, partner_tier, pricing_mode, cost_plus_markup')
-                .eq('id', contactData.assigned_rep_id)
+                .eq('id', contact.assigned_rep_id)
                 .single();
             return data;
         },
@@ -77,7 +76,7 @@ export default function ClientStore() {
     });
 
     // Fetch avg lot costs for cost_plus pricing (only if rep uses cost_plus mode)
-    const repPricingMode = (assignedRep as any)?.pricing_mode || 'percentage';
+    const repPricingMode = assignedRep?.pricing_mode || 'percentage';
     const { data: lotCosts } = useQuery({
         queryKey: ['client_lot_costs'],
         queryFn: async () => {
@@ -87,7 +86,7 @@ export default function ClientStore() {
                 .gt('cost_per_unit', 0);
             if (!lots) return {};
             const costMap: Record<string, { total: number; count: number }> = {};
-            lots.forEach((l: any) => {
+            lots.forEach((l) => {
                 const pid = l.peptide_id;
                 if (!costMap[pid]) costMap[pid] = { total: 0, count: 0 };
                 costMap[pid].total += Number(l.cost_per_unit);
@@ -103,14 +102,13 @@ export default function ClientStore() {
     });
 
     // Calculate client price: if rep assigned, apply rep's pricing model; otherwise retail
-    const getClientPrice = (peptide: any): number => {
+    const getClientPrice = (peptide: { id: string; retail_price?: number | null }): number => {
         const retail = Number(peptide.retail_price || 0);
         if (!assignedRep) return retail;
 
-        const rep = assignedRep as any;
-        const mode = rep.pricing_mode || 'percentage';
-        const multiplier = Number(rep.price_multiplier) || 1.0;
-        const markup = Number(rep.cost_plus_markup) || 0;
+        const mode = assignedRep.pricing_mode || 'percentage';
+        const multiplier = Number(assignedRep.price_multiplier) || 1.0;
+        const markup = Number(assignedRep.cost_plus_markup) || 0;
 
         if (mode === 'cost_plus' && lotCosts) {
             const avgCost = lotCosts[peptide.id] || 0;
@@ -177,10 +175,10 @@ export default function ClientStore() {
             .single();
 
         if (!userProfile) return;
-        const orgId = (userProfile as any).org_id;
+        const orgId = userProfile.org_id;
         if (!orgId) return;
 
-        const repId = assignedRep ? (assignedRep as any).id : null;
+        const repId = assignedRep ? assignedRep.id : null;
 
         checkout.mutate({
             org_id: orgId,

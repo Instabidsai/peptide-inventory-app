@@ -397,7 +397,7 @@ export function useCreateMovement() {
             .eq('id', input.contact_id)
             .single();
 
-          if ((contact as any)?.assigned_rep_id) {
+          if (contact?.assigned_rep_id) {
             const totalSaleAmount = Math.round(input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0) * 100) / 100;
             const orgId = profile!.org_id;
 
@@ -407,13 +407,13 @@ export function useCreateMovement() {
               .insert({
                 org_id: orgId,
                 client_id: input.contact_id,
-                rep_id: (contact as any).assigned_rep_id,
+                rep_id: contact.assigned_rep_id,
                 status: 'fulfilled',
                 payment_status: 'paid',
                 amount_paid: totalSaleAmount,
                 total_amount: totalSaleAmount,
-                notes: `[MV:${movement.id}] Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${(contact as any).name || 'Unknown'}.`,
-              } as any)
+                notes: `[MV:${movement.id}] Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${contact.name || 'Unknown'}.`,
+              })
               .select()
               .single();
 
@@ -568,7 +568,7 @@ export function useDeleteMovement() {
                   .single();
 
                 if (repProfile) {
-                  const oldBalance = Number((repProfile as any)?.credit_balance) || 0;
+                  const oldBalance = Number(repProfile.credit_balance) || 0;
                   const newBalance = Math.round((oldBalance - commAmount) * 100) / 100;
 
                   await supabase
@@ -577,7 +577,7 @@ export function useDeleteMovement() {
                     .eq('id', repProfile.id);
 
                   reversalLog.push(
-                    `${(repProfile as any).full_name}: -$${commAmount.toFixed(2)} (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
+                    `${repProfile.full_name}: -$${commAmount.toFixed(2)} (balance: $${oldBalance.toFixed(2)} → $${newBalance.toFixed(2)})`
                   );
                 }
               }

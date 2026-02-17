@@ -418,10 +418,11 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 for (const movement of unpaidMovements) {
                     if (remaining <= 0) break;
 
-                    const totalPrice = (movement as any).movement_items?.reduce(
-                        (sum: number, item: any) => sum + (item.price_at_sale || 0), 0
+                    type MovementItem = { price_at_sale: number };
+                    const totalPrice = (movement.movement_items as MovementItem[] | undefined)?.reduce(
+                        (sum: number, item: MovementItem) => sum + (item.price_at_sale || 0), 0
                     ) || 0;
-                    const alreadyPaid = (movement as any).amount_paid || 0;
+                    const alreadyPaid = movement.amount_paid || 0;
                     const owedOnThis = totalPrice - alreadyPaid;
 
                     if (owedOnThis <= 0) continue;
@@ -437,7 +438,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                             payment_status: fullyPaid ? 'paid' : 'partial',
                             payment_date: new Date().toISOString(),
                             notes: `Commission credit applied: $${paymentOnThis.toFixed(2)}`
-                        } as any)
+                        })
                         .eq('id', movement.id);
 
                     remaining -= paymentOnThis;
@@ -447,7 +448,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
             // 3. Mark the commission as 'available' (= applied to balance)
             await supabase
                 .from('commissions')
-                .update({ status: 'available' } as any)
+                .update({ status: 'available' })
                 .eq('id', commissionId);
 
             // 4. Refresh queries

@@ -68,7 +68,7 @@ export function useContacts(type?: ContactType) {
       // If user is sales_rep, restrict to their network (self + downline partners)
       if (profile?.role === 'sales_rep') {
         // profile.id is already available from useAuth — no extra query needed
-        const profileId = (profile as any).id;
+        const profileId = profile.id;
         if (profileId) {
           const { data: downline } = await supabase
             .rpc('get_partner_downline', { root_id: user.id });

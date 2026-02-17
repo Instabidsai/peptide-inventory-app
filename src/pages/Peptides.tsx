@@ -143,7 +143,7 @@ export default function Peptides() {
       name: peptide.name,
       description: peptide.description || '',
       sku: peptide.sku || '',
-      retail_price: (peptide as any).retail_price || 0,
+      retail_price: peptide.retail_price || 0,
     });
   };
 
@@ -309,7 +309,7 @@ export default function Peptides() {
                           {peptide.stock_count || 0} Vials
                         </Badge>
                         <span className="text-muted-foreground">
-                          ${((peptide as any).retail_price || 0).toFixed(2)}
+                          ${(peptide.retail_price || 0).toFixed(2)}
                         </span>
                       </div>
                     </CardContent>
@@ -393,7 +393,7 @@ export default function Peptides() {
                       </TableCell>
                     )}
                     <TableCell>
-                      ${((peptide as any).retail_price || 0).toFixed(2)}
+                      ${(peptide.retail_price || 0).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

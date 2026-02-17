@@ -17,7 +17,7 @@ interface CommissionRow {
     amount: number;
     commission_rate: number;
     status: string;
-    profiles: { full_name: string; credit_balance: number } | null;
+    profiles: { full_name: string; credit_balance: number; partner_tier: string | null } | null;
     sales_orders: { id: string; total_amount: number; contacts: { name: string } | null } | null;
 }
 
@@ -215,8 +215,8 @@ export default function Commissions() {
                 commissions.forEach(c => {
                     const pid = c.partner_id;
                     const existing = earnerMap.get(pid) || {
-                        name: (c.profiles as any)?.full_name || 'Unknown',
-                        tier: (c.profiles as any)?.partner_tier || 'standard',
+                        name: c.profiles?.full_name || 'Unknown',
+                        tier: c.profiles?.partner_tier || 'standard',
                         total: 0,
                         count: 0,
                     };
@@ -282,8 +282,8 @@ export default function Commissions() {
                                 {commissions?.map((c) => {
                                     const orderTotal = Number(c.sales_orders?.total_amount) || 0;
                                     const rate = Number(c.commission_rate) || 0;
-                                    const partnerName = (c.profiles as any)?.full_name || 'Unknown';
-                                    const customerName = (c.sales_orders?.contacts as any)?.name || '—';
+                                    const partnerName = c.profiles?.full_name || 'Unknown';
+                                    const customerName = c.sales_orders?.contacts?.name || '—';
 
                                     return (
                                         <TableRow key={c.id}>
@@ -295,13 +295,13 @@ export default function Commissions() {
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="font-medium">{partnerName}</span>
                                                         {(() => {
-                                                            const tier = (c.profiles as any)?.partner_tier;
+                                                            const tier = c.profiles?.partner_tier;
                                                             const tierEmoji = tier === 'senior' ? '🥇' : tier === 'associate' ? '🥉' : tier === 'executive' ? '⭐' : '🥈';
                                                             return <span className="text-xs">{tierEmoji}</span>;
                                                         })()}
                                                     </div>
                                                     <span className="text-xs text-muted-foreground">
-                                                        Balance: ${((c.profiles as any)?.credit_balance || 0).toFixed(2)}
+                                                        Balance: ${(c.profiles?.credit_balance || 0).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </TableCell>
