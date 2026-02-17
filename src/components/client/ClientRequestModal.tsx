@@ -93,8 +93,9 @@ export function ClientRequestModal({
     const [files, setFiles] = useState<File[]>([]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+        const newFiles = e.target.files;
+        if (newFiles && newFiles.length > 0) {
+            setFiles(prev => [...prev, ...Array.from(newFiles)]);
         }
     };
 

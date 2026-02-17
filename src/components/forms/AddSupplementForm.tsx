@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 type AddSupplementFormProps = {
     protocolId: string;
@@ -42,7 +43,7 @@ export function AddSupplementForm({ protocolId, onAdd, onCancel }: AddSupplement
             });
             onCancel();
         } catch (e) {
-            console.error(e);
+            toast.error(e instanceof Error ? e.message : 'Failed to add supplement');
         } finally {
             setIsSubmitting(false);
         }

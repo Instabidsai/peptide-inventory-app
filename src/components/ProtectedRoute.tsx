@@ -22,11 +22,5 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If user has no org, redirect to onboarding
-  // if (user && profile && !profile.org_id && location.pathname !== '/onboarding') {
-  //   return <Navigate to="/onboarding" replace />;
-  // }
-  // Redirect disabled for emergency access
-
   return <>{children}</>;
 }

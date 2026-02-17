@@ -27,7 +27,7 @@ type VialState = 'unmixed' | 'needs_schedule' | 'due_today' | 'not_today' | 'low
 function getVialState(vial: ClientInventoryItem, todayAbbr: string): VialState {
     if (!vial.concentration_mg_ml || !vial.reconstituted_at) return 'unmixed';
     if (!vial.dose_amount_mg || !vial.dose_frequency) return 'needs_schedule';
-    const pct = (vial.current_quantity_mg / vial.vial_size_mg) * 100;
+    const pct = vial.vial_size_mg > 0 ? (vial.current_quantity_mg / vial.vial_size_mg) * 100 : 0;
     const dueToday = isDoseDay(vial, todayAbbr);
     if (pct < 20) return 'low_stock';
     if (dueToday) return 'due_today';

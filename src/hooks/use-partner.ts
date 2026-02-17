@@ -1,4 +1,5 @@
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,24 +93,21 @@ export function useCommissions() {
 export function useCommissionStats() {
     const { data: commissions } = useCommissions();
 
-    if (!commissions) return {
-        pending: 0,
-        available: 0,
-        paid: 0,
-        total: 0
-    };
+    return useMemo(() => {
+        if (!commissions) return { pending: 0, available: 0, paid: 0, total: 0 };
 
-    return commissions.reduce((acc, curr) => {
-        const amount = Number(curr.amount);
-        acc.total += amount;
+        return commissions.reduce((acc, curr) => {
+            const amount = Number(curr.amount);
+            acc.total += amount;
 
-        switch (curr.status) {
-            case 'pending': acc.pending += amount; break;
-            case 'available': acc.available += amount; break;
-            case 'paid': acc.paid += amount; break;
-        }
-        return acc;
-    }, { pending: 0, available: 0, paid: 0, total: 0 });
+            switch (curr.status) {
+                case 'pending': acc.pending += amount; break;
+                case 'available': acc.available += amount; break;
+                case 'paid': acc.paid += amount; break;
+            }
+            return acc;
+        }, { pending: 0, available: 0, paid: 0, total: 0 });
+    }, [commissions]);
 }
 
 export function usePayCommission() {

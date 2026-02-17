@@ -65,6 +65,22 @@ describe('calculateSupply', () => {
     expect(result.dailyUsageMg).toBeCloseTo(expectedDaily, 2);
   });
 
+  it('handles 3xweekly (no space) frequency', () => {
+    const result = calculateSupply(
+      { dosage: 10, dosage_unit: 'mg', frequency: '3xweekly' },
+      [makeBottle(60, 60)]
+    );
+    expect(result.dailyUsageMg).toBeCloseTo((10 * 3) / 7, 2);
+  });
+
+  it('handles 2x daily frequency via regex', () => {
+    const result = calculateSupply(
+      { dosage: 5, dosage_unit: 'mg', frequency: '2x daily' },
+      [makeBottle(100, 100)]
+    );
+    expect(result.dailyUsageMg).toBe(10);
+  });
+
   it('sums supply across multiple bottles', () => {
     const result = calculateSupply(
       { dosage: 5, dosage_unit: 'mg', frequency: 'daily' },

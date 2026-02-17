@@ -17,7 +17,6 @@
     "preflight": "npm run typecheck && npm run lint && npm run cycles && npm run build"
   },
   "dependencies": {
-    "@distube/ytdl-core": "4.16.12",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -46,7 +45,6 @@
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
-    "@robinson_ai_systems/vercel-mcp": "1.0.1",
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/react-query": "^5.83.0",
     "@types/canvas-confetti": "1.9.0",
@@ -58,7 +56,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
-    "fluent-ffmpeg": "2.1.3",
     "framer-motion": "12.29.0",
     "html5-qrcode": "2.3.8",
     "input-otp": "^1.4.2",
@@ -79,7 +76,6 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "youtube-dl-exec": "3.0.30",
     "youtube-transcript": "1.2.1",
     "zod": "^3.25.76"
   },
@@ -89,7 +85,6 @@
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^22.16.5",
-    "@types/pg": "8.16.0",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@vercel/node": "5.6.2",
@@ -104,7 +99,6 @@
     "kill-port": "2.0.1",
     "lovable-tagger": "^1.1.13",
     "madge": "8.0.0",
-    "pg": "8.17.1",
     "postcss": "^8.5.6",
     "supabase": "2.72.8",
     "tailwindcss": "^3.4.17",

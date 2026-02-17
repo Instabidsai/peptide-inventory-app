@@ -58,9 +58,13 @@ export function calculateSupply(
     } else {
         // Fallback: If frequency is not recognized but dosage is present, assume daily for calculation
         // Or check if it contains a number like '3x weekly'
-        const match = freqLower.match(/(\d+)x\s*(weekly|week)/);
+        const match = freqLower.match(/(\d+)\s*x\s*(weekly|week|daily|day)/);
         if (match) {
-            dailyUsageMg = (dosageMg * parseInt(match[1])) / 7;
+            const times = parseInt(match[1]);
+            const period = match[2];
+            dailyUsageMg = (period === 'weekly' || period === 'week')
+                ? (dosageMg * times) / 7
+                : dosageMg * times;
         } else {
             dailyUsageMg = dosageMg;
         }

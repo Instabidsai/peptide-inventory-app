@@ -23,7 +23,7 @@ export function calculateRollingAverage<T extends Record<string, unknown>>(
         // Filter out null/undefined values for the target key
         const validValues = window
             .map(w => Number(w[key]))
-            .filter(v => !isNaN(v) && v !== 0 && v !== null);
+            .filter(v => !isNaN(v) && v !== null);
 
         let average = null;
         if (validValues.length > 0) {

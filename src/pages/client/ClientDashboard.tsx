@@ -87,9 +87,9 @@ function ClientDashboardContent() {
             lastTaken: latestLog?.created_at,
             units: (() => {
                 const activeVial = inventory?.find((v) => v.peptide_id === item.peptide_id && v.concentration_mg_ml);
-                if (!activeVial) return null;
+                if (!activeVial || !activeVial.concentration_mg_ml) return null;
                 const doseMg = item.dosage_unit === 'mcg' ? item.dosage_amount / 1000 : item.dosage_amount;
-                return Math.round((doseMg / activeVial.concentration_mg_ml!) * 100);
+                return Math.round((doseMg / activeVial.concentration_mg_ml) * 100);
             })()
         };
     }).filter(Boolean);

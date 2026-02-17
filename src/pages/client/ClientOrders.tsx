@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { getTrackingUrl } from '@/lib/tracking';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
@@ -169,15 +170,7 @@ export default function ClientOrders() {
                                                     <Truck className="h-3 w-3 text-emerald-500" />
                                                     <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
                                                     <a
-                                                        href={
-                                                            order.carrier === 'USPS'
-                                                                ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${order.tracking_number}`
-                                                                : order.carrier === 'UPS'
-                                                                ? `https://www.ups.com/track?tracknum=${order.tracking_number}`
-                                                                : order.carrier === 'FedEx'
-                                                                ? `https://www.fedex.com/fedextrack/?trknbr=${order.tracking_number}`
-                                                                : `https://parcelsapp.com/en/tracking/${order.tracking_number}`
-                                                        }
+                                                        href={getTrackingUrl(order.carrier, order.tracking_number)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="font-mono text-primary hover:underline"

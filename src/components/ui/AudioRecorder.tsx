@@ -40,6 +40,8 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
             stream = s;
             const recorder = new MediaRecorder(s);
             setMediaRecorder(recorder);
+        }).catch(() => {
+            setIsRecording(false);
         });
 
         return () => {
