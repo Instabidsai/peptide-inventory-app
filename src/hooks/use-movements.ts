@@ -92,7 +92,6 @@ export interface CreateMovementInput {
 }
 
 // Internal query-row shapes for manual Supabase joins
-interface BottleRow { id: string; uid: string; lot_id: string | null }
 interface LotRow { id: string; lot_number: string; cost_per_unit: number; peptides: { id: string; name: string } | null }
 interface BottleDetailRow {
   id: string; uid: string;
@@ -140,34 +139,20 @@ export function useMovements(contactId?: string) {
 
       if (itemsError) throw itemsError;
 
-      // 3. Fetch Bottles
+      // 3. Fetch Bottles with Lots + Peptides in one query (saves a round trip)
       const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
-      let bottles: BottleRow[] = [];
+      let bottlesWithLots: Array<{ id: string; uid: string; lots: LotRow | null }> = [];
       if (bottleIds.length > 0) {
         const { data: bData, error: bError } = await supabase
           .from('bottles')
-          .select('id, uid, lot_id')
+          .select('id, uid, lots(id, lot_number, cost_per_unit, peptides(id, name))')
           .in('id', bottleIds);
         if (bError) throw bError;
-        bottles = (bData || []) as BottleRow[];
+        bottlesWithLots = (bData || []) as typeof bottlesWithLots;
       }
 
-      // 4. Fetch Lots (for cost)
-      const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: LotRow[] = [];
-      if (lotIds.length > 0) {
-        // We also need peptide name for display if possible, but mainly cost
-        const { data: lData, error: lError } = await supabase
-          .from('lots')
-          .select('id, lot_number, cost_per_unit, peptides(id, name)')
-          .in('id', lotIds);
-        if (lError) throw lError;
-        lots = (lData || []) as LotRow[];
-      }
-
-      // 5. Stitch together
-      const lotMap = new Map(lots.map(l => [l.id, l]));
-      const bottleMap = new Map(bottles.map(b => [b.id, { ...b, lots: lotMap.get(b.lot_id) }]));
+      // 4. Stitch together
+      const bottleMap = new Map(bottlesWithLots.map(b => [b.id, b]));
 
       // Group items
       const itemsByMovement: Record<string, NonNullable<Movement['movement_items']>> = {};
@@ -211,23 +196,18 @@ export function useMovement(id: string) {
         .eq('movement_id', id);
       if (itemsError) throw itemsError;
 
-      // Fetch Bottles/Lots same way
+      // Fetch Bottles with Lots + Peptides in one query
       const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
-      let bottles: BottleRow[] = [];
+      let bottlesWithLots: Array<{ id: string; uid: string; lots: LotRow | null }> = [];
       if (bottleIds.length > 0) {
-        const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
-        bottles = (bData || []) as BottleRow[];
+        const { data: bData } = await supabase
+          .from('bottles')
+          .select('id, uid, lots(id, lot_number, cost_per_unit, peptides(id, name))')
+          .in('id', bottleIds);
+        bottlesWithLots = (bData || []) as typeof bottlesWithLots;
       }
 
-      const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: LotRow[] = [];
-      if (lotIds.length > 0) {
-        const { data: lData } = await supabase.from('lots').select('id, lot_number, cost_per_unit, peptides(id, name)').in('id', lotIds);
-        lots = (lData || []) as LotRow[];
-      }
-
-      const lotMap = new Map(lots.map(l => [l.id, l]));
-      const bottleMap = new Map(bottles.map(b => [b.id, { ...b, lots: lotMap.get(b.lot_id) }]));
+      const bottleMap = new Map(bottlesWithLots.map(b => [b.id, b]));
 
       const enrichedItems = items?.map(item => ({
         ...item,
@@ -252,22 +232,17 @@ export function useMovementItems(movementId: string) {
 
       if (itemsError) throw itemsError;
 
-      // Manual join again...
+      // Fetch Bottles with Lots + Peptides in one query
       const bottleIds = items.map(i => i.bottle_id).filter(Boolean);
-      let bottles: BottleRow[] = [];
+      let bottlesWithLots: Array<{ id: string; uid: string; lots: LotRow | null }> = [];
       if (bottleIds.length > 0) {
-        const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
-        bottles = (bData || []) as BottleRow[];
+        const { data: bData } = await supabase
+          .from('bottles')
+          .select('id, uid, lots(id, lot_number, cost_per_unit, peptides(id, name))')
+          .in('id', bottleIds);
+        bottlesWithLots = (bData || []) as typeof bottlesWithLots;
       }
-
-      const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: LotRow[] = [];
-      if (lotIds.length > 0) {
-        const { data: lData } = await supabase.from('lots').select('id, lot_number, cost_per_unit, peptides(id, name)').in('id', lotIds);
-        lots = (lData || []) as LotRow[];
-      }
-      const lotMap = new Map(lots.map(l => [l.id, l]));
-      const bottleMap = new Map(bottles.map(b => [b.id, { ...b, lots: lotMap.get(b.lot_id) }]));
+      const bottleMap = new Map(bottlesWithLots.map(b => [b.id, b]));
 
       return items.map(item => ({
         ...item,
