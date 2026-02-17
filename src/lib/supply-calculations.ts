@@ -126,6 +126,19 @@ export function calculateSupply(
 }
 
 /**
+ * Extract vial size in mg from a peptide name string.
+ * e.g. "BPC-157 5mg" -> 5, "Semaglutide 250mcg" -> 0.25
+ */
+export function parseVialSize(name: string): number {
+    const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
+    if (!match) return 5; // Default fallback
+    const val = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+    if (unit === 'mcg') return val / 1000;
+    return val;
+}
+
+/**
  * Get status badge color
  */
 export function getSupplyStatusColor(status: SupplyCalculation['status']) {

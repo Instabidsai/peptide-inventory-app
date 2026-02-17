@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { parseVialSize } from '@/lib/supply-calculations';
 import type { BottleStatus } from './use-bottles';
 
 export type MovementType = 'sale' | 'giveaway' | 'internal_use' | 'loss' | 'return';
@@ -337,16 +338,6 @@ export function useCreateMovement() {
       // 3. For 'sale', 'giveaway', or 'internal_use' movements, populate client_inventory with the bottles
       // Use the pre-fetched bottleDetails
       if ((input.type === 'sale' || input.type === 'giveaway' || input.type === 'internal_use') && input.contact_id && bottleDetails.length > 0) {
-        // Helper to extract vial size from peptide name
-        const parseVialSize = (name: string): number => {
-          const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
-          if (!match) return 5; // Default fallback
-          const val = parseFloat(match[1]);
-          const unit = match[2].toLowerCase();
-          if (unit === 'mcg') return val / 1000;
-          return val; // mg or iu
-        };
-
         // Create a map of bottle_id to protocol_item_id from input
         const bottleToProtocolMap = new Map(
           input.items.map(item => [item.bottle_id, item.protocol_item_id])

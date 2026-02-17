@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
-import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
+import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel, parseVialSize } from '@/lib/supply-calculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useUpdateBottleQuantity } from '@/hooks/use-update-bottle-quantity';
 import {
@@ -247,7 +247,7 @@ export default function ContactDetails() {
     // Client Portal Invite State
     const [inviteTier, setInviteTier] = useState<string>('family');
     const [inviteLink, setInviteLink] = useState<string>('');
-    const [isGeneatingLink, setIsGeneratingLink] = useState(false);
+    const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
     const handleGenerateInvite = async () => {
         setIsGeneratingLink(true);
@@ -349,18 +349,6 @@ export default function ContactDetails() {
         setSelectedTemplateId('');
     };
 
-    // Helper to extract vial size from name
-    const parseVialSize = (name: string): number => {
-        const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
-        if (!match) return 5; // Default fallback
-
-        const val = parseFloat(match[1]);
-        const unit = match[2].toLowerCase();
-
-        if (unit === 'mcg') return val / 1000;
-        return val;
-    };
-
     // Calculations for the Dialog
     const calculations = useMemo(() => {
         const amount = parseFloat(dosageAmount) || 0;
@@ -411,8 +399,7 @@ export default function ContactDetails() {
         queryKey: ['contact_order_stats', id],
         queryFn: async () => {
             if (!id) return null;
-            // TODO: Generate Supabase types to remove this cast
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select('id, total_amount, created_at, status')
                 .eq('client_id', id)
@@ -514,7 +501,7 @@ export default function ContactDetails() {
                                         email: contact.email || '',
                                         phone: contact.phone || '',
                                         company: contact.company || '',
-                                        address: (contact as any).address || ''
+                                        address: contact.address || ''
                                     });
                                     setIsEditingDetails(true);
                                 }} />
@@ -557,7 +544,7 @@ export default function ContactDetails() {
                                 </div>
                                 <div className="flex items-center gap-3 text-muted-foreground">
                                     <span className="font-semibold text-foreground">Address:</span>
-                                    {(contact as any).address || 'N/A'}
+                                    {contact.address || 'N/A'}
                                 </div>
                             </>
                         )}
@@ -802,7 +789,7 @@ export default function ContactDetails() {
                                     <DialogTitle>Add Resource</DialogTitle>
                                     <DialogDescription>Share a video, article, or PDF.</DialogDescription>
                                 </DialogHeader>
-                                <AddResourceForm contactId={id!} onComplete={() => window.location.reload()} />
+                                <AddResourceForm contactId={id!} onComplete={() => {}} />
                             </DialogContent>
                         </Dialog>
 
@@ -1022,11 +1009,11 @@ export default function ContactDetails() {
                             </div>
                             <Button
                                 onClick={handleGenerateInvite}
-                                disabled={isGeneatingLink}
+                                disabled={isGeneratingLink}
                                 className="w-full"
                                 variant={contact.invite_link ? "outline" : "default"}
                             >
-                                {isGeneatingLink ? (
+                                {isGeneratingLink ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Generating...
@@ -1172,15 +1159,6 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             } else if (item.frequency === 'biweekly') {
                 totalAmountNeededMg = amountInMg * 2 * (duration / 7);
             }
-
-            const parseVialSize = (name: string): number => {
-                const match = name.match(/(\d+(?:\.\d+)?)\s*(mg|mcg|iu)/i);
-                if (!match) return 5;
-                const val = parseFloat(match[1]);
-                const sizeUnit = match[2].toLowerCase();
-                if (sizeUnit === 'mcg') return val / 1000;
-                return val;
-            };
 
             const vialSizeMg = parseVialSize(peptide.name);
             const vialsNeeded = Math.ceil(totalAmountNeededMg / vialSizeMg);
@@ -1400,7 +1378,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                     <span>From Inventory</span>
                                     {lastSoldDetails?.lot && <Badge variant="secondary" className="text-xs h-4 px-1 ml-1 bg-slate-200 text-slate-700">Lot {lastSoldDetails.lot}</Badge>}
                                 </div>
-                                <span className="text-xs text-muted-foreground">{new Date(lastSoldDetails?.date).toLocaleDateString()}</span>
+                                <span className="text-xs text-muted-foreground">{lastSoldDetails?.date ? new Date(lastSoldDetails.date).toLocaleDateString() : '—'}</span>
                             </div>
                         </div>
                     ) : (
@@ -1492,6 +1470,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
 // 
 function AddResourceForm({ contactId, onComplete }: { contactId: string, onComplete: () => void }) {
+    const queryClient = useQueryClient();
     const [title, setTitle] = useState('');
     const [url, setUrl] = useState('');
     const [type, setType] = useState<'video' | 'article' | 'pdf'>('article');
@@ -1512,6 +1491,7 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
 
             if (error) throw error;
             toast({ title: 'Resource Added' });
+            queryClient.invalidateQueries({ queryKey: ['resources', contactId] });
             onComplete();
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to add resource' });
@@ -1549,25 +1529,39 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
 }
 
 function ResourceList({ contactId }: { contactId: string }) {
-    const [resources, setResources] = useState<any[]>([]);
+    const queryClient = useQueryClient();
+    const { data: resources, isLoading } = useQuery({
+        queryKey: ['resources', contactId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('resources')
+                .select('*')
+                .eq('contact_id', contactId);
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!contactId,
+    });
 
-    useEffect(() => {
-        supabase
-            .from('resources')
-            .select('*')
-            .eq('contact_id', contactId)
-            .then(({ data }) => setResources(data || []));
-    }, [contactId]);
+    const deleteResource = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('resources').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['resources', contactId] });
+            toast({ title: 'Resource removed' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to remove resource', description: error.message });
+        },
+    });
 
-    if (resources.length === 0) {
+    if (isLoading) return <Skeleton className="h-8 w-full" />;
+
+    if (!resources || resources.length === 0) {
         return <div className="text-xs text-muted-foreground text-center py-2">No assigned resources.</div>;
     }
-
-    const handleDelete = async (id: string) => {
-        await supabase.from('resources').delete().eq('id', id);
-        setResources(resources.filter(r => r.id !== id));
-        toast({ title: 'Resource removed' });
-    };
 
     return (
         <div className="space-y-2">
@@ -1577,7 +1571,14 @@ function ResourceList({ contactId }: { contactId: string }) {
                         {r.type === 'video' ? <FlaskConical className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                         <span className="truncate">{r.title}</span>
                     </div>
-                    <Button variant="ghost" size="icon" aria-label="Delete resource" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(r.id)}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Delete resource"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        disabled={deleteResource.isPending}
+                        onClick={() => deleteResource.mutate(r.id)}
+                    >
                         <Trash2 className="h-3 w-3" />
                     </Button>
                 </div>
@@ -1635,7 +1636,10 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
             toast({ title: "Item removed from fridge" });
-        }
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to delete item', description: error.message });
+        },
     });
 
     const markAsUsed = useMutation({
@@ -1650,7 +1654,10 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
             queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
             queryClient.invalidateQueries({ queryKey: ['regimen-bottles'] });
             toast({ title: "Vial marked as used up", description: "Moved to order history." });
-        }
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to mark as used', description: error.message });
+        },
     });
 
     const returnToStock = useRestockInventory();
