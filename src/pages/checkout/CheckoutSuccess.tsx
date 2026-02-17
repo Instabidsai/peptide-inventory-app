@@ -56,18 +56,21 @@ export default function CheckoutSuccess() {
 
     // Trigger confetti on paid
     useEffect(() => {
-        if (isPaid && !showConfetti) {
-            setShowConfetti(true);
-            // Dynamic import to avoid bundling if not needed
-            import('canvas-confetti').then(({ default: confetti }) => {
+        if (!isPaid || showConfetti) return;
+        let mounted = true;
+        setShowConfetti(true);
+        // Dynamic import to avoid bundling if not needed
+        import('canvas-confetti').then(({ default: confetti }) => {
+            if (mounted) {
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 },
                     colors: ['#10b981', '#3b82f6', '#8b5cf6'],
                 });
-            }).catch(() => { /* silently fail if confetti not available */ });
-        }
+            }
+        }).catch(() => { /* silently fail if confetti not available */ });
+        return () => { mounted = false; };
     }, [isPaid, showConfetti]);
 
     if (!orderId) {

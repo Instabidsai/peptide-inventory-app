@@ -46,11 +46,14 @@ export default function ClientRegimen() {
             return;
         }
 
+        let mounted = true;
+
         const fetchData = async () => {
             setLoading(true);
             try {
                 // 1. Fetch Inventory
                 await refreshInventory();
+                if (!mounted) return;
 
                 // 2. Fetch Today's Log
                 const today = format(new Date(), 'yyyy-MM-dd');
@@ -61,6 +64,7 @@ export default function ClientRegimen() {
                     .eq('log_date', today)
                     .maybeSingle();
 
+                if (!mounted) return;
                 if (logData) setDailyLogs([logData as ClientDailyLog]);
 
                 // 3. Build Tasks from Protocols
@@ -99,17 +103,18 @@ export default function ClientRegimen() {
                         return [...items, ...supps];
                     });
 
-                    setTasks(protocolTasks);
+                    if (mounted) setTasks(protocolTasks);
                 }
 
             } catch (error) {
                 console.error("Error loading regimen data:", error);
             } finally {
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
 
         fetchData();
+        return () => { mounted = false; };
     }, [contact, protocols, profileLoading]);
 
     // Handlers

@@ -27,17 +27,26 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
 
     // Handle Mic Access & Visualizer Stream
     useEffect(() => {
-        if (isRecording) {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                const recorder = new MediaRecorder(stream);
-                setMediaRecorder(recorder);
-            });
-            const interval = setInterval(() => setTimer(t => t + 1), 1000);
-            return () => clearInterval(interval);
-        } else {
+        if (!isRecording) {
             setMediaRecorder(null);
             setTimer(0);
+            return;
         }
+
+        let stream: MediaStream | null = null;
+        const interval = setInterval(() => setTimer(t => t + 1), 1000);
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
+            stream = s;
+            const recorder = new MediaRecorder(s);
+            setMediaRecorder(recorder);
+        });
+
+        return () => {
+            clearInterval(interval);
+            // Stop all audio tracks to release the microphone
+            stream?.getTracks().forEach(track => track.stop());
+        };
     }, [isRecording]);
 
     const handleStart = () => {

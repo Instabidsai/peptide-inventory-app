@@ -51,15 +51,16 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     };
 
     const stopScanner = async () => {
-        if (scannerRef.current && isScanning) {
-            try {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-                scannerRef.current = null;
-                setIsScanning(false);
-            } catch (error) {
-                console.error('Error stopping scanner:', error);
-            }
+        const scanner = scannerRef.current;
+        if (!scanner) return;
+        try {
+            await scanner.stop();
+            scanner.clear();
+        } catch (error) {
+            console.error('Error stopping scanner:', error);
+        } finally {
+            scannerRef.current = null;
+            setIsScanning(false);
         }
     };
 

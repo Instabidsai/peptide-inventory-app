@@ -135,16 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        if (!mounted) return;
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         // Defer Supabase calls with setTimeout
         if (currentSession?.user) {
           setTimeout(() => {
-            fetchUserData(currentSession.user.id);
+            if (mounted) fetchUserData(currentSession.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -157,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession }, error }) => {
+      if (!mounted) return;
       if (error) console.error("AuthProvider: GetSession Error", error);
 
       setSession(existingSession);
@@ -166,14 +170,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserData(existingSession.user.id)
           .catch(e => console.error("AuthProvider: User Data Fetch Failed", e))
           .finally(() => {
-            setLoading(false);
+            if (mounted) setLoading(false);
           });
       } else {
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

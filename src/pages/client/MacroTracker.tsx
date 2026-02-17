@@ -100,9 +100,10 @@ export default function MacroTracker() {
 
     // Load initial goals
     useEffect(() => {
+        let mounted = true;
         const fetchGoals = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+            if (!session || !mounted) return;
 
             const { data } = await supabase
                 .from('daily_macro_goals')
@@ -110,7 +111,7 @@ export default function MacroTracker() {
                 .eq('user_id', session.user.id)
                 .maybeSingle();
 
-            if (data) {
+            if (data && mounted) {
                 setGoals({
                     calories: data.calories_target,
                     protein: data.protein_target,
@@ -120,6 +121,7 @@ export default function MacroTracker() {
             }
         };
         fetchGoals();
+        return () => { mounted = false; };
     }, []);
 
     const saveGoals = async () => {
