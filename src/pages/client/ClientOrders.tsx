@@ -102,7 +102,7 @@ export default function ClientOrders() {
                 </GlassCard>
             ) : (
                 <div className="space-y-3">
-                    {orders.map((order: any) => {
+                    {orders.map((order) => {
                         const statusInfo = getStatus(order.status);
                         const items = order.sales_order_items || [];
 
@@ -135,7 +135,7 @@ export default function ClientOrders() {
 
                                             {/* Items */}
                                             <div className="space-y-1">
-                                                {items.map((item: any) => (
+                                                {items.map((item) => (
                                                     <div key={item.id} className="flex justify-between text-sm">
                                                         <span className="truncate">
                                                             {item.peptides?.name || 'Unknown'} × {item.quantity}

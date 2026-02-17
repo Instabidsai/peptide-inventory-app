@@ -27,6 +27,16 @@ export default function ClientRegimen() {
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [selectedRefillPeptide, setSelectedRefillPeptide] = useState<{ id: string, name: string } | undefined>(undefined);
 
+    // Standalone inventory refresh (callable from child components)
+    const refreshInventory = async () => {
+        if (!contact) return;
+        const { data: invData } = await supabase
+            .from('client_inventory')
+            .select('*, peptide:peptides(name), movement:movements(movement_date, id)')
+            .eq('contact_id', contact.id);
+        if (invData) setInventory(invData as ClientInventoryItem[]);
+    };
+
     // Initial Data Fetch
     useEffect(() => {
         if (profileLoading) return;
@@ -40,12 +50,7 @@ export default function ClientRegimen() {
             setLoading(true);
             try {
                 // 1. Fetch Inventory
-                const { data: invData } = await supabase
-                    .from('client_inventory')
-                    .select('*, peptide:peptides(name), movement:movements(movement_date, id)')
-                    .eq('contact_id', contact.id);
-
-                if (invData) setInventory(invData as any);
+                await refreshInventory();
 
                 // 2. Fetch Today's Log
                 const today = format(new Date(), 'yyyy-MM-dd');
@@ -56,14 +61,13 @@ export default function ClientRegimen() {
                     .eq('log_date', today)
                     .maybeSingle();
 
-                if (logData) setDailyLogs([logData as any]);
+                if (logData) setDailyLogs([logData as ClientDailyLog]);
 
-                // 3. Build Tasks from Protocols (Mocking/transforming for now)
+                // 3. Build Tasks from Protocols
                 if (protocols) {
                     const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p => {
                         const items = p.protocol_items?.map(item => {
-                            // Find active vial for this peptide to get concentration
-                            const activeVial = invData?.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
+                            const activeVial = inventory.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
                             const doseMg = item.dosage_unit === 'mcg' ? item.dosage_amount / 1000 : item.dosage_amount;
 
                             let unitsLabel = '';
@@ -81,7 +85,7 @@ export default function ClientRegimen() {
                             };
                         }) || [];
 
-                        const supps = p.protocol_supplements?.map((s: any) => {
+                        const supps = p.protocol_supplements?.map((s) => {
                             if (!s.supplements) return null;
                             return {
                                 id: s.id,
@@ -109,20 +113,17 @@ export default function ClientRegimen() {
     }, [contact, protocols, profileLoading]);
 
     // Handlers
-    const handleAddVial = async (data: any) => {
+    const handleAddVial = async (data: Partial<ClientInventoryItem>) => {
         if (!contact) return;
-
-        // Calculate concentration if strictly following data model, but for now just saving the raw values
-        // const concentration = data.vial_size_mg / data.water_added_ml;
 
         const { error } = await supabase.from('client_inventory').insert({
             contact_id: contact.id,
-            peptide_id: data.peptide_id, // This needs to be passed safely, assuming ID or null for custom
+            peptide_id: data.peptide_id,
             batch_number: data.batch_number || null,
-            vial_size_mg: parseFloat(data.vial_size_mg),
-            water_added_ml: parseFloat(data.water_added_ml),
-            current_quantity_mg: parseFloat(data.vial_size_mg), // Starts full
-            concentration_mg_ml: data.concentration_mg_ml || (parseFloat(data.vial_size_mg) / parseFloat(data.water_added_ml)),
+            vial_size_mg: Number(data.vial_size_mg),
+            water_added_ml: Number(data.water_added_ml),
+            current_quantity_mg: Number(data.vial_size_mg),
+            concentration_mg_ml: data.concentration_mg_ml || (Number(data.vial_size_mg) / Number(data.water_added_ml)),
             status: 'active'
         });
 
@@ -130,9 +131,7 @@ export default function ClientRegimen() {
             toast({ variant: "destructive", title: "Error adding vial", description: error.message });
         } else {
             toast({ title: "Inventory Updated", description: "New vial added to your fridge." });
-            // Refresh data
-            const { data: invData } = await supabase.from('client_inventory').select('*, peptide:peptides(name)').eq('contact_id', contact.id);
-            if (invData) setInventory(invData as any);
+            await refreshInventory();
         }
     };
 
@@ -227,7 +226,7 @@ export default function ClientRegimen() {
             {(() => {
                 try {
                     const supplementItems: SupplementItem[] = protocols?.flatMap(p =>
-                        p.protocol_supplements?.map((s: any) => {
+                        p.protocol_supplements?.map((s) => {
                             if (!s || !s.supplements) return null;
                             return {
                                 id: s.id,
@@ -291,6 +290,7 @@ export default function ClientRegimen() {
                             setSelectedRefillPeptide({ id: peptide.id, name: peptide.name });
                             setRequestModalOpen(true);
                         }}
+                        onRefresh={refreshInventory}
                     />
                 </div>
 

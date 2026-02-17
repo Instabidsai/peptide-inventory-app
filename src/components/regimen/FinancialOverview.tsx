@@ -116,7 +116,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .order("created_at", { ascending: false });
 
             if (orders?.length) {
-                const orderIds = orders.map((o: any) => o.id);
+                const orderIds = orders.map((o) => o.id);
 
                 // Fetch line items
                 const { data: soItems } = await supabase
@@ -125,20 +125,20 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                     .in("sales_order_id", orderIds);
 
                 // Batch peptide names
-                const pepIdsFromSO = [...new Set((soItems || []).map((i: any) => i.peptide_id))];
+                const pepIdsFromSO = [...new Set((soItems || []).map((i) => i.peptide_id))];
                 let soNameMap: Record<string, string> = {};
                 if (pepIdsFromSO.length > 0) {
                     const { data: peps } = await supabase
                         .from("peptides")
                         .select("id, name")
                         .in("id", pepIdsFromSO as string[]);
-                    soNameMap = Object.fromEntries((peps || []).map((p: any) => [p.id, p.name]));
+                    soNameMap = Object.fromEntries((peps || []).map((p) => [p.id, p.name]));
                 }
 
                 for (const o of orders) {
                     const items: LineItem[] = (soItems || [])
-                        .filter((i: any) => i.sales_order_id === o.id)
-                        .map((i: any) => ({
+                        .filter((i) => i.sales_order_id === o.id)
+                        .map((i) => ({
                             peptide_name: soNameMap[i.peptide_id] || "Item",
                             quantity: Number(i.quantity) || 0,
                             unit_price: Number(i.unit_price) || 0,
@@ -183,10 +183,10 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         linkedIds.add(m.id);
                     }
                 }
-                const unlinked = movements.filter((m: any) => !linkedIds.has(m.id));
+                const unlinked = movements.filter((m) => !linkedIds.has(m.id));
 
                 if (unlinked.length > 0) {
-                    const mvIds = unlinked.map((m: any) => m.id);
+                    const mvIds = unlinked.map((m) => m.id);
 
                     // Step B: Fetch movement_items (flat)
                     const { data: mvItems } = await supabase
@@ -195,14 +195,14 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         .in("movement_id", mvIds);
 
                     // Step C: Batch bottle → lot lookup
-                    const bottleIds = [...new Set((mvItems || []).map((mi: any) => mi.bottle_id).filter(Boolean))];
+                    const bottleIds = [...new Set((mvItems || []).map((mi) => mi.bottle_id).filter(Boolean))];
                     let bottleToLot: Record<string, string> = {};
                     if (bottleIds.length > 0) {
                         const { data: bottles } = await supabase
                             .from("bottles")
                             .select("id, lot_id")
                             .in("id", bottleIds as string[]);
-                        bottleToLot = Object.fromEntries((bottles || []).map((b: any) => [b.id, b.lot_id]));
+                        bottleToLot = Object.fromEntries((bottles || []).map((b) => [b.id, b.lot_id]));
                     }
 
                     // Step D: Batch lot → peptide_id lookup
@@ -213,7 +213,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             .from("lots")
                             .select("id, peptide_id")
                             .in("id", lotIds as string[]);
-                        lotToPep = Object.fromEntries((lots || []).map((l: any) => [l.id, l.peptide_id]));
+                        lotToPep = Object.fromEntries((lots || []).map((l) => [l.id, l.peptide_id]));
                     }
 
                     // Step E: Batch peptide name lookup
@@ -224,7 +224,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             .from("peptides")
                             .select("id, name")
                             .in("id", pepIds as string[]);
-                        pepNames = Object.fromEntries((peps || []).map((p: any) => [p.id, p.name]));
+                        pepNames = Object.fromEntries((peps || []).map((p) => [p.id, p.name]));
                     }
 
                     // Resolve peptide name from bottle_id
@@ -237,7 +237,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
                     // Step F: Assemble movement transactions
                     for (const m of unlinked) {
-                        const mItems = (mvItems || []).filter((mi: any) => mi.movement_id === m.id);
+                        const mItems = (mvItems || []).filter((mi) => mi.movement_id === m.id);
                         // Group by peptide name
                         const grouped: Record<string, LineItem> = {};
                         let subtotal = 0;
@@ -321,7 +321,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         .eq("partner_id", profile.id)
                         .order("created_at", { ascending: false });
 
-                    setCommissions((comms || []).map((c: any) => ({
+                    setCommissions((comms || []).map((c) => ({
                         ...c,
                         amount: Number(c.amount) || 0,
                         commission_rate: Number(c.commission_rate) || 0,
@@ -385,11 +385,11 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 description: `${fmt(result.applied)} applied to ${result.movements_paid} order${result.movements_paid !== 1 ? "s" : ""}${result.remaining_credit > 0 ? `. ${fmt(result.remaining_credit)} added to credit balance.` : "."}`,
                 className: "bg-green-50 border-green-200 text-green-900",
             });
-        } catch (err: any) {
+        } catch (err) {
             console.error("Apply commission error:", err);
             toast({
                 title: "Commission Apply Failed",
-                description: err.message || "Could not apply commissions.",
+                description: err instanceof Error ? err.message : "Could not apply commissions.",
                 variant: "destructive",
             });
         } finally {
@@ -449,11 +449,11 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 description: `Marked as paid via ${payMethod}.`,
                 className: "bg-green-50 border-green-200 text-green-900",
             });
-        } catch (err: any) {
+        } catch (err) {
             console.error("Payment error:", err);
             toast({
                 title: "Payment Failed",
-                description: err.message || "Could not update payment.",
+                description: err instanceof Error ? err.message : "Could not update payment.",
                 variant: "destructive",
             });
         } finally {
@@ -511,11 +511,11 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 description: `Marked ${unpaid.length} order${unpaid.length !== 1 ? "s" : ""} as paid.`,
                 className: "bg-green-50 border-green-200 text-green-900",
             });
-        } catch (err: any) {
+        } catch (err) {
             console.error("Bulk payment error:", err);
             toast({
                 title: "Payment Failed",
-                description: err.message || "Could not update payments.",
+                description: err instanceof Error ? err.message : "Could not update payments.",
                 variant: "destructive",
             });
         } finally {
@@ -735,7 +735,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             size="sm"
                             className="bg-slate-800 hover:bg-slate-900 text-white text-xs"
                             onClick={() => {
-                                setPayTarget({ id: "__ALL__" } as any);
+                                setPayTarget({ id: "__ALL__", source: "sales_order", date: "", status: "", payment_status: "unpaid", subtotal: 0, discount_pct: 0, discount_amt: 0, total: totalOutstanding, amount_paid: 0, balance: totalOutstanding, payment_method: null, payment_date: null, notes: null, items: [] });
                                 setPayMethod("cash");
                             }}
                         >

@@ -122,7 +122,7 @@ export default function ClientStore() {
         return Math.round(retail * multiplier * 100) / 100;
     };
 
-    const addToCart = (peptide: any) => {
+    const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
         const price = getClientPrice(peptide);
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
@@ -156,7 +156,7 @@ export default function ClientStore() {
     const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
     // Filter peptides by search query
-    const filteredPeptides = peptides?.filter((p: any) => {
+    const filteredPeptides = peptides?.filter((p) => {
         if (!searchQuery) return true;
         return p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -252,7 +252,7 @@ export default function ClientStore() {
                     </div>
                 ) : (
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                        {filteredPeptides?.map((peptide: any) => {
+                        {filteredPeptides?.map((peptide) => {
                             const price = getClientPrice(peptide);
                             const retail = Number(peptide.retail_price || 0);
                             const hasDiscount = assignedRep && price < retail;

@@ -73,7 +73,7 @@ function ClientDashboardContent() {
         if (!item) return null;
 
         const logs = item.protocol_logs || [];
-        const sortedLogs = [...logs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const sortedLogs = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const latestLog = sortedLogs[0];
         const isTakenToday = latestLog && differenceInDays(new Date(), new Date(latestLog.created_at)) === 0;
 
@@ -134,7 +134,7 @@ function ClientDashboardContent() {
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-2">
-                                    {todaysItems.map((item: any, idx) => (
+                                    {todaysItems.map((item, idx) => (
                                         <div
                                             key={idx}
                                             className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${

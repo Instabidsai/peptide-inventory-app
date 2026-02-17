@@ -195,7 +195,7 @@ export function AssignInventoryForm({
             {/* Movement Type Selector */}
             <div className="space-y-3 border p-4 rounded-md bg-muted/20">
                 <Label className="text-sm font-medium">Assignment Type</Label>
-                <RadioGroup value={movementType} onValueChange={(v: any) => setMovementType(v)} className="grid grid-cols-3 gap-2">
+                <RadioGroup value={movementType} onValueChange={(v) => setMovementType(v as typeof movementType)} className="grid grid-cols-3 gap-2">
                     <div>
                         <RadioGroupItem value="sale" id="type-sale" className="peer sr-only" />
                         <Label

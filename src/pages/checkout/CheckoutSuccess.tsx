@@ -142,7 +142,7 @@ export default function CheckoutSuccess() {
                         </div>
 
                         <div className="space-y-2 text-sm">
-                            {order.sales_order_items?.map((item: any) => (
+                            {order.sales_order_items?.map((item) => (
                                 <div key={item.id} className="flex justify-between">
                                     <span className="text-muted-foreground">
                                         {item.peptides?.name || 'Unknown'} × {item.quantity}

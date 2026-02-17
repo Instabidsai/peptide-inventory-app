@@ -166,10 +166,25 @@ export interface ProtocolItem {
     duration_weeks: number;
 }
 
+export interface ProtocolSupplement {
+    id: string;
+    protocol_id: string;
+    supplement_id: string;
+    dosage: string | null;
+    frequency: string | null;
+    notes: string | null;
+    supplements?: {
+        name: string;
+        image_url: string | null;
+        description: string | null;
+        purchase_link: string | null;
+    };
+}
+
 export interface Protocol {
     id: string;
     name: string;
     description: string | null;
     protocol_items: ProtocolItem[];
-    protocol_supplements?: any[];
+    protocol_supplements?: ProtocolSupplement[];
 }

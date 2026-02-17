@@ -519,7 +519,7 @@ export default function Contacts() {
                       {(() => {
                         const orders = contact.sales_orders || [];
                         if (orders.length === 0) return '-';
-                        const latest = orders.reduce((max: any, o: any) =>
+                        const latest = orders.reduce((max, o) =>
                           new Date(o.created_at) > new Date(max.created_at) ? o : max
                         );
                         return format(new Date(latest.created_at), 'MMM d, yyyy');

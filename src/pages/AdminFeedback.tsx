@@ -86,7 +86,7 @@ export default function AdminFeedback() {
         }
     });
 
-    const handleReplyClick = (fb: any) => {
+    const handleReplyClick = (fb: typeof selectedFeedback) => {
         setSelectedFeedback(fb);
         setReplyText(fb.admin_response || "");
         setReplyLink(fb.response_link || "");
@@ -101,7 +101,7 @@ export default function AdminFeedback() {
         </div>
     );
 
-    const needsAttention = feedbacks?.filter((f: any) => !f.admin_response && (f.rating <= 3 || f.comment?.length > 10)).length || 0;
+    const needsAttention = feedbacks?.filter((f) => !f.admin_response && (f.rating <= 3 || (f.comment?.length ?? 0) > 10)).length || 0;
 
     return (
         <div className="space-y-6">
@@ -138,7 +138,7 @@ export default function AdminFeedback() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            feedbacks.map((fb: any) => {
+                            feedbacks.map((fb) => {
                                 const clientName = fb.protocols?.contacts?.name || 'Unknown';
                                 const protocolName = fb.protocols?.name || 'Unknown';
                                 const isNegative = fb.rating <= 3;

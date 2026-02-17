@@ -29,8 +29,8 @@ export default function Join() {
             } else {
                 throw new Error("No redirect URL returned");
             }
-        } catch (err: any) {
-            setError(err.message || "Something went wrong. Please try again or contact support.");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Something went wrong. Please try again or contact support.");
             console.error("Join token exchange error:", err);
         } finally {
             setIsLoading(false);

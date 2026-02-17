@@ -77,8 +77,8 @@ export default function Bottles() {
       try {
         await deleteBottle.mutateAsync(bottleToDelete);
         toast({ title: 'Bottle deleted' });
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Delete failed', description: err.message });
+      } catch (err) {
+        toast({ variant: 'destructive', title: 'Delete failed', description: err instanceof Error ? err.message : 'Unknown error' });
       }
       setBottleToDelete(null);
     }

@@ -13,6 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/sb_client/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DigitalFridgeProps {
     inventory: ClientInventoryItem[];
@@ -21,8 +31,11 @@ interface DigitalFridgeProps {
     onReconstitute: (id: string, waterMl: number) => void;
     onDelete: (id: string) => void;
     onRequestRefill?: (peptide: { id: string, name: string }) => void;
+    onRefresh?: () => void;
 }
-export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete, onRequestRefill }: DigitalFridgeProps) {
+export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete, onRequestRefill, onRefresh }: DigitalFridgeProps) {
+    const [vialToDelete, setVialToDelete] = useState<string | null>(null);
+
     // Define activeVials (missing previously causing ReferenceError)
     const activeVials = useMemo(() => {
         return inventory.filter(item => item.status !== 'archived' && item.status !== 'depleted');
@@ -50,6 +63,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
     }, [groupedVials]);
 
     return (
+        <>
         <Card className="h-full flex flex-col border-emerald-500/20 bg-emerald-950/10">
             <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
@@ -104,9 +118,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                             className="h-6 w-6 text-muted-foreground hover:text-destructive"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                if (confirm('Are you sure you want to remove this vial?')) {
-                                                                    onDelete(vial.id);
-                                                                }
+                                                                setVialToDelete(vial.id);
                                                             }}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
@@ -123,7 +135,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                                         • {vial.water_added_ml}ml Mixed
                                                                     </span>
                                                                 ) : (
-                                                                    <ReconstituteModal vial={vial} triggerText="Prep Vial" />
+                                                                    <ReconstituteModal vial={vial} triggerText="Prep Vial" onRefresh={onRefresh} />
                                                                 )}
                                                             </div>
                                                         </div>
@@ -175,13 +187,14 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-2 mt-2">
-                                                        <LogDoseModal vial={vial} protocols={protocols} />
+                                                        <LogDoseModal vial={vial} protocols={protocols} onRefresh={onRefresh} />
                                                         {vial.reconstituted_at && (
                                                             <ReconstituteModal
                                                                 vial={vial}
                                                                 triggerText="Adjust Mix"
                                                                 variant="outline"
                                                                 className="w-full text-xs h-8 border-dashed"
+                                                                onRefresh={onRefresh}
                                                             />
                                                         )}
                                                     </div>
@@ -196,6 +209,30 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                 )}
             </CardContent>
         </Card>
+
+        <AlertDialog open={!!vialToDelete} onOpenChange={(open) => !open && setVialToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Remove this vial?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will archive the vial and remove it from your fridge.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => {
+                            if (vialToDelete) onDelete(vialToDelete);
+                            setVialToDelete(null);
+                        }}
+                    >
+                        Remove
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
 
@@ -271,7 +308,7 @@ function AddVialModal({ onAdd }: { onAdd: (data: any) => void }) {
     )
 }
 
-function LogDoseModal({ vial, protocols }: { vial: ClientInventoryItem, protocols?: Protocol[] }) {
+function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryItem, protocols?: Protocol[], onRefresh?: () => void }) {
     const [open, setOpen] = useState(false);
     const [doseAmount, setDoseAmount] = useState('');
     const [doseUnit, setDoseUnit] = useState('mg');
@@ -322,13 +359,13 @@ function LogDoseModal({ vial, protocols }: { vial: ClientInventoryItem, protocol
                 description: `${doseAmount}${doseUnit} logged. Remaining: ${Math.max(0, newQuantity).toFixed(2)}mg`
             });
 
-            // Refresh to show updated quantity
-            window.location.reload();
-        } catch (error: any) {
+            setOpen(false);
+            onRefresh?.();
+        } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Error logging dose",
-                description: error.message
+                description: error instanceof Error ? error.message : "Unknown error"
             });
         }
     };
@@ -412,7 +449,7 @@ function LogDoseModal({ vial, protocols }: { vial: ClientInventoryItem, protocol
     );
 }
 
-function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", className }: { vial: ClientInventoryItem, triggerText?: string, variant?: "outline" | "default" | "secondary" | "ghost", className?: string }) {
+function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", className, onRefresh }: { vial: ClientInventoryItem, triggerText?: string, variant?: "outline" | "default" | "secondary" | "ghost", className?: string, onRefresh?: () => void }) {
     const [open, setOpen] = useState(false);
     const [waterAmount, setWaterAmount] = useState(vial.water_added_ml ? vial.water_added_ml.toString() : '');
     const { toast } = useToast();
@@ -440,12 +477,13 @@ function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", cl
                 title: "Vial Updated",
                 description: `Mix ratio updated: ${concentration.toFixed(2)} mg/ml strength.`
             });
-            window.location.reload();
-        } catch (error: any) {
+            setOpen(false);
+            onRefresh?.();
+        } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: error.message
+                description: error instanceof Error ? error.message : "Unknown error"
             });
         }
     };

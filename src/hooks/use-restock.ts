@@ -25,7 +25,7 @@ export function useRestockInventory() {
                     .eq('movement_id', item.movement_id);
 
                 // Find a bottle from this movement that is currently sold/internal_use (not in_stock)
-                const target = mItems?.find((mi: any) => mi.bottles?.status !== 'in_stock');
+                const target = mItems?.find((mi) => (mi.bottles as { status: string } | null)?.status !== 'in_stock');
                 if (target) bottleId = target.bottle_id;
             }
 

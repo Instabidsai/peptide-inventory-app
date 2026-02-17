@@ -15,15 +15,16 @@ import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, TIME_OF_DAY_OPTIONS, isDoseDay, getSch
 import type { DoseFrequency, DoseTimeOfDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import type { ClientInventoryItem } from '@/types/regimen';
 
 interface SimpleVialsProps {
-    inventory: any[];
+    inventory: ClientInventoryItem[];
     contactId?: string;
 }
 
 type VialState = 'unmixed' | 'needs_schedule' | 'due_today' | 'not_today' | 'low_stock';
 
-function getVialState(vial: any, todayAbbr: string): VialState {
+function getVialState(vial: ClientInventoryItem, todayAbbr: string): VialState {
     if (!vial.concentration_mg_ml || !vial.reconstituted_at) return 'unmixed';
     if (!vial.dose_amount_mg || !vial.dose_frequency) return 'needs_schedule';
     const pct = (vial.current_quantity_mg / vial.vial_size_mg) * 100;
@@ -44,7 +45,7 @@ const STATE_ORDER: Record<VialState, number> = {
 const TIME_ICONS = { morning: Sun, afternoon: Sunset, evening: Moon } as const;
 
 // ─── Unmixed Card ─────────────────────────────────────────────
-function UnmixedCard({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
+function UnmixedCard({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
     const [waterMl, setWaterMl] = useState('');
     const concentration = waterMl && parseFloat(waterMl) > 0 ? vial.vial_size_mg / parseFloat(waterMl) : 0;
 
@@ -105,7 +106,7 @@ function UnmixedCard({ vial, actions }: { vial: any; actions: ReturnType<typeof 
 }
 
 // ─── Needs Schedule Card ──────────────────────────────────────
-function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
+function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
     const [doseMg, setDoseMg] = useState('');
     const [frequency, setFrequency] = useState<DoseFrequency | ''>('');
     const [timeOfDay, setTimeOfDay] = useState<DoseTimeOfDay | ''>('');
@@ -319,7 +320,7 @@ function NeedsScheduleCard({ vial, actions }: { vial: any; actions: ReturnType<t
 
 // ─── Active Card (due today, not today, or low stock) ─────────
 function ActiveCard({ vial, isDueToday, isLow, actions }: {
-    vial: any; isDueToday: boolean; isLow: boolean;
+    vial: ClientInventoryItem; isDueToday: boolean; isLow: boolean;
     actions: ReturnType<typeof useVialActions>;
 }) {
     const navigate = useNavigate();
@@ -444,7 +445,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
 }
 
 // ─── Storage Vial Row ─────────────────────────────────────────
-function StorageRow({ vial, actions }: { vial: any; actions: ReturnType<typeof useVialActions> }) {
+function StorageRow({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
     const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
     const isMixed = !!vial.concentration_mg_ml;
 

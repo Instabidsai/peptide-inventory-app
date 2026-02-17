@@ -72,7 +72,7 @@ export function useContacts(type?: ContactType) {
         if (profileId) {
           const { data: downline } = await supabase
             .rpc('get_partner_downline', { root_id: user.id });
-          const allRepIds = [profileId, ...(downline || []).map((d: any) => d.id)];
+          const allRepIds = [profileId, ...(downline || []).map((d: { id: string }) => d.id)];
           query = query.in('assigned_rep_id', allRepIds);
         }
       }
