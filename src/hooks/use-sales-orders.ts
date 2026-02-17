@@ -172,7 +172,7 @@ export function useCreateSalesOrder() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data: profile } = await (supabase as any)
+            const { data: profile } = await supabase
                 .from('profiles')
                 .select('id, org_id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
@@ -199,7 +199,7 @@ export function useCreateSalesOrder() {
                 if (contact?.assigned_rep_id) {
                     repId = contact.assigned_rep_id;
                     // Fetch the actual rep's commission settings
-                    const { data: repProfile } = await (supabase as any)
+                    const { data: repProfile } = await supabase
                         .from('profiles')
                         .select('commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                         .eq('id', contact.assigned_rep_id)

@@ -161,20 +161,20 @@ export default function Reps() {
             if (!reps || reps.length === 0) return new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
 
             // Get sales stats per rep (volume = orders where they're the rep)
-            const { data: orders } = await (supabase as any)
+            const { data: orders } = await supabase
                 .from('sales_orders')
                 .select('rep_id, total_amount')
                 .not('rep_id', 'is', null)
                 .neq('status', 'cancelled');
 
             // Get commission earned from commissions table (includes overrides!)
-            const { data: commissions } = await (supabase as any)
+            const { data: commissions } = await supabase
                 .from('commissions')
                 .select('partner_id, amount')
                 .neq('status', 'void');
 
             // Get customer counts per rep
-            const { data: contacts } = await (supabase as any)
+            const { data: contacts } = await supabase
                 .from('contacts')
                 .select('assigned_rep_id')
                 .not('assigned_rep_id', 'is', null);

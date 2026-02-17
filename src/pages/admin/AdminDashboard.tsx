@@ -86,7 +86,7 @@ export default function AdminDashboard() {
     const { data: topSellers } = useQuery({
         queryKey: ['top_sellers'],
         queryFn: async () => {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_order_items')
                 .select('peptide_id, quantity, peptides (name)')
                 .not('peptide_id', 'is', null);

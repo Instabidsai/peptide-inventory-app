@@ -25,7 +25,7 @@ export default function CheckoutSuccess() {
         queryKey: ['checkout_order', orderId],
         queryFn: async () => {
             if (!orderId) return null;
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
                     *,

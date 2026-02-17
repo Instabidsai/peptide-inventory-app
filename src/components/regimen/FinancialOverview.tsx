@@ -108,7 +108,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             const assembled: Transaction[] = [];
 
             /* ========== 1. Sales Orders (new system) ========== */
-            const { data: orders } = await (supabase as any)
+            const { data: orders } = await supabase
                 .from("sales_orders")
                 .select("id, status, payment_status, total_amount, amount_paid, payment_method, payment_date, created_at, notes")
                 .eq("client_id", contactId)
@@ -119,7 +119,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 const orderIds = orders.map((o: any) => o.id);
 
                 // Fetch line items
-                const { data: soItems } = await (supabase as any)
+                const { data: soItems } = await supabase
                     .from("sales_order_items")
                     .select("sales_order_id, quantity, unit_price, peptide_id")
                     .in("sales_order_id", orderIds);
@@ -167,7 +167,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
             /* ========== 2. Legacy Movements ========== */
             // Step A: Fetch movements (flat — no nested embed)
-            const { data: movements } = await (supabase as any)
+            const { data: movements } = await supabase
                 .from("movements")
                 .select("id, payment_status, amount_paid, movement_date, notes, created_at, payment_date, payment_method, discount_percent, discount_amount")
                 .eq("contact_id", contactId)
@@ -298,7 +298,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .single();
 
             if (contactRow?.email) {
-                const { data: profile } = await (supabase as any)
+                const { data: profile } = await supabase
                     .from("profiles")
                     .select("id, partner_tier, commission_rate, credit_balance")
                     .ilike("email", contactRow.email)
@@ -315,7 +315,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                     });
 
                     // Fetch their commissions
-                    const { data: comms } = await (supabase as any)
+                    const { data: comms } = await supabase
                         .from("commissions")
                         .select("id, amount, commission_rate, type, status, created_at, sale_id")
                         .eq("partner_id", profile.id)
@@ -406,7 +406,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
         try {
             setLoading(true);
             if (payTarget.source === "sales_order") {
-                const { error } = await (supabase as any)
+                const { error } = await supabase
                     .from("sales_orders")
                     .update({
                         payment_status: "paid",
@@ -476,7 +476,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             if (soIds.length > 0) {
                 for (const id of soIds) {
                     const t = unpaid.find((x) => x.id === id)!;
-                    await (supabase as any)
+                    await supabase
                         .from("sales_orders")
                         .update({
                             payment_status: "paid",

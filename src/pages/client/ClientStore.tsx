@@ -48,7 +48,7 @@ export default function ClientStore() {
     const { data: peptides, isLoading, isError } = useQuery({
         queryKey: ['client_store_peptides'],
         queryFn: async () => {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('peptides')
                 .select('*')
                 .eq('active', true)
@@ -81,7 +81,7 @@ export default function ClientStore() {
     const { data: lotCosts } = useQuery({
         queryKey: ['client_lot_costs'],
         queryFn: async () => {
-            const { data: lots } = await (supabase as any)
+            const { data: lots } = await supabase
                 .from('lots')
                 .select('peptide_id, cost_per_unit')
                 .gt('cost_per_unit', 0);

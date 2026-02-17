@@ -27,7 +27,7 @@ export default function Commissions() {
         queryKey: ['admin_commissions_full'],
         queryFn: async () => {
             // 1. Fetch flat commissions
-            const { data: rawCommissions, error } = await (supabase as any)
+            const { data: rawCommissions, error } = await supabase
                 .from('commissions')
                 .select('id, created_at, partner_id, sale_id, type, amount, commission_rate, status')
                 .order('created_at', { ascending: false });
@@ -38,7 +38,7 @@ export default function Commissions() {
             // 2. Batch-fetch sales orders
             const saleIds = [...new Set(rawCommissions.map((c: any) => c.sale_id).filter(Boolean))] as string[];
             const { data: orders } = saleIds.length
-                ? await (supabase as any).from('sales_orders').select('id, total_amount, client_id').in('id', saleIds)
+                ? await supabase.from('sales_orders').select('id, total_amount, client_id').in('id', saleIds)
                 : { data: [] };
             const orderMap = new Map((orders || []).map((o: any) => [o.id, o]));
 

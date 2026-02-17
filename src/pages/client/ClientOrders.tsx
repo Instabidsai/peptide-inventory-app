@@ -41,7 +41,7 @@ export default function ClientOrders() {
             if (!contact?.id) return [];
 
             // Get orders where this contact is the client
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
                     *,

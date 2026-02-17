@@ -42,7 +42,7 @@ export function useCheckout() {
             if (input.items.length === 0) throw new Error('Cart is empty');
 
             // 1. Create the order in Supabase first
-            const { data: order, error: orderError } = await (supabase as any)
+            const { data: order, error: orderError } = await supabase
                 .from('sales_orders')
                 .insert({
                     org_id: input.org_id,
@@ -69,13 +69,13 @@ export function useCheckout() {
                 unit_price: item.unit_price,
             }));
 
-            const { error: itemsError } = await (supabase as any)
+            const { error: itemsError } = await supabase
                 .from('sales_order_items')
                 .insert(orderItems);
 
             if (itemsError) {
                 // Clean up the order if items fail
-                await (supabase as any).from('sales_orders').delete().eq('id', order.id);
+                await supabase.from('sales_orders').delete().eq('id', order.id);
                 throw new Error(`Failed to create order items: ${itemsError.message}`);
             }
 
@@ -97,7 +97,7 @@ export function useCheckout() {
 
             if (!response.ok) {
                 // Clean up the orphaned order since payment session creation failed
-                await (supabase as any).from('sales_orders').delete().eq('id', order.id);
+                await supabase.from('sales_orders').delete().eq('id', order.id);
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `Checkout failed (${response.status})`);
             }
@@ -133,7 +133,7 @@ export function useOrderPaymentStatus(orderId: string | null) {
         queryKey: ['order_payment_status', orderId],
         queryFn: async () => {
             if (!orderId) return null;
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select('id, status, payment_status, psifi_status, total_amount, created_at')
                 .eq('id', orderId)
