@@ -33,20 +33,25 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
             return;
         }
 
+        let mounted = true;
         let stream: MediaStream | null = null;
         const interval = setInterval(() => setTimer(t => t + 1), 1000);
 
         navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
+            if (!mounted) {
+                s.getTracks().forEach(track => track.stop());
+                return;
+            }
             stream = s;
             const recorder = new MediaRecorder(s);
             setMediaRecorder(recorder);
         }).catch(() => {
-            setIsRecording(false);
+            if (mounted) setIsRecording(false);
         });
 
         return () => {
+            mounted = false;
             clearInterval(interval);
-            // Stop all audio tracks to release the microphone
             stream?.getTracks().forEach(track => track.stop());
         };
     }, [isRecording]);

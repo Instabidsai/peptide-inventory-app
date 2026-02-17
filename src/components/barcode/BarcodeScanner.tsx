@@ -15,14 +15,17 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     const [isScanning, setIsScanning] = useState(false);
     const [scanSuccess, setScanSuccess] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const mountedRef = useRef(true);
     const videoElementId = 'barcode-scanner-video';
 
     useEffect(() => {
+        mountedRef.current = true;
         if (isOpen && !scannerRef.current) {
             initializeScanner();
         }
 
         return () => {
+            mountedRef.current = false;
             stopScanner();
         };
     }, [isOpen]);
@@ -33,7 +36,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             scannerRef.current = scanner;
 
             await scanner.start(
-                { facingMode: 'environment' }, // Use back camera
+                { facingMode: 'environment' },
                 {
                     fps: 10,
                     qrbox: { width: 250, height: 250 },
@@ -42,11 +45,13 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
                 onScanFailure
             );
 
-            setIsScanning(true);
+            if (mountedRef.current) setIsScanning(true);
         } catch (error) {
             console.error('Error starting scanner:', error);
-            toast.error('Failed to access camera. Please check permissions.');
-            onClose();
+            if (mountedRef.current) {
+                toast.error('Failed to access camera. Please check permissions.');
+                onClose();
+            }
         }
     };
 
@@ -60,7 +65,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             console.error('Error stopping scanner:', error);
         } finally {
             scannerRef.current = null;
-            setIsScanning(false);
+            if (mountedRef.current) setIsScanning(false);
         }
     };
 
