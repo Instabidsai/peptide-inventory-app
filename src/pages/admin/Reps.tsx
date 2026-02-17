@@ -36,6 +36,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
+import { QueryError } from '@/components/ui/query-error';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 
@@ -43,7 +44,7 @@ export default function Reps() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { data: reps, isLoading } = useReps();
+    const { data: reps, isLoading, isError: repsError, refetch: repsRefetch } = useReps();
     const { data: networkData, isLoading: networkLoading } = useFullNetwork();
     const updateProfile = useUpdateProfile();
 
@@ -229,6 +230,7 @@ export default function Reps() {
     });
 
     if (isLoading) return <div>Loading reps...</div>;
+    if (repsError) return <QueryError message="Failed to load partners." onRetry={repsRefetch} />;
 
     // Build a lookup map: rep ID -> name (for showing upline names in the table)
     const repNameMap = new Map<string, string>();

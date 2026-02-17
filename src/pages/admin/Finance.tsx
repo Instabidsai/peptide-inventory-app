@@ -248,11 +248,16 @@ export default function Finance() {
 
     const handleBatchPayment = async () => {
         if (!selectedBatch || !batchPayAmount || isBatchPaying) return;
+        const parsedBatchAmount = Number(batchPayAmount);
+        if (isNaN(parsedBatchAmount) || parsedBatchAmount <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid amount', description: 'Please enter a valid payment amount.' });
+            return;
+        }
         setIsBatchPaying(true);
 
         try {
             const batch = batches[selectedBatch];
-            let remainingAmount = Number(batchPayAmount);
+            let remainingAmount = parsedBatchAmount;
 
             // Sort orders by due amount (smallest first? or oldest first? let's do oldest created_at)
             // actually, standard accounting might strictly apply to specific invoices, but here we just want to burn down the "pool".

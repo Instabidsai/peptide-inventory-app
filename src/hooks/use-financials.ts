@@ -26,129 +26,89 @@ export function useFinancialMetrics() {
         queryKey: ['financial-metrics'],
         queryFn: async (): Promise<FinancialMetrics> => {
             try {
-                // --- 1. Inventory Asset Value ---
-                // Use RPC to avoid 1000-row limit
-                const { data: valuation, error: valError } = await supabase
-                    .rpc('get_inventory_valuation');
+                // === Phase 1: Fire all independent queries in parallel ===
+                const [
+                    valuationResult,
+                    salesResult,
+                    overheadResult,
+                    expensesResult,
+                    commissionsResult,
+                    orderAggResult,
+                ] = await Promise.all([
+                    supabase.rpc('get_inventory_valuation'),
+                    supabase.from('movements').select('id, amount_paid').eq('type', 'sale'),
+                    supabase.from('movements').select('id').in('type', ['internal_use', 'giveaway', 'loss']),
+                    supabase.from('expenses').select('amount, category'),
+                    supabase.from('commissions').select('amount, status'),
+                    supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').neq('status', 'cancelled'),
+                ]);
 
-                if (valError) {
-                    console.error("Valuation RPC failed:", valError);
-                    // Fallback? No, fallback is the broken query. Just log.
-                }
+                if (valuationResult.error) console.error("Valuation RPC failed:", valuationResult.error);
+                if (salesResult.error) throw salesResult.error;
+                if (overheadResult.error) throw overheadResult.error;
+                if (expensesResult.error) throw expensesResult.error;
+                if (commissionsResult.error) console.error('Commission query failed:', commissionsResult.error);
 
-                const inventoryValue = valuation?.[0]?.total_value || 0;
-                // const totalItems = valuation?.[0]?.item_count || 0; 
+                // --- Inventory Value ---
+                const inventoryValue = valuationResult.data?.[0]?.total_value || 0;
 
+                // --- Sales Revenue ---
+                const sales = salesResult.data || [];
+                const salesRevenue = Math.round(sales.reduce((sum, s) => sum + (s.amount_paid || 0), 0) * 100) / 100;
 
-                // --- 2. Sales & COGS ---
-                // Fetch Sales Movements
-                const { data: sales, error: salesError } = await supabase
-                    .from('movements')
-                    .select('id, amount_paid')
-                    .eq('type', 'sale');
+                // === Phase 2: Two independent chains in parallel (COGS + Overhead) ===
+                // Helper to calculate cost from movement IDs → items → bottles → lots
+                async function calcMovementCost(movementIds: string[]): Promise<number> {
+                    if (movementIds.length === 0) return 0;
 
-                if (salesError) throw salesError;
-
-                const salesRevenue = Math.round((sales?.reduce((sum, s) => sum + (s.amount_paid || 0), 0) || 0) * 100) / 100;
-
-                // Calculate COGS (Cost of sold items)
-                const saleIds = sales?.map(s => s.id) || [];
-                let cogs = 0;
-
-                if (saleIds.length > 0) {
-                    // Fetch items for these sales
-                    const { data: saleItems, error: itemsError } = await supabase
+                    const { data: items, error: itemsError } = await supabase
                         .from('movement_items')
                         .select('bottle_id')
-                        .in('movement_id', saleIds);
+                        .in('movement_id', movementIds);
 
                     if (itemsError) throw itemsError;
 
-                    // Get bottles for these items to find their lots
-                    const soldBottleIds = saleItems?.map(i => i.bottle_id) || [];
-                    if (soldBottleIds.length > 0) {
-                        const { data: soldBottles } = await supabase
-                            .from('bottles')
-                            .select('id, lot_id')
-                            .in('id', soldBottleIds);
+                    const bottleIds = items?.map(i => i.bottle_id) || [];
+                    if (bottleIds.length === 0) return 0;
 
-                        const soldLotIds = [...new Set(soldBottles?.map(b => b.lot_id).filter(Boolean) || [])];
+                    // Fetch bottles and their lots in parallel
+                    const { data: bottles } = await supabase
+                        .from('bottles')
+                        .select('id, lot_id')
+                        .in('id', bottleIds);
 
-                        // Fetch lots if not already in map (reuse map?)
-                        // For safety, let's fetch any missing lots or just fetch needed ones
-                        const { data: soldLots } = await supabase
-                            .from('lots')
-                            .select('id, cost_per_unit')
-                            .in('id', soldLotIds);
+                    const lotIds = [...new Set(bottles?.map(b => b.lot_id).filter(Boolean) || [])];
+                    if (lotIds.length === 0) return 0;
 
-                        const soldLotMap = new Map(soldLots?.map(l => [l.id, l.cost_per_unit]) || []);
+                    const { data: lots } = await supabase
+                        .from('lots')
+                        .select('id, cost_per_unit')
+                        .in('id', lotIds);
 
-                        // Sum it up
-                        // We need to map item -> bottle -> lot -> cost
-                        const bottleLotMap = new Map(soldBottles?.map(b => [b.id, b.lot_id]) || []);
+                    const lotCostMap = new Map(lots?.map(l => [l.id, l.cost_per_unit]) || []);
+                    const bottleLotMap = new Map(bottles?.map(b => [b.id, b.lot_id]) || []);
 
-                        cogs = Math.round((saleItems?.reduce((sum, item) => {
-                            const lotId = bottleLotMap.get(item.bottle_id);
-                            if (!lotId) return sum;
-                            return sum + (soldLotMap.get(lotId) || 0);
-                        }, 0) || 0) * 100) / 100;
-                    }
+                    return Math.round((items?.reduce((sum, item) => {
+                        const lotId = bottleLotMap.get(item.bottle_id);
+                        if (!lotId) return sum;
+                        return sum + (lotCostMap.get(lotId) || 0);
+                    }, 0) || 0) * 100) / 100;
                 }
 
+                const saleIds = sales.map(s => s.id);
+                const overheadIds = (overheadResult.data || []).map(m => m.id);
 
-                // --- 3. Overhead/Expenses (Internal Movements) ---
-                const { data: overheadMoves, error: overheadError } = await supabase
-                    .from('movements')
-                    .select('id')
-                    .in('type', ['internal_use', 'giveaway', 'loss']);
+                // Run both cost chains in parallel
+                const [cogs, internalOverhead] = await Promise.all([
+                    calcMovementCost(saleIds),
+                    calcMovementCost(overheadIds),
+                ]);
 
-                if (overheadError) throw overheadError;
-
-                let internalOverhead = 0;
-                const overheadIds = overheadMoves?.map(m => m.id) || [];
-
-                if (overheadIds.length > 0) {
-                    const { data: overItems } = await supabase
-                        .from('movement_items')
-                        .select('bottle_id')
-                        .in('movement_id', overheadIds);
-
-                    const overBottleIds = overItems?.map(i => i.bottle_id) || [];
-
-                    if (overBottleIds.length > 0) {
-                        const { data: overBottles } = await supabase
-                            .from('bottles')
-                            .select('id, lot_id')
-                            .in('id', overBottleIds);
-
-                        const overLotIds = [...new Set(overBottles?.map(b => b.lot_id).filter(Boolean) || [])];
-
-                        const { data: overLots } = await supabase
-                            .from('lots')
-                            .select('id, cost_per_unit')
-                            .in('id', overLotIds);
-
-                        const overLotMap = new Map(overLots?.map(l => [l.id, l.cost_per_unit]) || []);
-                        const bottleLotMap = new Map(overBottles?.map(b => [b.id, b.lot_id]) || []);
-
-                        internalOverhead = Math.round((overItems?.reduce((sum, item) => {
-                            const lotId = bottleLotMap.get(item.bottle_id);
-                            return sum + (overLotMap.get(lotId!) || 0);
-                        }, 0) || 0) * 100) / 100;
-                    }
-                }
-
-                // --- 4. Cash Expenses (from expenses table) ---
-                const { data: expenses, error: expenseError } = await supabase
-                    .from('expenses')
-                    .select('amount, category');
-
-                if (expenseError) throw expenseError;
-
+                // --- Cash Expenses ---
                 let inventoryExpenses = 0;
                 let operatingExpenses = 0;
 
-                expenses?.forEach(e => {
+                expensesResult.data?.forEach(e => {
                     const amt = Number(e.amount);
                     if (e.category === 'inventory') {
                         inventoryExpenses += amt;
@@ -157,18 +117,12 @@ export function useFinancialMetrics() {
                     }
                 });
 
-                // --- 5. Commission Costs ---
-                const { data: commissionRows, error: commError } = await supabase
-                    .from('commissions')
-                    .select('amount, status');
+                // --- Commissions ---
+                let commissionsPaid = 0;
+                let commissionsOwed = 0;
+                let commissionsApplied = 0;
 
-                if (commError) console.error('Commission query failed:', commError);
-
-                let commissionsPaid = 0;    // status = 'paid' (cash — already in expenses as category 'commission')
-                let commissionsOwed = 0;    // status = 'pending' (liability)
-                let commissionsApplied = 0; // status = 'available' (applied to partner balance)
-
-                commissionRows?.forEach(c => {
+                commissionsResult.data?.forEach(c => {
                     const amt = Number(c.amount) || 0;
                     switch (c.status) {
                         case 'paid': commissionsPaid += amt; break;
@@ -178,21 +132,10 @@ export function useFinancialMetrics() {
                 });
 
                 const commissionsTotal = Math.round((commissionsPaid + commissionsOwed + commissionsApplied) * 100) / 100;
-
-                // Pending + Applied commissions are real costs not yet in expenses table.
-                // Paid commissions are already recorded as expenses (category: 'commission'),
-                // so they're already inside operatingExpenses. Don't double-count them.
                 const unrealizedCommissionCost = Math.round((commissionsOwed + commissionsApplied) * 100) / 100;
 
-                // Total Cash Outflow = Ops + Inventory
-                // Total Overhead (for Cash Flow) = Internal + Ops + Inventory + Unrealized Commissions
-                // Operational Overhead = Internal + Ops + Unrealized Commissions
-
-                // --- 6. Per-Order Aggregates (merchant fees, order-level profit) ---
-                const { data: orderAgg } = await supabase
-                    .from('sales_orders')
-                    .select('merchant_fee, profit_amount, cogs_amount')
-                    .neq('status', 'cancelled');
+                // --- Per-Order Aggregates ---
+                const orderAgg = orderAggResult.data;
 
                 const merchantFees = Math.round((orderAgg?.reduce((s, o) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
                 const orderBasedProfit = Math.round((orderAgg?.reduce((s, o) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;

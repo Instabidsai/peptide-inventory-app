@@ -6,12 +6,13 @@ import { Loader2, Bell, Check, Info, AlertTriangle, CheckCircle, XCircle } from 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { QueryError } from "@/components/ui/query-error";
 import { toast } from "sonner";
 
 export default function ClientNotifications() {
     const { user } = useAuth();
 
-    const { data: notifications, isLoading, refetch } = useQuery({
+    const { data: notifications, isLoading, isError, refetch } = useQuery({
         queryKey: ['notifications', user?.id],
         queryFn: async () => {
             if (!user) return [];
@@ -21,10 +22,7 @@ export default function ClientNotifications() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error("Error fetching notifications:", error);
-                return [];
-            }
+            if (error) throw error;
             return data;
         },
         enabled: !!user
@@ -74,6 +72,8 @@ export default function ClientNotifications() {
                 <div className="flex justify-center p-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
+            ) : isError ? (
+                <QueryError message="Failed to load notifications." onRetry={refetch} />
             ) : notifications?.length === 0 ? (
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">

@@ -16,9 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChatInterface } from "@/components/ai/AIChatInterface";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { QueryError } from "@/components/ui/query-error";
 
 function ClientDashboardContent() {
-    const { data: contact, isLoading: isLoadingContact } = useClientProfile();
+    const { data: contact, isLoading: isLoadingContact, isError: isContactError, refetch: refetchContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -41,6 +42,8 @@ function ClientDashboardContent() {
     });
 
     if (isLoadingContact) return <div className="flex h-screen items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+    if (isContactError) return <QueryError message="Failed to load your profile." onRetry={refetchContact} />;
 
     if (!contact && !isLoadingContact) {
         return (
