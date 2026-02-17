@@ -1,11 +1,11 @@
 import { GlassCard } from '@/components/ui/glass-card';
 import { CardContent } from '@/components/ui/card';
-import { DAYS_OF_WEEK, isDoseDay } from '@/types/regimen';
+import { DAYS_OF_WEEK, isDoseDay, type ClientInventoryItem } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format, addDays, startOfWeek } from 'date-fns';
 
 interface WeekStripProps {
-    inventory: any[];
+    inventory: ClientInventoryItem[];
 }
 
 export function WeekStrip({ inventory }: WeekStripProps) {

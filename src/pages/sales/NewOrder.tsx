@@ -129,7 +129,7 @@ export default function NewOrder() {
 
     // Handle Prefill from Admin Requests
     useEffect(() => {
-        const state = location.state as any;
+        const state = location.state as { prefill?: { email?: string; peptideId?: string; quantity?: number; notes?: string } } | null;
         if (state?.prefill && contacts && peptides) {
             const { email, peptideId, quantity, notes: prefillNotes } = state.prefill;
 

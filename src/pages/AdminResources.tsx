@@ -114,7 +114,7 @@ export default function AdminResources() {
 
     // Mutations
     const upsertTheme = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: { name: string; description: string }) => {
             if (editingTheme) {
                 const { error } = await supabase.from('resource_themes').update(data).eq('id', editingTheme.id);
                 if (error) throw error;
@@ -149,7 +149,7 @@ export default function AdminResources() {
     });
 
     const upsertResource = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: typeof resourceForm) => {
             const payload = {
                 ...data,
                 theme_id: data.theme_id === "none" ? null : data.theme_id,

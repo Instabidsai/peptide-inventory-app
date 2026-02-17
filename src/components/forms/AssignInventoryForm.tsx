@@ -72,7 +72,7 @@ export function AssignInventoryForm({
     }, [bottles, defaultQuantity, defaultPeptideId]);
 
     const [price, setPrice] = useState<string>('');
-    const [paymentStatus, setPaymentStatus] = useState<string>('unpaid');
+    const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'partial' | 'refunded'>('unpaid');
     const [amountPaid, setAmountPaid] = useState<string>('0');
     const [isPriceDirty, setIsPriceDirty] = useState(false);
 
@@ -134,7 +134,7 @@ export function AssignInventoryForm({
                     price_at_sale: (bottlePriceMap.get(id) || 0) * scale,
                     protocol_item_id: protocolItemId
                 })),
-                payment_status: paymentStatus as any,
+                payment_status: paymentStatus,
                 amount_paid: parseFloat(amountPaid) || 0,
                 payment_date: paymentStatus === 'paid' ? new Date().toISOString() : undefined
             });
@@ -327,8 +327,8 @@ export function AssignInventoryForm({
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label>Payment Status</Label>
-                    <Select value={paymentStatus} onValueChange={(val) => {
-                        setPaymentStatus(val);
+                    <Select value={paymentStatus} onValueChange={(val: string) => {
+                        setPaymentStatus(val as typeof paymentStatus);
                         if (val === 'paid') setAmountPaid(price);
                         if (val === 'unpaid') setAmountPaid('0');
                     }} disabled={movementType !== 'sale'}>

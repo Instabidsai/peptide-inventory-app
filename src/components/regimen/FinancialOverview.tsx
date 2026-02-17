@@ -424,9 +424,9 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         payment_status: "paid",
                         payment_date: new Date().toISOString(),
                         notes: `Paid via ${payMethod}`,
-                    } as any)
+                    } as Record<string, unknown>)
                     .eq("contact_id", contactId)
-                    .eq("payment_status", "unpaid" as any);
+                    .eq("payment_status", "unpaid");
             } else {
                 const { error } = await supabase
                     .from("movements")
@@ -435,7 +435,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         amount_paid: payTarget.total,
                         payment_method: payMethod,
                         payment_date: new Date().toISOString(),
-                    } as any)
+                    } as Record<string, unknown>)
                     .eq("id", payTarget.id);
                 if (error) throw error;
             }
@@ -497,7 +497,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             amount_paid: t.total,
                             payment_method: payMethod,
                             payment_date: new Date().toISOString(),
-                        } as any)
+                        } as Record<string, unknown>)
                         .eq("id", id);
                 }
             }

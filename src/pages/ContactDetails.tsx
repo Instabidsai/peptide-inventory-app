@@ -113,7 +113,7 @@ export default function ContactDetails() {
 
     // Suggestion State
     const [isSuggestionDialogOpen, setIsSuggestionDialogOpen] = useState(false);
-    const [foundSuggestions, setFoundSuggestions] = useState<any[]>([]);
+    const [foundSuggestions, setFoundSuggestions] = useState<Array<{ id: string; supplement_id: string; reasoning?: string; supplements: { name: string; image_url?: string | null } }>>([]);
     const [relatedProtocolId, setRelatedProtocolId] = useState<string | null>(null);
 
     // Edit Details State

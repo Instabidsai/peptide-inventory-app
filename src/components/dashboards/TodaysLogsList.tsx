@@ -13,7 +13,7 @@ export function TodaysLogsList() {
     const queryClient = useQueryClient();
 
     const addToFavorites = useMutation({
-        mutationFn: async (log: any) => {
+        mutationFn: async (log: { foods?: Array<{ name: string; calories?: number; protein?: number; carbs?: number; fat?: number; quantity?: string }> }) => {
             if (!user?.id) throw new Error("No user");
             // Assuming single food item for simplicity for now, or just taking the first
             const food = log.foods?.[0];

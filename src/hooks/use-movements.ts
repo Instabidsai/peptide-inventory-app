@@ -91,6 +91,18 @@ export interface CreateMovementInput {
   payment_date?: string;
 }
 
+// Internal query-row shapes for manual Supabase joins
+interface BottleRow { id: string; uid: string; lot_id: string | null }
+interface LotRow { id: string; lot_number: string; cost_per_unit: number; peptides: { id: string; name: string } | null }
+interface BottleDetailRow {
+  id: string; uid: string;
+  lots: { id: string; lot_number: string; peptide_id: string; peptides: { id: string; name: string } | null } | null;
+}
+interface LinkedOrderRow {
+  id: string; total_amount: number | null; rep_id: string | null;
+  notes: string | null; commission_amount: number | null;
+}
+
 const movementTypeToBottleStatus: Record<MovementType, BottleStatus> = {
   sale: 'sold',
   giveaway: 'given_away',
@@ -130,19 +142,19 @@ export function useMovements(contactId?: string) {
 
       // 3. Fetch Bottles
       const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
-      let bottles: any[] = [];
+      let bottles: BottleRow[] = [];
       if (bottleIds.length > 0) {
         const { data: bData, error: bError } = await supabase
           .from('bottles')
           .select('id, uid, lot_id')
           .in('id', bottleIds);
         if (bError) throw bError;
-        bottles = bData || [];
+        bottles = (bData || []) as BottleRow[];
       }
 
       // 4. Fetch Lots (for cost)
       const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: any[] = [];
+      let lots: LotRow[] = [];
       if (lotIds.length > 0) {
         // We also need peptide name for display if possible, but mainly cost
         const { data: lData, error: lError } = await supabase
@@ -150,7 +162,7 @@ export function useMovements(contactId?: string) {
           .select('id, lot_number, cost_per_unit, peptides(id, name)')
           .in('id', lotIds);
         if (lError) throw lError;
-        lots = lData || [];
+        lots = (lData || []) as LotRow[];
       }
 
       // 5. Stitch together
@@ -158,7 +170,7 @@ export function useMovements(contactId?: string) {
       const bottleMap = new Map(bottles.map(b => [b.id, { ...b, lots: lotMap.get(b.lot_id) }]));
 
       // Group items
-      const itemsByMovement: Record<string, any[]> = {};
+      const itemsByMovement: Record<string, NonNullable<Movement['movement_items']>> = {};
       items?.forEach(item => {
         const bottle = bottleMap.get(item.bottle_id);
         const enrichedItem = { ...item, bottles: bottle };
@@ -201,17 +213,17 @@ export function useMovement(id: string) {
 
       // Fetch Bottles/Lots same way
       const bottleIds = [...new Set((items?.map(i => i.bottle_id) || []).filter(Boolean))];
-      let bottles: any[] = [];
+      let bottles: BottleRow[] = [];
       if (bottleIds.length > 0) {
         const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
-        bottles = bData || [];
+        bottles = (bData || []) as BottleRow[];
       }
 
       const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: any[] = [];
+      let lots: LotRow[] = [];
       if (lotIds.length > 0) {
         const { data: lData } = await supabase.from('lots').select('id, lot_number, cost_per_unit, peptides(id, name)').in('id', lotIds);
-        lots = lData || [];
+        lots = (lData || []) as LotRow[];
       }
 
       const lotMap = new Map(lots.map(l => [l.id, l]));
@@ -242,17 +254,17 @@ export function useMovementItems(movementId: string) {
 
       // Manual join again...
       const bottleIds = items.map(i => i.bottle_id).filter(Boolean);
-      let bottles: any[] = [];
+      let bottles: BottleRow[] = [];
       if (bottleIds.length > 0) {
         const { data: bData } = await supabase.from('bottles').select('id, uid, lot_id').in('id', bottleIds);
-        bottles = bData || [];
+        bottles = (bData || []) as BottleRow[];
       }
 
       const lotIds = [...new Set(bottles.map(b => b.lot_id).filter(Boolean))];
-      let lots: any[] = [];
+      let lots: LotRow[] = [];
       if (lotIds.length > 0) {
         const { data: lData } = await supabase.from('lots').select('id, lot_number, cost_per_unit, peptides(id, name)').in('id', lotIds);
-        lots = lData || [];
+        lots = (lData || []) as LotRow[];
       }
       const lotMap = new Map(lots.map(l => [l.id, l]));
       const bottleMap = new Map(bottles.map(b => [b.id, { ...b, lots: lotMap.get(b.lot_id) }]));
@@ -287,7 +299,7 @@ export function useCreateMovement() {
 
       // PRE-FETCH: Get bottle details while they are still visible (in_stock)
       // This is crucial because once marked 'sold', RLS might hide them from some queries
-      let bottleDetails: any[] = [];
+      let bottleDetails: BottleDetailRow[] = [];
       if (bottleIds.length > 0) {
         const { data, error } = await supabase
           .from('bottles')
@@ -298,7 +310,7 @@ export function useCreateMovement() {
           console.error('Error fetching bottle details for inventory:', error);
           // We don't throw blocking error here, but inventory creation might fail/skip
         } else {
-          bottleDetails = data || [];
+          bottleDetails = (data || []) as BottleDetailRow[];
         }
       }
 
@@ -345,7 +357,7 @@ export function useCreateMovement() {
         );
 
         // Create inventory entries
-        const inventoryEntries = bottleDetails.map((bottle: any) => {
+        const inventoryEntries = bottleDetails.map((bottle) => {
           const peptideName = bottle.lots?.peptides?.name;
           const vialSizeMg = peptideName ? parseVialSize(peptideName) : 5;
           const waterAddedMl = 2; // Default reconstitution volume
@@ -512,7 +524,7 @@ export function useDeleteMovement() {
           const orderShortId = orderIdMatch?.[1] || '';
           const movementShortId = id.slice(0, 8);
 
-          let linkedOrders: any[] = [];
+          let linkedOrders: LinkedOrderRow[] = [];
 
           // 1. Try structured [SO:uuid] — exact match
           if (structuredMatch?.[1]) {
@@ -520,7 +532,7 @@ export function useDeleteMovement() {
               .from('sales_orders')
               .select('id, total_amount, rep_id, notes, commission_amount')
               .eq('id', structuredMatch[1]);
-            linkedOrders = data || [];
+            linkedOrders = (data || []) as LinkedOrderRow[];
           }
 
           // 2. Fallback: order short ID prefix match
@@ -529,7 +541,7 @@ export function useDeleteMovement() {
               .from('sales_orders')
               .select('id, total_amount, rep_id, notes, commission_amount')
               .ilike('id', `${orderShortId}%`);
-            linkedOrders = data || [];
+            linkedOrders = (data || []) as LinkedOrderRow[];
           }
 
           // 3. Fallback: movement short ID in order notes
@@ -538,7 +550,7 @@ export function useDeleteMovement() {
               .from('sales_orders')
               .select('id, total_amount, rep_id, notes, commission_amount')
               .ilike('notes', `%${movementShortId}%`);
-            linkedOrders = data || [];
+            linkedOrders = (data || []) as LinkedOrderRow[];
           }
 
           for (const order of (linkedOrders || [])) {

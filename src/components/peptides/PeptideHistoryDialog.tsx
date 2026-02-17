@@ -87,7 +87,7 @@ export function PeptideHistoryDialog({
             if (lotsError) throw lotsError;
 
             // 3. Transform and Merge
-            const sales: HistoryItem[] = salesData?.map((item: any) => ({
+            const sales: HistoryItem[] = salesData?.map((item) => ({
                 id: item.id,
                 date: item.movements?.movement_date || item.created_at,
                 type: 'sale',
@@ -99,7 +99,7 @@ export function PeptideHistoryDialog({
                 notes: item.movements?.notes
             })) || [];
 
-            const receipts: HistoryItem[] = lotsData?.map((lot: any) => ({
+            const receipts: HistoryItem[] = lotsData?.map((lot) => ({
                 id: lot.id,
                 date: lot.received_date || lot.created_at,
                 type: 'restock',

@@ -43,7 +43,7 @@ export const useAI = () => {
 
             return {
                 conversationId: convo.id,
-                messages: (messages || []).map((m: any) => ({
+                messages: (messages || []).map((m) => ({
                     id: m.id,
                     role: m.role as 'user' | 'assistant',
                     content: m.content,

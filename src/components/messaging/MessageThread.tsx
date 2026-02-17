@@ -13,12 +13,18 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // Types
+interface ReplyAttachment {
+    type: string;
+    url: string;
+    name?: string;
+}
+
 interface Reply {
     id: string;
     request_id: string;
     user_id: string;
     message: string;
-    attachments: any[];
+    attachments: ReplyAttachment[];
     created_at: string;
     is_internal: boolean;
     sender?: {
@@ -75,7 +81,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
         mutationFn: async () => {
             if (!user) throw new Error("No user");
 
-            const attachments: any[] = [];
+            const attachments: ReplyAttachment[] = [];
 
             // Upload Voice Blob if exists
             if (voiceBlob) {
@@ -195,7 +201,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                                     <p className="whitespace-pre-wrap">{reply.message}</p>
 
                                     {/* Attachments */}
-                                    {reply.attachments?.map((att: any, idx: number) => (
+                                    {reply.attachments?.map((att, idx) => (
                                         <div key={idx} className="mt-2 text-xs">
                                             {att.type === 'voice' && (
                                                 <audio controls src={att.url} className="w-full h-8" />

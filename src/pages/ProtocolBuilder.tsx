@@ -171,7 +171,7 @@ export default function ProtocolBuilder() {
         setItems(prev => prev.filter((_, i) => i !== idx));
     };
 
-    const updateItem = (idx: number, field: keyof ProtocolItem, value: any) => {
+    const updateItem = (idx: number, field: keyof ProtocolItem, value: string | number) => {
         setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
     };
 

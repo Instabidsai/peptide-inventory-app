@@ -52,7 +52,7 @@ export function useProtocols(contactId?: string) {
     });
 
     const createProtocol = useMutation({
-        mutationFn: async ({ name, description, contact_id, items }: { name: string; description?: string; contact_id?: string, items?: any[] }) => {
+        mutationFn: async ({ name, description, contact_id, items }: { name: string; description?: string; contact_id?: string, items?: Array<{ peptide_id: string; dosage_amount: number; dosage_unit: string; frequency: string; duration_days?: number; duration_weeks?: number; cost_multiplier?: number }> }) => {
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Not authenticated');
 
@@ -102,7 +102,7 @@ export function useProtocols(contactId?: string) {
 
 
     const updateProtocolItem = useMutation({
-        mutationFn: async ({ id, ...updates }: { id: string } & any) => {
+        mutationFn: async ({ id, ...updates }: { id: string; dosage_amount?: number; dosage_unit?: string; frequency?: string; duration_weeks?: number; timing?: string; notes?: string }) => {
             const { error } = await supabase
                 .from('protocol_items')
                 .update(updates)
@@ -246,7 +246,7 @@ export function useProtocolItems(protocolId: string) {
     });
 
     const addItem = useMutation({
-        mutationFn: async (item: any) => {
+        mutationFn: async (item: { peptide_id: string; dosage_amount: number; dosage_unit: string; frequency: string; duration_weeks?: number }) => {
             const { error } = await supabase
                 .from('protocol_items')
                 .insert([{ ...item, protocol_id: protocolId }]);

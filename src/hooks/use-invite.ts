@@ -28,7 +28,7 @@ export function useInviteRep() {
 
             // 2. Update profile with name and parent_rep_id
             if (data.user_id) {
-                const updates: Record<string, any> = {};
+                const updates: Record<string, unknown> = {};
                 if (fullName) updates.full_name = fullName;
                 if (parentRepId) updates.parent_rep_id = parentRepId;
 

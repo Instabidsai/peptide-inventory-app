@@ -34,7 +34,10 @@ export default function AdminFeedback() {
 
     // Reply State
     const [replyOpen, setReplyOpen] = useState(false);
-    const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
+    const [selectedFeedback, setSelectedFeedback] = useState<{
+        id: string; rating: number; comment: string | null; admin_response: string | null;
+        created_at: string; protocols?: { name: string; contact_id?: string; contacts?: { name: string; email?: string } | null } | null;
+    } | null>(null);
     const [replyText, setReplyText] = useState("");
     const [replyLink, setReplyLink] = useState("");
 

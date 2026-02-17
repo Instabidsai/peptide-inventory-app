@@ -60,7 +60,7 @@ export const AIChatInterface = () => {
     };
 
     // Count docs being processed
-    const processingCount = documents.filter((d: any) => d.status === 'pending' || d.status === 'processing').length;
+    const processingCount = documents.filter((d) => d.status === 'pending' || d.status === 'processing').length;
 
     return (
         <>

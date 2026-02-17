@@ -43,8 +43,8 @@ export default function CheckoutSuccess() {
         enabled: !!orderId,
         refetchInterval: (query) => {
             // Stop polling once we get a definitive status
-            const data = query.state.data as any;
-            if (data?.payment_status === 'paid' || data?.psifi_status === 'complete') {
+            const d = query.state.data;
+            if (d?.payment_status === 'paid' || d?.psifi_status === 'complete') {
                 return false;
             }
             return 3000; // Poll every 3s

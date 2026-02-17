@@ -281,7 +281,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                     No documents uploaded yet. Use the paperclip in chat to upload lab results, bloodwork, or health records.
                                                 </p>
                                             ) : (
-                                                documents.map((doc: any) => {
+                                                documents.map((doc) => {
                                                     const ext = doc.file_name.split('.').pop()?.toLowerCase() || '';
                                                     const Icon = FILE_ICONS[ext] || FileText;
                                                     return (
@@ -359,7 +359,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                 </span>
                                                             </div>
                                                             <div className="space-y-1.5 pl-4">
-                                                                {items.map((insight: any) => (
+                                                                {items.map((insight) => (
                                                                     <div
                                                                         key={insight.id}
                                                                         className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.03]"

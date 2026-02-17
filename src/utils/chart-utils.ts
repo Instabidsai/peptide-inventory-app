@@ -8,7 +8,7 @@
  * @param windowSize The number of periods to include in the average (default 7)
  * @returns New array with the original data plus a new field `${key}_avg`
  */
-export function calculateRollingAverage<T extends Record<string, any>>(
+export function calculateRollingAverage<T extends Record<string, unknown>>(
     data: T[],
     key: keyof T,
     windowSize: number = 7

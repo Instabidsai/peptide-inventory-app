@@ -23,12 +23,12 @@ export default function AdminSupplements() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<Supplement | null>(null);
 
-    const handleCreate = async (data: any) => {
+    const handleCreate = async (data: SupplementFormData) => {
         await createSupplement.mutateAsync(data);
         setIsCreateOpen(false);
     };
 
-    const handleUpdate = async (data: any) => {
+    const handleUpdate = async (data: SupplementFormData) => {
         if (!editingItem) return;
         await updateSupplement.mutateAsync({ ...data, id: editingItem.id });
         setEditingItem(null);
@@ -118,7 +118,23 @@ export default function AdminSupplements() {
     );
 }
 
-function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: any) {
+interface SupplementFormData {
+    name: string;
+    description: string;
+    image_url: string;
+    purchase_link: string;
+    default_dosage: string;
+}
+
+interface SupplementDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (data: SupplementFormData) => void;
+    initialData?: Supplement;
+    title: string;
+}
+
+function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: SupplementDialogProps) {
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
         description: initialData?.description || '',

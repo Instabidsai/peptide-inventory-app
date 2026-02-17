@@ -19,7 +19,7 @@ import Join from "./pages/Join";
 import NotFound from "./pages/NotFound";
 
 // Retry wrapper — reloads page on stale chunk errors after deploy
-function lazyRetry(fn: () => Promise<any>) {
+function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
   return lazy(() => fn().catch(() => {
     window.location.reload();
     return new Promise(() => {}); // reload handles it

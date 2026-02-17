@@ -211,7 +211,7 @@ export function ClientRequestModal({
                         <div className="space-y-2">
                             <Label>Topic</Label>
                             <Select
-                                onValueChange={(val) => setValue("type", val as any)}
+                                onValueChange={(val) => setValue("type", val as RequestFormValues["type"])}
                                 defaultValue={defaultType}
                             >
                                 <SelectTrigger>

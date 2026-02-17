@@ -42,7 +42,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
     const [saveAsTemplateDialogOpen, setSaveAsTemplateDialogOpen] = useState(false);
     const [templateName, setTemplateName] = useState('');
     const [templateMealType, setTemplateMealType] = useState<string>('breakfast');
-    const [selectedFoodToTemplate, setSelectedFoodToTemplate] = useState<any>(null);
+    const [selectedFoodToTemplate, setSelectedFoodToTemplate] = useState<FoodItem | null>(null);
 
     // Fetch favorites (is_template = false or null)
     const { data: favorites, isLoading: favoritesLoading } = useQuery({
@@ -123,7 +123,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
         onError: () => toast.error("Failed to save template")
     });
 
-    const openTemplateDialog = (food: any) => {
+    const openTemplateDialog = (food: FoodItem) => {
         setSelectedFoodToTemplate(food);
         setTemplateName(food.name); // Pre-fill with food name
         setSaveAsTemplateDialogOpen(true);

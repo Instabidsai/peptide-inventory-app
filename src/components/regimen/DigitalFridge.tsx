@@ -236,7 +236,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
     );
 }
 
-function AddVialModal({ onAdd }: { onAdd: (data: any) => void }) {
+function AddVialModal({ onAdd }: { onAdd: (data: Partial<ClientInventoryItem>) => void }) {
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState({ name: '', size: '', water: '' });
 

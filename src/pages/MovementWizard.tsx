@@ -40,7 +40,7 @@ export default function MovementWizard() {
   const [contactId, setContactId] = useState<string>('');
   const [movementDate, setMovementDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState<string>('unpaid');
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'partial' | 'refunded'>('unpaid');
   const [amountPaid, setAmountPaid] = useState<string>('0');
   const [selectedBottles, setSelectedBottles] = useState<SelectedBottle[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +52,7 @@ export default function MovementWizard() {
 
   // Handle Prefill from Requests
   useEffect(() => {
-    const state = location.state as any;
+    const state = location.state as { prefill?: { type?: string; email?: string; peptideId?: string; quantity?: number; notes?: string } } | null;
     if (state?.prefill && bottles && contacts) {
       const { type, email, peptideId, quantity, notes: prefillNotes } = state.prefill;
 
@@ -190,7 +190,7 @@ export default function MovementWizard() {
       movement_date: movementDate,
       notes: notes || undefined,
       items: allItems,
-      payment_status: paymentStatus as any,
+      payment_status: paymentStatus,
       amount_paid: parseFloat(amountPaid) || 0,
       payment_date: paymentStatus === 'paid' || paymentStatus === 'partial' ? new Date().toISOString() : undefined
     });
@@ -572,8 +572,8 @@ export default function MovementWizard() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Payment Status</Label>
-                <Select value={paymentStatus} onValueChange={(val) => {
-                  setPaymentStatus(val);
+                <Select value={paymentStatus} onValueChange={(val: string) => {
+                  setPaymentStatus(val as typeof paymentStatus);
                   if (val === 'paid') setAmountPaid(totalPrice.toString());
                   if (val === 'unpaid') setAmountPaid('0');
                 }}>

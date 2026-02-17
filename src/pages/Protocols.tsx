@@ -19,7 +19,7 @@ export default function Protocols() {
     const [description, setDescription] = useState('');
 
     // Builder State
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<Array<{ peptideId: string; peptideName?: string; dosageAmount: string; dosageUnit: string; frequency: string; duration: string; costMultiplier: string }>>([]);
 
     // Current Item State for Builder
     const [currentItem, setCurrentItem] = useState({
