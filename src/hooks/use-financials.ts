@@ -74,18 +74,20 @@ export function useFinancialMetrics() {
                     if (bottleIds.length === 0) return 0;
 
                     // Fetch bottles and their lots in parallel
-                    const { data: bottles } = await supabase
+                    const { data: bottles, error: bottlesError } = await supabase
                         .from('bottles')
                         .select('id, lot_id')
                         .in('id', bottleIds);
+                    if (bottlesError) throw bottlesError;
 
                     const lotIds = [...new Set(bottles?.map(b => b.lot_id).filter(Boolean) || [])];
                     if (lotIds.length === 0) return 0;
 
-                    const { data: lots } = await supabase
+                    const { data: lots, error: lotsError } = await supabase
                         .from('lots')
                         .select('id, cost_per_unit')
                         .in('id', lotIds);
+                    if (lotsError) throw lotsError;
 
                     const lotCostMap = new Map(lots?.map(l => [l.id, l.cost_per_unit]) || []);
                     const bottleLotMap = new Map(bottles?.map(b => [b.id, b.lot_id]) || []);
