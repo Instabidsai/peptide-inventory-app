@@ -106,18 +106,20 @@ export default function Contacts() {
       ? (authProfile?.id || null)
       : ((!data.assigned_rep_id || data.assigned_rep_id === 'none') ? null : data.assigned_rep_id);
 
-    await createContact.mutateAsync({
-      name: data.name,
-      type: isSalesRep ? 'customer' : data.type,
-      email: data.email || undefined,
-      phone: data.phone,
-      company: data.company,
-      address: data.address,
-      notes: data.notes,
-      assigned_rep_id: assignedRepId,
-    });
-    setIsCreateOpen(false);
-    form.reset();
+    try {
+      await createContact.mutateAsync({
+        name: data.name,
+        type: isSalesRep ? 'customer' : data.type,
+        email: data.email || undefined,
+        phone: data.phone,
+        company: data.company,
+        address: data.address,
+        notes: data.notes,
+        assigned_rep_id: assignedRepId,
+      });
+      setIsCreateOpen(false);
+      form.reset();
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleEdit = async (data: ContactFormData) => {
@@ -126,21 +128,25 @@ export default function Contacts() {
     // Convert empty string or 'none' to null for UUID field
     const assignedRepId = (!data.assigned_rep_id || data.assigned_rep_id === 'none') ? null : data.assigned_rep_id;
 
-    await updateContact.mutateAsync({
-      id: editingContact.id,
-      ...data,
-      email: data.email || undefined,
-      address: data.address,
-      assigned_rep_id: assignedRepId,
-    });
-    setEditingContact(null);
-    form.reset();
+    try {
+      await updateContact.mutateAsync({
+        id: editingContact.id,
+        ...data,
+        email: data.email || undefined,
+        address: data.address,
+        assigned_rep_id: assignedRepId,
+      });
+      setEditingContact(null);
+      form.reset();
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleDelete = async () => {
     if (!deletingContact) return;
-    await deleteContact.mutateAsync(deletingContact.id);
-    setDeletingContact(null);
+    try {
+      await deleteContact.mutateAsync(deletingContact.id);
+      setDeletingContact(null);
+    } catch { /* onError in hook shows toast */ }
   };
 
   const openEditDialog = (contact: Contact) => {

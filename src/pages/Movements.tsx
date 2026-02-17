@@ -422,8 +422,10 @@ export default function Movements() {
 
   const handleDelete = async () => {
     if (!deletingMovement) return;
-    await deleteMovement.mutateAsync(deletingMovement.id);
-    setDeletingMovement(null);
+    try {
+      await deleteMovement.mutateAsync(deletingMovement.id);
+      setDeletingMovement(null);
+    } catch { /* onError in hook shows toast */ }
   };
 
   // Filter Logic

@@ -47,23 +47,25 @@ export default function Protocols() {
     const handleCreate = async () => {
         if (!name) return;
 
-        await createProtocol.mutateAsync({
-            name,
-            description,
-            items: items.map(item => ({
-                peptide_id: item.peptideId,
-                dosage_amount: parseFloat(item.dosageAmount),
-                dosage_unit: item.dosageUnit,
-                frequency: item.frequency,
-                duration_days: parseInt(item.duration),
-                cost_multiplier: parseFloat(item.costMultiplier)
-            }))
-        });
+        try {
+            await createProtocol.mutateAsync({
+                name,
+                description,
+                items: items.map(item => ({
+                    peptide_id: item.peptideId,
+                    dosage_amount: parseFloat(item.dosageAmount),
+                    dosage_unit: item.dosageUnit,
+                    frequency: item.frequency,
+                    duration_days: parseInt(item.duration),
+                    cost_multiplier: parseFloat(item.costMultiplier)
+                }))
+            });
 
-        setIsCreateOpen(false);
-        setName('');
-        setDescription('');
-        setItems([]);
+            setIsCreateOpen(false);
+            setName('');
+            setDescription('');
+            setItems([]);
+        } catch { /* onError in hook shows toast */ }
     };
 
     return (

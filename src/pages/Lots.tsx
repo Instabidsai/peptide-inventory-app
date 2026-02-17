@@ -112,41 +112,47 @@ export default function Lots() {
 
   const handleEditSubmit = async (data: LotFormData) => {
     if (!editingLot) return;
-    await updateLot.mutateAsync({
-      id: editingLot.id,
-      lot_number: data.lot_number,
-      cost_per_unit: data.cost_per_unit,
-      expiry_date: data.expiry_date || undefined,
-      notes: data.notes,
-      payment_status: data.payment_status,
-      payment_date: data.payment_date || undefined,
-      payment_method: data.payment_method,
-    });
-    setEditingLot(null);
+    try {
+      await updateLot.mutateAsync({
+        id: editingLot.id,
+        lot_number: data.lot_number,
+        cost_per_unit: data.cost_per_unit,
+        expiry_date: data.expiry_date || undefined,
+        notes: data.notes,
+        payment_status: data.payment_status,
+        payment_date: data.payment_date || undefined,
+        payment_method: data.payment_method,
+      });
+      setEditingLot(null);
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleDeleteConfirm = async () => {
     if (lotToDelete) {
-      await deleteLot.mutateAsync(lotToDelete);
-      setLotToDelete(null);
+      try {
+        await deleteLot.mutateAsync(lotToDelete);
+        setLotToDelete(null);
+      } catch { /* onError in hook shows toast */ }
     }
   };
 
   const handleCreate = async (data: LotFormData) => {
-    await createLot.mutateAsync({
-      peptide_id: data.peptide_id,
-      lot_number: data.lot_number,
-      quantity_received: data.quantity_received,
-      cost_per_unit: data.cost_per_unit,
-      received_date: data.received_date || undefined,
-      expiry_date: data.expiry_date || undefined,
-      notes: data.notes,
-      payment_status: data.payment_status,
-      payment_date: data.payment_date || undefined,
-      payment_method: data.payment_method,
-    });
-    setIsCreateOpen(false);
-    form.reset();
+    try {
+      await createLot.mutateAsync({
+        peptide_id: data.peptide_id,
+        lot_number: data.lot_number,
+        quantity_received: data.quantity_received,
+        cost_per_unit: data.cost_per_unit,
+        received_date: data.received_date || undefined,
+        expiry_date: data.expiry_date || undefined,
+        notes: data.notes,
+        payment_status: data.payment_status,
+        payment_date: data.payment_date || undefined,
+        payment_method: data.payment_method,
+      });
+      setIsCreateOpen(false);
+      form.reset();
+    } catch { /* onError in hook shows toast */ }
   };
 
   const activePeptides = peptides?.filter((p) => p.active) || [];

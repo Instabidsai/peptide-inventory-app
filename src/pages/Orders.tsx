@@ -122,9 +122,11 @@ export default function Orders() {
     );
 
     const handleCreate = async (data: OrderFormData) => {
-        await createOrder.mutateAsync(data);
-        setIsCreateOpen(false);
-        form.reset();
+        try {
+            await createOrder.mutateAsync(data);
+            setIsCreateOpen(false);
+            form.reset();
+        } catch { /* onError in hook shows toast */ }
     };
 
     const handleOpenEdit = (order: Order) => {
@@ -143,8 +145,10 @@ export default function Orders() {
 
     const handleEditSubmit = async (data: OrderFormData) => {
         if (!editingOrder) return;
-        await updateOrder.mutateAsync({ id: editingOrder.id, ...data });
-        setEditingOrder(null);
+        try {
+            await updateOrder.mutateAsync({ id: editingOrder.id, ...data });
+            setEditingOrder(null);
+        } catch { /* onError in hook shows toast */ }
     };
 
     const handleOpenReceive = (order: Order) => {
@@ -159,14 +163,16 @@ export default function Orders() {
 
     const handleReceiveSubmit = async (data: ReceiveFormData) => {
         if (!receivingOrder) return;
-        await markReceived.mutateAsync({
-            order_id: receivingOrder.id,
-            actual_quantity: data.actual_quantity,
-            actual_cost_per_unit: data.actual_cost_per_unit,
-            lot_number: data.lot_number,
-            expiry_date: data.expiry_date,
-        });
-        setReceivingOrder(null);
+        try {
+            await markReceived.mutateAsync({
+                order_id: receivingOrder.id,
+                actual_quantity: data.actual_quantity,
+                actual_cost_per_unit: data.actual_cost_per_unit,
+                lot_number: data.lot_number,
+                expiry_date: data.expiry_date,
+            });
+            setReceivingOrder(null);
+        } catch { /* onError in hook shows toast */ }
     };
 
     const handleDeleteConfirm = async () => {
@@ -247,15 +253,17 @@ export default function Orders() {
         const currentPaid = paymentOrder.amount_paid || 0;
         const isFull = (currentPaid + amount) >= (estimatedTotal - 0.01); // Float tolerance
 
-        await recordPayment.mutateAsync({
-            orderId: paymentOrder.id,
-            amount,
-            method: paymentData.method,
-            date: paymentData.date,
-            note: paymentData.note,
-            isFullPayment: isFull
-        });
-        setPaymentOrder(null);
+        try {
+            await recordPayment.mutateAsync({
+                orderId: paymentOrder.id,
+                amount,
+                method: paymentData.method,
+                date: paymentData.date,
+                note: paymentData.note,
+                isFullPayment: isFull
+            });
+            setPaymentOrder(null);
+        } catch { /* onError in hook shows toast */ }
     };
 
     return (

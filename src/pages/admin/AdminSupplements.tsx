@@ -24,14 +24,18 @@ export default function AdminSupplements() {
     const [editingItem, setEditingItem] = useState<Supplement | null>(null);
 
     const handleCreate = async (data: SupplementFormData) => {
-        await createSupplement.mutateAsync(data);
-        setIsCreateOpen(false);
+        try {
+            await createSupplement.mutateAsync(data);
+            setIsCreateOpen(false);
+        } catch { /* onError in hook shows toast */ }
     };
 
     const handleUpdate = async (data: SupplementFormData) => {
         if (!editingItem) return;
-        await updateSupplement.mutateAsync({ ...data, id: editingItem.id });
-        setEditingItem(null);
+        try {
+            await updateSupplement.mutateAsync({ ...data, id: editingItem.id });
+            setEditingItem(null);
+        } catch { /* onError in hook shows toast */ }
     };
 
     if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;

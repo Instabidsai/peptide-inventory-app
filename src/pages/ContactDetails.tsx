@@ -340,13 +340,15 @@ export default function ContactDetails() {
         const template = templates?.find(t => t.id === selectedTemplateId);
         if (!template) return;
 
-        await createProtocol.mutateAsync({
-            name: template.name,
-            description: template.description,
-            contact_id: id,
-        });
-        setIsAssignOpen(false);
-        setSelectedTemplateId('');
+        try {
+            await createProtocol.mutateAsync({
+                name: template.name,
+                description: template.description,
+                contact_id: id,
+            });
+            setIsAssignOpen(false);
+            setSelectedTemplateId('');
+        } catch { /* onError in hook shows toast */ }
     };
 
     // Calculations for the Dialog
@@ -727,32 +729,13 @@ export default function ContactDetails() {
                                                 </div>
                                             </div>
                                             <Button size="sm" variant="outline" onClick={async () => {
-                                                // Find the protocol ID. 
-                                                // Issue: We don't have the protocol ID easily if we just created it.
-                                                // Robust solution: The User just assigned a Peptide to this Contact.
-                                                // We can find the active protocol for this peptide.
-
-                                                // Better: Just add it to the "Supplement Stack" protocol? Or the Peptide protocol?
-                                                // User request: "popup attached to electrolits".
-                                                // Usually supplements go to the "Supplement Stack" (a generic protocol) OR the specific peptide protocol?
-                                                // In this app, we have a "Supplement Stack" concept (Phase 9).
-
-                                                // I'll try to find the "Supplement Stack" protocol for this contact, or create it.
-                                                let suppProtocol = assignedProtocols?.find(p => p.name === 'Supplement Stack');
-                                                if (!suppProtocol) {
-                                                    // Create it
-                                                    const newP = await createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplements', contact_id: id });
-                                                    suppProtocol = newP; // Result from mutation? No, React Query mutation returns result if awaited?
-                                                    // Actually createProtocol hook might return data.
-                                                    // If not, we might need a refill.
-                                                    // Let's assume we can add it to the Current Peptide Protocol for now?
-                                                    // "Suggestions" usually imply separate items.
-                                                }
-
-                                                // For now, let's just toast "Please assign in Supplement Stack" or try to automate.
-                                                // I'll assume we can call `addProtocolSupplement` on the protocol we *just* created or edited if we capture ID.
-
-                                                // Let's rely on `assignedProtocols` refresh.
+                                                try {
+                                                    let suppProtocol = assignedProtocols?.find(p => p.name === 'Supplement Stack');
+                                                    if (!suppProtocol) {
+                                                        const newP = await createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplements', contact_id: id });
+                                                        suppProtocol = newP;
+                                                    }
+                                                } catch { /* onError in hook shows toast */ }
                                             }}>
                                                 Add
                                             </Button>
@@ -842,7 +825,7 @@ export default function ContactDetails() {
                                             <ShoppingBag className="mr-2 h-4 w-4" />
                                             Just Add to Fridge
                                         </Button>
-                                        <Button variant="outline" onClick={() => createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
+                                        <Button variant="outline" onClick={() => createProtocol.mutate({ name: 'Supplement Stack', description: 'Daily supplement regimen', contact_id: id })}>
                                             <Pill className="mr-2 h-4 w-4" />
                                             Create Supplement Stack
                                         </Button>
@@ -857,7 +840,7 @@ export default function ContactDetails() {
                                             onDelete={deleteProtocol.mutate}
                                             onEdit={() => handleEditClick(protocol)}
                                             onLog={logProtocolUsage.mutate}
-                                            onAddSupplement={addProtocolSupplement.mutateAsync}
+                                            onAddSupplement={addProtocolSupplement.mutate}
                                             onDeleteSupplement={deleteProtocolSupplement.mutate}
                                             onAssignInventory={(peptideId, itemId) => {
                                                 setTempPeptideIdForAssign(peptideId);

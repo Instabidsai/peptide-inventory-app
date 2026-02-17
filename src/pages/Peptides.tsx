@@ -113,28 +113,34 @@ export default function Peptides() {
   });
 
   const handleCreate = async (data: PeptideFormData) => {
-    // @ts-expect-error - retail_price might not exist in type yet but we'll send it
-    await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku, retail_price: data.retail_price });
-    setIsCreateOpen(false);
-    form.reset();
+    try {
+      await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku, retail_price: data.retail_price });
+      setIsCreateOpen(false);
+      form.reset();
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleEdit = async (data: PeptideFormData) => {
     if (!editingPeptide) return;
-    // @ts-expect-error - id matching is handled by mutation
-    await updatePeptide.mutateAsync({ id: editingPeptide.id, ...data });
-    setEditingPeptide(null);
-    form.reset();
+    try {
+      await updatePeptide.mutateAsync({ id: editingPeptide.id, ...data });
+      setEditingPeptide(null);
+      form.reset();
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleDelete = async () => {
     if (!deletingPeptide) return;
-    await deletePeptide.mutateAsync(deletingPeptide.id);
-    setDeletingPeptide(null);
+    try {
+      await deletePeptide.mutateAsync(deletingPeptide.id);
+      setDeletingPeptide(null);
+    } catch { /* onError in hook shows toast */ }
   };
 
   const handleToggleActive = async (peptide: Peptide) => {
-    await updatePeptide.mutateAsync({ id: peptide.id, active: !peptide.active });
+    try {
+      await updatePeptide.mutateAsync({ id: peptide.id, active: !peptide.active });
+    } catch { /* onError in hook shows toast */ }
   };
 
   const openEditDialog = (peptide: Peptide) => {

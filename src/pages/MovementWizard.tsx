@@ -184,18 +184,19 @@ export default function MovementWizard() {
       }))
     ];
 
-    await createMovement.mutateAsync({
-      type: movementType,
-      contact_id: contactId || undefined,
-      movement_date: movementDate,
-      notes: notes || undefined,
-      items: allItems,
-      payment_status: paymentStatus,
-      amount_paid: parseFloat(amountPaid) || 0,
-      payment_date: paymentStatus === 'paid' || paymentStatus === 'partial' ? new Date().toISOString() : undefined
-    });
-
-    navigate('/movements');
+    try {
+      await createMovement.mutateAsync({
+        type: movementType,
+        contact_id: contactId || undefined,
+        movement_date: movementDate,
+        notes: notes || undefined,
+        items: allItems,
+        payment_status: paymentStatus,
+        amount_paid: parseFloat(amountPaid) || 0,
+        payment_date: paymentStatus === 'paid' || paymentStatus === 'partial' ? new Date().toISOString() : undefined
+      });
+      navigate('/movements');
+    } catch { /* onError in hook shows toast; stay on page so user can retry */ }
   };
 
   return (

@@ -7,6 +7,18 @@ import { Button } from "@/components/ui/button";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { Trash2, Loader2, Utensils, Star } from "lucide-react";
 import { toast } from "sonner";
+import type { FoodItem } from "@/utils/nutrition-utils";
+
+interface MealLog {
+    id: string;
+    user_id: string;
+    foods: FoodItem[] | null;
+    total_calories: number;
+    total_protein: number;
+    total_carbs: number;
+    total_fat: number;
+    created_at: string;
+}
 
 export function TodaysLogsList() {
     const { user } = useAuth();
@@ -52,7 +64,7 @@ export function TodaysLogsList() {
                 .lte('created_at', end)
                 .order('created_at', { ascending: false });
 
-            return data || [];
+            return (data || []) as MealLog[];
         },
         enabled: !!user?.id
     });
@@ -88,9 +100,7 @@ export function TodaysLogsList() {
                 <GlassCard key={log.id} className="p-4 flex items-center justify-between group">
                     <div>
                         <div className="font-medium flex items-center gap-2">
-                            {/* @ts-expect-error - foods is joined */}
                             {log.foods?.[0]?.name || "Meal"}
-                            {/* @ts-expect-error - foods is joined */}
                             {log.foods && log.foods.length > 1 && <span className="text-xs text-muted-foreground text-normal">+{log.foods.length - 1} more</span>}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
