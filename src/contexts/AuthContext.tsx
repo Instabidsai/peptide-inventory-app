@@ -227,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setUserRole(null);
     setOrganization(null);
+    window.location.hash = '#/auth';
   };
 
   return (
