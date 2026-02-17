@@ -17,8 +17,18 @@ import './index.css'
     // Stash tokens for AuthContext to pick up via setSession()
     sessionStorage.setItem('sb_oauth_access_token', params.get('access_token')!);
     sessionStorage.setItem('sb_oauth_refresh_token', params.get('refresh_token')!);
-    // Clear hash so HashRouter sees a clean root path
-    window.history.replaceState(null, '', window.location.pathname + '#/');
+
+    // If there's a pending referral in sessionStorage, redirect to /auth
+    // with the referral params so Auth.tsx can handle linking directly.
+    // This is more robust than relying on Onboarding to pick it up later.
+    const refId = sessionStorage.getItem('partner_ref');
+    if (refId) {
+      const role = sessionStorage.getItem('partner_ref_role') || 'customer';
+      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(refId) + '&role=' + encodeURIComponent(role));
+    } else {
+      // No referral — clean root path
+      window.history.replaceState(null, '', window.location.pathname + '#/');
+    }
   } else if (params.has('error')) {
     // OAuth error (user denied consent, etc.) — send to auth page
     sessionStorage.setItem('sb_oauth_error', params.get('error_description') || params.get('error') || 'Sign in failed');

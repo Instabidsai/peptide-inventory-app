@@ -256,17 +256,23 @@ export default function Auth() {
     }
   }, [refParam]);
 
-  // Handle referral linking for already-authenticated users (Google OAuth return, or login with ref)
+  // Handle redirect + referral linking for already-authenticated users
   useEffect(() => {
-    if (!loading && user && profile && refParam && !referralHandled.current) {
-      // If user already has an org, just redirect normally
-      if (profile.org_id) {
+    if (loading || !user) return; // Still initializing or no user
+
+    // User has a referral to process
+    if (refParam && !referralHandled.current) {
+      if (profile?.org_id) {
+        // Already linked to an org — skip referral, go home
         sessionStorage.removeItem('partner_ref');
+        sessionStorage.removeItem('partner_ref_role');
         navigate(from, { replace: true });
         return;
       }
 
-      // User has no org — link them via referral
+      if (!profile) return; // Profile still loading — will re-run when it arrives
+
+      // Process referral
       referralHandled.current = true;
       const email = user.email || '';
       const name = profile.full_name || user.user_metadata?.full_name || email;
@@ -279,23 +285,20 @@ export default function Auth() {
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
+          console.error('linkReferral failed:', result.error);
+          toast({ variant: 'destructive', title: 'Setup issue', description: 'Could not connect your account automatically. Please contact support.' });
           navigate('/onboarding', { replace: true });
         }
       });
       return;
     }
 
-    // Normal redirect (no referral, or profile missing)
-    if (!loading && user) {
-      if (profile?.org_id) {
-        navigate(from, { replace: true });
-      } else {
-        // Persist referral params so onboarding fallback can pick them up
-        if (refParam) {
-          storeSessionReferral(refParam, roleParam);
-        }
-        navigate('/onboarding', { replace: true });
-      }
+    // No referral — redirect normally
+    if (profile?.org_id) {
+      navigate(from, { replace: true });
+    } else {
+      if (refParam) storeSessionReferral(refParam, roleParam);
+      navigate('/onboarding', { replace: true });
     }
   }, [loading, user, profile, navigate, from, refParam]);
 
@@ -304,6 +307,17 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // User is logged in with a pending referral — show processing state
+  // (prevents flash of login form before useEffect handles the linking)
+  if (user && refParam && !profile?.org_id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Setting up your account...</p>
       </div>
     );
   }
