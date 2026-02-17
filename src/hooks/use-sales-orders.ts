@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { recalculateOrderProfit } from '@/lib/order-profit';
+import { autoGenerateProtocol } from '@/lib/auto-protocol';
+import { parseVialSize } from '@/lib/supply-calculations';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded';
@@ -507,11 +509,13 @@ export function useFulfillOrder() {
             if (movError) throw movError;
 
             // 3. Allocate Inventory (FIFO)
+            const allocatedBottles: Array<{ peptideId: string; peptideName: string; bottleId: string; lotNumber: string | null }> = [];
+
             for (const item of order.sales_order_items) {
                 // Find in-stock bottles for this peptide, ordered by creation (FIFO)
                 const { data: bottles, error: bError } = await supabase
                     .from('bottles')
-                    .select('*, lots!inner(peptide_id)')
+                    .select('*, lots!inner(peptide_id, lot_number)')
                     .eq('status', 'in_stock')
                     .eq('lots.peptide_id', item.peptide_id)
                     .order('created_at', { ascending: true })
@@ -524,6 +528,16 @@ export function useFulfillOrder() {
                 }
 
                 const bottleIds = bottles.map(b => b.id);
+
+                // Track allocations for client_inventory
+                for (const b of bottles) {
+                    allocatedBottles.push({
+                        peptideId: item.peptide_id,
+                        peptideName: item.peptides?.name || '',
+                        bottleId: b.id,
+                        lotNumber: b.lots?.lot_number || null,
+                    });
+                }
 
                 // A. Create Movement Items
                 const moveItems = bottles.map(b => ({
@@ -552,6 +566,50 @@ export function useFulfillOrder() {
 
             if (updateError) throw updateError;
 
+            // 4a. Auto-generate protocol + client_inventory
+            if (order.client_id && allocatedBottles.length > 0) {
+                try {
+                    // Deduplicate peptides for protocol creation
+                    const uniquePeptides = [...new Map(
+                        allocatedBottles.map(b => [b.peptideId, { peptideId: b.peptideId, peptideName: b.peptideName }])
+                    ).values()];
+
+                    const { protocolItemMap } = await autoGenerateProtocol({
+                        contactId: order.client_id,
+                        orgId: order.org_id,
+                        items: uniquePeptides,
+                    });
+
+                    // 4b. Create client_inventory entries linked to protocol items
+                    const inventoryEntries = allocatedBottles.map(b => {
+                        const vialSizeMg = parseVialSize(b.peptideName) || 5;
+                        return {
+                            contact_id: order.client_id,
+                            movement_id: movement.id,
+                            peptide_id: b.peptideId,
+                            batch_number: b.lotNumber,
+                            vial_size_mg: vialSizeMg,
+                            water_added_ml: null,
+                            current_quantity_mg: vialSizeMg,
+                            initial_quantity_mg: vialSizeMg,
+                            concentration_mg_ml: null,
+                            status: 'active',
+                            protocol_item_id: protocolItemMap.get(b.peptideId) || null,
+                        };
+                    });
+
+                    const { error: invError } = await supabase
+                        .from('client_inventory')
+                        .insert(inventoryEntries);
+
+                    if (invError) {
+                        console.error('Failed to populate client_inventory:', invError);
+                    }
+                } catch (autoErr) {
+                    console.error('Auto-protocol generation failed (non-blocking):', autoErr);
+                }
+            }
+
             // 5. Process commission records (idempotent — skips if already created)
             const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
             if (rpcError) {
@@ -569,6 +627,8 @@ export function useFulfillOrder() {
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
             queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
             toast({ title: 'Order fulfilled', description: 'Inventory has been deducted and movement recorded.' });
         },
         onError: (error: Error) => {

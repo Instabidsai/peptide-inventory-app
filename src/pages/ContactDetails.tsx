@@ -62,6 +62,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
+import { SimpleVials } from '@/components/regimen/SimpleVials';
+import type { ClientInventoryItem } from '@/types/regimen';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { Textarea } from '@/components/ui/textarea';
@@ -970,7 +972,18 @@ export default function ContactDetails() {
             {/* Client Inventory (Digital Fridge) Inspection */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold tracking-tight">Client Digital Fridge (Inventory)</h2>
-                <ClientInventoryList contactId={id!} contactName={contact?.name} assignedProtocols={assignedProtocols} />
+                <Tabs defaultValue="client-view">
+                    <TabsList>
+                        <TabsTrigger value="client-view">Client View</TabsTrigger>
+                        <TabsTrigger value="admin-manage">Admin Manage</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="client-view" className="mt-4">
+                        <AdminClientFridgeView contactId={id!} />
+                    </TabsContent>
+                    <TabsContent value="admin-manage" className="mt-4">
+                        <ClientInventoryList contactId={id!} contactName={contact?.name} assignedProtocols={assignedProtocols} />
+                    </TabsContent>
+                </Tabs>
             </div>
 
             {/* Client Portal Access Card */}
@@ -1629,6 +1642,40 @@ function ResourceList({ contactId }: { contactId: string }) {
 
 
 
+
+function AdminClientFridgeView({ contactId }: { contactId: string }) {
+    const { data: inventory, isLoading } = useQuery({
+        queryKey: ['client-inventory-fridge-view', contactId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('client_inventory')
+                .select(`
+                    *,
+                    peptide:peptides(name)
+                `)
+                .eq('contact_id', contactId)
+                .eq('status', 'active')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return (data || []) as ClientInventoryItem[];
+        },
+    });
+
+    if (isLoading) {
+        return <div className="space-y-3"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>;
+    }
+
+    if (!inventory || inventory.length === 0) {
+        return (
+            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No active inventory items. Fulfill an order to populate the fridge.</p>
+            </div>
+        );
+    }
+
+    return <SimpleVials inventory={inventory} contactId={contactId} />;
+}
 
 function ClientInventoryList({ contactId, contactName, assignedProtocols }: { contactId: string, contactName?: string, assignedProtocols?: Protocol[] }) {
     const queryClient = useQueryClient();

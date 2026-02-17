@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { parseVialSize } from '@/lib/supply-calculations';
+import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import type { BottleStatus } from './use-bottles';
 
 export type MovementType = 'sale' | 'giveaway' | 'internal_use' | 'loss' | 'return';
@@ -364,6 +365,39 @@ export function useCreateMovement() {
           if (inventoryError) {
             console.error('Failed to populate client_inventory:', inventoryError);
             toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but client inventory update failed.' });
+          } else {
+            // Auto-generate protocol if no protocol_item_ids were provided
+            const hasAnyProtocolLink = input.items.some(i => i.protocol_item_id);
+            if (!hasAnyProtocolLink && input.contact_id) {
+              try {
+                // Gather unique peptides from bottle details
+                const uniquePeptides = [...new Map(
+                  bottleDetails
+                    .filter(b => b.lots?.peptide_id && b.lots?.peptides?.name)
+                    .map(b => [b.lots!.peptide_id, { peptideId: b.lots!.peptide_id, peptideName: b.lots!.peptides!.name }])
+                ).values()];
+
+                if (uniquePeptides.length > 0) {
+                  const { protocolItemMap } = await autoGenerateProtocol({
+                    contactId: input.contact_id,
+                    orgId: profile.org_id,
+                    items: uniquePeptides,
+                  });
+
+                  // Update inventory entries with protocol_item_ids
+                  for (const [peptideId, protocolItemId] of protocolItemMap) {
+                    await supabase
+                      .from('client_inventory')
+                      .update({ protocol_item_id: protocolItemId })
+                      .eq('movement_id', movement.id)
+                      .eq('peptide_id', peptideId)
+                      .is('protocol_item_id', null);
+                  }
+                }
+              } catch (autoErr) {
+                console.error('Auto-protocol generation failed (non-blocking):', autoErr);
+              }
+            }
           }
         }
       }
@@ -433,6 +467,7 @@ export function useCreateMovement() {
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['commissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['protocols'] });
       toast({
         title: 'Movement recorded',
         description: `${variables.items.length} bottle(s) marked as ${movementTypeToBottleStatus[variables.type].replace('_', ' ')}`

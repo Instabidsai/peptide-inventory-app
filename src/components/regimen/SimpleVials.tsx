@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import {
     Droplets, ShoppingBag, Syringe, Check, Beaker,
     ChevronDown, ChevronUp, Plus, Package, Sun, Sunset, Moon,
+    AlertTriangle, Pill, Info,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
@@ -16,6 +17,7 @@ import type { DoseFrequency, DoseTimeOfDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { ClientInventoryItem } from '@/types/regimen';
+import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 
 interface SimpleVialsProps {
     inventory: ClientInventoryItem[];
@@ -45,7 +47,7 @@ const STATE_ORDER: Record<VialState, number> = {
 const TIME_ICONS = { morning: Sun, afternoon: Sunset, evening: Moon } as const;
 
 // ─── Unmixed Card ─────────────────────────────────────────────
-function UnmixedCard({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
+function UnmixedCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions>; knowledge: PeptideKnowledge | null }) {
     const [waterMl, setWaterMl] = useState('');
     const concentration = waterMl && parseFloat(waterMl) > 0 ? vial.vial_size_mg / parseFloat(waterMl) : 0;
 
@@ -56,20 +58,35 @@ function UnmixedCard({ vial, actions }: { vial: ClientInventoryItem; actions: Re
                     <p className="font-semibold text-[15px] tracking-tight">{vial.peptide?.name || 'Unknown'}</p>
                     <p className="text-xs text-muted-foreground/70 mt-0.5">{vial.vial_size_mg}mg vial</p>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="text-[11px] font-medium text-amber-400">Unmixed</span>
+                <div className="flex items-center gap-1.5">
+                    {knowledge?.warningText && (
+                        <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    )}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                        <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <span className="text-[11px] font-medium text-amber-400">Unmixed</span>
+                    </div>
                 </div>
             </div>
 
             <div className="space-y-2.5">
+                {/* Recommended water hint from knowledge base */}
+                {knowledge?.reconstitutionMl && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
+                        <Beaker className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                        <span className="text-[12px] text-blue-400">
+                            Recommended: <strong>{knowledge.reconstitutionMl} mL</strong> BAC water
+                        </span>
+                    </div>
+                )}
+
                 <div className="relative">
                     <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     <Input
                         type="number"
                         step="0.1"
                         min="0.1"
-                        placeholder="Bacteriostatic water (ml)"
+                        placeholder={knowledge?.reconstitutionMl ? `${knowledge.reconstitutionMl} mL (recommended)` : 'Bacteriostatic water (ml)'}
                         value={waterMl}
                         onChange={e => setWaterMl(e.target.value)}
                         className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
@@ -107,8 +124,32 @@ function UnmixedCard({ vial, actions }: { vial: ClientInventoryItem; actions: Re
     );
 }
 
+// ─── Frequency Mapping: knowledge → fridge schedule format ────
+function knowledgeFreqToFridge(freq: string): { frequency: DoseFrequency; interval?: number; onDays?: number; offDays?: number } | null {
+    const map: Record<string, { frequency: DoseFrequency; interval?: number }> = {
+        'daily': { frequency: 'daily' },
+        'daily_am_pm': { frequency: 'daily' },
+        'twice daily': { frequency: 'daily' },
+        'every other day': { frequency: 'every_x_days', interval: 2 },
+        'every 3 days': { frequency: 'every_x_days', interval: 3 },
+        'every 5 days': { frequency: 'every_x_days', interval: 5 },
+        'weekly': { frequency: 'every_x_days', interval: 7 },
+        'twice weekly': { frequency: 'specific_days' },
+        '3x weekly': { frequency: 'specific_days' },
+        'as needed': { frequency: 'daily' },
+    };
+    return map[freq] || null;
+}
+
+function knowledgeTimingToFridge(timing: string): DoseTimeOfDay | '' {
+    if (timing === 'AM' || timing === 'With meals') return 'morning';
+    if (timing === 'PM') return 'afternoon';
+    if (timing === 'Before bed') return 'evening';
+    return '';
+}
+
 // ─── Needs Schedule Card ──────────────────────────────────────
-function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
+function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions>; knowledge: PeptideKnowledge | null }) {
     const [doseMg, setDoseMg] = useState('');
     const [frequency, setFrequency] = useState<DoseFrequency | ''>('');
     const [timeOfDay, setTimeOfDay] = useState<DoseTimeOfDay | ''>('');
@@ -116,6 +157,7 @@ function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actio
     const [interval, setInterval] = useState('');
     const [onDays, setOnDays] = useState('');
     const [offDays, setOffDays] = useState('');
+    const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -126,6 +168,24 @@ function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actio
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseNum = parseFloat(doseMg) || 0;
     const units = concentration > 0 && doseNum > 0 ? Math.round((doseNum / concentration) * 100) : 0;
+
+    const tiers = knowledge?.dosingTiers ?? [];
+
+    const applyTier = (tier: DosingTier) => {
+        setSelectedTierId(tier.id);
+        // Convert dose: knowledge uses mcg/mg, fridge uses mg
+        const mgDose = tier.doseUnit === 'mcg' ? tier.doseAmount / 1000 : tier.doseAmount;
+        setDoseMg(String(mgDose));
+        // Map frequency
+        const mapped = knowledgeFreqToFridge(tier.frequency);
+        if (mapped) {
+            setFrequency(mapped.frequency);
+            if (mapped.interval) setInterval(String(mapped.interval));
+        }
+        // Map timing
+        const mappedTime = knowledgeTimingToFridge(tier.timing);
+        if (mappedTime) setTimeOfDay(mappedTime);
+    };
 
     const canSave = (): boolean => {
         if (!doseMg || parseFloat(doseMg) <= 0 || !frequency || !timeOfDay) return false;
@@ -163,6 +223,35 @@ function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actio
                     <span className="text-[11px] font-medium text-blue-400">Set Up</span>
                 </div>
             </div>
+
+            {/* Dosing Tier Selector */}
+            {tiers.length > 0 && (
+                <div className="space-y-2 animate-fade-in">
+                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Protocol tier</label>
+                    <div className="flex flex-wrap gap-1.5">
+                        {tiers.map(tier => (
+                            <button
+                                key={tier.id}
+                                type="button"
+                                onClick={() => applyTier(tier)}
+                                className={cn(
+                                    "px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-200 border",
+                                    selectedTierId === tier.id
+                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
+                                        : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground/80"
+                                )}
+                            >
+                                {tier.label}
+                            </button>
+                        ))}
+                    </div>
+                    {selectedTierId && tiers.find(t => t.id === selectedTierId)?.cyclePattern && (
+                        <p className="text-[11px] text-muted-foreground/50 pl-1">
+                            Cycle: {tiers.find(t => t.id === selectedTierId)!.cyclePattern}
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Section 1: Dose */}
             <div className="space-y-2">
@@ -324,17 +413,27 @@ function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actio
 }
 
 // ─── Active Card (due today, not today, or low stock) ─────────
-function ActiveCard({ vial, isDueToday, isLow, actions }: {
+function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
     vial: ClientInventoryItem; isDueToday: boolean; isLow: boolean;
     actions: ReturnType<typeof useVialActions>;
+    knowledge: PeptideKnowledge | null;
 }) {
     const navigate = useNavigate();
+    const [infoOpen, setInfoOpen] = useState(false);
     const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseMg = Number(vial.dose_amount_mg) || 0;
     const units = concentration > 0 && doseMg > 0 ? Math.round((doseMg / concentration) * 100) : 0;
     const scheduleLabel = getScheduleLabel(vial);
     const TimeIcon = vial.dose_time_of_day ? TIME_ICONS[vial.dose_time_of_day as keyof typeof TIME_ICONS] : null;
+
+    // Match current dose against knowledge tiers
+    const matchedTier = knowledge?.dosingTiers?.find(t => {
+        const tierMg = t.doseUnit === 'mcg' ? t.doseAmount / 1000 : t.doseAmount;
+        return Math.abs(tierMg - doseMg) < 0.01;
+    });
+
+    const hasProtocolInfo = knowledge && (knowledge.description || knowledge.warningText || knowledge.supplementNotes?.length || knowledge.cyclePattern || knowledge.dosageSchedule);
 
     return (
         <div className={cn(
@@ -348,7 +447,14 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[15px] tracking-tight">{vial.peptide?.name || 'Unknown'}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="font-semibold text-[15px] tracking-tight">{vial.peptide?.name || 'Unknown'}</p>
+                        {matchedTier && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                                {matchedTier.label}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-muted-foreground/60">{concentration.toFixed(2)} mg/ml</span>
                         {scheduleLabel && (
@@ -413,6 +519,79 @@ function ActiveCard({ vial, isDueToday, isLow, actions }: {
                     <ShoppingBag className="h-4 w-4 text-amber-400" />
                     <span className="text-sm font-medium text-amber-400">Running low — Reorder</span>
                 </button>
+            )}
+
+            {/* Protocol Info (collapsible) */}
+            {hasProtocolInfo && (
+                <div>
+                    <button
+                        onClick={() => setInfoOpen(!infoOpen)}
+                        className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+                    >
+                        <Info className="h-3 w-3" />
+                        Protocol Info
+                        {infoOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                    {infoOpen && (
+                        <div className="mt-2 space-y-2.5 animate-fade-in">
+                            {/* Description */}
+                            {knowledge.description && (
+                                <p className="text-[12px] text-muted-foreground/60 leading-relaxed">{knowledge.description}</p>
+                            )}
+
+                            {/* Warning */}
+                            {knowledge.warningText && (
+                                <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/[0.06] border border-amber-500/15">
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+                                    <span className="text-[12px] text-amber-400/80">{knowledge.warningText}</span>
+                                </div>
+                            )}
+
+                            {/* Cycle pattern */}
+                            {knowledge.cyclePattern && (
+                                <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                                    <span className="text-[11px] font-medium text-muted-foreground/50">Cycle: </span>
+                                    <span className="text-[12px] text-muted-foreground/70">{knowledge.cyclePattern}</span>
+                                </div>
+                            )}
+
+                            {/* Dosage schedule */}
+                            {knowledge.dosageSchedule && (
+                                <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                                    <span className="text-[11px] font-medium text-muted-foreground/50 block mb-1">Schedule</span>
+                                    <span className="text-[12px] text-muted-foreground/70 whitespace-pre-line">{knowledge.dosageSchedule}</span>
+                                </div>
+                            )}
+
+                            {/* Supplements */}
+                            {knowledge.supplementNotes && knowledge.supplementNotes.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <span className="text-[11px] font-medium text-muted-foreground/50 flex items-center gap-1">
+                                        <Pill className="h-3 w-3" /> Recommended Supplements
+                                    </span>
+                                    {knowledge.supplementNotes.map((supp, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-[12px] font-medium text-blue-400">{supp.name}</span>
+                                                <span className="text-[11px] text-blue-400/60 ml-1.5">{supp.dosage}</span>
+                                            </div>
+                                            {supp.productLink && (
+                                                <a
+                                                    href={supp.productLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[10px] text-blue-400 underline shrink-0"
+                                                >
+                                                    Amazon
+                                                </a>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Actions */}
@@ -497,6 +676,20 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
     const fridgeVials = activeVials.filter(v => v.in_fridge);
     const storageVials = activeVials.filter(v => !v.in_fridge);
 
+    // Build knowledge map for all peptides in inventory
+    const knowledgeMap = useMemo(() => {
+        const map = new Map<string, PeptideKnowledge | null>();
+        for (const vial of activeVials) {
+            const name = vial.peptide?.name;
+            if (name && !map.has(name)) {
+                map.set(name, lookupKnowledge(name));
+            }
+        }
+        return map;
+    }, [activeVials]);
+
+    const getKnowledge = (vial: ClientInventoryItem) => knowledgeMap.get(vial.peptide?.name || '') ?? null;
+
     const sortedFridge = [...fridgeVials].sort((a, b) => {
         const stateA = getVialState(a, todayAbbr);
         const stateB = getVialState(b, todayAbbr);
@@ -534,19 +727,20 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                     ) : (
                         sortedFridge.map((vial) => {
                             const state = getVialState(vial, todayAbbr);
+                            const k = getKnowledge(vial);
                             switch (state) {
                                 case 'unmixed':
-                                    return <UnmixedCard key={vial.id} vial={vial} actions={actions} />;
+                                    return <UnmixedCard key={vial.id} vial={vial} actions={actions} knowledge={k} />;
                                 case 'needs_schedule':
-                                    return <NeedsScheduleCard key={vial.id} vial={vial} actions={actions} />;
+                                    return <NeedsScheduleCard key={vial.id} vial={vial} actions={actions} knowledge={k} />;
                                 case 'due_today':
-                                    return <ActiveCard key={vial.id} vial={vial} isDueToday isLow={false} actions={actions} />;
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday isLow={false} actions={actions} knowledge={k} />;
                                 case 'low_stock': {
                                     const isDue = isDoseDay(vial, todayAbbr);
-                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={isDue} isLow actions={actions} />;
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={isDue} isLow actions={actions} knowledge={k} />;
                                 }
                                 case 'not_today':
-                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={false} isLow={false} actions={actions} />;
+                                    return <ActiveCard key={vial.id} vial={vial} isDueToday={false} isLow={false} actions={actions} knowledge={k} />;
                             }
                         })
                     )}
