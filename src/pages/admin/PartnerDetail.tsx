@@ -14,6 +14,7 @@ import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected t
 import { usePartnerDownline, useCommissions, usePayCommission, PartnerNode } from '@/hooks/use-partner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { QueryError } from '@/components/ui/query-error';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,7 +83,7 @@ export default function PartnerDetail() {
     const navigate = useNavigate();
 
     // 1. Fetch Partner Profile
-    const { data: partner, isLoading } = useQuery({
+    const { data: partner, isLoading, isError, refetch } = useQuery({
         queryKey: ['partner_detail', id],
         queryFn: async () => {
             if (!id) throw new Error("No ID");
@@ -108,6 +109,7 @@ export default function PartnerDetail() {
         );
     }
 
+    if (isError) return <QueryError message="Failed to load partner details." onRetry={refetch} />;
     if (!partner) return <div className="p-6">Partner not found</div>;
 
     return (

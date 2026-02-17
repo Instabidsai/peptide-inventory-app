@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { QueryError } from "@/components/ui/query-error";
 
 type Resource = {
     id: string;
@@ -88,7 +89,7 @@ export default function AdminResources() {
     const queryClient = useQueryClient();
 
     // Data Fetching
-    const { data: themes, isLoading: loadingThemes } = useQuery({
+    const { data: themes, isLoading: loadingThemes, isError: themesError, refetch: themesRefetch } = useQuery({
         queryKey: ['resource-themes'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -100,7 +101,7 @@ export default function AdminResources() {
         }
     });
 
-    const { data: resources, isLoading: loadingResources } = useQuery({
+    const { data: resources, isLoading: loadingResources, isError: resourcesError, refetch: resourcesRefetch } = useQuery({
         queryKey: ['admin-resources'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -342,6 +343,8 @@ export default function AdminResources() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {loadingThemes ? (
                         <div className="col-span-full text-center py-8 text-muted-foreground">Loading themes...</div>
+                    ) : themesError ? (
+                        <div className="col-span-full"><QueryError message="Failed to load themes." onRetry={themesRefetch} /></div>
                     ) : (
                         allThemes.map((theme) => {
                             const count = getResourceCount(theme.is_general ? null : theme.id);

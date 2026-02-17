@@ -26,6 +26,7 @@ import {
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
 import React from 'react';
 
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
     const { data: stats, isLoading: statsLoading } = useBottleStats();
     const { data: movements, isLoading: movementsLoading } = useMovements();
     const { data: peptides } = usePeptides();
-    const { data: financials, isLoading: financialsLoading, error: financialsError } = useFinancialMetrics();
+    const { data: financials, isLoading: financialsLoading, error: financialsError, refetch: financialsRefetch } = useFinancialMetrics();
     const { data: pendingOrdersCount, isLoading: pendingCountLoading } = usePendingOrdersCount();
     const { data: pendingFinancials, isLoading: pendingValueLoading } = usePendingOrderFinancials();
 
@@ -107,6 +108,11 @@ export default function AdminDashboard() {
 
     if (financialsError) {
         console.error("Financials Error:", financialsError);
+    }
+
+    // Show full-page error only if the critical financial query fails and nothing else loaded
+    if (financialsError && !stats && !movements) {
+        return <QueryError message="Failed to load dashboard data." onRetry={financialsRefetch} />;
     }
 
     const recentMovements = movements?.slice(0, 5) || [];

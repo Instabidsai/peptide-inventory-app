@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTrackingUrl } from '@/lib/tracking';
+import { QueryError } from '@/components/ui/query-error';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
@@ -39,7 +40,7 @@ export default function PartnerOrders() {
     const { user } = useAuth();
 
     // Single self-contained query: fetches profile, downline, then orders
-    const { data: orderData, isLoading } = useQuery({
+    const { data: orderData, isLoading, isError, refetch } = useQuery({
         queryKey: ['partner_network_orders', user?.id],
         queryFn: async () => {
             if (!user?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
@@ -164,6 +165,8 @@ export default function PartnerOrders() {
                 <div className="space-y-3">
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
                 </div>
+            ) : isError ? (
+                <QueryError message="Failed to load orders." onRetry={refetch} />
             ) : (
                 <>
                     {/* Summary Stats */}

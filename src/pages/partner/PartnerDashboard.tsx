@@ -41,6 +41,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format } from 'date-fns';
+import { QueryError } from '@/components/ui/query-error';
 
 // Tier display config
 const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
@@ -59,8 +60,8 @@ export default function PartnerDashboard() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const { profile: authProfile, userRole, user, refreshProfile } = useAuth();
-    const { data: downline, isLoading: downlineLoading } = usePartnerDownline();
-    const { data: commissions, isLoading: commissionsLoading } = useCommissions();
+    const { data: downline, isLoading: downlineLoading, isError: downlineError, refetch: downlineRefetch } = usePartnerDownline();
+    const { data: commissions, isLoading: commissionsLoading, isError: commissionsError, refetch: commissionsRefetch } = useCommissions();
     const stats = useCommissionStats();
     const [activeSheet, setActiveSheet] = useState<SheetView>(null);
     const [newPerson, setNewPerson] = useState(EMPTY_PERSON);
@@ -181,6 +182,10 @@ export default function PartnerDashboard() {
             toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
         }
     });
+
+    if (downlineError && commissionsError) {
+        return <QueryError message="Failed to load partner data." onRetry={() => { downlineRefetch(); commissionsRefetch(); }} />;
+    }
 
     return (
         <div className="space-y-6">
