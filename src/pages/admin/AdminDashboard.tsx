@@ -93,7 +93,8 @@ export default function AdminDashboard() {
             if (error) throw error;
             // Aggregate by peptide
             const agg = new Map<string, { name: string; qty: number; revenue: number }>();
-            (data || []).forEach((item: any) => {
+            type SalesItem = { peptide_id: string; quantity: number; unit_price?: number; peptides?: { name: string } };
+            ((data || []) as SalesItem[]).forEach((item) => {
                 const key = item.peptide_id;
                 const existing = agg.get(key) || { name: item.peptides?.name || 'Unknown', qty: 0, revenue: 0 };
                 existing.qty += Number(item.quantity || 0);

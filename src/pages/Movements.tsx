@@ -479,6 +479,7 @@ export default function Movements() {
 
   const exportMovementsCSV = () => {
     if (filteredMovements.length === 0) return;
+    const esc = (v: string) => (v.includes(',') || v.includes('"') || v.includes('\n')) ? `"${v.replace(/"/g, '""')}"` : v;
     const headers = ['Date', 'Type', 'Contact', 'Items', 'Cost', 'Amount Paid', 'Payment Status', 'Notes'];
     const rows = filteredMovements.map(m => {
       const itemsSummary = m.movement_items?.reduce((acc: Record<string, number>, item: any) => {
@@ -490,13 +491,13 @@ export default function Movements() {
       const cost = m.movement_items?.reduce((s: number, item: any) => s + (item.bottles?.lots?.cost_per_unit || 0), 0) || 0;
       return [
         m.movement_date ? format(new Date(m.movement_date), 'yyyy-MM-dd') : '',
-        typeLabels[m.type],
-        m.contacts?.name || '',
-        `"${itemsStr}"`,
+        esc(typeLabels[m.type]),
+        esc(m.contacts?.name || ''),
+        esc(itemsStr),
         cost.toFixed(2),
         (m.amount_paid || 0).toFixed(2),
-        m.payment_status,
-        `"${(m.notes || '').replace(/"/g, '""')}"`,
+        esc(m.payment_status),
+        esc(m.notes || ''),
       ];
     });
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -816,9 +817,10 @@ export default function Movements() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={deleteMovement.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteMovement.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

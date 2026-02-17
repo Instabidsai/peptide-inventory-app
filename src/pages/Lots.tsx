@@ -163,17 +163,18 @@ export default function Lots() {
 
   const exportLotsCSV = () => {
     if (!filteredLots || filteredLots.length === 0) return;
+    const esc = (v: string) => (v.includes(',') || v.includes('"') || v.includes('\n')) ? `"${v.replace(/"/g, '""')}"` : v;
     const headers = ['Lot Number', 'Peptide', 'Quantity', 'Cost/Unit', 'Total Cost', 'Received', 'Expiry', 'Payment Status', 'Notes'];
     const rows = filteredLots.map(l => [
-      l.lot_number,
-      l.peptides?.name || '',
+      esc(l.lot_number),
+      esc(l.peptides?.name || ''),
       String(l.quantity_received),
       Number(l.cost_per_unit).toFixed(2),
       (l.quantity_received * l.cost_per_unit).toFixed(2),
       l.received_date ? format(new Date(l.received_date), 'yyyy-MM-dd') : '',
       l.expiry_date ? format(new Date(l.expiry_date), 'yyyy-MM-dd') : '',
-      l.payment_status || '',
-      `"${(l.notes || '').replace(/"/g, '""')}"`,
+      esc(l.payment_status || ''),
+      esc(l.notes || ''),
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -665,9 +666,10 @@ export default function Lots() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
+              disabled={deleteLot.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteLot.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

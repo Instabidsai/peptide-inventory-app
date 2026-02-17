@@ -91,12 +91,13 @@ export default function Bottles() {
 
   const exportBottlesCSV = () => {
     if (!filteredBottles || filteredBottles.length === 0) return;
+    const esc = (v: string) => (v.includes(',') || v.includes('"') || v.includes('\n')) ? `"${v.replace(/"/g, '""')}"` : v;
     const headers = ['UID', 'Peptide', 'Lot', 'Status', 'Cost', 'Created'];
     const rows = filteredBottles.map(b => [
-      b.uid,
-      b.lots?.peptides?.name || '',
-      b.lots?.lot_number || '',
-      statusLabels[b.status] || b.status,
+      esc(b.uid),
+      esc(b.lots?.peptides?.name || ''),
+      esc(b.lots?.lot_number || ''),
+      esc(statusLabels[b.status] || b.status),
       Number(b.lots?.cost_per_unit || 0).toFixed(2),
       format(new Date(b.created_at), 'yyyy-MM-dd'),
     ]);
