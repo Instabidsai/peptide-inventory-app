@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -84,7 +85,7 @@ export default function Orders() {
     const [receivingOrder, setReceivingOrder] = useState<Order | null>(null);
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
-    const { data: orders, isLoading } = useOrders(statusFilter === 'all' ? undefined : statusFilter);
+    const { data: orders, isLoading, isError, refetch } = useOrders(statusFilter === 'all' ? undefined : statusFilter);
     const createOrder = useCreateOrder();
     const updateOrder = useUpdateOrder();
     const deleteOrder = useDeleteOrder();
@@ -501,7 +502,9 @@ export default function Orders() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? (
+                    {isError ? (
+                        <QueryError message="Failed to load orders." onRetry={() => refetch()} />
+                    ) : isLoading ? (
                         <div className="space-y-3">
                             {[1, 2, 3, 4, 5].map((i) => (
                                 <Skeleton key={i} className="h-12 w-full" />

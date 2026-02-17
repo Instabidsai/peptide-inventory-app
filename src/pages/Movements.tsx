@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download, Search } from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
@@ -392,7 +393,7 @@ function MovementDetailsDialog({
 export default function Movements() {
   const { userRole } = useAuth();
   const isMobile = useIsMobile();
-  const { data: movements, isLoading } = useMovements();
+  const { data: movements, isLoading, isError, refetch } = useMovements();
   const deleteMovement = useDeleteMovement();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -615,7 +616,9 @@ export default function Movements() {
 
       <Card className="bg-card border-border">
         <CardContent className="pt-6">
-          {isLoading ? (
+          {isError ? (
+            <QueryError message="Failed to load movements." onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />

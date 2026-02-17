@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -61,7 +62,7 @@ export default function Contacts() {
   const { userRole, profile: authProfile } = useAuth();
   const isMobile = useIsMobile();
   const [typeFilter, setTypeFilter] = useState<ContactType | undefined>();
-  const { data: contacts, isLoading } = useContacts(typeFilter);
+  const { data: contacts, isLoading, isError, refetch } = useContacts(typeFilter);
   const { data: reps } = useReps(); // Fetch reps
 
   const createContact = useCreateContact();
@@ -418,7 +419,9 @@ export default function Contacts() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryError message="Failed to load contacts." onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />

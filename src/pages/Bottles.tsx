@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { Pill, Search, Filter, MoreHorizontal, Trash2, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -63,7 +64,7 @@ export default function Bottles() {
   const [statusFilter, setStatusFilter] = useState<BottleStatus | 'all'>('all');
   const [peptideFilter, setPeptideFilter] = useState<string>('all');
 
-  const { data: bottles, isLoading } = useBottles({
+  const { data: bottles, isLoading, isError, refetch } = useBottles({
     status: statusFilter === 'all' ? undefined : statusFilter,
     peptide_id: peptideFilter === 'all' ? undefined : peptideFilter,
   });
@@ -165,7 +166,9 @@ export default function Bottles() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryError message="Failed to load bottles." onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />

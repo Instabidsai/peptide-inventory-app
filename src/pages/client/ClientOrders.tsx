@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
+import { QueryError } from '@/components/ui/query-error';
 import {
     Package,
     Clock,
@@ -35,7 +36,7 @@ export default function ClientOrders() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const navigate = useNavigate();
 
-    const { data: orders, isLoading } = useQuery({
+    const { data: orders, isLoading, isError, refetch } = useQuery({
         queryKey: ['client_my_orders', contact?.id],
         queryFn: async () => {
             if (!contact?.id) return [];
@@ -67,6 +68,10 @@ export default function ClientOrders() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
+    }
+
+    if (isError) {
+        return <QueryError message="Failed to load your orders." onRetry={() => refetch()} />;
     }
 
     return (

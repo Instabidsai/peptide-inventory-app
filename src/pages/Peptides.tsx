@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PeptideSuggestions } from '@/components/peptides/PeptideSuggestions';
+import { QueryError } from '@/components/ui/query-error';
 import { PeptideHistoryDialog } from '@/components/peptides/PeptideHistoryDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -56,7 +57,7 @@ type PeptideFormData = z.infer<typeof peptideSchema>;
 export default function Peptides() {
   const { userRole, profile } = useAuth();
   const isMobile = useIsMobile();
-  const { data: peptides, isLoading } = usePeptides();
+  const { data: peptides, isLoading, isError, refetch } = usePeptides();
   const { data: pendingByPeptide } = usePendingOrdersByPeptide();
   const createPeptide = useCreatePeptide();
   const updatePeptide = useUpdatePeptide();
@@ -272,7 +273,9 @@ export default function Peptides() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryError message="Failed to load peptides." onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />

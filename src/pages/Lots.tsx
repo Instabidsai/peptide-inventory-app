@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +55,7 @@ type LotFormData = z.infer<typeof lotSchema>;
 
 export default function Lots() {
   const { userRole } = useAuth();
-  const { data: lots, isLoading } = useLots();
+  const { data: lots, isLoading, isError, refetch } = useLots();
   const { data: peptides } = usePeptides();
   const createLot = useCreateLot();
   const updateLot = useUpdateLot();
@@ -445,7 +446,9 @@ export default function Lots() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryError message="Failed to load lots." onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />
