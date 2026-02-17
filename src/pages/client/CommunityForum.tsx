@@ -171,7 +171,7 @@ export default function CommunityForum() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Button variant="ghost" size="icon" onClick={() => navigate('/resources')}>
+                            <Button variant="ghost" size="icon" aria-label="Back to resources" onClick={() => navigate('/resources')}>
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                             <div>
@@ -278,7 +278,7 @@ export default function CommunityForum() {
                 <>
                     {/* Header */}
                     <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="icon" onClick={handleBack}>
+                        <Button variant="ghost" size="icon" aria-label="Back to forum list" onClick={handleBack}>
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div className="flex-1 min-w-0">
@@ -360,6 +360,7 @@ export default function CommunityForum() {
                                 <Button
                                     type="submit"
                                     size="icon"
+                                    aria-label="Post reply"
                                     disabled={!replyContent.trim() || postMessage.isPending}
                                 >
                                     {postMessage.isPending ? (

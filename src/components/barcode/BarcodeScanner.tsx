@@ -100,6 +100,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Close scanner"
                             onClick={handleClose}
                             className="h-6 w-6"
                         >

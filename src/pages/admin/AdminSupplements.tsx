@@ -206,7 +206,7 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title }: 
                                     placeholder="https://..."
                                     className="flex-1"
                                 />
-                                {formData.image_url && <img src={formData.image_url} className="h-10 w-10 rounded object-cover border bg-white" onError={(e) => e.currentTarget.style.display = 'none'} />}
+                                {formData.image_url && <img src={formData.image_url} alt="Preview" className="h-10 w-10 rounded object-cover border bg-white" onError={(e) => e.currentTarget.style.display = 'none'} />}
                             </div>
                             <p className="text-xs text-muted-foreground">Use Unsplash or direct image links for best results.</p>
                         </div>

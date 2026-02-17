@@ -143,6 +143,7 @@ export default function ClientMessages() {
                                     <Button
                                         variant="ghost"
                                         size="icon"
+                                        aria-label="Delete message"
                                         className="h-6 w-6 text-muted-foreground hover:text-red-500 -mr-2"
                                         onClick={() => setDeleteId(req.id)}
                                     >

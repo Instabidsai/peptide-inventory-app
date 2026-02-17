@@ -87,6 +87,7 @@ export function FeaturedCarousel({ resources, onResourceClick }: FeaturedCarouse
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Previous resource"
                                 className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-background/50 hover:bg-background/80"
                                 onClick={goToPrev}
                             >
@@ -95,6 +96,7 @@ export function FeaturedCarousel({ resources, onResourceClick }: FeaturedCarouse
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Next resource"
                                 className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-background/50 hover:bg-background/80"
                                 onClick={goToNext}
                             >

@@ -115,6 +115,7 @@ export function TodaysLogsList() {
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Add to favorites"
                             className="text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                             onClick={() => addToFavorites.mutate(log)}
                         >
@@ -123,6 +124,7 @@ export function TodaysLogsList() {
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Delete log"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => deleteLog.mutate(log.id)}
                         >

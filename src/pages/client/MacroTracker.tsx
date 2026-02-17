@@ -510,7 +510,7 @@ export default function MacroTracker() {
                                                     onChange={(e) => updateFoodItem(idx, "name", e.target.value)}
                                                     className="font-medium bg-transparent border-0 p-0 h-auto focus-visible:ring-0 text-lg w-full"
                                                 />
-                                                <Button variant="ghost" size="icon" onClick={() => removeFoodItem(idx)}>
+                                                <Button variant="ghost" size="icon" aria-label="Remove food item" onClick={() => removeFoodItem(idx)}>
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
                                             </div>

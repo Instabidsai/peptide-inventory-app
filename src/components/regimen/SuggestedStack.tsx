@@ -51,7 +51,7 @@ export function SuggestedStack({ activePeptideIds, existingSupplementIds }: { ac
                     <div key={item.id} className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-amber-500/10 via-background to-background p-4 transition-all hover:border-amber-500/50">
                         <div className="flex gap-4">
                             {item.supplements?.image_url ? (
-                                <img src={item.supplements.image_url} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                                <img src={item.supplements.image_url} alt={item.supplements.name} className="h-12 w-12 rounded-lg object-cover" />
                             ) : (
                                 <div className="h-12 w-12 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
                                     <Sparkles className="h-6 w-6" />

@@ -107,13 +107,14 @@ export function PeptideSuggestions({ peptideId }: { peptideId: string }) {
                         <div key={item.id} className="p-3 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 {item.supplements.image_url && (
-                                    <img src={item.supplements.image_url} alt="" className="w-8 h-8 rounded object-cover bg-muted" />
+                                    <img src={item.supplements.image_url} alt={item.supplements.name} className="w-8 h-8 rounded object-cover bg-muted" />
                                 )}
                                 <span className="font-medium">{item.supplements.name}</span>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Remove suggestion"
                                 className="text-muted-foreground hover:text-destructive"
                                 onClick={() => removeSuggestion.mutate(item.id)}
                             >

@@ -110,6 +110,7 @@ export function SupplementLinkedPeptides({ supplementId }: { supplementId: strin
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Remove link"
                                 className="text-muted-foreground hover:text-destructive"
                                 onClick={() => removeLink.mutate(item.id)}
                             >

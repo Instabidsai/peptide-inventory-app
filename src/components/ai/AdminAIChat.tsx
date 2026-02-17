@@ -81,6 +81,7 @@ export function AdminAIChat() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Close chat"
                 onClick={() => setOpen(false)}
                 className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
               >

@@ -74,10 +74,10 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
         return (
             <div className="flex items-center gap-3 p-2 border rounded-full bg-secondary/20 animate-in fade-in slide-in-from-bottom-2">
                 <audio src={mediaBlobUrl} controls className="h-8 w-48" />
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full" onClick={handleDelete}>
+                <Button variant="ghost" size="icon" aria-label="Delete recording" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full" onClick={handleDelete}>
                     <Trash2 className="h-4 w-4" />
                 </Button>
-                <Button size="icon" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 rounded-full" onClick={handleConfirm} disabled={isSubmitting}>
+                <Button size="icon" aria-label="Confirm recording" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 rounded-full" onClick={handleConfirm} disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 </Button>
             </div>
@@ -90,7 +90,7 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
             <div className="flex items-center gap-4 p-3 border border-red-200 bg-red-50 rounded-lg w-full">
                 <div className="relative">
                     <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full animate-ping" />
-                    <Button variant="destructive" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={handleStop}>
+                    <Button variant="destructive" size="icon" aria-label="Stop recording" className="h-10 w-10 rounded-full shadow-lg" onClick={handleStop}>
                         <Square className="h-4 w-4 fill-current" />
                     </Button>
                 </div>

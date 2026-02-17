@@ -755,7 +755,7 @@ export default function FulfillmentCenter() {
                                                         >
                                                             {order.tracking_number}
                                                         </a>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                                                        <Button variant="ghost" size="icon" aria-label="Copy tracking number" className="h-7 w-7 shrink-0"
                                                             onClick={() => {
                                                                 navigator.clipboard.writeText(order.tracking_number!);
                                                                 toast({ title: 'Tracking number copied' });
@@ -983,6 +983,7 @@ export default function FulfillmentCenter() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        aria-label="View order details"
                                                         className="h-8 w-8"
                                                         onClick={() => navigate(`/sales/${order.id}`)}
                                                     >
@@ -1051,7 +1052,7 @@ export default function FulfillmentCenter() {
                                                                     ? `${order.tracking_number.slice(0, 18)}...`
                                                                     : order.tracking_number}
                                                             </a>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
+                                                            <Button variant="ghost" size="icon" aria-label="Copy tracking number" className="h-6 w-6"
                                                                 onClick={() => {
                                                                     navigator.clipboard.writeText(order.tracking_number!);
                                                                     toast({ title: 'Copied' });
@@ -1089,6 +1090,7 @@ export default function FulfillmentCenter() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        aria-label="View order details"
                                                         className="h-8 w-8"
                                                         onClick={() => navigate(`/sales/${order.id}`)}
                                                     >

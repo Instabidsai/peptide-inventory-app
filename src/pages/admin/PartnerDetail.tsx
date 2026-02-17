@@ -114,7 +114,7 @@ export default function PartnerDetail() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/admin/reps')}>
+                <Button variant="ghost" size="icon" aria-label="Back to partners" onClick={() => navigate('/admin/reps')}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>

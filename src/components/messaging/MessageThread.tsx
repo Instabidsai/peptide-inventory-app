@@ -259,7 +259,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                                 }
                             }}
                         />
-                        <Button type="submit" size="icon" className="h-[60px] w-[60px]" disabled={sendReplyMutation.isPending || (!newMessage.trim() && !voiceBlob)}>
+                        <Button type="submit" size="icon" aria-label="Send message" className="h-[60px] w-[60px]" disabled={sendReplyMutation.isPending || (!newMessage.trim() && !voiceBlob)}>
                             {sendReplyMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                         </Button>
                     </div>

@@ -112,7 +112,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                             </p>
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 rounded-lg">
+                    <Button variant="ghost" size="icon" aria-label="Close knowledge panel" onClick={onClose} className="h-7 w-7 rounded-lg">
                         <X className="h-4 w-4" />
                     </Button>
                 </div>

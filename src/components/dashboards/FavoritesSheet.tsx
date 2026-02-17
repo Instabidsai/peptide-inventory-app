@@ -201,6 +201,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    aria-label="Add to template"
                                                     className="text-muted-foreground hover:text-primary absolute top-2 right-10 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -212,6 +213,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    aria-label="Delete favorite"
                                                     className="text-muted-foreground hover:text-destructive absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     onClick={(e) => {
                                                         e.stopPropagation();

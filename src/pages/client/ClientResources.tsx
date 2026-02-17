@@ -649,7 +649,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                     <div className="p-4 border-t">
                         <form onSubmit={(e) => { e.preventDefault(); if (commentText.trim()) addComment.mutate(commentText); }} className="flex gap-2">
                             <Textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Share your thoughts..." className="min-h-[40px] max-h-[100px] resize-none text-sm" />
-                            <Button size="icon" type="submit" disabled={!commentText.trim() || addComment.isPending}>
+                            <Button size="icon" type="submit" aria-label="Submit comment" disabled={!commentText.trim() || addComment.isPending}>
                                 {addComment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             </Button>
                         </form>

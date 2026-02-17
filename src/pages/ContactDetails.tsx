@@ -717,7 +717,7 @@ export default function ContactDetails() {
                                         <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-emerald-50/50 border-emerald-100">
                                             <div className="flex items-center gap-3">
                                                 {s.supplements.image_url ? (
-                                                    <img src={s.supplements.image_url} className="w-10 h-10 rounded object-cover" />
+                                                    <img src={s.supplements.image_url} alt={s.supplements.name} className="w-10 h-10 rounded object-cover" />
                                                 ) : (
                                                     <div className="w-10 h-10 rounded bg-emerald-100 flex items-center justify-center text-emerald-600">
                                                         <Pill className="h-5 w-5" />
@@ -1293,7 +1293,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             <div key={supp.id} className="relative group border rounded-md p-3 hover:bg-muted/50 transition-colors">
                                 <div className="flex gap-3">
                                     {supp.supplements?.image_url ? (
-                                        <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt="" />
+                                        <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt={supp.supplements.name} />
                                     ) : (
                                         <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                             <Pill className="h-5 w-5 opacity-20" />

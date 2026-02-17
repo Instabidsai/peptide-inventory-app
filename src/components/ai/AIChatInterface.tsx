@@ -80,6 +80,7 @@ export const AIChatInterface = () => {
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Open knowledge panel"
                             onClick={() => setKnowledgePanelOpen(true)}
                             className="h-8 w-8 rounded-xl text-muted-foreground/60 hover:text-foreground relative"
                         >
