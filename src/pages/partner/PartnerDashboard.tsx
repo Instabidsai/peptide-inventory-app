@@ -30,7 +30,10 @@ import {
     ArrowRightLeft,
     CheckCircle2,
     Loader2,
-    Plus
+    Plus,
+    Link2,
+    Copy,
+    Check
 } from 'lucide-react';
 import {
     Table,
@@ -225,6 +228,9 @@ export default function PartnerDashboard() {
                     </Badge>
                 </div>
             </div>
+
+            {/* Referral Link */}
+            <ReferralLinkCard profileId={myProfileId} />
 
             {/* Stats Overview — Clickable Cards */}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -917,6 +923,58 @@ function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: N
                 </div>
             )}
         </div>
+    );
+}
+
+function ReferralLinkCard({ profileId }: { profileId: string | undefined }) {
+    const [copied, setCopied] = useState(false);
+
+    if (!profileId) return null;
+
+    const referralUrl = `${window.location.origin}/#/auth?ref=${profileId}`;
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(referralUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Fallback
+            const input = document.createElement('input');
+            input.value = referralUrl;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    return (
+        <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-purple-500/5">
+            <CardContent className="flex items-center gap-4 py-4">
+                <div className="h-10 w-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
+                    <Link2 className="h-5 w-5 text-violet-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Your Referral Link</p>
+                    <p className="text-xs text-muted-foreground truncate">{referralUrl}</p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className={copied ? 'border-emerald-500/30 text-emerald-400' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}
+                    onClick={handleCopy}
+                >
+                    {copied ? (
+                        <><Check className="h-4 w-4 mr-1" /> Copied</>
+                    ) : (
+                        <><Copy className="h-4 w-4 mr-1" /> Copy Link</>
+                    )}
+                </Button>
+            </CardContent>
+        </Card>
     );
 }
 

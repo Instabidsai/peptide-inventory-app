@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FlaskConical, Eye, EyeOff } from 'lucide-react';
+import { Loader2, FlaskConical, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -221,27 +221,130 @@ function SignupForm({
   );
 }
 
+/**
+ * Link a newly authenticated user to a partner's org via referral.
+ * Creates profile updates, user_role, and contact record.
+ */
+async function linkReferralUser(
+  userId: string,
+  email: string,
+  fullName: string,
+  referrerProfileId: string,
+) {
+  // 1. Look up referrer's profile for org_id
+  const { data: referrer } = await supabase
+    .from('profiles')
+    .select('id, org_id, full_name')
+    .eq('id', referrerProfileId)
+    .maybeSingle();
+
+  if (!referrer?.org_id) return false;
+
+  // 2. Update new user's profile with org_id + parent_rep_id
+  const { error: profileErr } = await supabase
+    .from('profiles')
+    .update({
+      org_id: referrer.org_id,
+      parent_rep_id: referrer.id,
+      role: 'client',
+    })
+    .eq('user_id', userId);
+
+  if (profileErr) {
+    console.error('Referral: profile update failed', profileErr);
+    return false;
+  }
+
+  // 3. Create user_role as 'client'
+  await supabase.from('user_roles').upsert({
+    user_id: userId,
+    org_id: referrer.org_id,
+    role: 'client',
+  }, { onConflict: 'user_id,org_id' });
+
+  // 4. Create contact record linked to partner
+  const { data: existingContact } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('linked_user_id', userId)
+    .eq('org_id', referrer.org_id)
+    .maybeSingle();
+
+  if (!existingContact) {
+    await supabase.from('contacts').insert({
+      name: fullName || email,
+      email,
+      type: 'customer',
+      org_id: referrer.org_id,
+      assigned_rep_id: referrer.id,
+      linked_user_id: userId,
+    });
+  }
+
+  return true;
+}
+
 export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { signIn, signUp, user, profile, loading } = useAuth();
+  const { signIn, signUp, user, profile, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const referralHandled = useRef(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
-  // Redirect if already logged in
+  // Detect referral param from URL or sessionStorage (persists across Google OAuth redirect)
+  const refParam = searchParams.get('ref') || sessionStorage.getItem('partner_ref');
+  const referrerName = searchParams.get('name'); // optional display name
+
+  // Auto-switch to signup mode when coming via referral link
   useEffect(() => {
+    if (refParam && mode === 'login') {
+      setMode('signup');
+    }
+  }, [refParam]);
+
+  // Handle referral linking for already-authenticated users (Google OAuth return, or login with ref)
+  useEffect(() => {
+    if (!loading && user && profile && refParam && !referralHandled.current) {
+      // If user already has an org, just redirect normally
+      if (profile.org_id) {
+        sessionStorage.removeItem('partner_ref');
+        navigate(from, { replace: true });
+        return;
+      }
+
+      // User has no org — link them via referral
+      referralHandled.current = true;
+      const email = user.email || '';
+      const name = profile.full_name || user.user_metadata?.full_name || email;
+
+      linkReferralUser(user.id, email, name, refParam).then(async (ok) => {
+        sessionStorage.removeItem('partner_ref');
+        if (ok) {
+          await refreshProfile();
+          toast({ title: 'Welcome!', description: 'Your account has been connected.' });
+          navigate('/store', { replace: true });
+        } else {
+          navigate('/onboarding', { replace: true });
+        }
+      });
+      return;
+    }
+
+    // Normal redirect (no referral)
     if (!loading && user) {
       if (profile?.org_id) {
         navigate(from, { replace: true });
-      } else {
+      } else if (!refParam) {
         navigate('/onboarding', { replace: true });
       }
     }
-  }, [loading, user, profile, navigate, from]);
+  }, [loading, user, profile, navigate, from, refParam]);
 
   // Show loading state while checking auth
   if (loading) {
@@ -271,9 +374,9 @@ export default function Auth() {
   const handleSignup = async (data: SignupFormData) => {
     setIsLoading(true);
     const { error } = await signUp(data.email, data.password, data.fullName);
-    setIsLoading(false);
 
     if (error) {
+      setIsLoading(false);
       let message = error.message;
       if (error.message.includes('already registered')) {
         message = 'This email is already registered. Please log in instead.';
@@ -283,13 +386,32 @@ export default function Auth() {
         title: 'Signup failed',
         description: message,
       });
-    } else {
-      toast({
-        title: 'Account created!',
-        description: 'Please check your email to confirm your account, or log in if email confirmation is disabled.',
-      });
-      setMode('login');
+      return;
     }
+
+    // If referral param exists, try to link immediately
+    if (refParam) {
+      // Get the just-created user
+      const { data: { user: newUser } } = await supabase.auth.getUser();
+      if (newUser) {
+        const linked = await linkReferralUser(newUser.id, data.email, data.fullName, refParam);
+        sessionStorage.removeItem('partner_ref');
+        if (linked) {
+          await refreshProfile();
+          setIsLoading(false);
+          toast({ title: 'Welcome!', description: 'Your account has been created and connected.' });
+          navigate('/store', { replace: true });
+          return;
+        }
+      }
+    }
+
+    setIsLoading(false);
+    toast({
+      title: 'Account created!',
+      description: 'Please check your email to confirm your account, or log in if email confirmation is disabled.',
+    });
+    setMode('login');
   };
 
   const handleForgotPassword = async (email: string) => {
@@ -322,6 +444,10 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    // Persist referral param across OAuth redirect
+    if (refParam) {
+      sessionStorage.setItem('partner_ref', refParam);
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -371,17 +497,31 @@ export default function Auth() {
               transition={{ delay: 0.25 }}
             >
               <CardTitle className="text-2xl font-bold text-foreground">
-                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                {refParam
+                  ? "You've Been Invited"
+                  : mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-1">
-                {mode === 'login'
-                  ? 'Sign in to your peptide inventory account'
-                  : 'Get started with your inventory tracker'}
+                {refParam
+                  ? 'Create an account to access exclusive partner pricing'
+                  : mode === 'login'
+                    ? 'Sign in to your peptide inventory account'
+                    : 'Get started with your inventory tracker'}
               </CardDescription>
             </motion.div>
           </CardHeader>
 
           <CardContent className="space-y-4">
+            {/* Referral banner */}
+            {refParam && (
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-violet-500/20 bg-violet-500/[0.06]">
+                <UserPlus className="h-4 w-4 text-violet-400 shrink-0" />
+                <p className="text-xs text-violet-300">
+                  Sign up to get connected with your partner and access the store.
+                </p>
+              </div>
+            )}
+
             {/* Google Sign In Button */}
             <Button
               type="button"
