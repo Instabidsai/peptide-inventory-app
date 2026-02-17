@@ -154,7 +154,7 @@ export default function AdminResources() {
             const payload = {
                 ...data,
                 theme_id: data.theme_id === "none" ? null : data.theme_id,
-                duration: data.duration ? parseInt(data.duration) : null
+                duration: data.duration ? (parseInt(data.duration) || null) : null
             };
             if (editingResource) {
                 const { error } = await supabase.from('resources').update(payload).eq('id', editingResource.id);

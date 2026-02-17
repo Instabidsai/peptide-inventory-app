@@ -176,11 +176,11 @@ export default function ContactDetails() {
                 // Update existing item
                 await updateProtocolItem.mutateAsync({
                     id: editingItemId,
-                    dosage_amount: parseFloat(dosageAmount),
+                    dosage_amount: parseFloat(dosageAmount) || 0,
                     dosage_unit: dosageUnit,
                     frequency: frequency,
-                    duration_days: parseInt(durationValue),
-                    cost_multiplier: parseFloat(costMultiplier)
+                    duration_days: parseInt(durationValue) || 30,
+                    cost_multiplier: parseFloat(costMultiplier) || 1
                     // Note: Ideally we should save vialSize too if we want to persist it, 
                     // but the schema doesn't have it yet. 
                     // The request didn't explicitly ask for persistence of this field, 
@@ -195,11 +195,11 @@ export default function ContactDetails() {
                     contact_id: id,
                     items: [{
                         peptide_id: peptide.id,
-                        dosage_amount: parseFloat(dosageAmount),
+                        dosage_amount: parseFloat(dosageAmount) || 0,
                         dosage_unit: dosageUnit,
                         frequency: frequency,
-                        duration_days: parseInt(durationValue),
-                        cost_multiplier: parseFloat(costMultiplier)
+                        duration_days: parseInt(durationValue) || 30,
+                        cost_multiplier: parseFloat(costMultiplier) || 1
                     }]
                 });
 

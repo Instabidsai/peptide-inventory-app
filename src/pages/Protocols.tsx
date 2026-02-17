@@ -54,11 +54,11 @@ export default function Protocols() {
                 description,
                 items: items.map(item => ({
                     peptide_id: item.peptideId,
-                    dosage_amount: parseFloat(item.dosageAmount),
+                    dosage_amount: parseFloat(item.dosageAmount) || 0,
                     dosage_unit: item.dosageUnit,
                     frequency: item.frequency,
-                    duration_days: parseInt(item.duration),
-                    cost_multiplier: parseFloat(item.costMultiplier)
+                    duration_days: parseInt(item.duration) || 30,
+                    cost_multiplier: parseFloat(item.costMultiplier) || 1
                 }))
             });
 

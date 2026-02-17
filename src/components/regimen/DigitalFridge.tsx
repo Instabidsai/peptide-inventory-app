@@ -335,6 +335,7 @@ function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryIte
         if (!doseAmount) return;
 
         const dose = parseFloat(doseAmount);
+        if (isNaN(dose) || dose <= 0) return;
         let doseInMg = dose;
 
         // Convert to mg if needed
@@ -458,7 +459,7 @@ function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", cl
     const handleReconstitute = async () => {
         if (!waterAmount) return;
         const water = parseFloat(waterAmount);
-        if (water <= 0) return;
+        if (isNaN(water) || water <= 0) return;
 
         const concentration = vial.vial_size_mg / water;
 

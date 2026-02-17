@@ -88,11 +88,13 @@ function UnmixedCard({ vial, actions }: { vial: ClientInventoryItem; actions: Re
                 <Button
                     size="sm"
                     className="w-full h-11 rounded-xl text-sm font-medium"
-                    disabled={!waterMl || parseFloat(waterMl) <= 0 || actions.reconstitute.isPending}
+                    disabled={!waterMl || isNaN(parseFloat(waterMl)) || parseFloat(waterMl) <= 0 || actions.reconstitute.isPending}
                     onClick={() => {
+                        const ml = parseFloat(waterMl);
+                        if (isNaN(ml) || ml <= 0) return;
                         actions.reconstitute.mutate({
                             vialId: vial.id,
-                            waterMl: parseFloat(waterMl),
+                            waterMl: ml,
                             vialSizeMg: vial.vial_size_mg,
                         });
                     }}
@@ -134,14 +136,17 @@ function NeedsScheduleCard({ vial, actions }: { vial: ClientInventoryItem; actio
     };
 
     const handleSave = () => {
+        if (!canSave()) return;
+        const parsedDose = parseFloat(doseMg);
+        if (isNaN(parsedDose) || parsedDose <= 0) return;
         actions.setSchedule.mutate({
             vialId: vial.id,
-            doseAmountMg: parseFloat(doseMg),
+            doseAmountMg: parsedDose,
             doseFrequency: frequency,
             doseDays: frequency === 'specific_days' ? selectedDays : undefined,
-            doseInterval: frequency === 'every_x_days' ? parseInt(interval)
-                : frequency === 'x_on_y_off' ? parseInt(onDays) : undefined,
-            doseOffDays: frequency === 'x_on_y_off' ? parseInt(offDays) : undefined,
+            doseInterval: frequency === 'every_x_days' ? (parseInt(interval) || undefined)
+                : frequency === 'x_on_y_off' ? (parseInt(onDays) || undefined) : undefined,
+            doseOffDays: frequency === 'x_on_y_off' ? (parseInt(offDays) || undefined) : undefined,
             doseTimeOfDay: timeOfDay || undefined,
         });
     };
