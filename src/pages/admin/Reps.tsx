@@ -25,7 +25,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart, UserX } from 'lucide-react';
+import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart, UserX, Link2, Copy, Check, QrCode } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -265,6 +265,9 @@ export default function Reps() {
                     <TabsTrigger value="network" className="gap-2">
                         <Network className="h-4 w-4" /> Network View
                     </TabsTrigger>
+                    <TabsTrigger value="invites" className="gap-2">
+                        <Link2 className="h-4 w-4" /> Invite Links
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="list">
@@ -435,6 +438,10 @@ export default function Reps() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+
+                <TabsContent value="invites">
+                    <InviteLinksTab reps={reps || []} />
+                </TabsContent>
             </Tabs>
 
             <EditRepDialog
@@ -551,6 +558,81 @@ export default function Reps() {
                 </AlertDialogContent>
             </AlertDialog>
         </div >
+    );
+}
+
+function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    const handleCopy = async (profileId: string) => {
+        const url = `${window.location.origin}/#/auth?ref=${profileId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            const input = document.createElement('input');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
+        setCopiedId(profileId);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" /> Partner Invite Links
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Copy a partner's invite link and share it. Anyone who signs up through it is automatically connected under that partner as a client.
+                </p>
+            </CardHeader>
+            <CardContent>
+                {reps.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No partners yet.</p>
+                ) : (
+                    <div className="space-y-3">
+                        {reps.map(rep => {
+                            const url = `${window.location.origin}/#/auth?ref=${rep.id}`;
+                            const isCopied = copiedId === rep.id;
+                            return (
+                                <div
+                                    key={rep.id}
+                                    className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-muted/10 hover:bg-muted/20 transition-colors"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-sm">{rep.full_name || 'Unnamed'}</p>
+                                            <Badge variant="secondary" className="text-xs capitalize">{rep.partner_tier || 'standard'}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{rep.email}</p>
+                                        <p className="text-xs text-muted-foreground/60 mt-1 truncate font-mono">{url}</p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={isCopied
+                                            ? 'border-emerald-500/30 text-emerald-400 min-w-[110px]'
+                                            : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300 min-w-[110px]'
+                                        }
+                                        onClick={() => handleCopy(rep.id)}
+                                    >
+                                        {isCopied ? (
+                                            <><Check className="h-4 w-4 mr-1.5" /> Copied!</>
+                                        ) : (
+                                            <><Copy className="h-4 w-4 mr-1.5" /> Copy Link</>
+                                        )}
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
