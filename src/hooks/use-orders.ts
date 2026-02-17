@@ -436,8 +436,9 @@ export function useRecordOrderPayment() {
             if (expenseError) throw expenseError;
 
             // 2. Update Order Status
-            const { data: currentOrder } = await supabase.from('orders').select('amount_paid').eq('id', orderId).single();
-            const newTotal = (currentOrder?.amount_paid || 0) + amount;
+            const { data: currentOrder, error: fetchError } = await supabase.from('orders').select('amount_paid').eq('id', orderId).single();
+            if (fetchError || !currentOrder) throw new Error('Order not found');
+            const newTotal = (currentOrder.amount_paid || 0) + amount;
 
             const { error: updateError } = await supabase
                 .from('orders')
