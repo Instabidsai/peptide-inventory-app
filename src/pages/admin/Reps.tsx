@@ -383,7 +383,7 @@ export default function Reps() {
                                                                         title: 'Remove Client',
                                                                         description: `Remove ${client.name} from ${rep.full_name}? They will become unassigned.`,
                                                                         action: () => unlinkCustomer.mutate(client.id),
-                                                                    })}}
+                                                                    })}
                                                                 >
                                                                     <UserX className="h-4 w-4 mr-1" /> Remove
                                                                 </Button>
