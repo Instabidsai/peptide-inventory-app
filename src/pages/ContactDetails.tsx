@@ -130,6 +130,18 @@ export default function ContactDetails() {
     const [isEditingDetails, setIsEditingDetails] = useState(false);
     const [editForm, setEditForm] = useState({ email: '', phone: '', company: '', address: '' });
 
+    // Confirm dialog state (replaces browser confirm())
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean;
+        title: string;
+        description: string;
+        action: () => void;
+    }>({ open: false, title: '', description: '', action: () => {} });
+
+    const openConfirm = (title: string, description: string, action: () => void) => {
+        setConfirmDialog({ open: true, title, description, action });
+    };
+
     const handleLinkUser = async () => {
         if (!linkEmail) return;
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(linkEmail)) {
@@ -508,7 +520,7 @@ export default function ContactDetails() {
                                     }}>Save</Button>
                                 </>
                             ) : (
-                                <Edit className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => {
+                                <Button variant="ghost" size="icon" aria-label="Edit contact details" onClick={() => {
                                     setEditForm({
                                         email: contact.email || '',
                                         phone: contact.phone || '',
@@ -516,7 +528,9 @@ export default function ContactDetails() {
                                         address: contact.address || ''
                                     });
                                     setIsEditingDetails(true);
-                                }} />
+                                }}>
+                                    <Edit className="h-4 w-4 text-muted-foreground" />
+                                </Button>
                             )}
                         </div>
                     </CardHeader>
@@ -1368,9 +1382,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                         title="Void Invoice / Delete Movement"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (confirm(`Are you sure you want to void this ${latestMovement.type} record? This will return items to stock.`)) {
-                                                deleteMovement.mutate(latestMovement.id);
-                                            }
+                                            openConfirm(
+                                                'Void Invoice',
+                                                `Are you sure you want to void this ${latestMovement.type} record? This will return items to stock.`,
+                                                () => deleteMovement.mutate(latestMovement.id)
+                                            );
                                         }}
                                     >
                                         <Trash2 className="h-3 w-3" />
@@ -1821,11 +1837,11 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                     <Plus className="mr-2 h-3.5 w-3.5" /> Attach to Regimen
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            <DropdownMenuItem onClick={() => {
-                                                                if (confirm('Mark this vial as fully used? It will be removed from current stock.')) {
-                                                                    markAsUsed.mutate(item.id);
-                                                                }
-                                                            }}>
+                                                            <DropdownMenuItem onClick={() => openConfirm(
+                                                                'Mark as Used',
+                                                                'Mark this vial as fully used? It will be removed from current stock.',
+                                                                () => markAsUsed.mutate(item.id)
+                                                            )}>
                                                                 <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
@@ -1833,9 +1849,11 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 className="text-destructive"
-                                                                onClick={() => {
-                                                                    if (confirm('Delete this vial?')) deleteInventory.mutate(item.id);
-                                                                }}
+                                                                onClick={() => openConfirm(
+                                                                    'Delete Vial',
+                                                                    'Delete this vial? This action cannot be undone.',
+                                                                    () => deleteInventory.mutate(item.id)
+                                                                )}
                                                             >
                                                                 <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                                                             </DropdownMenuItem>
@@ -1914,11 +1932,11 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                                 <Plus className="mr-2 h-3.5 w-3.5" /> Attach to Regimen
                                                                             </DropdownMenuItem>
                                                                         )}
-                                                                        <DropdownMenuItem onClick={() => {
-                                                                            if (confirm('Mark this vial as fully used? It will be removed from current stock.')) {
-                                                                                markAsUsed.mutate(item.id);
-                                                                            }
-                                                                        }}>
+                                                                        <DropdownMenuItem onClick={() => openConfirm(
+                                                                            'Mark as Used',
+                                                                            'Mark this vial as fully used? It will be removed from current stock.',
+                                                                            () => markAsUsed.mutate(item.id)
+                                                                        )}>
                                                                             <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
@@ -1927,11 +1945,11 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                         <DropdownMenuSeparator />
                                                                         <DropdownMenuItem
                                                                             className="text-destructive focus:text-destructive"
-                                                                            onClick={() => {
-                                                                                if (confirm('Are you sure you want to delete this? It will NOT be restocked.')) {
-                                                                                    deleteInventory.mutate(item.id);
-                                                                                }
-                                                                            }}
+                                                                            onClick={() => openConfirm(
+                                                                                'Delete Permanently',
+                                                                                'Are you sure you want to delete this? It will NOT be restocked.',
+                                                                                () => deleteInventory.mutate(item.id)
+                                                                            )}
                                                                         >
                                                                             <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Forever
                                                                         </DropdownMenuItem>
@@ -2034,6 +2052,25 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Shared confirm dialog (replaces browser confirm()) */}
+            <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => { confirmDialog.action(); setConfirmDialog(prev => ({ ...prev, open: false })); }}
+                        >
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

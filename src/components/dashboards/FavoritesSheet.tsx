@@ -181,14 +181,14 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                                 </div>
                             ) : (
                                 favorites?.map((fav) => (
-                                    <GlassCard key={fav.id} className="p-4 group relative overflow-hidden transition-all hover:bg-muted/40 cursor-pointer border-white/5" onClick={() => onSelect({
+                                    <GlassCard key={fav.id} className="p-4 group relative overflow-hidden transition-all hover:bg-muted/40 cursor-pointer border-white/5" role="button" tabIndex={0} aria-label={`Select ${fav.name}`} onClick={() => onSelect({
                                         name: fav.name,
                                         quantity: fav.quantity || '1 serving',
                                         calories: fav.calories,
                                         protein: fav.protein,
                                         carbs: fav.carbs,
                                         fat: fav.fat
-                                    })}>
+                                    })} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect({ name: fav.name, quantity: fav.quantity || '1 serving', calories: fav.calories, protein: fav.protein, carbs: fav.carbs, fat: fav.fat }); } }}>
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="font-semibold text-lg">{fav.name}</div>
@@ -251,14 +251,14 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                                         </h3>
                                         <div className="space-y-2">
                                             {items.map((template) => (
-                                                <GlassCard key={template.id} className="p-3 group relative overflow-hidden transition-all hover:bg-muted/40 cursor-pointer border-white/5" onClick={() => onSelect({
+                                                <GlassCard key={template.id} className="p-3 group relative overflow-hidden transition-all hover:bg-muted/40 cursor-pointer border-white/5" role="button" tabIndex={0} aria-label={`Select template ${template.template_name || template.name}`} onClick={() => onSelect({
                                                     name: template.name,
                                                     quantity: template.quantity || '1 serving',
                                                     calories: template.calories,
                                                     protein: template.protein,
                                                     carbs: template.carbs,
                                                     fat: template.fat
-                                                })}>
+                                                })} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect({ name: template.name, quantity: template.quantity || '1 serving', calories: template.calories, protein: template.protein, carbs: template.carbs, fat: template.fat }); } }}>
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <div className="font-semibold">{template.template_name || template.name}</div>

@@ -37,6 +37,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { QueryError } from '@/components/ui/query-error';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 
@@ -70,6 +74,11 @@ export default function Reps() {
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+    // Confirm dialog state
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean; title: string; description: string; action: () => void;
+    }>({ open: false, title: '', description: '', action: () => {} });
 
     // ── Add Client Under Partner ──
     const [addingToRep, setAddingToRep] = useState<UserProfile | null>(null);
@@ -369,11 +378,12 @@ export default function Reps() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                                    onClick={() => {
-                                                                        if (confirm(`Remove ${client.name} from ${rep.full_name}?`)) {
-                                                                            unlinkCustomer.mutate(client.id);
-                                                                        }
-                                                                    }}
+                                                                    onClick={() => setConfirmDialog({
+                                                                        open: true,
+                                                                        title: 'Remove Client',
+                                                                        description: `Remove ${client.name} from ${rep.full_name}? They will become unassigned.`,
+                                                                        action: () => unlinkCustomer.mutate(client.id),
+                                                                    })}}
                                                                 >
                                                                     <UserX className="h-4 w-4 mr-1" /> Remove
                                                                 </Button>
@@ -521,6 +531,25 @@ export default function Reps() {
                     </Tabs>
                 </DialogContent>
             </Dialog>
+
+            {/* Shared confirm dialog */}
+            <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+                        <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => { confirmDialog.action(); setConfirmDialog(prev => ({ ...prev, open: false })); }}
+                        >
+                            Confirm
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div >
     );
 }

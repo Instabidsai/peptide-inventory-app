@@ -303,7 +303,7 @@ export default function OrderList() {
                         <TableBody>
                             {orders && orders.length > 0 ? (
                                 orders.map((order, index) => (
-                                    <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" onClick={() => navigate(`/sales/${order.id}`)}>
+                                    <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" role="link" tabIndex={0} aria-label={`View order ${order.id.slice(0, 8)}`} onClick={() => navigate(`/sales/${order.id}`)} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/sales/${order.id}`); } }}>
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
