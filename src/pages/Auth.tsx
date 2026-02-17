@@ -13,6 +13,7 @@ import { Loader2, FlaskConical, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
+import { linkReferral, storeSessionReferral } from '@/lib/link-referral';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -221,80 +222,6 @@ function SignupForm({
   );
 }
 
-/**
- * Link a newly authenticated user to a partner's org via referral.
- * Creates profile updates, user_role, and contact record.
- */
-async function linkReferralUser(
-  userId: string,
-  email: string,
-  fullName: string,
-  referrerProfileId: string,
-  inviteRole: 'customer' | 'partner' = 'customer',
-) {
-  // 1. Look up referrer's profile for org_id
-  const { data: referrer } = await supabase
-    .from('profiles')
-    .select('id, org_id, full_name')
-    .eq('id', referrerProfileId)
-    .maybeSingle();
-
-  if (!referrer?.org_id) return false;
-
-  const isPartner = inviteRole === 'partner';
-  const appRole = isPartner ? 'sales_rep' : 'client';
-
-  // 2. Update new user's profile
-  const profileUpdate: Record<string, unknown> = {
-    org_id: referrer.org_id,
-    parent_rep_id: referrer.id,
-    role: appRole,
-  };
-  if (isPartner) {
-    profileUpdate.partner_tier = 'associate';
-    profileUpdate.commission_rate = 0.075;
-    profileUpdate.price_multiplier = 0.75;
-  }
-
-  const { error: profileErr } = await supabase
-    .from('profiles')
-    .update(profileUpdate)
-    .eq('user_id', userId);
-
-  if (profileErr) {
-    console.error('Referral: profile update failed', profileErr);
-    return false;
-  }
-
-  // 3. Create user_role
-  await supabase.from('user_roles').upsert({
-    user_id: userId,
-    org_id: referrer.org_id,
-    role: appRole,
-  }, { onConflict: 'user_id,org_id' });
-
-  // 4. Create contact record linked to referrer
-  const { data: existingContact } = await supabase
-    .from('contacts')
-    .select('id')
-    .eq('linked_user_id', userId)
-    .eq('org_id', referrer.org_id)
-    .maybeSingle();
-
-  if (!existingContact) {
-    await supabase.from('contacts').insert({
-      name: fullName || email,
-      email,
-      type: isPartner ? 'partner' : 'customer',
-      org_id: referrer.org_id,
-      assigned_rep_id: referrer.id,
-      linked_user_id: userId,
-    });
-  }
-
-  return isPartner ? 'partner' : 'customer';
-}
-
 export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isLoading, setIsLoading] = useState(false);
@@ -335,13 +262,13 @@ export default function Auth() {
       const email = user.email || '';
       const name = profile.full_name || user.user_metadata?.full_name || email;
 
-      linkReferralUser(user.id, email, name, refParam, roleParam).then(async (result) => {
+      linkReferral(user.id, email, name, refParam, roleParam).then(async (result) => {
         sessionStorage.removeItem('partner_ref');
         sessionStorage.removeItem('partner_ref_role');
-        if (result) {
+        if (result.success) {
           await refreshProfile();
-          toast({ title: 'Welcome!', description: result === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
-          navigate(result === 'partner' ? '/partner' : '/store', { replace: true });
+          toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
+          navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
           navigate('/onboarding', { replace: true });
         }
@@ -356,8 +283,7 @@ export default function Auth() {
       } else {
         // Persist referral params so onboarding fallback can pick them up
         if (refParam) {
-          sessionStorage.setItem('partner_ref', refParam);
-          sessionStorage.setItem('partner_ref_role', roleParam);
+          storeSessionReferral(refParam, roleParam);
         }
         navigate('/onboarding', { replace: true });
       }
@@ -409,17 +335,16 @@ export default function Auth() {
 
     // If referral param exists, try to link immediately
     if (refParam) {
-      // Get the just-created user
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
-        const result = await linkReferralUser(newUser.id, data.email, data.fullName, refParam, roleParam);
+        const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam);
         sessionStorage.removeItem('partner_ref');
         sessionStorage.removeItem('partner_ref_role');
-        if (result) {
+        if (result.success) {
           await refreshProfile();
           setIsLoading(false);
-          toast({ title: 'Welcome!', description: result === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
-          navigate(result === 'partner' ? '/partner' : '/store', { replace: true });
+          toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
+          navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
           return;
         }
       }
@@ -465,8 +390,7 @@ export default function Auth() {
     setIsGoogleLoading(true);
     // Persist referral params across OAuth redirect
     if (refParam) {
-      sessionStorage.setItem('partner_ref', refParam);
-      sessionStorage.setItem('partner_ref_role', roleParam);
+      storeSessionReferral(refParam, roleParam);
     }
     // If referral, redirect back to /auth so the linking logic runs
     const redirectPath = refParam ? '/#/auth' : '/';

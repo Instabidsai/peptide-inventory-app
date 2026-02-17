@@ -11,79 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Building2 } from 'lucide-react';
+import { linkReferral, consumeSessionReferral } from '@/lib/link-referral';
 
 const onboardingSchema = z.object({
   organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
 });
 
 type OnboardingFormData = z.infer<typeof onboardingSchema>;
-
-/**
- * Link user to a partner's org via referral stored in sessionStorage.
- * This is a fallback for Google OAuth where the redirect skips /auth.
- */
-async function handleReferralLinking(
-  userId: string,
-  email: string,
-  fullName: string,
-  referrerProfileId: string,
-  role: 'customer' | 'partner',
-) {
-  const { data: referrer } = await supabase
-    .from('profiles')
-    .select('id, org_id')
-    .eq('id', referrerProfileId)
-    .maybeSingle();
-
-  if (!referrer?.org_id) return null;
-
-  const isPartner = role === 'partner';
-  const appRole = isPartner ? 'sales_rep' : 'client';
-
-  const profileUpdate: Record<string, unknown> = {
-    org_id: referrer.org_id,
-    parent_rep_id: referrer.id,
-    role: appRole,
-  };
-  if (isPartner) {
-    profileUpdate.partner_tier = 'associate';
-    profileUpdate.commission_rate = 0.075;
-    profileUpdate.price_multiplier = 0.75;
-  }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update(profileUpdate)
-    .eq('user_id', userId);
-
-  if (error) return null;
-
-  await supabase.from('user_roles').upsert({
-    user_id: userId,
-    org_id: referrer.org_id,
-    role: appRole,
-  }, { onConflict: 'user_id,org_id' });
-
-  const { data: existing } = await supabase
-    .from('contacts')
-    .select('id')
-    .eq('linked_user_id', userId)
-    .eq('org_id', referrer.org_id)
-    .maybeSingle();
-
-  if (!existing) {
-    await supabase.from('contacts').insert({
-      name: fullName || email,
-      email,
-      type: isPartner ? 'partner' : 'customer',
-      org_id: referrer.org_id,
-      assigned_rep_id: referrer.id,
-      linked_user_id: userId,
-    });
-  }
-
-  return isPartner ? 'partner' : 'customer';
-}
 
 export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
@@ -98,41 +32,45 @@ export default function Onboarding() {
     defaultValues: { organizationName: '' },
   });
 
-  // Redirect if user already has an org
-  if (profile?.org_id) {
-    navigate('/', { replace: true });
-    return null;
-  }
-
-  // Check for referral in sessionStorage (Google OAuth fallback)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // Check for referral in sessionStorage (Google OAuth fallback + Auth.tsx redirect)
   useEffect(() => {
-    const refId = sessionStorage.getItem('partner_ref');
-    if (!refId || !user || linkAttempted.current) return;
+    if (!user || linkAttempted.current) return;
+
+    // Already has an org — go to the app
+    if (profile?.org_id) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const ref = consumeSessionReferral();
+    if (!ref) return;
 
     linkAttempted.current = true;
     setIsLinking(true);
 
-    const role = (sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
     const email = user.email || '';
     const name = profile?.full_name || user.user_metadata?.full_name || email;
 
-    handleReferralLinking(user.id, email, name, refId, role).then(async (result) => {
-      sessionStorage.removeItem('partner_ref');
-      sessionStorage.removeItem('partner_ref_role');
-
-      if (result) {
+    linkReferral(user.id, email, name, ref.refId, ref.role).then(async (result) => {
+      if (result.success) {
         await refreshProfile();
         toast({
           title: 'Welcome!',
-          description: result === 'partner' ? 'Your partner account is ready!' : 'Your account has been connected.',
+          description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been connected.',
         });
-        navigate(result === 'partner' ? '/partner' : '/store', { replace: true });
+        navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
       } else {
         setIsLinking(false);
       }
     });
-  }, [user]);
+  }, [user, profile]);
+
+  // Redirect if user already has an org (covers non-referral case)
+  useEffect(() => {
+    if (profile?.org_id) {
+      navigate('/', { replace: true });
+    }
+  }, [profile, navigate]);
 
   // Show loading while auto-linking via referral
   if (isLinking) {
