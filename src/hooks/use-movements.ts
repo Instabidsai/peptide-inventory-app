@@ -387,7 +387,7 @@ export function useCreateMovement() {
 
           if (inventoryError) {
             console.error('Failed to populate client_inventory:', inventoryError);
-            // Don't throw - allow movement to succeed even if inventory population fails
+            toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but client inventory update failed.' });
           }
         }
       }
@@ -432,6 +432,7 @@ export function useCreateMovement() {
 
             if (soErr) {
               console.error('Failed to create sales_order:', soErr);
+              toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but sales order creation failed.' });
             } else if (salesOrder) {
               // Delegate commission calculation to the revenue-based RPC
               const { error: rpcErr } = await supabase.rpc('process_sale_commission', {
@@ -441,8 +442,8 @@ export function useCreateMovement() {
             }
           }
         } catch (commErr) {
-          // Don't block the movement if commission fails
           console.error('Auto-commission failed (non-blocking):', commErr);
+          toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but commission processing failed.' });
         }
       }
 
@@ -502,7 +503,10 @@ export function useDeleteMovement() {
         .from('client_inventory')
         .delete()
         .eq('movement_id', id);
-      if (invErr) console.error('Failed to cleanup client_inventory:', invErr);
+      if (invErr) {
+        console.error('Failed to cleanup client_inventory:', invErr);
+        toast({ variant: 'destructive', title: 'Warning', description: 'Movement deleted but client inventory cleanup failed.' });
+      }
 
       // 3. Reverse commissions if this was a sale
       if (movement?.type === 'sale' && movement?.contact_id) {
@@ -612,6 +616,7 @@ export function useDeleteMovement() {
           }
         } catch (commErr) {
           console.error('Commission reversal error (non-blocking):', commErr);
+          toast({ variant: 'destructive', title: 'Warning', description: 'Movement deleted but commission reversal failed.' });
         }
       }
 

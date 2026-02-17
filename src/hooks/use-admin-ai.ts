@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export type AdminMessage = {
   id: string;
@@ -12,6 +13,7 @@ export type AdminMessage = {
 
 export function useAdminAI() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [optimisticMessages, setOptimisticMessages] = useState<AdminMessage[]>([]);
 
@@ -93,13 +95,17 @@ export function useAdminAI() {
 
   const clearChat = useCallback(async () => {
     if (!user?.id) return;
-    await supabase
+    const { error } = await supabase
       .from('admin_chat_messages')
       .delete()
       .eq('user_id', user.id);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Failed to clear chat', description: error.message });
+      return;
+    }
     setOptimisticMessages([]);
     queryClient.invalidateQueries({ queryKey: ['admin-chat', user?.id] });
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, toast]);
 
   return {
     messages,
