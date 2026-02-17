@@ -66,7 +66,7 @@ export default function PartnerOrders() {
             (downline || []).forEach((d: any) => { if (d.full_name) repNames.set(d.id, d.full_name); });
 
             // 5. Fetch all orders for the network
-            const { data: orders, error } = await (supabase as any)
+            const { data: orders, error } = await supabase
                 .from('sales_orders')
                 .select(`
                     *,
@@ -116,7 +116,7 @@ export default function PartnerOrders() {
         queryKey: ['partner_order_commissions', myProfileId],
         queryFn: async () => {
             if (!myProfileId) return [];
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('commissions')
                 .select('id, sale_id, amount, type, status')
                 .eq('partner_id', myProfileId);

@@ -66,17 +66,17 @@ export default function PartnerDashboard() {
     const [newPerson, setNewPerson] = useState(EMPTY_PERSON);
     const createContact = useCreateContact();
 
-    const tier = (authProfile as any)?.partner_tier || 'standard';
+    const tier = authProfile?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
-    const commRate = Number((authProfile as any)?.commission_rate || 0) * 100;
-    const creditBalance = Number((authProfile as any)?.credit_balance || 0);
+    const commRate = Number(authProfile?.commission_rate || 0) * 100;
+    const creditBalance = Number(authProfile?.credit_balance || 0);
 
     // Compute actual discount % from price_multiplier
-    const priceMultiplier = Number((authProfile as any)?.price_multiplier || 1);
+    const priceMultiplier = Number(authProfile?.price_multiplier || 1);
     const discountPct = Math.round((1 - priceMultiplier) * 100);
 
     // Fetch clients assigned to all reps in the network
-    const myProfileId = (authProfile as any)?.id as string | undefined;
+    const myProfileId = authProfile?.id as string | undefined;
     const allRepIds = [
         ...(myProfileId ? [myProfileId] : []),
         ...(downline?.map(d => d.id) || [])
@@ -99,7 +99,7 @@ export default function PartnerDashboard() {
             if (!contact?.id) return [];
 
             // Fetch movements with items (just price_at_sale for totals)
-            const { data: movements, error } = await (supabase as any)
+            const { data: movements, error } = await supabase
                 .from('movements')
                 .select('id, created_at, amount_paid, payment_status, discount_amount, notes, movement_items(price_at_sale)')
                 .eq('contact_id', contact.id)
@@ -211,8 +211,8 @@ export default function PartnerDashboard() {
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
                         <Percent className="h-3 w-3 mr-1" />
-                        {(authProfile as any)?.pricing_mode === 'cost_plus'
-                            ? `Cost + $${Number((authProfile as any)?.cost_plus_markup || 0)}`
+                        {authProfile?.pricing_mode === 'cost_plus'
+                            ? `Cost + $${Number(authProfile?.cost_plus_markup || 0)}`
                             : `${discountPct}% off retail`
                         } · {commRate.toFixed(1)}% commission
                     </Badge>
@@ -390,7 +390,7 @@ export default function PartnerDashboard() {
                             </div>
                         ) : (downline && downline.length > 0) || (clients && clients.length > 0) ? (
                             <NetworkTree
-                                rootName={(authProfile as any)?.full_name || 'You'}
+                                rootName={authProfile?.full_name || 'You'}
                                 rootTier={tier}
                                 rootProfileId={myProfileId || null}
                                 partners={downline || []}
@@ -747,7 +747,7 @@ export default function PartnerDashboard() {
                                 value={newPerson.assignedTo}
                                 onChange={e => setNewPerson(p => ({ ...p, assignedTo: e.target.value }))}
                             >
-                                <option value="">Directly under me ({(authProfile as any)?.full_name || 'You'})</option>
+                                <option value="">Directly under me ({authProfile?.full_name || 'You'})</option>
                                 {downline && downline.length > 0 && (
                                     <optgroup label="Under a team partner">
                                         {downline.map(partner => (
@@ -922,7 +922,7 @@ function DownlineActivity({ downline }: { downline: PartnerNode[] }) {
             if (downlineIds.length === 0) return [];
 
             // Get recent orders from downline partners
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
                     id,

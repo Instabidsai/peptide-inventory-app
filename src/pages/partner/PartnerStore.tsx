@@ -71,7 +71,7 @@ export default function PartnerStore() {
         queryKey: ['partner_store_profile'],
         queryFn: async () => {
             if (!user?.id) return null;
-            const { data } = await (supabase as any)
+            const { data } = await supabase
                 .from('profiles')
                 .select('id, org_id, partner_tier, price_multiplier, commission_rate, full_name, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
@@ -86,7 +86,7 @@ export default function PartnerStore() {
         queryKey: ['partner_store_peptides'],
         queryFn: async () => {
             // Use select('*') and cast — generated types are stale and don't include retail_price
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('peptides')
                 .select('*')
                 .eq('active', true)
@@ -110,17 +110,17 @@ export default function PartnerStore() {
         },
     });
 
-    const priceMultiplier = Number((partnerProfile as any)?.price_multiplier) || 1.0;
-    const partnerTier = (partnerProfile as any)?.partner_tier || 'standard';
+    const priceMultiplier = Number(partnerProfile?.price_multiplier) || 1.0;
+    const partnerTier = partnerProfile?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[partnerTier] || TIER_INFO.standard;
-    const pricingMode = (partnerProfile as any)?.pricing_mode || 'percentage';
-    const costPlusMarkup = Number((partnerProfile as any)?.cost_plus_markup) || 0;
+    const pricingMode = partnerProfile?.pricing_mode || 'percentage';
+    const costPlusMarkup = Number(partnerProfile?.cost_plus_markup) || 0;
 
     // Fetch avg lot costs for cost_plus pricing
     const { data: lotCosts } = useQuery({
         queryKey: ['partner_lot_costs'],
         queryFn: async () => {
-            const { data: lots } = await (supabase as any)
+            const { data: lots } = await supabase
                 .from('lots')
                 .select('peptide_id, cost_per_unit')
                 .gt('cost_per_unit', 0);
@@ -197,16 +197,16 @@ export default function PartnerStore() {
     // Card checkout — existing PsiFi flow
     const handleCardCheckout = () => {
         if (!partnerProfile) return;
-        const orgId = (partnerProfile as any).org_id;
+        const orgId = partnerProfile!.org_id;
         if (!orgId) return;
 
         checkout.mutate({
             org_id: orgId,
             client_id: null,
-            rep_id: (partnerProfile as any).id,
+            rep_id: partnerProfile!.id,
             total_amount: cartTotal,
             shipping_address: shippingAddress || undefined,
-            notes: `PARTNER SELF-ORDER (${partnerTier}) — ${(partnerProfile as any).full_name || 'Unknown'}.\n${notes}`,
+            notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}.\n${notes}`,
             items: cart.map(i => ({
                 peptide_id: i.peptide_id,
                 name: i.name,
@@ -225,14 +225,14 @@ export default function PartnerStore() {
 
         try {
             await createOrder.mutateAsync({
-                client_id: (partnerProfile as any).id,
+                client_id: partnerProfile!.id,
                 items: cart.map(i => ({
                     peptide_id: i.peptide_id,
                     quantity: i.quantity,
                     unit_price: i.yourPrice,
                 })),
                 shipping_address: shippingAddress || undefined,
-                notes: `PARTNER SELF-ORDER (${partnerTier}) — ${(partnerProfile as any).full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
+                notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
                 payment_method: paymentMethod,
             });
             setOrderPlaced(true);
@@ -320,7 +320,7 @@ export default function PartnerStore() {
                         return (
                         <div className="grid gap-4 sm:grid-cols-2">
                             {filtered.filter(p => Number(p.retail_price || 0) > 0).map(peptide => {
-                                const retail = Number((peptide as any).retail_price || 0);
+                                const retail = Number(peptide.retail_price || 0);
                                 const yourPrice = getPartnerPrice(peptide);
                                 const savings = retail - yourPrice;
                                 const inCart = cart.find(i => i.peptide_id === peptide.id);

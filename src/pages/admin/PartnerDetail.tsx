@@ -221,7 +221,7 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
     const { data: orders, isLoading } = useQuery({
         queryKey: ['partner_sales_orders', repId],
         queryFn: async () => {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
                     id, created_at, status, payment_status, total_amount,

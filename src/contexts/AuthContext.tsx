@@ -14,6 +14,11 @@ interface Profile {
   overhead_per_unit: number;
   credit_balance?: number;
   partner_tier?: string;
+  commission_rate?: number;
+  price_multiplier?: number;
+  pricing_mode?: string;
+  cost_plus_markup?: number;
+  parent_rep_id?: string | null;
 }
 
 interface UserRole {

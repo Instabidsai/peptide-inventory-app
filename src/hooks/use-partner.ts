@@ -70,8 +70,7 @@ export function useCommissions() {
 
             if (!profile?.id) return [];
 
-            // TODO: Generate Supabase types to remove this cast
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('commissions')
                 .select(`
                     *,
