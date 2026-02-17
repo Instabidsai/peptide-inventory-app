@@ -16,7 +16,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -106,22 +106,27 @@ export default function NewOrder() {
     };
 
     // Helper to generate Pricing Tiers
-    const getPricingTiers = (peptide: Peptide, baseCost: number) => {
+    const getPricingTiers = (peptide: Peptide, baseCost: number, isPartner: boolean = false) => {
         const retail = peptide.retail_price || 0;
+        // Raw avg cost (before any rep multiplier) — for Partner tier
+        const rawAvgCost = (peptide.avg_cost && peptide.avg_cost > 0) ? peptide.avg_cost : baseCost;
+        const partnerPrice = Math.round(rawAvgCost * 2 * 100) / 100;
 
         // Define Tiers
         const tiers = [
             { label: 'Cost', price: baseCost, commRate: 0.00, variant: 'outline' as const },
+            // Partner tier: 2x raw avg cost, 0% commission — only shown for partner contacts
+            ...(isPartner ? [{ label: 'Partner', price: partnerPrice, commRate: 0.00, variant: 'outline' as const }] : []),
             { label: '2x', price: baseCost * 2, commRate: 0.05, variant: 'secondary' as const },
             { label: '3x', price: baseCost * 3, commRate: 0.10, variant: 'secondary' as const },
             { label: 'MSRP', price: retail, commRate: 0.15, variant: 'default' as const },
         ];
 
-        // Filter: Hide any tier where Price > MSRP (unless it IS the MSRP tier)
+        // Filter: Hide any tier where Price > MSRP (unless it IS the MSRP tier or Partner)
         // Also ensure MSRP > 0 to show it
         return tiers.filter(t => {
             if (t.label === 'MSRP') return retail > 0;
-            // If 3x breaks MSRP, hide it. 
+            if (t.label === 'Partner') return true; // always show partner tier when present
             if (retail > 0 && t.price > retail) return false;
             return true;
         });
@@ -145,10 +150,11 @@ export default function NewOrder() {
                         if (prev.some(i => i.peptide.id === peptideId)) return prev;
 
                         const baseCost = getBaseCost(peptide, activeProfile);
-                        // Default to MSRP for prefill? Or Cost? Let's use MSRP logic if safer, or just Cost if Admin request?
-                        // Admin prefill usually implies "Send this to client". Let's default to MSRP (15%).
-                        const tiers = getPricingTiers(peptide, baseCost);
-                        const msrpTier = tiers.find(t => t.label === 'MSRP') || tiers[0];
+                        const prefillIsPartner = contacts?.find(c => c.email?.toLowerCase() === email?.toLowerCase())?.type === 'partner';
+                        const tiers = getPricingTiers(peptide, baseCost, prefillIsPartner);
+                        const msrpTier = prefillIsPartner
+                            ? (tiers.find(t => t.label === 'Partner') || tiers[0])
+                            : (tiers.find(t => t.label === 'MSRP') || tiers[0]);
 
                         return [{
                             peptide,
@@ -173,14 +179,29 @@ export default function NewOrder() {
     );
 
     const selectedContact = contacts?.find(c => c.id === selectedContactId);
+    const isPartnerOrder = selectedContact?.type === 'partner';
+
+    // Auto-apply Partner pricing when a partner contact is selected
+    useEffect(() => {
+        if (isPartnerOrder && cart.length > 0) {
+            setCart(prev => prev.map(item => {
+                const rawAvgCost = (item.peptide.avg_cost && item.peptide.avg_cost > 0)
+                    ? item.peptide.avg_cost
+                    : item.basePrice;
+                const partnerPrice = Math.round(rawAvgCost * 2 * 100) / 100;
+                return { ...item, unitPrice: partnerPrice, commissionRate: 0 };
+            }));
+        }
+    }, [isPartnerOrder]);
 
     // Handle adding to cart
     const addToCart = (peptide: Peptide) => {
         const baseCost = getBaseCost(peptide, activeProfile);
-        const tiers = getPricingTiers(peptide, baseCost);
-        // Default to MSRP if available, else highest tier?
-        // User wants to start high.
-        const defaultTier = tiers.find(t => t.label === 'MSRP') || tiers[tiers.length - 1];
+        const tiers = getPricingTiers(peptide, baseCost, isPartnerOrder);
+        // Partners default to Partner tier; others default to MSRP
+        const defaultTier = isPartnerOrder
+            ? (tiers.find(t => t.label === 'Partner') || tiers[0])
+            : (tiers.find(t => t.label === 'MSRP') || tiers[tiers.length - 1]);
 
         setCart(prev => {
             const existing = prev.find(item => item.peptide.id === peptide.id);
@@ -280,8 +301,10 @@ export default function NewOrder() {
                         const inCart = cart.find(i => i.peptide.id === peptide.id);
                         const stock = peptide.stock_count || 0;
                         const baseCost = getBaseCost(peptide, activeProfile);
-                        const tiers = getPricingTiers(peptide, baseCost);
-                        const defaultPrice = tiers.find(t => t.label === 'MSRP')?.price || tiers[tiers.length - 1].price;
+                        const tiers = getPricingTiers(peptide, baseCost, isPartnerOrder);
+                        const defaultPrice = isPartnerOrder
+                            ? (tiers.find(t => t.label === 'Partner')?.price || tiers[0].price)
+                            : (tiers.find(t => t.label === 'MSRP')?.price || tiers[tiers.length - 1].price);
 
                         return (
                             <Card key={peptide.id} className={`cursor-pointer transition-all hover:border-primary ${inCart ? 'border-primary bg-primary/5' : ''}`} onClick={() => addToCart(peptide)}>
@@ -352,6 +375,15 @@ export default function NewOrder() {
                                 {selectedContact.address || "No address on file"}
                             </div>
                         )}
+                        {isPartnerOrder && (
+                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-violet-500/10 border border-violet-500/30">
+                                <Users className="h-4 w-4 text-violet-400 shrink-0" />
+                                <div>
+                                    <p className="text-xs font-semibold text-violet-400">Partner Pricing Active</p>
+                                    <p className="text-[10px] text-violet-400/70">All items set to 2x cost (avg cost × 2)</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <Separator />
@@ -412,7 +444,7 @@ export default function NewOrder() {
                             </div>
                         ) : (
                             cart.map(item => {
-                                const tiers = getPricingTiers(item.peptide, item.basePrice);
+                                const tiers = getPricingTiers(item.peptide, item.basePrice, isPartnerOrder);
 
                                 return (
                                     <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-card">
@@ -468,8 +500,14 @@ export default function NewOrder() {
                                             {tiers.map(tier => (
                                                 <Badge
                                                     key={tier.label}
-                                                    variant={tier.variant} // outline for Cost, secondary for 2x/3x, default for MSRP
-                                                    className={`cursor-pointer transition-colors ${item.unitPrice === tier.price ? 'ring-2 ring-primary ring-offset-1' : 'hover:bg-muted'}`}
+                                                    variant={tier.label === 'Partner' ? 'default' : tier.variant}
+                                                    className={cn(
+                                                        "cursor-pointer transition-colors",
+                                                        item.unitPrice === tier.price
+                                                            ? 'ring-2 ring-primary ring-offset-1'
+                                                            : 'hover:bg-muted',
+                                                        tier.label === 'Partner' && 'bg-violet-600 hover:bg-violet-700 text-white'
+                                                    )}
                                                     onClick={() => updatePrice(item.peptide.id, tier.price, tier.commRate)}
                                                 >
                                                     {tier.label}: ${tier.price.toFixed(0)}

@@ -115,7 +115,7 @@ export default function PartnerStore() {
     const pricingMode = partnerProfile?.pricing_mode || 'percentage';
     const costPlusMarkup = Number(partnerProfile?.cost_plus_markup) || 0;
 
-    // Fetch avg lot costs for cost_plus pricing
+    // Fetch avg lot costs — always needed for Partner 2x cost pricing
     const { data: lotCosts } = useQuery({
         queryKey: ['partner_lot_costs'],
         queryFn: async () => {
@@ -137,20 +137,17 @@ export default function PartnerStore() {
             });
             return result;
         },
-        enabled: pricingMode === 'cost_plus',
     });
 
-    // Calculate partner price based on pricing mode
+    // Partner price = 2x avg cost (hard-coded for all partners)
     const getPartnerPrice = (peptide: { id: string; retail_price?: number | null }): number => {
-        if (pricingMode === 'cost_plus' && lotCosts) {
-            const avgCost = lotCosts[peptide.id] || 0;
-            if (avgCost > 0) {
-                return Math.round((avgCost + costPlusMarkup) * 100) / 100;
-            }
-            // Fallback to percentage if no lot cost data
+        const avgCost = lotCosts?.[peptide.id] || 0;
+        if (avgCost > 0) {
+            return Math.round(avgCost * 2 * 100) / 100;
         }
+        // Fallback: if no lot cost data, use retail × 0.4 as rough estimate
         const retail = Number(peptide.retail_price || 0);
-        return Math.round(retail * priceMultiplier * 100) / 100;
+        return Math.round(retail * 0.4 * 100) / 100;
     };
 
     const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
@@ -270,10 +267,7 @@ export default function PartnerStore() {
                     </Badge>
                     <Badge variant="secondary" className="text-sm px-3 py-1">
                         <Percent className="h-3 w-3 mr-1" />
-                        {pricingMode === 'cost_plus'
-                            ? `Cost + $${costPlusMarkup}`
-                            : `${Math.round((1 - priceMultiplier) * 100)}% off retail`
-                        }
+                        2x Cost Pricing
                     </Badge>
                 </div>
             </div>
@@ -652,10 +646,7 @@ export default function PartnerStore() {
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 As a <span className={tierInfo.color}>{partnerTier}</span> partner, you get
-                                <span className="font-semibold"> {pricingMode === 'cost_plus'
-                                    ? `cost + $${costPlusMarkup} pricing`
-                                    : `${Math.round((1 - priceMultiplier) * 100)}% off`
-                                }</span> all items.
+                                <span className="font-semibold"> 2x cost pricing</span> on all items — that's double our average cost, well below retail.
                             </p>
                         </CardContent>
                     </Card>
