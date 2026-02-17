@@ -236,6 +236,9 @@ export default function PartnerStore() {
                 payment_method: paymentMethod,
             });
             setOrderPlaced(true);
+            setCart([]);
+            setNotes('');
+            setShippingAddress('');
             toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Order failed', description: err.message });

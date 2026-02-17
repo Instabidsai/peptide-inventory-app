@@ -48,6 +48,7 @@ const pages = [
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, group: 'Navigate', adminOnly: true },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, group: 'Navigate', adminOnly: true },
   { name: 'Resources', href: '/admin-resources', icon: BookOpen, group: 'Navigate' },
+  { name: 'Fulfillment Center', href: '/fulfillment', icon: ClipboardList, group: 'Navigate' },
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, group: 'Navigate' },
   { name: 'Settings', href: '/settings', icon: Settings, group: 'Navigate' },
   { name: 'Partner Portal', href: '/partner', icon: Network, group: 'Navigate' },
@@ -164,7 +165,7 @@ export function CommandPalette() {
             <CommandSeparator />
             <CommandGroup heading="Contacts">
               {contacts.map(c => (
-                <CommandItem key={c.id} onSelect={() => handleSelect(`/contacts/${c.id}`)}>
+                <CommandItem key={c.id} value={`${c.name} ${c.email || ''}`} onSelect={() => handleSelect(`/contacts/${c.id}`)}>
                   <Users className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>{c.name}</span>
                   {c.email && <CommandShortcut>{c.email}</CommandShortcut>}

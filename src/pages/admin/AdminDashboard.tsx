@@ -41,7 +41,14 @@ const staggerItem = {
 
 export default function AdminDashboard() {
     const { organization } = useAuth();
-    const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>('operations');
+    const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>(() => {
+        const saved = localStorage.getItem('dashboard_view_mode');
+        return saved === 'investment' ? 'investment' : 'operations';
+    });
+    const handleSetViewMode = (mode: 'operations' | 'investment') => {
+        setViewMode(mode);
+        localStorage.setItem('dashboard_view_mode', mode);
+    };
 
     const { data: stats, isLoading: statsLoading } = useBottleStats();
     const { data: movements, isLoading: movementsLoading } = useMovements();
@@ -147,14 +154,14 @@ export default function AdminDashboard() {
             {/* Financial View Toggle */}
             <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg w-fit border border-border/50">
                 <button
-                    onClick={() => setViewMode('operations')}
+                    onClick={() => handleSetViewMode('operations')}
                     className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${isOps ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     Operations View
                 </button>
                 <button
-                    onClick={() => setViewMode('investment')}
+                    onClick={() => handleSetViewMode('investment')}
                     className={`px-3 py-1.5 text-sm font-medium rounded-sm transition-all ${!isOps ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >

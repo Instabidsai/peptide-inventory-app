@@ -45,6 +45,7 @@ export default function OrderList() {
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
     const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [filterShipping, setFilterShipping] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
@@ -59,6 +60,7 @@ export default function OrderList() {
     const orders = rawOrders
         ?.filter(o => filterSource === 'all' || (o.order_source || 'app') === filterSource)
         ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment)
+        ?.filter(o => filterShipping === 'all' || (o.shipping_status || 'none') === filterShipping)
         ?.filter(o => {
             if (!searchQuery) return true;
             const q = searchQuery.toLowerCase();
@@ -81,13 +83,16 @@ export default function OrderList() {
 
     const exportCSV = () => {
         if (!orders || orders.length === 0) return;
-        const headers = ['Date', 'Client', 'Source', 'Status', 'Payment', 'Total', 'COGS', 'Shipping', 'Commission', 'Fee', 'Profit'];
+        const headers = ['Date', 'Client', 'Source', 'Status', 'Payment', 'ShipStatus', 'Carrier', 'Tracking', 'Total', 'COGS', 'Shipping', 'Commission', 'Fee', 'Profit'];
         const rows = orders.map(o => [
             format(new Date(o.created_at), 'yyyy-MM-dd'),
             (o.contacts?.name || '').replace(/,/g, ''),
             o.order_source || 'app',
             o.status,
             o.payment_status,
+            o.shipping_status || '',
+            (o.carrier || '').replace(/,/g, ''),
+            (o.tracking_number || '').replace(/,/g, ''),
             (o.total_amount || 0).toFixed(2),
             (o.cogs_amount || 0).toFixed(2),
             (o.shipping_cost || 0).toFixed(2),
@@ -187,6 +192,21 @@ export default function OrderList() {
                         <SelectItem value="partial">Partial</SelectItem>
                     </SelectContent>
                 </Select>
+                <Select value={filterShipping} onValueChange={(v: any) => setFilterShipping(v)}>
+                    <SelectTrigger className="w-[170px]">
+                        <SelectValue placeholder="Shipping" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Shipping</SelectItem>
+                        <SelectItem value="none">No Label</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="label_created">Label Created</SelectItem>
+                        <SelectItem value="printed">Printed</SelectItem>
+                        <SelectItem value="in_transit">In Transit</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="error">Error</SelectItem>
+                    </SelectContent>
+                </Select>
                 {!isRep && (
                     <Select value={filterSource} onValueChange={(v: any) => setFilterSource(v)}>
                         <SelectTrigger className="w-[180px]">
@@ -272,7 +292,7 @@ export default function OrderList() {
                         <TableBody>
                             {orders && orders.length > 0 ? (
                                 orders.map((order, index) => (
-                                    <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                                    <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" onClick={() => navigate(`/sales/${order.id}`)}>
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
                                             {order.order_source === 'woocommerce' && (
@@ -393,7 +413,7 @@ export default function OrderList() {
                                             <Truck className="mx-auto h-10 w-10 mb-3 opacity-50" />
                                             <p className="text-lg font-medium">No orders found</p>
                                             <p className="text-sm mt-1">
-                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || searchQuery
+                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all' || searchQuery
                                                     ? 'Try adjusting your filters or search'
                                                     : 'Create your first sales order to get started'}
                                             </p>
@@ -411,7 +431,7 @@ export default function OrderList() {
                                     <TableRow className="bg-muted/50 font-semibold">
                                         <TableCell colSpan={isRep ? 5 : 6} className="text-xs text-muted-foreground">
                                             {orders.length} order{orders.length !== 1 ? 's' : ''}
-                                            {(filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all') && ' (filtered)'}
+                                            {(filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all') && ' (filtered)'}
                                         </TableCell>
                                         <TableCell />
                                         <TableCell className="text-right">

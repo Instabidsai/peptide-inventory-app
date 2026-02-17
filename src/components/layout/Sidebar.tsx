@@ -12,7 +12,8 @@ import {
   DollarSign,
   PieChart,
   Network,
-  Wand2
+  Wand2,
+  Leaf
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -32,7 +33,7 @@ const navigation = [
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package, roles: ['admin', 'staff'] },
   { name: 'Bottles', href: '/bottles', icon: Pill, roles: ['admin', 'staff'] },
-  { name: 'Supplements', href: '/admin/supplements', icon: FlaskConical, roles: ['admin', 'staff'] },
+  { name: 'Supplements', href: '/admin/supplements', icon: Leaf, roles: ['admin', 'staff'] },
   { name: 'Contacts', href: '/contacts', icon: Users, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Protocols', href: '/protocols', icon: FileText, roles: ['admin', 'staff'] },
   { name: 'Protocol Builder', href: '/protocol-builder', icon: Wand2, roles: ['admin', 'staff'] },

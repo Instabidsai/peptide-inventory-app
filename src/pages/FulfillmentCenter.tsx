@@ -32,6 +32,15 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+function getTrackingUrl(carrier: string | null | undefined, trackingNumber: string): string {
+    const c = (carrier || '').toUpperCase();
+    if (c.includes('USPS')) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+    if (c.includes('UPS')) return `https://www.ups.com/track?tracknum=${trackingNumber}`;
+    if (c.includes('FEDEX')) return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+    if (c.includes('DHL')) return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${trackingNumber}`;
+    return `https://parcelsapp.com/en/tracking/${trackingNumber}`;
+}
+
 export default function FulfillmentCenter() {
     const { data: allOrders, isLoading } = useSalesOrders();
     const fulfillOrder = useFulfillOrder();
@@ -744,9 +753,14 @@ export default function FulfillmentCenter() {
                                                 <div className="bg-muted/30 p-3 rounded-lg space-y-1">
                                                     <p className="text-xs text-muted-foreground">Tracking Number</p>
                                                     <div className="flex items-center gap-2">
-                                                        <code className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1">
+                                                        <a
+                                                            href={getTrackingUrl(order.carrier, order.tracking_number)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                                                        >
                                                             {order.tracking_number}
-                                                        </code>
+                                                        </a>
                                                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
                                                             onClick={() => {
                                                                 navigator.clipboard.writeText(order.tracking_number!);
@@ -1033,11 +1047,16 @@ export default function FulfillmentCenter() {
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     {order.tracking_number && (
                                                         <div className="flex items-center gap-1">
-                                                            <code className="text-xs font-mono text-muted-foreground">
+                                                            <a
+                                                                href={getTrackingUrl(order.carrier, order.tracking_number)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs font-mono text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                                                            >
                                                                 {order.tracking_number.length > 18
                                                                     ? `${order.tracking_number.slice(0, 18)}...`
                                                                     : order.tracking_number}
-                                                            </code>
+                                                            </a>
                                                             <Button variant="ghost" size="icon" className="h-6 w-6"
                                                                 onClick={() => {
                                                                     navigator.clipboard.writeText(order.tracking_number!);

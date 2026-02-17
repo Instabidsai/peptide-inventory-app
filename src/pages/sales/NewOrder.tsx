@@ -438,10 +438,14 @@ export default function NewOrder() {
                                                         min="0"
                                                         step="0.01"
                                                         value={item.unitPrice}
-                                                        onChange={(e) => updatePrice(item.peptide.id, parseFloat(e.target.value) || 0, 0)} // Manual edit resets comm? Or simplistic logic?
-                                                        // Let's force badge use for commission. Manual = 0% fallback? 
-                                                        // No, let's keep it simple. If they edit price manually, pass 0 commission or last known?
-                                                        // Pass 0 to be safe for admin.
+                                                        onChange={(e) => {
+                                                            const newPrice = parseFloat(e.target.value) || 0;
+                                                            // Find closest tier to preserve commission rate
+                                                            const closestTier = tiers.reduce((best, t) =>
+                                                                Math.abs(t.price - newPrice) < Math.abs(best.price - newPrice) ? t : best
+                                                            , tiers[0]);
+                                                            updatePrice(item.peptide.id, newPrice, closestTier.commRate);
+                                                        }}
                                                         className="pl-5 h-8 text-right"
                                                         placeholder="Price"
                                                     />
