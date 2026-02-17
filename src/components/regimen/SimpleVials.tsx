@@ -58,40 +58,63 @@ function UnmixedCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; 
                     <p className="font-semibold text-[15px] tracking-tight">{vial.peptide?.name || 'Unknown'}</p>
                     <p className="text-xs text-muted-foreground/70 mt-0.5">{vial.vial_size_mg}mg vial</p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    {knowledge?.warningText && (
-                        <AlertTriangle className="h-4 w-4 text-amber-400" />
-                    )}
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                        <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        <span className="text-[11px] font-medium text-amber-400">Unmixed</span>
-                    </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-[11px] font-medium text-amber-400">Unmixed</span>
                 </div>
             </div>
 
+            {/* Peptide description */}
+            {knowledge?.description && (
+                <p className="text-[12px] text-muted-foreground/50 leading-relaxed line-clamp-2">{knowledge.description}</p>
+            )}
+
+            {/* Warning (always visible — safety-critical) */}
+            {knowledge?.warningText && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/[0.06] border border-amber-500/15">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+                    <span className="text-[12px] text-amber-400/80">{knowledge.warningText}</span>
+                </div>
+            )}
+
             <div className="space-y-2.5">
-                {/* Recommended water hint from knowledge base */}
-                {knowledge?.reconstitutionMl && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
-                        <Beaker className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                        <span className="text-[12px] text-blue-400">
-                            Recommended: <strong>{knowledge.reconstitutionMl} mL</strong> BAC water
-                        </span>
+                {/* Quick-fill + input row */}
+                {knowledge?.reconstitutionMl ? (
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                            <Input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                placeholder="mL water"
+                                value={waterMl}
+                                onChange={e => setWaterMl(e.target.value)}
+                                className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="h-11 px-3 rounded-xl text-xs border-blue-500/20 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 shrink-0"
+                            onClick={() => setWaterMl(String(knowledge.reconstitutionMl))}
+                        >
+                            Use {knowledge.reconstitutionMl} mL
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="relative">
+                        <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                        <Input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            placeholder="Bacteriostatic water (mL)"
+                            value={waterMl}
+                            onChange={e => setWaterMl(e.target.value)}
+                            className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
+                        />
                     </div>
                 )}
-
-                <div className="relative">
-                    <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                    <Input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        placeholder={knowledge?.reconstitutionMl ? `${knowledge.reconstitutionMl} mL (recommended)` : 'Bacteriostatic water (ml)'}
-                        value={waterMl}
-                        onChange={e => setWaterMl(e.target.value)}
-                        className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
-                    />
-                </div>
 
                 {concentration > 0 && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15">
@@ -224,32 +247,59 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                 </div>
             </div>
 
+            {/* Peptide description */}
+            {knowledge?.description && (
+                <p className="text-[12px] text-muted-foreground/50 leading-relaxed line-clamp-2">{knowledge.description}</p>
+            )}
+
             {/* Dosing Tier Selector */}
             {tiers.length > 0 && (
-                <div className="space-y-2 animate-fade-in">
-                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Protocol tier</label>
-                    <div className="flex flex-wrap gap-1.5">
-                        {tiers.map(tier => (
-                            <button
-                                key={tier.id}
-                                type="button"
-                                onClick={() => applyTier(tier)}
-                                className={cn(
-                                    "px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-200 border",
-                                    selectedTierId === tier.id
-                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
-                                        : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground/80"
-                                )}
-                            >
-                                {tier.label}
-                            </button>
-                        ))}
+                <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Quick start — pick a protocol</label>
+                    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, 1fr)` }}>
+                        {tiers.map(tier => {
+                            const tierMg = tier.doseUnit === 'mcg' ? tier.doseAmount / 1000 : tier.doseAmount;
+                            const unitLabel = tier.doseUnit === 'iu' ? 'IU' : 'mg';
+                            const doseDisplay = tier.doseUnit === 'iu' ? `${tier.doseAmount} ${unitLabel}` : `${tierMg} ${unitLabel}`;
+                            return (
+                                <button
+                                    key={tier.id}
+                                    type="button"
+                                    onClick={() => applyTier(tier)}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-center transition-all duration-200 border",
+                                        selectedTierId === tier.id
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
+                                            : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground/80"
+                                    )}
+                                >
+                                    <span className="text-[12px] font-semibold">{tier.label.replace(' Protocol', '').replace(' Start', '')}</span>
+                                    <span className="text-[10px] opacity-70">{doseDisplay}</span>
+                                </button>
+                            );
+                        })}
                     </div>
-                    {selectedTierId && tiers.find(t => t.id === selectedTierId)?.cyclePattern && (
-                        <p className="text-[11px] text-muted-foreground/50 pl-1">
-                            Cycle: {tiers.find(t => t.id === selectedTierId)!.cyclePattern}
-                        </p>
-                    )}
+                    {/* Selected tier context */}
+                    {selectedTierId && (() => {
+                        const tier = tiers.find(t => t.id === selectedTierId);
+                        if (!tier) return null;
+                        return (
+                            <div className="space-y-1 animate-fade-in">
+                                {tier.cyclePattern && (
+                                    <p className="text-[11px] text-muted-foreground/50 pl-1">
+                                        Cycle: {tier.cyclePattern}
+                                    </p>
+                                )}
+                                {tier.notes && (
+                                    <p className="text-[11px] text-blue-400/60 pl-1">
+                                        {tier.notes}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    <div className="h-px bg-white/[0.04]" />
                 </div>
             )}
 
@@ -433,7 +483,10 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
         return Math.abs(tierMg - doseMg) < 0.01;
     });
 
-    const hasProtocolInfo = knowledge && (knowledge.description || knowledge.warningText || knowledge.supplementNotes?.length || knowledge.cyclePattern || knowledge.dosageSchedule);
+    // Dose count estimation
+    const dosesRemaining = doseMg > 0 ? Math.floor(vial.current_quantity_mg / doseMg) : null;
+
+    const hasProtocolInfo = knowledge && (knowledge.description || knowledge.supplementNotes?.length || knowledge.cyclePattern || knowledge.dosageSchedule);
 
     return (
         <div className={cn(
@@ -481,6 +534,11 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                 <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground/60 font-medium">
                         {Number(vial.current_quantity_mg).toFixed(1)}mg remaining
+                        {dosesRemaining !== null && dosesRemaining > 0 && (
+                            <span className="text-muted-foreground/40 ml-1">
+                                ({dosesRemaining} dose{dosesRemaining !== 1 ? 's' : ''} left)
+                            </span>
+                        )}
                     </span>
                     <span className={cn(
                         "font-semibold",
@@ -510,6 +568,14 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                 </div>
             )}
 
+            {/* Warning (always visible — safety-critical, never hidden) */}
+            {knowledge?.warningText && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/[0.06] border border-amber-500/15">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+                    <span className="text-[12px] text-amber-400/80">{knowledge.warningText}</span>
+                </div>
+            )}
+
             {/* Low stock warning */}
             {isLow && (
                 <button
@@ -526,25 +592,17 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                 <div>
                     <button
                         onClick={() => setInfoOpen(!infoOpen)}
-                        className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[12px] text-muted-foreground/50 hover:bg-white/[0.05] hover:text-muted-foreground/70 transition-all"
                     >
-                        <Info className="h-3 w-3" />
-                        Protocol Info
-                        {infoOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        <Info className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1 text-left font-medium">Protocol Details</span>
+                        {infoOpen ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
                     </button>
                     {infoOpen && (
-                        <div className="mt-2 space-y-2.5 animate-fade-in">
+                        <div className="mt-2.5 space-y-2.5 animate-fade-in">
                             {/* Description */}
                             {knowledge.description && (
                                 <p className="text-[12px] text-muted-foreground/60 leading-relaxed">{knowledge.description}</p>
-                            )}
-
-                            {/* Warning */}
-                            {knowledge.warningText && (
-                                <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/[0.06] border border-amber-500/15">
-                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
-                                    <span className="text-[12px] text-amber-400/80">{knowledge.warningText}</span>
-                                </div>
                             )}
 
                             {/* Cycle pattern */}
@@ -570,20 +628,25 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                                         <Pill className="h-3 w-3" /> Recommended Supplements
                                     </span>
                                     {knowledge.supplementNotes.map((supp, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
-                                            <div className="flex-1 min-w-0">
-                                                <span className="text-[12px] font-medium text-blue-400">{supp.name}</span>
-                                                <span className="text-[11px] text-blue-400/60 ml-1.5">{supp.dosage}</span>
+                                        <div key={idx} className="px-3 py-2 rounded-xl bg-blue-500/[0.06] border border-blue-500/15 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="text-[12px] font-medium text-blue-400">{supp.name}</span>
+                                                    <span className="text-[11px] text-blue-400/50">{supp.dosage}</span>
+                                                </div>
+                                                {supp.productLink && (
+                                                    <a
+                                                        href={supp.productLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[10px] font-medium text-blue-400 underline shrink-0 ml-2"
+                                                    >
+                                                        Amazon
+                                                    </a>
+                                                )}
                                             </div>
-                                            {supp.productLink && (
-                                                <a
-                                                    href={supp.productLink}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-[10px] text-blue-400 underline shrink-0"
-                                                >
-                                                    Amazon
-                                                </a>
+                                            {supp.reason && (
+                                                <p className="text-[11px] text-blue-400/40 leading-relaxed">{supp.reason}</p>
                                             )}
                                         </div>
                                     ))}

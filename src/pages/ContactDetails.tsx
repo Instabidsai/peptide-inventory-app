@@ -1674,7 +1674,17 @@ function AdminClientFridgeView({ contactId }: { contactId: string }) {
         );
     }
 
-    return <SimpleVials inventory={inventory} contactId={contactId} />;
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/15">
+                <Package className="h-4 w-4 text-blue-500" />
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                    Previewing this client's fridge exactly as they see it
+                </span>
+            </div>
+            <SimpleVials inventory={inventory} contactId={contactId} />
+        </div>
+    );
 }
 
 function ClientInventoryList({ contactId, contactName, assignedProtocols }: { contactId: string, contactName?: string, assignedProtocols?: Protocol[] }) {
