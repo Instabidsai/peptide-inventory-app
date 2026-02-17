@@ -93,8 +93,8 @@ export default function NewOrder() {
     // Uses the rep's pricing_mode to match PartnerStore pricing logic:
     //   - 'cost_plus': avgCost + cost_plus_markup
     //   - 'percentage' (default): avgCost * price_multiplier
-    const getBaseCost = (peptide: Peptide, profile: any) => {
-        const avgCost = (peptide.avg_cost && peptide.avg_cost > 0) ? peptide.avg_cost : ((peptide as any).retail_price || 10.50);
+    const getBaseCost = (peptide: Peptide, profile: { pricing_mode?: string; cost_plus_markup?: number; price_multiplier?: number } | null | undefined) => {
+        const avgCost = (peptide.avg_cost && peptide.avg_cost > 0) ? peptide.avg_cost : (peptide.retail_price || 10.50);
         const pricingMode = profile?.pricing_mode || 'percentage';
         if (pricingMode === 'cost_plus') {
             const markup = Number(profile?.cost_plus_markup) || 0;
@@ -107,7 +107,7 @@ export default function NewOrder() {
 
     // Helper to generate Pricing Tiers
     const getPricingTiers = (peptide: Peptide, baseCost: number) => {
-        const retail = (peptide as any).retail_price || 0;
+        const retail = peptide.retail_price || 0;
 
         // Define Tiers
         const tiers = [
@@ -322,8 +322,8 @@ export default function NewOrder() {
                     </CardTitle>
                     {activeProfile && (
                         <p className="text-xs text-muted-foreground">
-                            {(activeProfile as any)?.pricing_mode === 'cost_plus'
-                                ? `Pricing: Avg Cost + $${Number((activeProfile as any)?.cost_plus_markup) || 0} markup`
+                            {activeProfile?.pricing_mode === 'cost_plus'
+                                ? `Pricing: Avg Cost + $${Number(activeProfile?.cost_plus_markup) || 0} markup`
                                 : `Pricing: Avg Cost x ${activeProfile?.price_multiplier || 1}`
                             }
                         </p>

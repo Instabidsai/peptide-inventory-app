@@ -99,6 +99,7 @@ export interface CreateSalesOrderInput {
     status?: SalesOrderStatus;
     payment_method?: string;
     delivery_method?: string;
+    commission_amount?: number;
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
@@ -172,13 +173,14 @@ export function useCreateSalesOrder() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data: profile } = await supabase
+            const { data: rawProfile } = await supabase
                 .from('profiles')
                 .select('id, org_id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
                 .single();
 
-            if (!profile?.org_id) throw new Error('No organization found');
+            if (!rawProfile?.org_id) throw new Error('No organization found');
+            const profile = rawProfile as { id: string; org_id: string; commission_rate: number | null; price_multiplier: number | null; pricing_mode: string | null; cost_plus_markup: number | null };
 
             // Determine the actual rep for this order:
             // If the client has an assigned_rep_id, attribute the order to that rep
@@ -215,21 +217,21 @@ export function useCreateSalesOrder() {
                     }
                 } else {
                     // No assigned rep — use logged-in user's settings
-                    const rate = (profile as any).commission_rate;
+                    const rate = profile.commission_rate;
                     repCommissionRate = (rate != null) ? Number(rate) : 0.10;
-                    const mult = (profile as any).price_multiplier;
+                    const mult = profile.price_multiplier;
                     priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
-                    repPricingMode = (profile as any).pricing_mode || 'percentage';
-                    repCostPlusMarkup = Number((profile as any).cost_plus_markup) || 0;
+                    repPricingMode = profile.pricing_mode || 'percentage';
+                    repCostPlusMarkup = Number(profile.cost_plus_markup) || 0;
                 }
             } else {
                 // No client selected — use logged-in user's settings
-                const rate = (profile as any).commission_rate;
+                const rate = profile.commission_rate;
                 repCommissionRate = (rate != null) ? Number(rate) : 0.10;
-                const mult = (profile as any).price_multiplier;
+                const mult = profile.price_multiplier;
                 priceMultiplier = (mult != null && Number(mult) > 0) ? Number(mult) : 1.0;
-                repPricingMode = (profile as any).pricing_mode || 'percentage';
-                repCostPlusMarkup = Number((profile as any).cost_plus_markup) || 0;
+                repPricingMode = profile.pricing_mode || 'percentage';
+                repCostPlusMarkup = Number(profile.cost_plus_markup) || 0;
             }
 
             // Calculate totals — commission is revenue-based (rate × sale amount)
@@ -423,7 +425,8 @@ export function useUpdateSalesOrder() {
                         .eq('id', variables.id)
                         .single();
 
-                    const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                    type OrderWithContact = { client_id: string; contacts: { linked_user_id: string | null } };
+                    const clientUserId = (orderData as unknown as OrderWithContact | null)?.contacts?.linked_user_id;
                     if (clientUserId) {
                         await supabase.from('notifications').insert({
                             user_id: clientUserId,
@@ -667,7 +670,8 @@ export function useCreateShippingLabel() {
                     .eq('id', orderId)
                     .single();
 
-                const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                type OrderWithContactName = { client_id: string; contacts: { linked_user_id: string | null; name: string } };
+                const clientUserId = (orderData as unknown as OrderWithContactName | null)?.contacts?.linked_user_id;
                 if (clientUserId) {
                     await supabase.from('notifications').insert({
                         user_id: clientUserId,
@@ -763,7 +767,8 @@ export function useBuyShippingLabel() {
                     .eq('id', orderId)
                     .single();
 
-                const clientUserId = (orderData?.contacts as any)?.linked_user_id;
+                type OrderWithContactName2 = { client_id: string; contacts: { linked_user_id: string | null; name: string } };
+                const clientUserId = (orderData as unknown as OrderWithContactName2 | null)?.contacts?.linked_user_id;
                 if (clientUserId) {
                     await supabase.from('notifications').insert({
                         user_id: clientUserId,

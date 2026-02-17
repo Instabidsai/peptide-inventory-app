@@ -122,10 +122,12 @@ export default function FulfillmentCenter() {
                 .eq('status', 'in_stock');
             if (error) throw error;
 
+            type BottleWithLot = { id: string; lots: { peptide_id: string; peptides: { id: string; name: string } } };
+            const rows = (data || []) as unknown as BottleWithLot[];
             const counts: Record<string, { name: string; count: number }> = {};
-            for (const b of (data || [])) {
-                const pid = (b as any).lots?.peptide_id;
-                const pname = (b as any).lots?.peptides?.name;
+            for (const b of rows) {
+                const pid = b.lots?.peptide_id;
+                const pname = b.lots?.peptides?.name;
                 if (pid) {
                     if (!counts[pid]) counts[pid] = { name: pname || 'Unknown', count: 0 };
                     counts[pid].count++;

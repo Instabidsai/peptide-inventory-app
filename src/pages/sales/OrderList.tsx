@@ -83,16 +83,22 @@ export default function OrderList() {
 
     const exportCSV = () => {
         if (!orders || orders.length === 0) return;
+        const esc = (v: string) => {
+            if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+                return `"${v.replace(/"/g, '""')}"`;
+            }
+            return v;
+        };
         const headers = ['Date', 'Client', 'Source', 'Status', 'Payment', 'ShipStatus', 'Carrier', 'Tracking', 'Total', 'COGS', 'Shipping', 'Commission', 'Fee', 'Profit'];
         const rows = orders.map(o => [
             format(new Date(o.created_at), 'yyyy-MM-dd'),
-            (o.contacts?.name || '').replace(/,/g, ''),
+            esc(o.contacts?.name || ''),
             o.order_source || 'app',
             o.status,
             o.payment_status,
             o.shipping_status || '',
-            (o.carrier || '').replace(/,/g, ''),
-            (o.tracking_number || '').replace(/,/g, ''),
+            esc(o.carrier || ''),
+            esc(o.tracking_number || ''),
             (o.total_amount || 0).toFixed(2),
             (o.cogs_amount || 0).toFixed(2),
             (o.shipping_cost || 0).toFixed(2),
@@ -101,7 +107,7 @@ export default function OrderList() {
             (o.profit_amount || 0).toFixed(2),
         ]);
         const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -110,11 +116,11 @@ export default function OrderList() {
         URL.revokeObjectURL(url);
     };
 
-    const getStatusColor = (status: SalesOrderStatus) => {
+    const getStatusColor = (status: SalesOrderStatus): 'default' | 'secondary' | 'destructive' | 'outline' => {
         switch (status) {
             case 'draft': return 'secondary';
-            case 'submitted': return 'default'; // Blueish
-            case 'fulfilled': return 'outline'; // Greenish usually better, lets use custom classes if needed
+            case 'submitted': return 'default';
+            case 'fulfilled': return 'outline';
             case 'cancelled': return 'destructive';
             default: return 'secondary';
         }
@@ -169,7 +175,7 @@ export default function OrderList() {
                         className="pl-9"
                     />
                 </div>
-                <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as SalesOrderStatus | 'all')}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Status" />
                     </SelectTrigger>
@@ -181,7 +187,7 @@ export default function OrderList() {
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                 </Select>
-                <Select value={filterPayment} onValueChange={(v: any) => setFilterPayment(v)}>
+                <Select value={filterPayment} onValueChange={(v) => setFilterPayment(v as typeof filterPayment)}>
                     <SelectTrigger className="w-[150px]">
                         <SelectValue placeholder="Payment" />
                     </SelectTrigger>
@@ -192,7 +198,7 @@ export default function OrderList() {
                         <SelectItem value="partial">Partial</SelectItem>
                     </SelectContent>
                 </Select>
-                <Select value={filterShipping} onValueChange={(v: any) => setFilterShipping(v)}>
+                <Select value={filterShipping} onValueChange={setFilterShipping}>
                     <SelectTrigger className="w-[170px]">
                         <SelectValue placeholder="Shipping" />
                     </SelectTrigger>
@@ -208,7 +214,7 @@ export default function OrderList() {
                     </SelectContent>
                 </Select>
                 {!isRep && (
-                    <Select value={filterSource} onValueChange={(v: any) => setFilterSource(v)}>
+                    <Select value={filterSource} onValueChange={(v) => setFilterSource(v as typeof filterSource)}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Order Source" />
                         </SelectTrigger>
@@ -244,7 +250,7 @@ export default function OrderList() {
                                         <span className="text-lg font-bold">${order.total_amount.toFixed(2)}</span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <Badge variant={getStatusColor(order.status) as any} className="text-xs">{order.status}</Badge>
+                                        <Badge variant={getStatusColor(order.status)} className="text-xs">{order.status}</Badge>
                                         <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
                                         {order.delivery_method === 'local_pickup' && (
                                             <Badge variant="outline" className="text-xs bg-orange-500/15 text-orange-400 border-orange-500/30">
@@ -321,7 +327,7 @@ export default function OrderList() {
                                             </TableCell>
                                         )}
                                         <TableCell>
-                                            <Badge variant={getStatusColor(order.status) as any}>
+                                            <Badge variant={getStatusColor(order.status)}>
                                                 {order.status}
                                             </Badge>
                                         </TableCell>
@@ -472,12 +478,13 @@ export default function OrderList() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deleteOrder.isPending}
                             onClick={() => {
                                 if (orderToDelete) deleteOrder.mutate(orderToDelete);
                                 setOrderToDelete(null);
                             }}
                         >
-                            Delete Order
+                            {deleteOrder.isPending ? 'Deleting...' : 'Delete Order'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

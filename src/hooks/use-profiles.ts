@@ -13,6 +13,8 @@ export interface UserProfile {
     role: UserRole;
     commission_rate: number;
     price_multiplier?: number;
+    pricing_mode?: string;
+    cost_plus_markup?: number;
     partner_tier?: string;
     overhead_per_unit: number; // Defaults to 4.00
     credit_balance: number; // Partner's wallet balance
