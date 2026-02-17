@@ -349,11 +349,16 @@ export default function Auth() {
       return;
     }
 
-    // Normal redirect (no referral)
+    // Normal redirect (no referral, or profile missing)
     if (!loading && user) {
       if (profile?.org_id) {
         navigate(from, { replace: true });
-      } else if (!refParam) {
+      } else {
+        // Persist referral params so onboarding fallback can pick them up
+        if (refParam) {
+          sessionStorage.setItem('partner_ref', refParam);
+          sessionStorage.setItem('partner_ref_role', roleParam);
+        }
         navigate('/onboarding', { replace: true });
       }
     }

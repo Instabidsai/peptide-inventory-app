@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError(null);
 
       // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -77,6 +77,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(null);
         setOrganization(null);
         return;
+      }
+
+      // Auto-create profile if missing (Google OAuth, failed signup insert, etc.)
+      if (!profileData) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const meta = currentUser.user_metadata || {};
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: userId,
+              email: currentUser.email,
+              full_name: meta.full_name || meta.name || null,
+            })
+            .select()
+            .single();
+
+          if (newProfile) {
+            profileData = newProfile;
+          }
+        }
       }
 
       setProfile(profileData);
