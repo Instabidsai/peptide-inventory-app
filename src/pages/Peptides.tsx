@@ -298,7 +298,11 @@ export default function Peptides() {
                 >
                   <Card
                     className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Edit ${peptide.name}`}
                     onClick={() => openEditDialog(peptide)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditDialog(peptide); } }}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
