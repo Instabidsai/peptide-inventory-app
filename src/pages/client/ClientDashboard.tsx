@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,7 +72,7 @@ function ClientDashboardContent() {
     const activeProtocols = protocols || [];
 
     // Calculate adherence for today
-    const todaysItems = activeProtocols.map(p => {
+    const todaysItems = useMemo(() => activeProtocols.map(p => {
         const item = p.protocol_items?.[0];
         if (!item) return null;
 
@@ -92,7 +93,7 @@ function ClientDashboardContent() {
                 return Math.round((doseMg / activeVial.concentration_mg_ml) * 100);
             })()
         };
-    }).filter(Boolean);
+    }).filter(Boolean), [activeProtocols, inventory]);
 
     const takenCount = todaysItems.filter(i => i?.isTakenToday).length;
     const totalCount = todaysItems.length;

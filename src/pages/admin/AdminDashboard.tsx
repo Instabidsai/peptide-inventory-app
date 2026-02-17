@@ -28,7 +28,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 const staggerContainer = {
     hidden: {},
@@ -116,6 +116,12 @@ export default function AdminDashboard() {
     }
 
     const recentMovements = movements?.slice(0, 5) || [];
+    const lowStock = useMemo(() =>
+        peptides
+            ?.filter(p => (p.stock_count ?? 0) <= 10 && p.active)
+            .sort((a, b) => (a.stock_count ?? 0) - (b.stock_count ?? 0)) || [],
+        [peptides]
+    );
 
     // Calculated fields for Full Investment View
     const totalExpensesWithLiability = (financials?.overhead ?? 0) +
@@ -550,45 +556,39 @@ export default function AdminDashboard() {
                 </Card></motion.div>
 
                 {/* Low Stock Alerts */}
-                {(() => {
-                    const lowStock = peptides
-                        ?.filter(p => (p.stock_count ?? 0) <= 10 && p.active)
-                        .sort((a, b) => (a.stock_count ?? 0) - (b.stock_count ?? 0)) || [];
-                    if (lowStock.length === 0) return null;
-                    return (
-                        <Card className="md:col-span-1 bg-card border-border border-amber-500/30">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                        Low Stock ({lowStock.length})
-                                    </CardTitle>
-                                    <Button variant="ghost" size="sm" asChild>
-                                        <Link to="/lots">Reorder</Link>
-                                    </Button>
-                                </div>
-                                <CardDescription>Peptides with 10 or fewer bottles</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {lowStock.slice(0, 8).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between text-sm">
-                                            <span className="truncate mr-2">{p.name}</span>
-                                            <span className={`font-mono font-medium ${(p.stock_count ?? 0) === 0 ? 'text-red-500' : 'text-amber-500'}`}>
-                                                {p.stock_count ?? 0}
-                                            </span>
-                                        </div>
-                                    ))}
-                                    {lowStock.length > 8 && (
-                                        <p className="text-xs text-muted-foreground text-center pt-1">
-                                            +{lowStock.length - 8} more
-                                        </p>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })()}
+                {lowStock.length > 0 && (
+                    <Card className="md:col-span-1 bg-card border-border border-amber-500/30">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                    Low Stock ({lowStock.length})
+                                </CardTitle>
+                                <Button variant="ghost" size="sm" asChild>
+                                    <Link to="/lots">Reorder</Link>
+                                </Button>
+                            </div>
+                            <CardDescription>Peptides with 10 or fewer bottles</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {lowStock.slice(0, 8).map(p => (
+                                    <div key={p.id} className="flex items-center justify-between text-sm">
+                                        <span className="truncate mr-2">{p.name}</span>
+                                        <span className={`font-mono font-medium ${(p.stock_count ?? 0) === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                                            {p.stock_count ?? 0}
+                                        </span>
+                                    </div>
+                                ))}
+                                {lowStock.length > 8 && (
+                                    <p className="text-xs text-muted-foreground text-center pt-1">
+                                        +{lowStock.length - 8} more
+                                    </p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Top Sellers */}
                 {topSellers && topSellers.length > 0 && (

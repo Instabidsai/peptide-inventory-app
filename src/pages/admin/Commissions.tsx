@@ -1,4 +1,5 @@
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,35 +74,36 @@ export default function Commissions() {
     });
 
     // Compute summary stats (with rounding to avoid floating-point drift)
-    const rawStats = (commissions || []).reduce(
-        (acc, c) => {
-            const amt = Number(c.amount) || 0;
-            acc.total += amt;
-            acc.count += 1;
-            switch (c.status) {
-                case 'pending': acc.pending += amt; acc.pendingCount += 1; break;
-                case 'available': acc.available += amt; acc.availableCount += 1; break;
-                case 'paid': acc.paid += amt; acc.paidCount += 1; break;
-                case 'applied_to_debt': acc.appliedToDebt += amt; acc.appliedCount += 1; break;
-                default: acc.other += amt; break;
-            }
-            // Order totals for weighted avg rate
-            const orderTotal = Number(c.sales_orders?.total_amount) || 0;
-            acc.totalOrderValue += orderTotal;
-            return acc;
-        },
-        { total: 0, count: 0, pending: 0, pendingCount: 0, available: 0, availableCount: 0, paid: 0, paidCount: 0, appliedToDebt: 0, appliedCount: 0, other: 0, totalOrderValue: 0 }
-    );
-    const stats = {
-        ...rawStats,
-        total: Math.round(rawStats.total * 100) / 100,
-        pending: Math.round(rawStats.pending * 100) / 100,
-        available: Math.round(rawStats.available * 100) / 100,
-        paid: Math.round(rawStats.paid * 100) / 100,
-        appliedToDebt: Math.round(rawStats.appliedToDebt * 100) / 100,
-        other: Math.round(rawStats.other * 100) / 100,
-        totalOrderValue: Math.round(rawStats.totalOrderValue * 100) / 100,
-    };
+    const stats = useMemo(() => {
+        const raw = (commissions || []).reduce(
+            (acc, c) => {
+                const amt = Number(c.amount) || 0;
+                acc.total += amt;
+                acc.count += 1;
+                switch (c.status) {
+                    case 'pending': acc.pending += amt; acc.pendingCount += 1; break;
+                    case 'available': acc.available += amt; acc.availableCount += 1; break;
+                    case 'paid': acc.paid += amt; acc.paidCount += 1; break;
+                    case 'applied_to_debt': acc.appliedToDebt += amt; acc.appliedCount += 1; break;
+                    default: acc.other += amt; break;
+                }
+                const orderTotal = Number(c.sales_orders?.total_amount) || 0;
+                acc.totalOrderValue += orderTotal;
+                return acc;
+            },
+            { total: 0, count: 0, pending: 0, pendingCount: 0, available: 0, availableCount: 0, paid: 0, paidCount: 0, appliedToDebt: 0, appliedCount: 0, other: 0, totalOrderValue: 0 }
+        );
+        return {
+            ...raw,
+            total: Math.round(raw.total * 100) / 100,
+            pending: Math.round(raw.pending * 100) / 100,
+            available: Math.round(raw.available * 100) / 100,
+            paid: Math.round(raw.paid * 100) / 100,
+            appliedToDebt: Math.round(raw.appliedToDebt * 100) / 100,
+            other: Math.round(raw.other * 100) / 100,
+            totalOrderValue: Math.round(raw.totalOrderValue * 100) / 100,
+        };
+    }, [commissions]);
 
     const avgRate = commissions?.length
         ? Math.round((commissions.reduce((sum, c) => sum + (Number(c.commission_rate) || 0), 0) / commissions.length * 100) * 100) / 100
