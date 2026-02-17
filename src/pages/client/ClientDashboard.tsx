@@ -171,6 +171,7 @@ function ClientDashboardContent() {
                                                 <Button
                                                     size="sm"
                                                     className="h-8 rounded-xl text-xs font-medium"
+                                                    disabled={logProtocolUsage.isPending}
                                                     onClick={() => logProtocolUsage.mutate({ itemId: item.item.id })}
                                                 >
                                                     Mark Done
