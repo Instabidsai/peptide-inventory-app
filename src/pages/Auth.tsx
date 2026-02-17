@@ -463,10 +463,12 @@ export default function Auth() {
       sessionStorage.setItem('partner_ref', refParam);
       sessionStorage.setItem('partner_ref_role', roleParam);
     }
+    // If referral, redirect back to /auth so the linking logic runs
+    const redirectPath = refParam ? '/#/auth' : '/';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}${redirectPath}`,
       },
     });
 
