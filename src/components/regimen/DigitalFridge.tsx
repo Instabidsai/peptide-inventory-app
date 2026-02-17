@@ -32,7 +32,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
         const groups: Record<string, ClientInventoryItem[]> = {};
         activeVials.forEach(vial => {
             // Check if movement property exists (it might not if types aren't updated, but runtime it will be there)
-            const key = (vial as any).movement_id || 'manual';
+            const key = vial.movement_id || 'manual';
             if (!groups[key]) groups[key] = [];
             groups[key].push(vial);
         });
@@ -43,8 +43,8 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
         return Object.keys(groupedVials).sort((a, b) => {
             if (a === 'manual') return 1;
             if (b === 'manual') return -1;
-            const dateA = (groupedVials[a][0] as any).movement?.movement_date || '';
-            const dateB = (groupedVials[b][0] as any).movement?.movement_date || '';
+            const dateA = groupedVials[a][0].movement?.movement_date || '';
+            const dateB = groupedVials[b][0].movement?.movement_date || '';
             return new Date(dateB).getTime() - new Date(dateA).getTime();
         });
     }, [groupedVials]);
@@ -77,7 +77,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                             const vials = groupedVials[key];
                             const isManual = key === 'manual';
                             // Safely access movement date
-                            const date = !isManual ? (vials[0] as any).movement?.movement_date : null;
+                            const date = !isManual ? vials[0].movement?.movement_date : null;
                             const title = isManual ? 'manually added' : `Order from ${date ? format(new Date(date), 'MMM d, yyyy') : 'Unknown Date'}`;
 
                             return (

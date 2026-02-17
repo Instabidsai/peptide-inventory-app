@@ -326,7 +326,7 @@ export default function CommunityForum() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-medium">{(message as any).profiles?.full_name || 'Community Member'}</span>
+                                                    <span className="text-sm font-medium">{message.profiles?.full_name || 'Community Member'}</span>
                                                     <span className="text-xs text-muted-foreground">
                                                         {formatTimeAgo(message.created_at)}
                                                     </span>

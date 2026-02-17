@@ -35,6 +35,7 @@ type HistoryItem = {
     quantity: number;
     price: number | null; // Unit price or cost
     notes: string | null;
+    paymentStatus?: string | null;
 };
 
 export function PeptideHistoryDialog({
@@ -190,9 +191,9 @@ export function PeptideHistoryDialog({
                                                 {item.price ? `$${Number(item.price).toFixed(2)}` : '-'}
                                                 {item.type === 'restock' && (
                                                     <div className="mt-1">
-                                                        {(item as any).paymentStatus === 'paid' ? (
+                                                        {item.paymentStatus === 'paid' ? (
                                                             <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-emerald-500/20 text-emerald-500">Paid</Badge>
-                                                        ) : (item as any).paymentStatus === 'partial' ? (
+                                                        ) : item.paymentStatus === 'partial' ? (
                                                             <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-amber-500/20 text-amber-500">Partial</Badge>
                                                         ) : (
                                                             <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-red-500/20 text-red-500">Unpaid</Badge>

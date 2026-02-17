@@ -120,7 +120,7 @@ export function calculateSupply(
         daysRemaining: Number.isFinite(daysRemaining) ? Math.max(0, daysRemaining) : 0,
         bottles: bottleDetails,
         status,
-        concentration: bottles.find(b => b.current_quantity_mg && b.current_quantity_mg > 0)?.current_quantity_mg ? (bottles.find(b => b.current_quantity_mg! > 0) as any).concentration_mg_ml : undefined,
+        concentration: bottles.find(b => b.current_quantity_mg && b.current_quantity_mg > 0)?.concentration_mg_ml ?? undefined,
         suggestedUnits: undefined // Will be set by caller if needed
     };
 }

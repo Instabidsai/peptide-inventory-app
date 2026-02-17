@@ -32,6 +32,10 @@ export interface ClientInventoryItem {
     peptide?: {
         name: string;
     };
+    movement_id?: string | null;
+    movement?: {
+        movement_date: string;
+    };
 }
 
 export type DoseFrequency = 'daily' | 'every_other_day' | 'every_x_days' | 'x_on_y_off' | 'specific_days';
