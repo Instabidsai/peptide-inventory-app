@@ -23,7 +23,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format, isAfter, subDays, formatDistanceToNow } from 'date-fns';
+import { format, isAfter, subDays, startOfWeek, formatDistanceToNow } from 'date-fns';
 import {
     Package, Truck, CheckCircle, Printer,
     MapPin, User, AlertCircle, PackageCheck,
@@ -73,7 +73,7 @@ export default function FulfillmentCenter() {
     });
 
     // Fetch this week's total
-    const weekStart = format(subDays(new Date(), new Date().getDay()), 'yyyy-MM-dd');
+    const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd');
     const { data: weekHours } = useQuery({
         queryKey: ['weekly_hours', weekStart],
         queryFn: async () => {

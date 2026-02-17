@@ -76,11 +76,11 @@ export default function Lots() {
       lot_number: '',
       quantity_received: 1,
       cost_per_unit: 0,
-      received_date: new Date().toISOString().split('T')[0],
+      received_date: format(new Date(), 'yyyy-MM-dd'),
       expiry_date: '',
       notes: '',
       payment_status: 'paid', // Default to paid as per user preference? Or 'unpaid'? User said "all received is paid up". Let's default to 'paid' for convenience? Or 'unpaid' for accuracy? User said "every peptide i have recived is all paid up". So defaulting to 'paid' seems helpful.
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: format(new Date(), 'yyyy-MM-dd'),
       payment_method: '',
     },
   });

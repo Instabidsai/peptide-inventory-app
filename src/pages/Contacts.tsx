@@ -190,7 +190,7 @@ export default function Contacts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `contacts-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

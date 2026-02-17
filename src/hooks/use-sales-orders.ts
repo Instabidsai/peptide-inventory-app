@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -303,7 +304,7 @@ export function useCreateSalesOrder() {
                         org_id: profile.org_id,
                         type: 'sale',
                         contact_id: input.client_id,
-                        movement_date: new Date().toISOString().split('T')[0],
+                        movement_date: format(new Date(), 'yyyy-MM-dd'),
                         notes: `[SO:${order.id}] Sales Order #${order.id.slice(0, 8)}`,
                         created_by: repId || profile.id,
                         payment_status: 'unpaid',
@@ -493,7 +494,7 @@ export function useFulfillOrder() {
                     org_id: order.org_id,
                     type: 'sale',
                     contact_id: order.client_id,
-                    movement_date: new Date().toISOString().split('T')[0],
+                    movement_date: format(new Date(), 'yyyy-MM-dd'),
                     notes: `[SO:${orderId}] Fulfilled Sales Order #${orderId.slice(0, 8)}`,
                     created_by: order.rep_id || profileId, // Attribute to rep if exists
                     payment_status: order.payment_status || 'unpaid',

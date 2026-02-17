@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useContacts } from '@/hooks/use-contacts';
@@ -38,7 +39,7 @@ export default function MovementWizard() {
   const [step, setStep] = useState(1);
   const [movementType, setMovementType] = useState<MovementType | null>(null);
   const [contactId, setContactId] = useState<string>('');
-  const [movementDate, setMovementDate] = useState(new Date().toISOString().split('T')[0]);
+  const [movementDate, setMovementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'partial' | 'refunded'>('unpaid');
   const [amountPaid, setAmountPaid] = useState<string>('0');

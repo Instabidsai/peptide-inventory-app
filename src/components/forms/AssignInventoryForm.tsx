@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { useBottles } from "@/hooks/use-bottles";
 import { useCreateMovement } from "@/hooks/use-movements";
 import { Button } from "@/components/ui/button";
@@ -128,7 +129,7 @@ export function AssignInventoryForm({
             await createMovement.mutateAsync({
                 type: movementType,
                 contact_id: contactId,
-                movement_date: new Date().toISOString(),
+                movement_date: format(new Date(), 'yyyy-MM-dd'),
                 items: selectedBottleIds.map(id => ({
                     bottle_id: id,
                     price_at_sale: (bottlePriceMap.get(id) || 0) * scale,

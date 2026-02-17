@@ -43,13 +43,16 @@ export function WaterTracker() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return [];
 
-            const today = new Date().toISOString().split('T')[0];
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            const endOfToday = new Date();
+            endOfToday.setHours(23, 59, 59, 999);
             const { data } = await supabase
                 .from('water_logs')
                 .select('id, amount_oz, logged_at')
                 .eq('user_id', session.user.id)
-                .gte('logged_at', `${today}T00:00:00`)
-                .lte('logged_at', `${today}T23:59:59`)
+                .gte('logged_at', startOfToday.toISOString())
+                .lte('logged_at', endOfToday.toISOString())
                 .order('logged_at', { ascending: false });
 
             return data || [];

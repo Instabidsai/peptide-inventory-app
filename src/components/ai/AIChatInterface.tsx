@@ -140,7 +140,7 @@ export const AIChatInterface = () => {
                                             "text-[10px] mt-1.5 opacity-50",
                                             msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
                                         )}>
-                                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
 

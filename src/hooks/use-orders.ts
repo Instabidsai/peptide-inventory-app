@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -237,7 +238,7 @@ export function useCreateOrder() {
                 .insert({
                     ...input,
                     org_id: profile.org_id,
-                    order_date: input.order_date || new Date().toISOString().split('T')[0],
+                    order_date: input.order_date || format(new Date(), 'yyyy-MM-dd'),
                 })
                 .select('*, peptides(id, name)')
                 .single();
@@ -318,7 +319,7 @@ export function useMarkOrderReceived() {
                     lot_number: input.lot_number,
                     quantity_received: input.actual_quantity,
                     cost_per_unit: input.actual_cost_per_unit,
-                    received_date: new Date().toISOString().split('T')[0],
+                    received_date: format(new Date(), 'yyyy-MM-dd'),
                     expiry_date: input.expiry_date || null,
                 })
                 .select()

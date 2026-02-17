@@ -4,7 +4,7 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Loader2, CheckCircle2, Clock, Sparkles, User, Flame, Target } from "lucide-react";
-import { format, differenceInDays } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -78,7 +78,7 @@ function ClientDashboardContent() {
         const logs = item.protocol_logs || [];
         const sortedLogs = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const latestLog = sortedLogs[0];
-        const isTakenToday = latestLog && differenceInDays(new Date(), new Date(latestLog.created_at)) === 0;
+        const isTakenToday = latestLog && isSameDay(new Date(), new Date(latestLog.created_at));
 
         return {
             protocolName: p.name,

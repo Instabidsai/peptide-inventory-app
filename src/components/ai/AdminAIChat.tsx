@@ -126,7 +126,7 @@ export function AdminAIChat() {
                         "text-[10px] mt-1.5 opacity-50",
                         msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
                       )}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                     {msg.role === 'user' && (

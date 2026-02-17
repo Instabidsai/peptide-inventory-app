@@ -463,7 +463,7 @@ export default function AdminResources() {
 
                                     <CardFooter className="pt-0 pb-4">
                                         <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                                            <span>{new Date(resource.created_at).toLocaleDateString()}</span>
+                                            <span>{new Date(resource.created_at).toLocaleDateString('en-US')}</span>
                                             <Badge variant="secondary" className="capitalize">{resource.type}</Badge>
                                         </div>
                                     </CardFooter>

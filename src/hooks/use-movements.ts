@@ -1,5 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { parseVialSize } from '@/lib/supply-calculations';
@@ -295,7 +296,7 @@ export function useCreateMovement() {
         .insert({
           type: input.type,
           contact_id: input.contact_id || null,
-          movement_date: input.movement_date || new Date().toISOString().split('T')[0],
+          movement_date: input.movement_date || format(new Date(), 'yyyy-MM-dd'),
           notes: input.notes || null,
           created_by: profile.id,
           org_id: profile.org_id,

@@ -45,7 +45,7 @@ export default function Finance() {
 
     // Form State
     const [formData, setFormData] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         category: 'operating' as ExpenseCategory,
         amount: '',
         description: '',
@@ -55,7 +55,7 @@ export default function Finance() {
 
     // Bulk Payment Form State
     const [bulkPayData, setBulkPayData] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         method: 'wire',
         note: ''
     });
@@ -284,7 +284,7 @@ export default function Finance() {
                     orderId: order.id,
                     amount: payAmount,
                     method: 'wire', // Default or add selector
-                    date: new Date().toISOString().split('T')[0],
+                    date: format(new Date(), 'yyyy-MM-dd'),
                     note: `Batch Payment: ${selectedBatch}`,
                     isFullPayment: Math.abs(payAmount - due) < 0.01
                 });

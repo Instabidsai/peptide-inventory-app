@@ -641,7 +641,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                                     comments?.map(c => (
                                         <div key={c.id} className="bg-gray-800/50 p-3 rounded-lg text-sm">
                                             {c.content}
-                                            <p className="text-[10px] text-gray-500 mt-1">{new Date(c.created_at).toLocaleDateString()}</p>
+                                            <p className="text-[10px] text-gray-500 mt-1">{new Date(c.created_at).toLocaleDateString('en-US')}</p>
                                         </div>
                                     ))}
                         </div>

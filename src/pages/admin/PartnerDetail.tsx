@@ -508,7 +508,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                             )}
                             {pending.map((c) => (
                                 <TableRow key={c.id}>
-                                    <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell>{new Date(c.created_at).toLocaleDateString('en-US')}</TableCell>
                                     <TableCell className="font-medium">{c.sales_orders?.contacts?.name || 'N/A'}</TableCell>
                                     <TableCell>${Number(c.sales_orders?.total_amount || 0).toFixed(2)}</TableCell>
                                     <TableCell className="font-medium">${Number(c.amount).toFixed(2)}</TableCell>
@@ -563,7 +563,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                 const statusInfo = getStatusLabel(c.status);
                                 return (
                                     <TableRow key={c.id}>
-                                        <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
+                                        <TableCell>{new Date(c.created_at).toLocaleDateString('en-US')}</TableCell>
                                         <TableCell className="font-medium">{c.sales_orders?.contacts?.name || 'N/A'}</TableCell>
                                         <TableCell>${Number(c.sales_orders?.total_amount || 0).toFixed(2)}</TableCell>
                                         <TableCell>${Number(c.amount).toFixed(2)}</TableCell>
@@ -807,7 +807,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                     </TableCell>
                                     <TableCell>{client.email || '-'}</TableCell>
                                     <TableCell>{client.phone || '-'}</TableCell>
-                                    <TableCell>{new Date(client.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell>{new Date(client.created_at).toLocaleDateString('en-US')}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             {client.type !== 'partner' && (

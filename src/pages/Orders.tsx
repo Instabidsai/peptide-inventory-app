@@ -101,7 +101,7 @@ export default function Orders() {
             peptide_id: '',
             quantity_ordered: 1,
             estimated_cost_per_unit: 0,
-            order_date: new Date().toISOString().split('T')[0],
+            order_date: format(new Date(), 'yyyy-MM-dd'),
             expected_arrival_date: '',
             supplier: '',
             tracking_number: '',
@@ -227,7 +227,7 @@ export default function Orders() {
     const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
     const [paymentData, setPaymentData] = useState({
         amount: '',
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         method: 'credit_card',
         note: ''
     });
@@ -239,7 +239,7 @@ export default function Orders() {
 
         setPaymentData({
             amount: remaining,
-            date: new Date().toISOString().split('T')[0],
+            date: format(new Date(), 'yyyy-MM-dd'),
             method: 'credit_card',
             note: `Payment for ${order.peptides?.name}`
         });

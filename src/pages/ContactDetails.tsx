@@ -327,7 +327,7 @@ export default function ContactDetails() {
                 toast({
                     variant: 'destructive',
                     title: 'System Error',
-                    description: `Details: ${errorDetails}. (Time: ${new Date().toLocaleTimeString()})`,
+                    description: `Details: ${errorDetails}. (Time: ${new Date().toLocaleTimeString('en-US')})`,
                     duration: 10000
                 });
             }
@@ -1399,7 +1399,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                     <span>From Inventory</span>
                                     {lastSoldDetails?.lot && <Badge variant="secondary" className="text-xs h-4 px-1 ml-1 bg-slate-200 text-slate-700">Lot {lastSoldDetails.lot}</Badge>}
                                 </div>
-                                <span className="text-xs text-muted-foreground">{lastSoldDetails?.date ? new Date(lastSoldDetails.date).toLocaleDateString() : '—'}</span>
+                                <span className="text-xs text-muted-foreground">{lastSoldDetails?.date ? new Date(lastSoldDetails.date).toLocaleDateString('en-US') : '—'}</span>
                             </div>
                         </div>
                     ) : (
