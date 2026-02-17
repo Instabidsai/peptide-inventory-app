@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 // Eagerly loaded — needed on first render
@@ -73,7 +74,20 @@ const CheckoutCancel = lazyRetry(() => import("./pages/checkout/CheckoutCancel")
 const ClientMenu = lazyRetry(() => import("./pages/client/ClientMenu"));
 const HealthTracking = lazyRetry(() => import("./pages/client/HealthTracking"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 30_000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+        },
+        mutations: {
+            onError: (error: Error) => {
+                console.error('[Mutation Error]', error.message);
+            },
+        },
+    },
+});
 
 function PageLoader() {
     return (
@@ -84,6 +98,7 @@ function PageLoader() {
 }
 
 const App = () => (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
         <TooltipProvider>
             <Toaster />
@@ -173,6 +188,7 @@ const App = () => (
             </HashRouter>
         </TooltipProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
 );
 
 export default App;

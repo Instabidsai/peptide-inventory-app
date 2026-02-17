@@ -50,7 +50,9 @@ const navigation = [
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { organization, userRole, user, profile: authProfile } = useAuth();
   const [searchParams] = useSearchParams();
-  const previewRole = searchParams.get('preview_role');
+  // Only admins can use preview_role to impersonate other roles
+  const rawPreviewRole = searchParams.get('preview_role');
+  const previewRole = (userRole?.role === 'admin' && rawPreviewRole) ? rawPreviewRole : null;
 
   const effectiveRole = previewRole || (
     (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep' : userRole?.role

@@ -21,6 +21,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getTrackingUrl } from '@/lib/tracking';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
@@ -250,15 +251,6 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: a
     const isSelfOrder = order.notes?.includes('PARTNER SELF-ORDER');
     const repFullName = repName || order.profiles?.full_name || 'Unknown';
     const isDownlineOrder = repName !== null && repName !== undefined;
-
-    const getTrackingUrl = (carrier: string | null, tracking: string) => {
-        switch (carrier) {
-            case 'USPS': return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
-            case 'UPS': return `https://www.ups.com/track?tracknum=${tracking}`;
-            case 'FedEx': return `https://www.fedex.com/fedextrack/?trknbr=${tracking}`;
-            default: return `https://parcelsapp.com/en/tracking/${tracking}`;
-        }
-    };
 
     return (
         <Card className="bg-card border-border hover:border-primary/20 transition-colors">

@@ -31,15 +31,7 @@ import {
     AlertTriangle, RefreshCw, Pill, Clock, Save, HandMetal
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-function getTrackingUrl(carrier: string | null | undefined, trackingNumber: string): string {
-    const c = (carrier || '').toUpperCase();
-    if (c.includes('USPS')) return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
-    if (c.includes('UPS')) return `https://www.ups.com/track?tracknum=${trackingNumber}`;
-    if (c.includes('FEDEX')) return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
-    if (c.includes('DHL')) return `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${trackingNumber}`;
-    return `https://parcelsapp.com/en/tracking/${trackingNumber}`;
-}
+import { getTrackingUrl } from '@/lib/tracking';
 
 export default function FulfillmentCenter() {
     const { data: allOrders, isLoading } = useSalesOrders();

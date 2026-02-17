@@ -45,7 +45,6 @@ export interface DailyChartData {
 }
 
 export const processWeeklyChartData = (logs: any[], referenceDate: Date = new Date()): DailyChartData[] => {
-    if (!logs || logs.length === 0) return [];
     const dailyMap = new Map();
 
     // Initialize last 7 days with 0
