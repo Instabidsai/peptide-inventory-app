@@ -1,0 +1,332 @@
+// ── Rich Protocol Document Generator ───────────────────────────
+// Generates professional HTML + plain-text protocol documents
+// for email, print, and clipboard delivery.
+
+import type { SupplementNote } from '@/data/protocol-knowledge';
+
+// ── Types ──────────────────────────────────────────────────────
+
+export interface EnrichedProtocolItem {
+    peptideId: string;
+    peptideName: string;
+    vialSizeMg: number | null;
+    protocolDescription: string | null;
+    reconstitutionMl: number;
+    doseAmount: number;
+    doseUnit: string;
+    administrationRoute: string;
+    frequency: string;
+    timing: string;
+    concentrationMgMl: number;
+    warningText: string | null;
+    cyclePattern: string | null;
+    stackLabel: string | null;
+    dosageSchedule: string | null;
+    notes: string;
+    supplements: SupplementNote[];
+}
+
+interface GeneratorOptions {
+    items: EnrichedProtocolItem[];
+    clientName: string;
+    orgName?: string;
+}
+
+// ── Shared Helpers ─────────────────────────────────────────────
+
+export function calcMl(item: { doseAmount: number; doseUnit: string; concentrationMgMl: number }): number | null {
+    if (!item.concentrationMgMl || item.concentrationMgMl <= 0) return null;
+    if (item.doseUnit === 'iu') return null;
+    const doseMg = item.doseUnit === 'mcg' ? item.doseAmount / 1000 : item.doseAmount;
+    return doseMg / item.concentrationMgMl;
+}
+
+export function calcUnits(ml: number | null): number | null {
+    if (ml === null) return null;
+    return Math.round(ml * 100);
+}
+
+export function formatMl(ml: number | null): string {
+    if (ml === null) return '\u2014';
+    return ml < 0.01 ? ml.toFixed(3) : ml.toFixed(2);
+}
+
+export function formatFrequency(freq: string): string {
+    const map: Record<string, string> = {
+        'daily': 'once daily',
+        'daily_am_pm': 'twice daily (AM & PM)',
+        'twice daily': 'twice daily',
+        'every 3 days': 'every three days',
+        'every 5 days': 'every five days',
+        'weekly': 'once weekly',
+        'twice weekly': 'twice weekly',
+        'biweekly': 'twice per week',
+        'monthly': 'once monthly',
+        'as needed': 'as needed',
+    };
+    return map[freq] || freq;
+}
+
+export function formatFrequencyShort(freq: string): string {
+    const map: Record<string, string> = {
+        'daily': 'Daily',
+        'daily_am_pm': 'Daily (AM & PM)',
+        'twice daily': 'Twice Daily',
+        'every 3 days': 'Every 3 Days',
+        'every 5 days': 'Every 5 Days',
+        'weekly': 'Weekly',
+        'twice weekly': 'Twice Weekly',
+        'biweekly': '2x / Week',
+        'monthly': 'Monthly',
+        'as needed': 'As Needed',
+    };
+    return map[freq] || freq;
+}
+
+function formatRoute(route: string): string {
+    const map: Record<string, string> = {
+        'subcutaneous': 'subcutaneously',
+        'intranasal': 'intranasally',
+        'intramuscular': 'intramuscularly',
+        'oral': 'orally',
+        'topical': 'topically',
+    };
+    return map[route] || route;
+}
+
+function formatDoseLabel(item: EnrichedProtocolItem): string {
+    const unit = item.doseUnit === 'iu' ? 'IU' : item.doseUnit;
+    return `${item.doseAmount} ${unit}`;
+}
+
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ── HTML Generator ─────────────────────────────────────────────
+
+export function generateProtocolHtml({ items, clientName, orgName = 'NextGen Research Labs' }: GeneratorOptions): string {
+    const itemsHtml = items.map((item, idx) => {
+        const ml = calcMl(item);
+        const units = calcUnits(ml);
+        const vialLabel = item.vialSizeMg ? ` (${item.vialSizeMg} mg Vial)` : '';
+        const stackLabel = item.stackLabel ? ` - ${escapeHtml(item.stackLabel)}` : '';
+
+        let sections = '';
+
+        // Description
+        if (item.protocolDescription) {
+            sections += `<p style="margin:8px 0 12px;color:#374151;line-height:1.6;">${escapeHtml(item.protocolDescription)}</p>`;
+        }
+
+        // Reconstitution
+        if (item.reconstitutionMl > 0 && item.vialSizeMg) {
+            sections += `<p style="margin:4px 0;color:#374151;"><strong>Reconstitution:</strong> Add ${item.reconstitutionMl} mL of bacteriostatic water to a ${item.vialSizeMg} mg vial.</p>`;
+        }
+
+        // Dosage
+        if (item.dosageSchedule) {
+            const scheduleLines = item.dosageSchedule.split('\n').map(l => escapeHtml(l)).join('<br/>');
+            sections += `<p style="margin:4px 0;color:#374151;"><strong>Dosage Schedule:</strong><br/>${scheduleLines}</p>`;
+        } else {
+            const doseLabel = formatDoseLabel(item);
+            const route = formatRoute(item.administrationRoute);
+            const freq = formatFrequency(item.frequency);
+            sections += `<p style="margin:4px 0;color:#374151;"><strong>Dosage:</strong> ${escapeHtml(doseLabel)} administered ${route} ${freq}.</p>`;
+        }
+
+        // Timing
+        sections += `<p style="margin:4px 0;color:#374151;"><strong>Timing:</strong> ${escapeHtml(item.timing === 'none' ? 'No specific preference' : item.timing)}${item.stackLabel && item.stackLabel.includes('Part 2') ? ' (Take this shot 30 minutes AFTER the previous).' : item.stackLabel && item.stackLabel.includes('Part 1') ? ' (Take this shot 1st, on an empty stomach).' : '.'}</p>`;
+
+        // Draw
+        if (units !== null) {
+            sections += `<p style="margin:4px 0;color:#374151;"><strong>Draw:</strong> ${units} units on a U-100 insulin syringe.</p>`;
+        }
+
+        // Cycle pattern
+        if (item.cyclePattern) {
+            sections += `<p style="margin:4px 0;color:#374151;"><strong>Cycle:</strong> ${escapeHtml(item.cyclePattern)}</p>`;
+        }
+
+        // Warning
+        if (item.warningText) {
+            sections += `
+                <div style="margin:10px 0;padding:10px 14px;background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:4px;">
+                    <p style="margin:0;color:#92400E;font-size:13px;"><strong>\u26A0\uFE0F Warning:</strong> ${escapeHtml(item.warningText)}</p>
+                </div>`;
+        }
+
+        // Supplement notes
+        if (item.supplements.length > 0) {
+            for (const supp of item.supplements) {
+                let suppHtml = `<div style="margin:10px 0;padding:10px 14px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:4px;">`;
+                suppHtml += `<p style="margin:0 0 4px;color:#1E40AF;font-size:13px;"><strong>\uD83D\uDC8A Supplement Note:</strong> ${escapeHtml(supp.reason)}</p>`;
+                suppHtml += `<p style="margin:0;color:#1E40AF;font-size:13px;"><strong>Dosage:</strong> ${escapeHtml(supp.dosage)}</p>`;
+                if (supp.productName) {
+                    suppHtml += `<p style="margin:2px 0 0;color:#1E40AF;font-size:13px;"><strong>Recommended Product:</strong> ${escapeHtml(supp.productName)}`;
+                    if (supp.productLink) {
+                        suppHtml += ` (<a href="${escapeHtml(supp.productLink)}" style="color:#2563EB;text-decoration:underline;" target="_blank">Amazon Link</a>)`;
+                    }
+                    suppHtml += `</p>`;
+                }
+                suppHtml += `</div>`;
+                sections += suppHtml;
+            }
+        }
+
+        // Custom notes
+        if (item.notes) {
+            sections += `<p style="margin:4px 0;color:#6B7280;font-style:italic;"><strong>Notes:</strong> ${escapeHtml(item.notes)}</p>`;
+        }
+
+        return `
+            <div style="margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #E5E7EB;">
+                <h2 style="margin:0 0 8px;color:#111827;font-size:18px;font-weight:700;">
+                    ${idx + 1}. ${escapeHtml(item.peptideName)}${escapeHtml(vialLabel)}${escapeHtml(stackLabel)}
+                </h2>
+                ${sections}
+            </div>`;
+    }).join('\n');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peptide Protocol - ${escapeHtml(clientName || 'Client')}</title>
+    <style>
+        @media print {
+            body { font-size: 12px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#ffffff;color:#111827;">
+    <div style="max-width:680px;margin:0 auto;padding:32px 24px;">
+        <!-- Header -->
+        <div style="text-align:center;margin-bottom:32px;">
+            <h1 style="margin:0 0 12px;font-size:28px;font-weight:800;color:#111827;letter-spacing:-0.5px;">
+                Next Gen Peptide Protocols
+            </h1>
+            <div style="padding:12px 16px;background:#FEF3C7;border-radius:8px;margin-bottom:8px;">
+                <p style="margin:0;font-size:12px;color:#92400E;line-height:1.5;">
+                    <strong>Disclaimer:</strong> The following information is for educational purposes only and does not constitute medical advice. Always consult with a qualified healthcare professional before beginning any peptide therapy.
+                </p>
+            </div>
+            ${clientName ? `<p style="margin:8px 0 0;color:#6B7280;font-size:14px;">Prepared for <strong>${escapeHtml(clientName)}</strong></p>` : ''}
+        </div>
+
+        <!-- Protocol Items -->
+        ${itemsHtml}
+
+        <!-- Footer -->
+        <div style="margin-top:32px;padding-top:20px;border-top:2px solid #E5E7EB;">
+            <h3 style="margin:0 0 8px;color:#111827;font-size:15px;">General Guidelines</h3>
+            <p style="margin:4px 0;color:#374151;font-size:13px;">\uD83C\uDF21\uFE0F <strong>Storage:</strong> Refrigerate all reconstituted peptides. Keep away from heat and light.</p>
+            <p style="margin:4px 0;color:#374151;font-size:13px;">\uD83D\uDC89 <strong>Syringes:</strong> Use 1 mL insulin syringes with 100 unit markings (U-100).</p>
+            <p style="margin:4px 0;color:#374151;font-size:13px;">\uD83E\uDDF4 <strong>Alcohol Swabs:</strong> Always clean the vial top and injection site before use.</p>
+            <p style="margin:16px 0 0;color:#6B7280;font-size:13px;">Questions? Reply to this email or reach out anytime.</p>
+            <p style="margin:12px 0 0;color:#111827;font-size:14px;font-weight:600;">
+                \u2014 ${escapeHtml(orgName)}
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+// ── Plain Text Generator (for mailto:) ─────────────────────────
+
+export function generateProtocolPlainText({ items, clientName, orgName = 'NextGen Research Labs' }: GeneratorOptions): string {
+    const lines: string[] = [];
+    lines.push('NEXT GEN PEPTIDE PROTOCOLS');
+    lines.push('');
+    lines.push('Disclaimer: The following information is for educational purposes only and does not constitute medical advice. Always consult with a qualified healthcare professional before beginning any peptide therapy.');
+    lines.push('');
+
+    if (clientName) {
+        lines.push(`Prepared for: ${clientName}`);
+        lines.push('');
+    }
+
+    lines.push('\u2501'.repeat(40));
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const ml = calcMl(item);
+        const units = calcUnits(ml);
+        const vialLabel = item.vialSizeMg ? ` (${item.vialSizeMg} mg Vial)` : '';
+        const stackLabel = item.stackLabel ? ` - ${item.stackLabel}` : '';
+
+        lines.push('');
+        lines.push(`${i + 1}. ${item.peptideName}${vialLabel}${stackLabel}`);
+        lines.push('');
+
+        if (item.protocolDescription) {
+            lines.push(`Description: ${item.protocolDescription}`);
+            lines.push('');
+        }
+
+        if (item.reconstitutionMl > 0 && item.vialSizeMg) {
+            lines.push(`Reconstitution: Add ${item.reconstitutionMl} mL of bacteriostatic water to a ${item.vialSizeMg} mg vial.`);
+        }
+
+        if (item.dosageSchedule) {
+            lines.push(`Dosage Schedule:`);
+            item.dosageSchedule.split('\n').forEach(l => lines.push(`  ${l}`));
+        } else {
+            const doseLabel = formatDoseLabel(item);
+            const route = formatRoute(item.administrationRoute);
+            const freq = formatFrequency(item.frequency);
+            lines.push(`Dosage: ${doseLabel} administered ${route} ${freq}.`);
+        }
+
+        const timingText = item.timing === 'none' ? 'No specific preference' : item.timing;
+        lines.push(`Timing: ${timingText}.`);
+
+        if (units !== null) {
+            lines.push(`Draw: ${units} units on a U-100 insulin syringe.`);
+        }
+
+        if (item.cyclePattern) {
+            lines.push(`Cycle: ${item.cyclePattern}`);
+        }
+
+        if (item.warningText) {
+            lines.push('');
+            lines.push(`\u26A0 Warning: ${item.warningText}`);
+        }
+
+        for (const supp of item.supplements) {
+            lines.push('');
+            lines.push(`Supplement Note: ${supp.reason}`);
+            lines.push(`  Dosage: ${supp.dosage}`);
+            if (supp.productName) {
+                lines.push(`  Recommended Product: ${supp.productName}${supp.productLink ? ` (${supp.productLink})` : ''}`);
+            }
+        }
+
+        if (item.notes) {
+            lines.push(`Notes: ${item.notes}`);
+        }
+
+        lines.push('');
+        lines.push('\u2501'.repeat(40));
+    }
+
+    lines.push('');
+    lines.push('GENERAL GUIDELINES');
+    lines.push('Storage: Refrigerate all reconstituted peptides. Keep away from heat and light.');
+    lines.push('Syringes: Use 1 mL insulin syringes with 100 unit markings (U-100).');
+    lines.push('Alcohol Swabs: Always clean the vial top and injection site before use.');
+    lines.push('');
+    lines.push('Questions? Reply to this email or reach out anytime.');
+    lines.push('');
+    lines.push(`\u2014 ${orgName}`);
+
+    return lines.join('\n');
+}

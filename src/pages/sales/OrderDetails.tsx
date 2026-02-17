@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin, Wand2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Select,
@@ -364,6 +364,14 @@ export default function OrderDetails() {
 
                             <Button variant="outline" className="w-full" onClick={printPackingSlip}>
                                 <Printer className="mr-2 h-4 w-4" /> Print Packing Slip
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => navigate(`/protocol-builder?order=${order.id}&contact=${order.client_id}`)}
+                            >
+                                <Wand2 className="mr-2 h-4 w-4" /> Generate Protocol
                             </Button>
                         </CardContent>
                     </Card>
