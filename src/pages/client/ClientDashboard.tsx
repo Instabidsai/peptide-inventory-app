@@ -134,9 +134,9 @@ function ClientDashboardContent() {
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-2">
-                                    {todaysItems.map((item, idx) => (
+                                    {todaysItems.map((item) => (
                                         <div
-                                            key={idx}
+                                            key={item.item.id}
                                             className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
                                                 item.isTakenToday
                                                     ? 'bg-emerald-500/[0.06]'

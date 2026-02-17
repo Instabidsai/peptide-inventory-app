@@ -597,7 +597,7 @@ export default function AdminDashboard() {
                         <CardContent>
                             <div className="space-y-2">
                                 {topSellers.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between text-sm">
+                                    <div key={item.name} className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
                                             <span className="truncate">{item.name}</span>

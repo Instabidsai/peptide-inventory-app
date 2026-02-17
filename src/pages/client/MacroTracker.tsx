@@ -405,9 +405,9 @@ export default function MacroTracker() {
                     ) : recentFoods?.length === 0 ? (
                         <div className="text-xs text-muted-foreground">No recent meals found. Log your first meal!</div>
                     ) : (
-                        recentFoods?.map((food, idx) => (
+                        recentFoods?.map((food) => (
                             <Button
-                                key={idx}
+                                key={food.name}
                                 variant="secondary"
                                 size="sm"
                                 className="text-xs h-8"
@@ -503,7 +503,7 @@ export default function MacroTracker() {
 
                                 <div className="space-y-4">
                                     {result.foods.map((food, idx) => (
-                                        <div key={idx} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50">
+                                        <div key={`${food.name}-${idx}`} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50">
                                             <div className="flex justify-between items-start">
                                                 <Input
                                                     value={food.name}

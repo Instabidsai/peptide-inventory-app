@@ -201,8 +201,8 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                                     <p className="whitespace-pre-wrap">{reply.message}</p>
 
                                     {/* Attachments */}
-                                    {reply.attachments?.map((att, idx) => (
-                                        <div key={idx} className="mt-2 text-xs">
+                                    {reply.attachments?.map((att) => (
+                                        <div key={att.url} className="mt-2 text-xs">
                                             {att.type === 'voice' && (
                                                 <audio controls src={att.url} className="w-full h-8" />
                                             )}

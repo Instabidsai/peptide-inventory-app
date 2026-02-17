@@ -176,9 +176,9 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-1">
-                                                                    {items.map((item, i) => (
+                                                                    {items.map((item) => (
                                                                         <span
-                                                                            key={i}
+                                                                            key={item}
                                                                             className={cn(
                                                                                 "text-[11px] px-2 py-0.5 rounded-full border text-foreground/80",
                                                                                 key === 'allergies'

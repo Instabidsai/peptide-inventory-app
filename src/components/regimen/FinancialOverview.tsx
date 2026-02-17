@@ -845,7 +845,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                                     Line Items
                                                 </div>
                                                 {t.items.map((item, idx) => (
-                                                    <div key={idx} className="flex justify-between text-xs pl-2">
+                                                    <div key={`${item.peptide_name}-${idx}`} className="flex justify-between text-xs pl-2">
                                                         <span>
                                                             {item.peptide_name}
                                                             {item.quantity > 1 && <span className="text-muted-foreground"> x{item.quantity}</span>}

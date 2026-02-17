@@ -194,7 +194,7 @@ export default function Protocols() {
                                 {items.length > 0 && (
                                     <div className="space-y-2">
                                         {items.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 border rounded-md bg-card">
+                                            <div key={`${item.peptideName}-${item.frequency}-${idx}`} className="flex items-center justify-between p-3 border rounded-md bg-card">
                                                 <div className="text-sm">
                                                     <span className="font-semibold">{item.peptideName}</span>: {item.dosageAmount}{item.dosageUnit} {item.frequency} for {item.duration} days ({item.costMultiplier}x)
                                                 </div>

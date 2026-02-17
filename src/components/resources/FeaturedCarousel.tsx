@@ -108,9 +108,9 @@ export function FeaturedCarousel({ resources, onResourceClick }: FeaturedCarouse
                     {/* Dots Indicator */}
                     {resources.length > 1 && (
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-                            {resources.map((_, idx) => (
+                            {resources.map((r, idx) => (
                                 <button
-                                    key={idx}
+                                    key={r.id}
                                     onClick={() => setCurrentIndex(idx)}
                                     className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex
                                             ? 'bg-primary w-6'

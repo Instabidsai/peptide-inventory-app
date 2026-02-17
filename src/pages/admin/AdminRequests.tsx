@@ -212,9 +212,9 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: { req: ClientRequ
                 {/* Attachments Display */}
                 {req.attachments && Array.isArray(req.attachments) && req.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        {req.attachments.map((att, idx) => (
+                        {req.attachments.map((att) => (
                             <a
-                                key={idx}
+                                key={att.url}
                                 href={att.url}
                                 target="_blank"
                                 rel="noreferrer"

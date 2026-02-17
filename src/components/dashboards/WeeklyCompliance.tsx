@@ -54,7 +54,7 @@ export function WeeklyCompliance() {
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between items-center">
-                    {days.map((day, idx) => {
+                    {days.map((day) => {
                         const dayLogs = weeklyLogs?.filter(log => isSameDay(new Date(log.created_at), day)) || [];
                         const totals = aggregateDailyLogs(dayLogs);
                         const target = goals?.calories_target || 2000;
@@ -74,7 +74,7 @@ export function WeeklyCompliance() {
                         const isToday = isSameDay(day, new Date());
 
                         return (
-                            <div key={idx} className="flex flex-col items-center gap-1">
+                            <div key={format(day, 'yyyy-MM-dd')} className="flex flex-col items-center gap-1">
                                 <span className={`text-[10px] font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                                     {format(day, 'EEE')}
                                 </span>

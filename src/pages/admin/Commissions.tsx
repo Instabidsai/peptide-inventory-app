@@ -236,7 +236,7 @@ export default function Commissions() {
                         <CardContent>
                             <div className="space-y-3">
                                 {topEarners.map((earner, i) => (
-                                    <div key={i} className="flex items-center justify-between">
+                                    <div key={earner.name} className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <span className="text-lg font-bold text-muted-foreground w-6">
                                                 {i + 1}
