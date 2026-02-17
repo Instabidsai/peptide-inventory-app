@@ -70,7 +70,7 @@ export function useBottle(id: string) {
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['bottles', id],
+    queryKey: ['bottles', id, profile?.org_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bottles')
@@ -90,7 +90,7 @@ export function useBottleByUid(uid: string) {
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['bottles', 'uid', uid],
+    queryKey: ['bottles', 'uid', uid, profile?.org_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bottles')

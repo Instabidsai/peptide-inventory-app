@@ -109,7 +109,7 @@ export function usePeptide(id: string) {
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['peptides', id],
+    queryKey: ['peptides', id, profile?.org_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('peptides')

@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type ExpenseCategory = 'startup' | 'operating' | 'inventory' | 'commission' | 'other';
 
@@ -20,8 +21,9 @@ export interface Expense {
 }
 
 export function useExpenses() {
+    const { profile } = useAuth();
     return useQuery({
-        queryKey: ['expenses'],
+        queryKey: ['expenses', profile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('expenses')

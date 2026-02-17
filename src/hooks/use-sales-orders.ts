@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { recalculateOrderProfit } from '@/lib/order-profit';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
@@ -103,8 +104,9 @@ export interface CreateSalesOrderInput {
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
+    const { profile } = useAuth();
     return useQuery({
-        queryKey: ['sales_orders', status],
+        queryKey: ['sales_orders', status, profile?.org_id],
         queryFn: async () => {
             let query = supabase
                 .from('sales_orders')
@@ -131,8 +133,9 @@ export function useSalesOrders(status?: SalesOrderStatus) {
 }
 
 export function useMySalesOrders() {
+    const { profile } = useAuth();
     return useQuery({
-        queryKey: ['my_sales_orders'],
+        queryKey: ['my_sales_orders', profile?.org_id],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');

@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface FinancialMetrics {
     inventoryValue: number;
@@ -22,8 +23,9 @@ export interface FinancialMetrics {
 }
 
 export function useFinancialMetrics() {
+    const { profile } = useAuth();
     return useQuery({
-        queryKey: ['financial-metrics'],
+        queryKey: ['financial-metrics', profile?.org_id],
         queryFn: async (): Promise<FinancialMetrics> => {
             try {
                 // === Phase 1: Fire all independent queries in parallel ===

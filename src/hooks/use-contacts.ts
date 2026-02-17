@@ -90,7 +90,7 @@ export function useContact(id: string) {
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['contacts', id],
+    queryKey: ['contacts', id, profile?.org_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')

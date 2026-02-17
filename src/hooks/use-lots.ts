@@ -60,7 +60,7 @@ export function useLot(id: string) {
   const { user, profile } = useAuth();
 
   return useQuery({
-    queryKey: ['lots', id],
+    queryKey: ['lots', id, profile?.org_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lots')

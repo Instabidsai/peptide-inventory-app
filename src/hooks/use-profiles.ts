@@ -68,7 +68,7 @@ export function useRepProfile(repId: string | null) {
     const { user, profile } = useAuth();
 
     return useQuery({
-        queryKey: ['profile', repId],
+        queryKey: ['profile', repId, profile?.org_id],
         queryFn: async () => {
             if (!repId) return null;
 
