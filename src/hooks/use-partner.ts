@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface PartnerNode {
     id: string;
@@ -114,6 +115,7 @@ export function useCommissionStats() {
 
 export function usePayCommission() {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     return useMutation({
         mutationFn: async (commissionId: string) => {
@@ -126,13 +128,19 @@ export function usePayCommission() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
-            queryClient.invalidateQueries({ queryKey: ['partner_detail'] }); // Refresh stats
-        }
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_detail'] });
+            toast({ title: 'Commission marked as paid' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to pay commission', description: error.message });
+        },
     });
 }
 
 export function useConvertCommission() {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     return useMutation({
         mutationFn: async (commissionId: string) => {
@@ -143,9 +151,15 @@ export function useConvertCommission() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             queryClient.invalidateQueries({ queryKey: ['partner_detail'] });
             queryClient.invalidateQueries({ queryKey: ['profile'] });
-        }
+            queryClient.invalidateQueries({ queryKey: ['my_sidebar_profile'] });
+            toast({ title: 'Commission converted to store credit' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to convert commission', description: error.message });
+        },
     });
 }
 

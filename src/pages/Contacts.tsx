@@ -91,7 +91,7 @@ export default function Contacts() {
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c as any).assigned_rep?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      c.assigned_rep?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Rep filter
     const matchesRep = repFilter === 'all' ||
@@ -159,20 +159,27 @@ export default function Contacts() {
 
   const exportContactsCSV = () => {
     if (!filteredContacts || filteredContacts.length === 0) return;
+    // Proper CSV escaping: wrap in quotes if contains comma, quote, or newline
+    const esc = (v: string) => {
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+        return `"${v.replace(/"/g, '""')}"`;
+      }
+      return v;
+    };
     const headers = ['Name', 'Type', 'Email', 'Phone', 'Company', 'Address', 'Assigned Rep', 'Orders', 'Notes'];
     const rows = filteredContacts.map(c => [
-      (c.name || '').replace(/,/g, ''),
+      esc(c.name || ''),
       c.type,
-      c.email || '',
-      c.phone || '',
-      (c.company || '').replace(/,/g, ''),
-      (c.address || '').replace(/,/g, ' ').replace(/\n/g, ' '),
-      (c as any).assigned_rep?.full_name || '',
-      String((c as any).sales_orders?.length || 0),
-      (c.notes || '').replace(/,/g, ' ').replace(/\n/g, ' '),
+      esc(c.email || ''),
+      esc(c.phone || ''),
+      esc(c.company || ''),
+      esc(c.address || ''),
+      esc(c.assigned_rep?.full_name || ''),
+      String(c.sales_orders?.length || 0),
+      esc(c.notes || ''),
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -441,11 +448,11 @@ export default function Contacts() {
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {contact.company && <span>{contact.company}</span>}
                         {(() => {
-                          const count = (contact as any).sales_orders?.length || 0;
+                          const count = contact.sales_orders?.length || 0;
                           return count > 0 ? <span>{count} order{count !== 1 ? 's' : ''}</span> : null;
                         })()}
-                        {(contact as any).assigned_rep?.full_name && (
-                          <span className="flex items-center gap-0.5 text-blue-500"><Briefcase className="h-3 w-3" />{(contact as any).assigned_rep.full_name}</span>
+                        {contact.assigned_rep?.full_name && (
+                          <span className="flex items-center gap-0.5 text-blue-500"><Briefcase className="h-3 w-3" />{contact.assigned_rep.full_name}</span>
                         )}
                       </div>
                     </CardContent>
@@ -485,10 +492,10 @@ export default function Contacts() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {(contact as any).assigned_rep?.full_name ? (
+                      {contact.assigned_rep?.full_name ? (
                         <div className="flex items-center gap-1 text-sm text-blue-600">
                           <Briefcase className="h-3 w-3" />
-                          {(contact as any).assigned_rep.full_name}
+                          {contact.assigned_rep.full_name}
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-xs italic">Unassigned</span>
@@ -502,7 +509,7 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-center">
                       {(() => {
-                        const count = (contact as any).sales_orders?.length || 0;
+                        const count = contact.sales_orders?.length || 0;
                         return count > 0
                           ? <Badge variant="secondary" className="text-xs">{count}</Badge>
                           : <span className="text-muted-foreground text-xs">0</span>;
@@ -510,7 +517,7 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {(() => {
-                        const orders = (contact as any).sales_orders || [];
+                        const orders = contact.sales_orders || [];
                         if (orders.length === 0) return '-';
                         const latest = orders.reduce((max: any, o: any) =>
                           new Date(o.created_at) > new Date(max.created_at) ? o : max
@@ -719,9 +726,10 @@ export default function Contacts() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={deleteContact.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteContact.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -411,6 +411,7 @@ export function useUpdateSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             toast({ title: 'Order updated' });
 
             // If marked as delivered, notify customer
