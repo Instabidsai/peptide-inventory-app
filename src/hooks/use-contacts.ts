@@ -196,7 +196,28 @@ export function useDeleteContact() {
       const { error: invError } = await supabase.from('client_inventory').delete().eq('contact_id', id);
       if (invError) throw new Error(`Failed to delete related inventory: ${invError.message}`);
 
-      // Step 4: Finally delete the contact
+      // Step 4: Delete protocol children, then protocols
+      const { data: protocols } = await supabase.from('protocols').select('id').eq('contact_id', id);
+      if (protocols && protocols.length > 0) {
+        const protocolIds = protocols.map(p => p.id);
+        const { data: items } = await supabase.from('protocol_items').select('id').in('protocol_id', protocolIds);
+        if (items && items.length > 0) {
+          await supabase.from('protocol_logs').delete().in('protocol_item_id', items.map(i => i.id));
+          await supabase.from('protocol_items').delete().in('protocol_id', protocolIds);
+        }
+        await supabase.from('protocol_supplements').delete().in('protocol_id', protocolIds);
+        await supabase.from('protocol_feedback').delete().in('protocol_id', protocolIds);
+        const { error: protoError } = await supabase.from('protocols').delete().eq('contact_id', id);
+        if (protoError) throw new Error(`Failed to delete related protocols: ${protoError.message}`);
+      }
+
+      // Step 5: Delete contact notes
+      await supabase.from('contact_notes').delete().eq('contact_id', id);
+
+      // Step 6: Delete resources
+      await supabase.from('resources').delete().eq('contact_id', id);
+
+      // Step 7: Finally delete the contact
       const { error } = await supabase
         .from('contacts')
         .delete()

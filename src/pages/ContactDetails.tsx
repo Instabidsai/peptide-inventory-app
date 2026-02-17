@@ -439,7 +439,7 @@ export default function ContactDetails() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{contact.name}</h1>
-                    <Badge variant={contact.type === 'client' ? 'default' : 'secondary'} className="mt-2 text-md px-3 py-1 capitalize">
+                    <Badge variant={contact.type === 'customer' ? 'default' : 'secondary'} className="mt-2 text-md px-3 py-1 capitalize">
                         {contact.type}
                     </Badge>
                 </div>
@@ -732,8 +732,14 @@ export default function ContactDetails() {
                                                 try {
                                                     let suppProtocol = assignedProtocols?.find(p => p.name === 'Supplement Stack');
                                                     if (!suppProtocol) {
-                                                        const newP = await createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplements', contact_id: id });
-                                                        suppProtocol = newP;
+                                                        suppProtocol = await createProtocol.mutateAsync({ name: 'Supplement Stack', description: 'Daily supplements', contact_id: id });
+                                                    }
+                                                    if (suppProtocol?.id) {
+                                                        await addProtocolSupplement.mutateAsync({
+                                                            protocol_id: suppProtocol.id,
+                                                            supplement_id: s.supplement_id,
+                                                        });
+                                                        toast({ title: `${s.supplements.name} added to Supplement Stack` });
                                                     }
                                                 } catch { /* onError in hook shows toast */ }
                                             }}>
@@ -742,7 +748,7 @@ export default function ContactDetails() {
                                         </div>
                                     ))}
                                     <div className="text-xs text-muted-foreground">
-                                        Note: Please add these to the "Supplement Stack" or the specific protocol manually for now while we refine the automation.
+                                        Clicking "Add" will add the supplement to this contact's "Supplement Stack" protocol.
                                     </div>
                                     <Button className="w-full" onClick={() => setIsSuggestionDialogOpen(false)}>Done</Button>
                                 </div>
@@ -1229,7 +1235,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                             <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                            if (window.confirm('Are you sure you want to delete this regimen? This will verify delete all logs and history.')) {
+                            if (window.confirm('Are you sure you want to delete this regimen? All usage logs and history will be permanently removed.')) {
                                 onDelete(protocol.id);
                             }
                         }}>
@@ -1832,7 +1838,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                 const isInactive = isReturned || isCancelled;
                                 const groupTitle = isUnassigned
                                     ? 'Unassigned / Manual Adds'
-                                    : `Order from ${format(new Date(movementDate), 'MMMM d, yyyy')}`;
+                                    : `Order from ${movementDate ? format(new Date(movementDate), 'MMMM d, yyyy') : 'Unknown date'}`;
 
                                 const peptideNames = Array.from(new Set(items.map((i) => i.peptide?.name))).filter(Boolean);
 
