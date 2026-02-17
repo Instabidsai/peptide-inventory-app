@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Star, Reply, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryError } from "@/components/ui/query-error";
 
 export default function AdminFeedback() {
     const { toast } = useToast();
@@ -41,7 +42,7 @@ export default function AdminFeedback() {
     const [replyText, setReplyText] = useState("");
     const [replyLink, setReplyLink] = useState("");
 
-    const { data: feedbacks, isLoading } = useQuery({
+    const { data: feedbacks, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-feedback'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -103,6 +104,8 @@ export default function AdminFeedback() {
             ))}
         </div>
     );
+
+    if (isError) return <QueryError message="Failed to load feedback." onRetry={refetch} />;
 
     const needsAttention = feedbacks?.filter((f) => !f.admin_response && (f.rating <= 3 || (f.comment?.length ?? 0) > 10)).length || 0;
 

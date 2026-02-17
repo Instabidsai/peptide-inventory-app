@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Loader2, MessageSquare, CheckCircle2, XCircle, Archive, ShoppingBag, ArrowRight } from "lucide-react";
+import { QueryError } from "@/components/ui/query-error";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -21,7 +22,7 @@ export default function AdminRequests() {
     const [activeTab, setActiveTab] = useState("pending");
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    const { data: requests, isLoading, refetch } = useQuery({
+    const { data: requests, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-requests', activeTab],
         queryFn: async () => {
             let query = supabase
@@ -140,6 +141,8 @@ export default function AdminRequests() {
                 <TabsContent value={activeTab} className="space-y-4">
                     {isLoading ? (
                         <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" /></div>
+                    ) : isError ? (
+                        <QueryError message="Failed to load requests." onRetry={refetch} />
                     ) : requests?.length === 0 ? (
                         <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">No requests found.</div>
                     ) : (

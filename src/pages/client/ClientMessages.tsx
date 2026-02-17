@@ -16,6 +16,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { QueryError } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ export default function ClientMessages() {
     const [viewId, setViewId] = useState<string | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const { data: requests, isLoading, refetch } = useQuery({
+    const { data: requests, isLoading, isError, refetch } = useQuery({
         queryKey: ['client-requests', user?.id],
         queryFn: async () => {
             if (!user) return [];
@@ -109,6 +110,8 @@ export default function ClientMessages() {
                 <div className="flex justify-center p-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
+            ) : isError ? (
+                <QueryError message="Failed to load messages." onRetry={refetch} />
             ) : requests?.length === 0 ? (
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">

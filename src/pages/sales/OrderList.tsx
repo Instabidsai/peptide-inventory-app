@@ -20,6 +20,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -51,8 +52,8 @@ export default function OrderList() {
     // Reps see 'My Orders', Admins see 'All Orders' (by default, can switch)
     const isRep = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
 
-    const { data: allOrders, isLoading: allLoading } = useSalesOrders(filterStatus === 'all' ? undefined : filterStatus);
-    const { data: myOrders, isLoading: myLoading } = useMySalesOrders();
+    const { data: allOrders, isLoading: allLoading, isError: allError, refetch: allRefetch } = useSalesOrders(filterStatus === 'all' ? undefined : filterStatus);
+    const { data: myOrders, isLoading: myLoading, isError: myError, refetch: myRefetch } = useMySalesOrders();
     const deleteOrder = useDeleteSalesOrder();
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
@@ -72,6 +73,8 @@ export default function OrderList() {
             );
         });
     const isLoading = isRep ? myLoading : allLoading;
+    const isError = isRep ? myError : allError;
+    const refetch = isRep ? myRefetch : allRefetch;
 
     if (isLoading) return (
         <div className="space-y-3 p-4">
@@ -80,6 +83,8 @@ export default function OrderList() {
             ))}
         </div>
     );
+
+    if (isError) return <QueryError message="Failed to load orders." onRetry={refetch} />;
 
     const exportCSV = () => {
         if (!orders || orders.length === 0) return;

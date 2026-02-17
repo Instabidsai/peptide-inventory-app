@@ -212,6 +212,8 @@ export function useProtocols(contactId?: string) {
     return {
         protocols: query.data,
         isLoading: query.isLoading,
+        isError: query.isError,
+        refetch: query.refetch,
         createProtocol,
         deleteProtocol,
         updateProtocolItem,

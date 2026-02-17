@@ -8,11 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { QueryError } from '@/components/ui/query-error';
 import { Loader2, Plus, Trash2, Calculator } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export default function Protocols() {
-    const { protocols, isLoading, createProtocol } = useProtocols();
+    const { protocols, isLoading, isError, refetch, createProtocol } = useProtocols();
     const { data: peptides } = usePeptides();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [name, setName] = useState('');
@@ -219,6 +220,8 @@ export default function Protocols() {
 
             {isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">Loading protocols...</div>
+            ) : isError ? (
+                <QueryError message="Failed to load protocols." onRetry={refetch} />
             ) : protocols?.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                     No protocol templates yet. Create your first one above.

@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { useOrders, useRecordOrderPayment } from '@/hooks/use-orders';
 import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,8 +29,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function Finance() {
-    const { data: expenses, isLoading: expensesLoading } = useExpenses();
-    const { data: orders, isLoading: ordersLoading } = useOrders();
+    const { data: expenses, isLoading: expensesLoading, isError: expensesError, refetch: expensesRefetch } = useExpenses();
+    const { data: orders, isLoading: ordersLoading, isError: ordersError, refetch: ordersRefetch } = useOrders();
     const { data: financials } = useFinancialMetrics();
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
@@ -177,6 +178,13 @@ export default function Finance() {
             </div>
             <Skeleton className="h-60 w-full" />
         </div>
+    );
+
+    if (expensesError || ordersError) return (
+        <QueryError
+            message="Failed to load financial data."
+            onRetry={() => { expensesRefetch(); ordersRefetch(); }}
+        />
     );
 
     // Calc Expenses

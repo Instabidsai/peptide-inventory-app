@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, User, Building2, Users, Copy, Check, Calendar } from 'lucide-react';
+import { QueryError } from '@/components/ui/query-error';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
@@ -54,7 +55,7 @@ export default function Settings() {
   });
 
   // Fetch team members
-  const { data: teamMembers } = useQuery({
+  const { data: teamMembers, isError: teamError, refetch: teamRefetch } = useQuery({
     queryKey: ['team-members', organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
@@ -236,6 +237,9 @@ export default function Settings() {
                 </div>
               </CardHeader>
               <CardContent>
+                {teamError ? (
+                  <QueryError message="Failed to load team members." onRetry={teamRefetch} />
+                ) : (
                 <div className="space-y-3">
                   {teamMembers?.map((member) => (
                     <div
@@ -270,6 +274,7 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

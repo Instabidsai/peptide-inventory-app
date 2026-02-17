@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryError } from '@/components/ui/query-error';
 import { DollarSign, Users, TrendingUp, Clock, CheckCircle, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -23,7 +24,7 @@ interface CommissionRow {
 
 export default function Commissions() {
     // Fetch ALL commissions — NO joins (Supabase FK resolution is unreliable)
-    const { data: commissions, isLoading } = useQuery({
+    const { data: commissions, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin_commissions_full'],
         queryFn: async () => {
             // 1. Fetch flat commissions
@@ -132,6 +133,8 @@ export default function Commissions() {
             </div>
         );
     }
+
+    if (isError) return <QueryError message="Failed to load commissions." onRetry={refetch} />;
 
     return (
         <div className="space-y-6">
