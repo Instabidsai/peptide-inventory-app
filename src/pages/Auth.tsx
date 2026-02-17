@@ -392,8 +392,10 @@ export default function Auth() {
     if (refParam) {
       storeSessionReferral(refParam, roleParam);
     }
-    // If referral, redirect back to /auth so the linking logic runs
-    const redirectPath = refParam ? '/#/auth' : '/';
+    // Always redirect to base URL — hash routes break OAuth token exchange.
+    // ProtectedRoute will redirect new users (no org) to /onboarding,
+    // which picks up the referral from sessionStorage.
+    const redirectPath = '/';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
