@@ -26,6 +26,24 @@ dist-ssr
 .cursor
 
 .env
+.env.*
 
 # Windows artifacts
 nul
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Auth / sensitive
+cookies.txt
+
+# Transcripts (large data files)
+scripts/transcripts/
+
+# Temp / debug files
+test_lab_report.png
+srccomponentsErrorBoundary.tsx
+APP-OVERVIEW.md
+agent-order-context.md
