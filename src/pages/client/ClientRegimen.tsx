@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { useProtocols } from "@/hooks/use-protocols";
+import { useInventoryOwnerId } from "@/hooks/use-inventory-owner";
 import { supabase } from "@/integrations/sb_client/client";
 import { ClientInventoryItem, ClientDailyLog, DailyProtocolTask } from "@/types/regimen";
 import { DigitalFridge } from "@/components/regimen/DigitalFridge";
@@ -18,6 +19,7 @@ import { calculateDoseUnits } from "@/utils/dose-utils";
 export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
     const { protocols } = useProtocols(contact?.id);
+    const inventoryOwnerId = useInventoryOwnerId(contact);
     const { toast } = useToast();
 
     const [inventory, setInventory] = useState<ClientInventoryItem[]>([]);
@@ -28,13 +30,13 @@ export default function ClientRegimen() {
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [selectedRefillPeptide, setSelectedRefillPeptide] = useState<{ id: string, name: string } | undefined>(undefined);
 
-    // Standalone inventory refresh (callable from child components)
+    // Standalone inventory refresh — uses household owner's contact for shared fridge
     const refreshInventory = async () => {
-        if (!contact) return;
+        if (!inventoryOwnerId) return;
         const { data: invData } = await supabase
             .from('client_inventory')
             .select('*, peptide:peptides(name), movement:movements(movement_date, id)')
-            .eq('contact_id', contact.id);
+            .eq('contact_id', inventoryOwnerId);
         if (invData) setInventory(invData as ClientInventoryItem[]);
     };
 

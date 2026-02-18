@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft, Users, Copy, ExternalLink } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel, parseVialSize } from '@/lib/supply-calculations';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -67,6 +67,7 @@ import type { ClientInventoryItem } from '@/types/regimen';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { Textarea } from '@/components/ui/textarea';
+import { useHouseholdMembers, useAddHouseholdMember, useInviteHouseholdMember } from '@/hooks/use-household';
 
 export default function ContactDetails() {
     const navigate = useNavigate();
@@ -273,6 +274,46 @@ export default function ContactDetails() {
     const [inviteTier, setInviteTier] = useState<'family' | 'network' | 'public'>('family');
     const [inviteLink, setInviteLink] = useState<string>('');
     const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+
+    // Household State
+    const { data: householdMembers, isLoading: isLoadingHousehold } = useHouseholdMembers(id);
+    const addHouseholdMember = useAddHouseholdMember(id);
+    const inviteHouseholdMember = useInviteHouseholdMember();
+    const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+    const [newMemberName, setNewMemberName] = useState('');
+    const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [lastMemberInviteLink, setLastMemberInviteLink] = useState('');
+
+    const handleAddHouseholdMember = async () => {
+        if (!newMemberName.trim()) return;
+        try {
+            const newContactId = await addHouseholdMember.mutateAsync({
+                name: newMemberName.trim(),
+                email: newMemberEmail.trim() || undefined,
+            });
+            // Auto-invite if email provided
+            if (newMemberEmail.trim()) {
+                const result = await inviteHouseholdMember.mutateAsync({
+                    contactId: newContactId,
+                    email: newMemberEmail.trim(),
+                });
+                setLastMemberInviteLink(result.action_link);
+            }
+            setNewMemberName('');
+            setNewMemberEmail('');
+            if (!newMemberEmail.trim()) setIsAddMemberOpen(false);
+        } catch {
+            // Error already toasted by hooks
+        }
+    };
+
+    const handleResendInvite = async (memberId: string, memberEmail: string) => {
+        const result = await inviteHouseholdMember.mutateAsync({
+            contactId: memberId,
+            email: memberEmail,
+        });
+        setLastMemberInviteLink(result.action_link);
+    };
 
     const handleGenerateInvite = async () => {
         setIsGeneratingLink(true);
@@ -826,6 +867,166 @@ export default function ContactDetails() {
                     <AccordionContent className="pb-4">
                         {/* Financial Overview - Visible to Admins */}
                         <FinancialOverview contactId={id!} />
+                    </AccordionContent>
+                </AccordionItem>
+
+                {/* ─── Household Members ─── */}
+                <AccordionItem value="household" className="border rounded-lg bg-card px-4">
+                    <AccordionTrigger className="hover:no-underline py-4">
+                        <div className="flex items-center gap-2">
+                            <Users className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-semibold text-lg">Household</span>
+                            {(householdMembers?.length ?? 0) > 0 && (
+                                <Badge variant="secondary" className="ml-2">{householdMembers!.length} members</Badge>
+                            )}
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Household members share the same fridge inventory but have individual protocols.
+                        </p>
+
+                        {/* Member List */}
+                        {isLoadingHousehold ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        ) : (householdMembers?.length ?? 0) > 0 ? (
+                            <div className="space-y-2">
+                                {householdMembers!.map(member => (
+                                    <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                <span className="text-xs font-bold text-primary">
+                                                    {member.name?.charAt(0)?.toUpperCase() || '?'}
+                                                </span>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="font-medium text-sm truncate">{member.name}</div>
+                                                <div className="text-xs text-muted-foreground truncate">
+                                                    {member.email || 'No email'}
+                                                    {' · '}
+                                                    <span className="capitalize">{member.household_role}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {member.linked_user_id ? (
+                                                <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">
+                                                    <CheckCircle2 className="h-3 w-3 mr-1" /> Linked
+                                                </Badge>
+                                            ) : member.email ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-xs h-7"
+                                                    onClick={() => handleResendInvite(member.id, member.email!)}
+                                                    disabled={inviteHouseholdMember.isPending}
+                                                >
+                                                    <Send className="h-3 w-3 mr-1" />
+                                                    {inviteHouseholdMember.isPending ? 'Sending...' : 'Send Invite'}
+                                                </Button>
+                                            ) : (
+                                                <Badge variant="secondary" className="text-xs">No email</Badge>
+                                            )}
+                                            {member.id !== id && (
+                                                <Link to={`/contacts/${member.id}`}>
+                                                    <Button variant="ghost" size="sm" className="text-xs h-7">
+                                                        <ExternalLink className="h-3 w-3 mr-1" /> View
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">
+                                No household members yet. Add a member below to create a shared household.
+                            </p>
+                        )}
+
+                        {/* Last generated invite link */}
+                        {lastMemberInviteLink && (
+                            <div className="p-3 rounded-lg border bg-muted/50 space-y-2">
+                                <Label className="text-xs font-medium">Invite Link (send via Gmail)</Label>
+                                <div className="flex gap-2">
+                                    <code className="flex-1 p-2 bg-background rounded border text-xs break-all font-mono">
+                                        {lastMemberInviteLink}
+                                    </code>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(lastMemberInviteLink);
+                                            toast({ title: 'Copied!' });
+                                        }}
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Add Member Dialog */}
+                        <Dialog open={isAddMemberOpen} onOpenChange={(open) => {
+                            setIsAddMemberOpen(open);
+                            if (!open) {
+                                setNewMemberName('');
+                                setNewMemberEmail('');
+                                setLastMemberInviteLink('');
+                            }
+                        }}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="w-full">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Household Member
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add Household Member</DialogTitle>
+                                    <DialogDescription>
+                                        Add a family member who shares the same fridge. They'll get their own protocol and login.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-2">
+                                    <div className="space-y-2">
+                                        <Label>Name *</Label>
+                                        <Input
+                                            value={newMemberName}
+                                            onChange={e => setNewMemberName(e.target.value)}
+                                            placeholder="e.g. Gloria Thompson"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Email (for invite link)</Label>
+                                        <Input
+                                            type="email"
+                                            value={newMemberEmail}
+                                            onChange={e => setNewMemberEmail(e.target.value)}
+                                            placeholder="e.g. gloria@gmail.com"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            If provided, an invite link will be generated automatically.
+                                        </p>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button
+                                        onClick={handleAddHouseholdMember}
+                                        disabled={!newMemberName.trim() || addHouseholdMember.isPending || inviteHouseholdMember.isPending}
+                                    >
+                                        {addHouseholdMember.isPending ? (
+                                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding...</>
+                                        ) : (
+                                            <><Plus className="h-4 w-4 mr-2" /> Add Member</>
+                                        )}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </AccordionContent>
                 </AccordionItem>
 

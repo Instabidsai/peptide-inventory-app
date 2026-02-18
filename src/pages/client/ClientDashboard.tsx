@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
+import { useHouseholdMembers } from '@/hooks/use-household';
+import { useInventoryOwnerId } from '@/hooks/use-inventory-owner';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +30,7 @@ import { PeptideRings, RING_COLORS } from '@/components/gamified/PeptideRings';
 import type { RingDose } from '@/components/gamified/PeptideRings';
 import { DueNowCards } from '@/components/gamified/DueNowCards';
 import type { DueNowDose } from '@/components/gamified/DueNowCards';
+import { HouseholdDoseSection } from '@/components/gamified/HouseholdDoseSection';
 import { ComplianceHeatmap } from '@/components/gamified/ComplianceHeatmap';
 import type { DayCompletion } from '@/components/gamified/ComplianceHeatmap';
 
@@ -45,31 +48,62 @@ function ClientDashboardContent() {
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
     const { user } = useAuth();
-    const actions = useVialActions(contact?.id);
+
+    // ── Household support ─────────────────────────────────────────
+    const inventoryOwnerId = useInventoryOwnerId(contact);
+    const { data: householdMembers } = useHouseholdMembers(
+        contact?.household_id ? contact?.id : undefined
+    );
+    const isHousehold = !!contact?.household_id && (householdMembers?.length ?? 0) > 1;
+    const actions = useVialActions(inventoryOwnerId);
 
     const today = new Date();
     const todayAbbr = format(today, 'EEE');
     const todayStr = format(today, 'yyyy-MM-dd');
     const currentWindow = getCurrentTimeWindow();
 
-    // Fetch Inventory for unit conversions + SimpleVials
+    // Fetch Inventory — uses household owner's ID for shared fridge
     const { data: inventory } = useQuery({
-        queryKey: ['client-inventory', contact?.id],
+        queryKey: ['client-inventory', inventoryOwnerId],
         queryFn: async () => {
-            if (!contact?.id) return [];
+            if (!inventoryOwnerId) return [];
             const { data } = await supabase
                 .from('client_inventory')
                 .select('*, peptide:peptides(name)')
-                .eq('contact_id', contact.id)
+                .eq('contact_id', inventoryOwnerId)
                 .eq('status', 'active');
             return data || [];
         },
-        enabled: !!contact?.id
+        enabled: !!inventoryOwnerId
     });
 
-    // ── Gamified data computation ────────────────────────────────
-    const gamified = useMemo(() => {
-        // 1. Build protocol item map + flatten all logs
+    // Fetch protocols for ALL household members (for multi-person morning view)
+    const { data: allMemberProtocols } = useQuery({
+        queryKey: ['household-protocols', contact?.household_id, householdMembers?.map(m => m.id).join(',')],
+        queryFn: async () => {
+            if (!householdMembers || householdMembers.length <= 1) return null;
+            const results = await Promise.all(
+                householdMembers.map(async (member) => {
+                    const { data } = await supabase
+                        .from('protocols')
+                        .select('*, protocol_items(*, protocol_logs(created_at, status))')
+                        .eq('contact_id', member.id)
+                        .order('created_at', { ascending: false });
+                    return { member, protocols: data ?? [] };
+                })
+            );
+            return results;
+        },
+        enabled: isHousehold,
+    });
+
+    // ── Helper: build doses for one set of protocols against shared inventory ──
+    const buildDosesForProtocols = (
+        memberProtocols: typeof protocols,
+        inv: typeof inventory,
+        memberName?: string,
+        memberContactId?: string,
+    ) => {
         const protocolItemMap = new Map<string, {
             id: string;
             peptide_id: string;
@@ -77,9 +111,9 @@ function ClientDashboardContent() {
             dosage_unit: string;
             protocol_logs: Array<{ created_at: string; status: string }>;
         }>();
-        const allLogs: Array<{ date: string; protocolItemId: string }> = [];
+        const logs: Array<{ date: string; protocolItemId: string }> = [];
 
-        for (const protocol of (protocols || [])) {
+        for (const protocol of (memberProtocols || [])) {
             for (const item of (protocol.protocol_items || [])) {
                 protocolItemMap.set(item.id, {
                     id: item.id,
@@ -89,7 +123,7 @@ function ClientDashboardContent() {
                     protocol_logs: item.protocol_logs || [],
                 });
                 for (const log of (item.protocol_logs || [])) {
-                    allLogs.push({
+                    logs.push({
                         date: format(new Date(log.created_at), 'yyyy-MM-dd'),
                         protocolItemId: item.id,
                     });
@@ -97,23 +131,27 @@ function ClientDashboardContent() {
             }
         }
 
-        // 2. Get scheduled fridge vials (mixed + have a schedule)
-        const scheduledVials = (inventory || []).filter(
+        const scheduledVials = (inv || []).filter(
             v => v.in_fridge && v.status === 'active' && v.concentration_mg_ml && v.dose_frequency && v.dose_amount_mg
         );
 
-        // 3. Build today's doses
-        const todayDoses: DueNowDose[] = [];
+        // Cross-reference: only include vials that match a protocol item's peptide_id for this member
+        const memberPeptideIds = new Set(
+            Array.from(protocolItemMap.values()).map(pi => pi.peptide_id)
+        );
+
+        const doses: DueNowDose[] = [];
         let colorIdx = 0;
 
         for (const vial of scheduledVials) {
+            // In household mode, only show vials that match this member's protocol peptides
+            if (memberName && memberPeptideIds.size > 0 && !memberPeptideIds.has(vial.peptide_id)) continue;
             if (!isDoseDay(vial, todayAbbr)) continue;
 
             const protocolItem = vial.protocol_item_id
                 ? protocolItemMap.get(vial.protocol_item_id)
                 : null;
 
-            // Check if logged today (via protocol_logs)
             const todayLogs = protocolItem
                 ? protocolItem.protocol_logs.filter(
                     log => isSameDay(new Date(), new Date(log.created_at))
@@ -127,8 +165,8 @@ function ClientDashboardContent() {
             const units = calculateDoseUnits(doseAmountMg, concentration);
             const timeOfDay = (vial.dose_time_of_day as TimeWindow) || 'morning';
 
-            todayDoses.push({
-                id: vial.id,
+            doses.push({
+                id: `${vial.id}-${memberContactId || 'solo'}`,
                 vialId: vial.id,
                 protocolItemId: protocolItem?.id,
                 peptideName: vial.peptide?.name || 'Unknown',
@@ -139,8 +177,42 @@ function ClientDashboardContent() {
                 takenAt,
                 color: RING_COLORS[colorIdx % RING_COLORS.length],
                 currentQuantityMg: vial.current_quantity_mg,
+                memberName,
+                memberContactId,
             });
             colorIdx++;
+        }
+
+        return { doses, logs, scheduledVials, protocolItemMap };
+    };
+
+    // ── Gamified data computation ────────────────────────────────
+    const gamified = useMemo(() => {
+        let todayDoses: DueNowDose[] = [];
+        let allLogs: Array<{ date: string; protocolItemId: string }> = [];
+        let scheduledVials: typeof inventory = [];
+
+        if (isHousehold && allMemberProtocols && allMemberProtocols.length > 1) {
+            // ── HOUSEHOLD MODE: merge doses from all members ──
+            for (const { member, protocols: memberProtos } of allMemberProtocols) {
+                const result = buildDosesForProtocols(
+                    memberProtos,
+                    inventory,
+                    member.name?.split(' ')[0] || 'Member',
+                    member.id,
+                );
+                todayDoses.push(...result.doses);
+                allLogs.push(...result.logs);
+                if (result.scheduledVials.length > 0) {
+                    scheduledVials = result.scheduledVials;
+                }
+            }
+        } else {
+            // ── SOLO MODE: existing logic ──
+            const result = buildDosesForProtocols(protocols, inventory);
+            todayDoses = result.doses;
+            allLogs = result.logs;
+            scheduledVials = result.scheduledVials;
         }
 
         // Sort: untaken current-window first, then untaken later, then taken
@@ -153,7 +225,7 @@ function ClientDashboardContent() {
             return windowOrder[a.timeOfDay] - windowOrder[b.timeOfDay];
         });
 
-        // 4. Ring doses (same data, simpler interface)
+        // Ring doses
         const ringDoses: RingDose[] = todayDoses.map(d => ({
             id: d.id,
             peptideName: d.peptideName,
@@ -161,7 +233,7 @@ function ClientDashboardContent() {
             color: d.color,
         }));
 
-        // 5. Heatmap data (last 91 days)
+        // Heatmap data (last 91 days)
         const logsByDate = new Map<string, number>();
         for (const log of allLogs) {
             logsByDate.set(log.date, (logsByDate.get(log.date) || 0) + 1);
@@ -174,7 +246,7 @@ function ClientDashboardContent() {
             const dateAbbr = format(date, 'EEE');
 
             let expectedCount = 0;
-            for (const vial of scheduledVials) {
+            for (const vial of (scheduledVials || [])) {
                 if (isDoseDay(vial, dateAbbr, date)) {
                     expectedCount++;
                 }
@@ -187,22 +259,20 @@ function ClientDashboardContent() {
             });
         }
 
-        // 6. Auto-calculate streak from heatmap
+        // Streak
         const heatmapByDate = new Map(
             heatmapData.map(d => [format(d.date, 'yyyy-MM-dd'), d])
         );
 
         let streak = 0;
-        // If today is all done, count it
         const todayHeatmap = heatmapByDate.get(todayStr);
         if (todayHeatmap && todayHeatmap.total > 0 && todayHeatmap.completed >= todayHeatmap.total) {
             streak = 1;
         }
-        // Count backwards from yesterday
         for (let i = 1; i <= 90; i++) {
             const dateStr = format(subDays(today, i), 'yyyy-MM-dd');
             const day = heatmapByDate.get(dateStr);
-            if (!day || day.total === 0) continue; // rest day doesn't break streak
+            if (!day || day.total === 0) continue;
             if (day.completed >= day.total) {
                 streak++;
             } else {
@@ -210,7 +280,7 @@ function ClientDashboardContent() {
             }
         }
 
-        // 7. Adherence rate (last 30 days)
+        // Adherence rate (last 30 days)
         const last30 = heatmapData.filter(d => {
             const daysAgo = Math.floor((today.getTime() - d.date.getTime()) / (1000 * 60 * 60 * 24));
             return daysAgo <= 30 && d.total > 0;
@@ -220,7 +290,7 @@ function ClientDashboardContent() {
         const adherenceRate = totalExpected > 0 ? Math.round((totalCompleted / totalExpected) * 100) : 0;
 
         return { todayDoses, ringDoses, heatmapData, streak, adherenceRate, currentWindow };
-    }, [protocols, inventory, todayAbbr, todayStr, currentWindow]);
+    }, [protocols, inventory, todayAbbr, todayStr, currentWindow, isHousehold, allMemberProtocols]);
 
     // ── Unified dose logging (protocol log + vial decrement) ────
     const handleLogDose = (dose: DueNowDose) => {
@@ -334,12 +404,22 @@ function ClientDashboardContent() {
                     {hasDosesToday && (
                         <GlassCard className="border-white/[0.04] overflow-hidden">
                             <CardContent className="pt-5 pb-4">
-                                <DueNowCards
-                                    doses={gamified.todayDoses}
-                                    currentWindow={gamified.currentWindow}
-                                    onLogDose={handleLogDose}
-                                    isLogging={logProtocolUsage.isPending || actions.logDose.isPending}
-                                />
+                                {isHousehold ? (
+                                    <HouseholdDoseSection
+                                        doses={gamified.todayDoses}
+                                        currentWindow={gamified.currentWindow}
+                                        onLogDose={handleLogDose}
+                                        isLogging={logProtocolUsage.isPending || actions.logDose.isPending}
+                                        currentMemberName={contact?.name?.split(' ')[0]}
+                                    />
+                                ) : (
+                                    <DueNowCards
+                                        doses={gamified.todayDoses}
+                                        currentWindow={gamified.currentWindow}
+                                        onLogDose={handleLogDose}
+                                        isLogging={logProtocolUsage.isPending || actions.logDose.isPending}
+                                    />
+                                )}
                             </CardContent>
                         </GlassCard>
                     )}

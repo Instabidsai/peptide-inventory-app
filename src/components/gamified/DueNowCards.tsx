@@ -16,6 +16,8 @@ export interface DueNowDose {
     takenAt?: string;
     color: string;
     currentQuantityMg: number;
+    memberName?: string;
+    memberContactId?: string;
 }
 
 interface DueNowCardsProps {
