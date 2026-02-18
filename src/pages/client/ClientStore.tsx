@@ -325,63 +325,87 @@ export default function ClientStore() {
         );
     }
 
+    // Category gradient config
+    const CATEGORY_STYLES: Record<string, { gradient: string; glow: string; iconBg: string }> = {
+        healing: { gradient: 'from-rose-500/20 to-pink-600/10', glow: 'shadow-rose-500/10', iconBg: 'bg-gradient-to-br from-rose-500 to-pink-600' },
+        gh_stack: { gradient: 'from-violet-500/20 to-purple-600/10', glow: 'shadow-violet-500/10', iconBg: 'bg-gradient-to-br from-violet-500 to-purple-600' },
+        weight_loss: { gradient: 'from-orange-500/20 to-amber-600/10', glow: 'shadow-orange-500/10', iconBg: 'bg-gradient-to-br from-orange-500 to-amber-600' },
+        cognitive: { gradient: 'from-cyan-500/20 to-blue-600/10', glow: 'shadow-cyan-500/10', iconBg: 'bg-gradient-to-br from-cyan-500 to-blue-600' },
+        sleep: { gradient: 'from-indigo-500/20 to-violet-600/10', glow: 'shadow-indigo-500/10', iconBg: 'bg-gradient-to-br from-indigo-500 to-violet-600' },
+        anti_aging: { gradient: 'from-fuchsia-500/20 to-amber-500/10', glow: 'shadow-fuchsia-500/10', iconBg: 'bg-gradient-to-br from-fuchsia-500 to-amber-400' },
+    };
+
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-8 pb-24">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Peptide Collection</h1>
-                <p className="text-muted-foreground text-sm mt-1">
+            <div className="relative">
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-primary/[0.07] rounded-full blur-[100px] pointer-events-none" />
+                <h1 className="text-3xl font-extrabold tracking-tight text-gradient-hero">
+                    Peptide Collection
+                </h1>
+                <p className="text-muted-foreground/70 text-sm mt-1.5 font-medium">
                     Premium research compounds delivered to your door
                 </p>
             </div>
 
             {/* Partner discount banner */}
             {assignedRep && Number(assignedRep.price_multiplier || 1) < 1 && (
-                <div className="flex items-center gap-2 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06]">
-                    <Percent className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <p className="text-xs text-emerald-300">
-                        Partner pricing active — you're getting <strong>{Math.round((1 - Number(assignedRep.price_multiplier)) * 100)}% off</strong> retail on all products.
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] backdrop-blur-sm"
+                >
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0">
+                        <Percent className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-emerald-300 leading-relaxed">
+                        Partner pricing active — you're getting <strong className="text-emerald-200">{Math.round((1 - Number(assignedRep.price_multiplier)) * 100)}% off</strong> retail on all products.
                     </p>
-                </div>
+                </motion.div>
             )}
 
             {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative group">
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/10 via-transparent to-primary/10 opacity-0 group-focus-within:opacity-100 transition-opacity blur-xl" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
                 <Input
                     aria-label="Search store"
                     placeholder="Search peptides..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className="pl-10 h-11 rounded-xl bg-white/[0.04] border-white/[0.08] backdrop-blur-sm placeholder:text-muted-foreground/40"
                 />
             </div>
 
             {/* Protocol Bundles */}
             {!searchQuery && peptides && peptides.length > 0 && (
                 <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                        <Layers className="h-5 w-5 text-primary" />
-                        Recommended Protocols
-                    </h2>
-                    <p className="text-xs text-muted-foreground/60 mb-4">
-                        Pre-built peptide combinations for specific goals
-                    </p>
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center">
+                            <Layers className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold tracking-tight">Recommended Protocols</h2>
+                            <p className="text-xs text-muted-foreground/50">Curated peptide stacks for your goals</p>
+                        </div>
+                    </div>
+                    <motion.div
+                        className="grid gap-4 grid-cols-1 sm:grid-cols-2 mt-4"
+                        initial="hidden"
+                        animate="show"
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+                    >
                         {PROTOCOL_TEMPLATES
-                            .filter(t => t.category !== 'full') // hide the 11-peptide mega bundle
-                            .filter(t => !t.defaultTierId) // hide variant tiers (Injury, Gentle) — keep main ones
+                            .filter(t => t.category !== 'full')
+                            .filter(t => !t.defaultTierId)
                             .map(template => {
                                 const Icon = ICON_MAP[template.icon] || Package;
-                                // Match template peptide names to actual peptides in DB
-                                // DB names include size (e.g. "BPC-157 10mg") so use startsWith
+                                const catStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.healing;
                                 const matchedPeptides = template.peptideNames
                                     .map(name => peptides.find(p => p.name?.toLowerCase().startsWith(name.toLowerCase())))
                                     .filter(Boolean) as any[];
-                                // Deduplicate for display (but keep full list for quantities)
                                 const uniqueMatched = [...new Map(matchedPeptides.map((p: any) => [p.id, p])).values()];
                                 const bundlePrice = matchedPeptides.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
-                                // Count expected qty per peptide from template
                                 const expectedQty: Record<string, number> = {};
                                 matchedPeptides.forEach((p: any) => { expectedQty[p.id] = (expectedQty[p.id] || 0) + 1; });
                                 const allInCart = uniqueMatched.length > 0 && uniqueMatched.every(p => {
@@ -389,42 +413,49 @@ export default function ClientStore() {
                                     return inCart && inCart.quantity >= (expectedQty[p.id] || 1);
                                 });
 
-                                if (matchedPeptides.length === 0) return null; // skip if no matching peptides in stock
+                                if (matchedPeptides.length === 0) return null;
 
                                 return (
-                                    <motion.div key={template.name} whileTap={{ scale: 0.98 }}>
+                                    <motion.div
+                                        key={template.name}
+                                        variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                                        whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
                                         <GlassCard
-                                            className="hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                                            className={`cursor-pointer group hover:shadow-xl ${catStyle.glow} hover:border-white/[0.12] transition-all duration-300`}
                                             onClick={() => setSelectedProtocol({ template, matched: matchedPeptides })}
                                         >
-                                            <CardContent className="p-4 space-y-3">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                                        <Icon className="h-4.5 w-4.5 text-primary" />
+                                            {/* Gradient accent bar at top */}
+                                            <div className={`h-[2px] bg-gradient-to-r ${catStyle.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
+                                            <CardContent className="p-5 space-y-4">
+                                                <div className="flex items-start gap-4">
+                                                    <div className={`h-11 w-11 rounded-xl ${catStyle.iconBg} flex items-center justify-center shrink-0 shadow-lg`}>
+                                                        <Icon className="h-5 w-5 text-white" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-semibold text-sm">{template.name}</p>
-                                                        <p className="text-xs text-muted-foreground/60 mt-0.5 line-clamp-2">{template.description}</p>
+                                                        <p className="font-bold text-[15px] tracking-tight">{template.name}</p>
+                                                        <p className="text-xs text-muted-foreground/50 mt-1 leading-relaxed line-clamp-2">{template.description}</p>
                                                     </div>
-                                                    <Info className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-1" />
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {uniqueMatched.map((p: any) => (
-                                                        <Badge key={p.id} variant="secondary" className="text-[10px] px-2 py-0.5">
+                                                        <Badge key={p.id} variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-white/[0.06] border-white/[0.08] font-medium">
                                                             {expectedQty[p.id] > 1 ? `${expectedQty[p.id]}x ` : ''}{p.name}
                                                         </Badge>
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center justify-between pt-1">
-                                                    <span className="text-lg font-bold text-primary">${bundlePrice.toFixed(2)}</span>
+                                                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                                                    <span className="text-xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
                                                     {allInCart ? (
-                                                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-                                                            <Check className="h-4 w-4" />
+                                                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-full">
+                                                            <Check className="h-3.5 w-3.5" />
                                                             In Cart
                                                         </div>
                                                     ) : (
                                                         <Button
                                                             size="sm"
+                                                            className="rounded-full px-4 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 matchedPeptides.forEach((p: any) => addToCart(p));
@@ -440,54 +471,67 @@ export default function ClientStore() {
                                     </motion.div>
                                 );
                             })}
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Product Grid */}
             <div>
-                <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <Package className="h-5 w-5 text-primary" />
-                    Our Collection
+                <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/80 to-emerald-600 flex items-center justify-center">
+                            <Package className="h-4 w-4 text-white" />
+                        </div>
+                        <h2 className="text-lg font-bold tracking-tight">Our Collection</h2>
+                    </div>
                     {filteredPeptides && (
-                        <Badge variant="secondary" className="text-xs">
-                            {filteredPeptides.length}
+                        <Badge variant="secondary" className="text-xs bg-white/[0.06] border-white/[0.08]">
+                            {filteredPeptides.length} items
                         </Badge>
                     )}
-                </h2>
+                </div>
 
                 {isLoading ? (
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <GlassCard key={i}>
-                                <CardContent className="p-4">
+                                <CardContent className="p-5">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex-1 space-y-2">
-                                            <Skeleton className="h-4 w-28" />
-                                            <Skeleton className="h-3 w-16" />
-                                            <Skeleton className="h-6 w-20 mt-1" />
+                                        <div className="flex-1 space-y-2.5">
+                                            <Skeleton className="h-4 w-32" />
+                                            <Skeleton className="h-3 w-20" />
+                                            <Skeleton className="h-7 w-24 mt-1" />
                                         </div>
-                                        <Skeleton className="h-9 w-16 rounded-md" />
+                                        <Skeleton className="h-10 w-20 rounded-full" />
                                     </div>
                                 </CardContent>
                             </GlassCard>
                         ))}
                     </div>
                 ) : isError ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                        <p className="text-sm">Failed to load products. Please try refreshing the page.</p>
+                    <div className="text-center py-16 text-muted-foreground">
+                        <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                            <Package className="h-8 w-8 text-red-400/60" />
+                        </div>
+                        <p className="text-sm font-medium">Failed to load products</p>
+                        <p className="text-xs text-muted-foreground/50 mt-1">Please try refreshing the page</p>
                     </div>
                 ) : filteredPeptides?.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                        <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                        <p className="text-sm">{searchQuery ? 'No peptides match your search.' : 'No peptides available right now.'}</p>
+                    <div className="text-center py-16 text-muted-foreground">
+                        <div className="h-16 w-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+                            <Search className="h-8 w-8 text-muted-foreground/30" />
+                        </div>
+                        <p className="text-sm font-medium">{searchQuery ? 'No results found' : 'No peptides available'}</p>
+                        <p className="text-xs text-muted-foreground/50 mt-1">
+                            {searchQuery ? `Nothing matches "${searchQuery}"` : 'Check back soon'}
+                        </p>
                     </div>
                 ) : (
                     <motion.div
                         className="grid gap-3 grid-cols-1 sm:grid-cols-2"
                         initial="hidden"
                         animate="show"
-                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
                     >
                         {filteredPeptides?.map((peptide) => {
                             const price = getClientPrice(peptide);
@@ -495,65 +539,74 @@ export default function ClientStore() {
                             const hasDiscount = assignedRep && price < retail;
                             const inCart = cart.find(i => i.peptide_id === peptide.id);
 
-                            if (price <= 0 && retail <= 0) return null; // Skip items without a price
+                            if (price <= 0 && retail <= 0) return null;
 
                             return (
-                                <motion.div key={peptide.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} whileTap={{ scale: 0.98 }}>
+                                <motion.div
+                                    key={peptide.id}
+                                    variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
                                 <GlassCard
-                                    className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group cursor-pointer"
+                                    className="group cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.12] hover:shadow-lg hover:shadow-primary/[0.06] transition-all duration-300"
                                     onClick={() => setSelectedPeptide(peptide)}
                                 >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-center justify-between">
+                                    <CardContent className="p-4 sm:p-5">
+                                        <div className="flex items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm truncate">{peptide.name}</p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <Shield className="h-3 w-3 text-emerald-400" />
-                                                    <span className="text-[10px] text-emerald-400 font-medium">Research Grade</span>
+                                                <p className="font-semibold text-sm tracking-tight truncate group-hover:text-primary transition-colors">{peptide.name}</p>
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                                    <span className="text-[10px] text-emerald-400/80 font-medium uppercase tracking-wider">Research Grade</span>
                                                 </div>
-                                                <div className="flex items-baseline gap-2 mt-1.5">
-                                                    <p className="text-xl font-bold text-primary">
+                                                <div className="flex items-baseline gap-2 mt-2">
+                                                    <p className="text-xl font-extrabold text-gradient-primary">
                                                         ${price.toFixed(2)}
                                                     </p>
                                                     {hasDiscount && (
-                                                        <span className="text-sm text-muted-foreground line-through">
+                                                        <span className="text-xs text-muted-foreground/50 line-through">
                                                             ${retail.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                    {hasDiscount && (
+                                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                                                            -{Math.round((1 - price / retail) * 100)}%
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
                                                 {inCart ? (
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-full p-0.5">
                                                         <Button
-                                                            variant="outline"
+                                                            variant="ghost"
                                                             size="icon"
-                                                            className="h-9 w-9"
+                                                            className="h-8 w-8 rounded-full hover:bg-white/[0.08]"
                                                             onClick={() => updateQuantity(peptide.id, -1)}
                                                             aria-label={`Decrease quantity of ${peptide.name}`}
                                                         >
-                                                            <Minus className="h-4 w-4" />
+                                                            <Minus className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <span className="w-6 text-center text-sm font-medium">
+                                                        <span className="w-7 text-center text-sm font-bold">
                                                             {inCart.quantity}
                                                         </span>
                                                         <Button
-                                                            variant="outline"
+                                                            variant="ghost"
                                                             size="icon"
-                                                            className="h-9 w-9"
+                                                            className="h-8 w-8 rounded-full hover:bg-white/[0.08]"
                                                             onClick={() => updateQuantity(peptide.id, 1)}
                                                             aria-label={`Increase quantity of ${peptide.name}`}
                                                         >
-                                                            <Plus className="h-4 w-4" />
+                                                            <Plus className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 ) : (
                                                     <Button
                                                         size="sm"
+                                                        className="rounded-full px-4 shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30 transition-all"
                                                         onClick={() => addToCart(peptide)}
-                                                        className="flex items-center gap-1"
                                                     >
-                                                        <Plus className="h-4 w-4" />
+                                                        <Plus className="h-3.5 w-3.5 mr-1" />
                                                         Add
                                                     </Button>
                                                 )}
@@ -578,13 +631,17 @@ export default function ClientStore() {
                     exit={{ opacity: 0, y: 24, scale: 0.97 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 >
-                <GlassCard className="border-primary/20 shadow-lg shadow-primary/5 ring-1 ring-primary/10">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <ShoppingCart className="h-5 w-5" />
+                <GlassCard className="border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden">
+                    {/* Gradient accent at top */}
+                    <div className="h-[2px] bg-gradient-to-r from-primary via-emerald-300 to-cyan-400" />
+                    <CardHeader className="pb-2 pt-5">
+                        <CardTitle className="flex items-center gap-3 text-lg">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center shadow-lg shadow-primary/20">
+                                <ShoppingCart className="h-4 w-4 text-white" />
+                            </div>
                             Your Order
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="ml-12">
                             {itemCount} item{itemCount !== 1 ? 's' : ''}
                         </CardDescription>
                     </CardHeader>
@@ -805,17 +862,15 @@ export default function ClientStore() {
             </AnimatePresence>
 
             {/* Info card */}
-            <Card className="bg-muted/20 border-muted/50">
-                <CardContent className="pt-4">
-                    <div className="flex items-start gap-3">
-                        <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <p className="text-xs text-muted-foreground">
-                            You'll be redirected to our secure payment processor to complete your order.
-                            Once payment is confirmed, your order will be processed and shipped.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="h-7 w-7 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0 mt-0.5">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
+                </div>
+                <p className="text-xs text-muted-foreground/40 leading-relaxed">
+                    You'll be redirected to our secure payment processor to complete your order.
+                    Once payment is confirmed, your order will be processed and shipped.
+                </p>
+            </div>
 
             {/* Checkout confirmation dialog */}
             <AlertDialog open={showCheckoutConfirm} onOpenChange={setShowCheckoutConfirm}>
@@ -847,15 +902,15 @@ export default function ClientStore() {
                         className="fixed bottom-20 left-4 right-4 z-30 max-w-lg mx-auto"
                     >
                         <Button
-                            className="w-full h-14 rounded-2xl shadow-xl shadow-primary/25 text-base font-semibold"
+                            className="w-full h-14 rounded-2xl shadow-2xl shadow-primary/30 text-base font-bold bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
                             size="lg"
                             onClick={() => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                         >
-                            <ShoppingCart className="h-5 w-5 mr-2" />
+                            <ShoppingCart className="h-5 w-5 mr-2.5" />
                             <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
-                            <span className="mx-2 opacity-40">|</span>
+                            <span className="mx-3 h-5 w-px bg-white/20" />
                             <span>${cartTotal.toFixed(2)}</span>
-                            <ChevronDown className="h-4 w-4 ml-2" />
+                            <ChevronDown className="h-4 w-4 ml-2 opacity-60" />
                         </Button>
                     </motion.div>
                 )}
@@ -863,12 +918,12 @@ export default function ClientStore() {
 
             {/* Protocol detail Sheet */}
             <Sheet open={!!selectedProtocol} onOpenChange={(open) => { if (!open) setSelectedProtocol(null); }}>
-                <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/[0.1]">
                     {selectedProtocol && (() => {
                         const { template, matched } = selectedProtocol;
                         const Icon = ICON_MAP[template.icon] || Package;
+                        const catStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.healing;
                         const bundlePrice = matched.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
-                        // Deduplicate for display, track quantities
                         const uniqueMatched = [...new Map(matched.map((p: any) => [p.id, p])).values()] as any[];
                         const qtyMap: Record<string, number> = {};
                         matched.forEach((p: any) => { qtyMap[p.id] = (qtyMap[p.id] || 0) + 1; });
@@ -879,72 +934,90 @@ export default function ClientStore() {
 
                         return (
                             <>
-                                <SheetHeader className="pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                            <Icon className="h-5 w-5 text-primary" />
+                                {/* Gradient accent bar */}
+                                <div className={`h-1 -mt-1 rounded-full mx-auto w-12 bg-gradient-to-r ${catStyle.gradient} opacity-80 mb-4`} />
+                                <SheetHeader className="pb-5">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`h-14 w-14 rounded-2xl ${catStyle.iconBg} flex items-center justify-center shrink-0 shadow-xl`}>
+                                            <Icon className="h-7 w-7 text-white" />
                                         </div>
                                         <div>
-                                            <SheetTitle className="text-xl font-bold tracking-tight text-left">
+                                            <SheetTitle className="text-2xl font-extrabold tracking-tight text-left">
                                                 {template.name}
                                             </SheetTitle>
-                                            <p className="text-sm text-muted-foreground mt-0.5">{template.description}</p>
+                                            <p className="text-sm text-muted-foreground/60 mt-1 leading-relaxed">{template.description}</p>
                                         </div>
                                     </div>
                                 </SheetHeader>
 
-                                <div className="space-y-4 pb-6">
-                                    {/* Each peptide in the protocol */}
-                                    <p className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider">What's Included</p>
+                                <div className="space-y-5 pb-8">
+                                    <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.15em]">What's Included</p>
                                     <div className="space-y-3">
-                                        {uniqueMatched.map((p: any) => {
+                                        {uniqueMatched.map((p: any, idx: number) => {
                                             const qty = qtyMap[p.id] || 1;
                                             const price = getClientPrice(p) * qty;
                                             const knowledge = PROTOCOL_KNOWLEDGE[p.name];
                                             return (
-                                                <div key={p.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                                <motion.div
+                                                    key={p.id}
+                                                    initial={{ opacity: 0, x: -12 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: idx * 0.08, duration: 0.3 }}
+                                                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors space-y-2.5"
+                                                >
                                                     <div className="flex items-center justify-between">
-                                                        <p className="font-semibold text-sm">{qty > 1 ? `${qty}x ` : ''}{p.name}</p>
-                                                        <span className="text-sm font-bold text-primary">${price.toFixed(2)}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {qty > 1 && (
+                                                                <span className="text-[10px] font-bold bg-white/[0.08] px-2 py-0.5 rounded-full">{qty}x</span>
+                                                            )}
+                                                            <p className="font-bold text-sm">{p.name}</p>
+                                                        </div>
+                                                        <span className="text-sm font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
                                                     </div>
                                                     {knowledge && (
                                                         <>
-                                                            <p className="text-xs text-muted-foreground/70 leading-relaxed line-clamp-3">
+                                                            <p className="text-xs text-muted-foreground/60 leading-relaxed line-clamp-3">
                                                                 {knowledge.description}
                                                             </p>
-                                                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground/50">
-                                                                <span>Dose: {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}</span>
-                                                                <span>Frequency: {knowledge.defaultFrequency}</span>
-                                                                <span>Timing: {knowledge.defaultTiming}</span>
-                                                                <span>Route: {knowledge.administrationRoute}</span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {[
+                                                                    { label: knowledge.defaultDoseAmount + ' ' + knowledge.defaultDoseUnit, },
+                                                                    { label: knowledge.defaultFrequency },
+                                                                    { label: knowledge.defaultTiming },
+                                                                    { label: knowledge.administrationRoute },
+                                                                ].map((tag, i) => (
+                                                                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-muted-foreground/50 font-medium">
+                                                                        {tag.label}
+                                                                    </span>
+                                                                ))}
                                                             </div>
                                                         </>
                                                     )}
                                                     {!knowledge && p.description && (
-                                                        <p className="text-xs text-muted-foreground/70 leading-relaxed line-clamp-3">
+                                                        <p className="text-xs text-muted-foreground/60 leading-relaxed line-clamp-3">
                                                             {p.description}
                                                         </p>
                                                     )}
-                                                </div>
+                                                </motion.div>
                                             );
                                         })}
                                     </div>
 
                                     {/* Total + Add All */}
-                                    <div className="border-t pt-4 space-y-3">
+                                    <div className="border-t border-white/[0.06] pt-5 space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-muted-foreground text-sm">Bundle Total</span>
-                                            <span className="text-2xl font-bold text-primary">${bundlePrice.toFixed(2)}</span>
+                                            <span className="text-muted-foreground/60 text-sm font-medium">Bundle Total</span>
+                                            <span className="text-3xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
                                         </div>
                                         {allInCart ? (
-                                            <div className="flex items-center justify-center gap-2 py-3 text-emerald-400 font-medium">
+                                            <div className="flex items-center justify-center gap-2.5 py-4 text-emerald-400 font-semibold bg-emerald-500/[0.08] rounded-2xl border border-emerald-500/20">
                                                 <Check className="h-5 w-5" />
                                                 All items in cart
                                             </div>
                                         ) : (
                                             <Button
                                                 size="lg"
-                                                className="w-full h-14 rounded-xl text-base font-semibold shadow-md shadow-primary/20"
+                                                className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
                                                 onClick={() => {
                                                     matched.forEach((p: any) => addToCart(p));
                                                 }}
@@ -963,7 +1036,7 @@ export default function ClientStore() {
 
             {/* Product detail Sheet */}
             <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) setSelectedPeptide(null); }}>
-                <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[75vh] overflow-y-auto border-t border-white/[0.1]">
                     {selectedPeptide && (() => {
                         const price = getClientPrice(selectedPeptide);
                         const retail = Number(selectedPeptide.retail_price || 0);
@@ -972,67 +1045,67 @@ export default function ClientStore() {
 
                         return (
                             <>
-                                <SheetHeader className="pb-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Shield className="h-4 w-4 text-emerald-400" />
-                                        <span className="text-xs text-emerald-400 font-medium">Research Grade</span>
+                                <div className="h-1 rounded-full mx-auto w-12 bg-gradient-to-r from-primary to-emerald-400 opacity-60 mb-5 -mt-1" />
+                                <SheetHeader className="pb-5">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        <span className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-[0.15em]">Research Grade</span>
                                     </div>
-                                    <SheetTitle className="text-2xl font-bold tracking-tight text-left">
+                                    <SheetTitle className="text-2xl font-extrabold tracking-tight text-left">
                                         {selectedPeptide.name}
                                     </SheetTitle>
                                 </SheetHeader>
 
-                                <div className="space-y-5 pb-6">
-                                    {/* Description */}
+                                <div className="space-y-5 pb-8">
                                     {selectedPeptide.description && (
-                                        <p className="text-sm text-muted-foreground leading-relaxed">
+                                        <p className="text-sm text-muted-foreground/70 leading-relaxed">
                                             {selectedPeptide.description}
                                         </p>
                                     )}
 
                                     {/* Price */}
                                     <div className="flex items-baseline gap-3">
-                                        <span className="text-3xl font-bold text-primary">${price.toFixed(2)}</span>
+                                        <span className="text-4xl font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
                                         {hasDiscount && (
-                                            <span className="text-lg text-muted-foreground line-through">${retail.toFixed(2)}</span>
+                                            <span className="text-lg text-muted-foreground/40 line-through">${retail.toFixed(2)}</span>
                                         )}
                                         {hasDiscount && (
-                                            <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20">
-                                                {Math.round((1 - price / retail) * 100)}% off
-                                            </Badge>
+                                            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                                                Save {Math.round((1 - price / retail) * 100)}%
+                                            </span>
                                         )}
                                     </div>
 
                                     {/* Quantity + Add to cart */}
                                     {inCart ? (
                                         <div className="space-y-3">
-                                            <div className="flex items-center justify-center gap-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                                            <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="h-11 w-11 rounded-xl"
+                                                    className="h-12 w-12 rounded-xl border-white/[0.1]"
                                                     onClick={() => updateQuantity(selectedPeptide.id, -1)}
                                                 >
                                                     <Minus className="h-5 w-5" />
                                                 </Button>
-                                                <span className="text-2xl font-bold w-12 text-center">{inCart.quantity}</span>
+                                                <span className="text-3xl font-extrabold w-14 text-center">{inCart.quantity}</span>
                                                 <Button
                                                     variant="outline"
                                                     size="icon"
-                                                    className="h-11 w-11 rounded-xl"
+                                                    className="h-12 w-12 rounded-xl border-white/[0.1]"
                                                     onClick={() => updateQuantity(selectedPeptide.id, 1)}
                                                 >
                                                     <Plus className="h-5 w-5" />
                                                 </Button>
                                             </div>
-                                            <p className="text-center text-sm text-muted-foreground">
-                                                Subtotal: <span className="font-semibold text-foreground">${(price * inCart.quantity).toFixed(2)}</span>
+                                            <p className="text-center text-sm text-muted-foreground/60">
+                                                Subtotal: <span className="font-bold text-foreground">${(price * inCart.quantity).toFixed(2)}</span>
                                             </p>
                                         </div>
                                     ) : (
                                         <Button
                                             size="lg"
-                                            className="w-full h-14 rounded-xl text-base font-semibold shadow-md shadow-primary/20"
+                                            className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
                                             onClick={() => addToCart(selectedPeptide)}
                                         >
                                             <Plus className="h-5 w-5 mr-2" />
@@ -1041,9 +1114,12 @@ export default function ClientStore() {
                                     )}
 
                                     {/* Storage info */}
-                                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1.5">
-                                        <p className="text-xs font-medium text-muted-foreground/80">Storage & Handling</p>
-                                        <p className="text-xs text-muted-foreground/60">
+                                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Shield className="h-3.5 w-3.5 text-emerald-400/60" />
+                                            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Storage & Handling</p>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground/50 leading-relaxed">
                                             Store unreconstituted vials at room temperature or refrigerated. After reconstitution, store refrigerated (2-8°C) and use within 30 days.
                                         </p>
                                     </div>
