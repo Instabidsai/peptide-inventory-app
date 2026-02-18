@@ -3,6 +3,8 @@ import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { motion } from 'framer-motion';
 import { ChevronRight, Loader2, Sparkles, User, Flame, Target, Calendar } from "lucide-react";
 import { format, isSameDay, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -234,7 +236,25 @@ function ClientDashboardContent() {
         });
     };
 
-    if (isLoadingContact) return <div className="flex h-screen items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    if (isLoadingContact) return (
+        <div className="space-y-6 pb-20">
+            <div className="space-y-1">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-7 w-52" />
+            </div>
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <GlassCard><CardContent className="pt-6 pb-5 flex justify-center"><Skeleton className="h-28 w-28 rounded-full" /></CardContent></GlassCard>
+            <div className="grid grid-cols-2 gap-3">
+                <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
+                <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
+            </div>
+            <GlassCard><CardContent className="pt-5 pb-4 space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-14 w-full rounded-2xl" />
+                <Skeleton className="h-14 w-full rounded-2xl" />
+            </CardContent></GlassCard>
+        </div>
+    );
 
     if (isContactError) return <QueryError message="Failed to load your profile." onRetry={refetchContact} />;
 
@@ -283,7 +303,12 @@ function ClientDashboardContent() {
     return (
         <div className="space-y-6 pb-20">
             {/* Header / Greeting */}
-            <div className="flex flex-col gap-0.5">
+            <motion.div
+                className="flex flex-col gap-0.5"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            >
                 <p className="text-sm font-medium text-muted-foreground/60">
                     {format(today, 'EEEE, MMMM do')}
                 </p>
@@ -291,7 +316,7 @@ function ClientDashboardContent() {
                     Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
                     <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
                 </h1>
-            </div>
+            </motion.div>
 
             <Tabs defaultValue="protocol" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
@@ -315,7 +340,13 @@ function ClientDashboardContent() {
                     )}
 
                     {/* ─── Stats Row ─── */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <motion.div
+                        className="grid grid-cols-2 gap-3"
+                        initial="hidden"
+                        animate="show"
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12 } } }}
+                    >
+                        <motion.div variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}>
                         <GlassCard className="border-white/[0.04] hover-lift">
                             <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
                                 <div className="p-2 rounded-xl bg-primary/10 mb-1">
@@ -329,6 +360,8 @@ function ClientDashboardContent() {
                                 </div>
                             </CardContent>
                         </GlassCard>
+                        </motion.div>
+                        <motion.div variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}>
                         <GlassCard className="border-white/[0.04] hover-lift">
                             <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
                                 <div className="p-2 rounded-xl bg-emerald-500/10 mb-1">
@@ -342,7 +375,8 @@ function ClientDashboardContent() {
                                 </div>
                             </CardContent>
                         </GlassCard>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
                     {/* ─── Due Now Cards ─── */}
                     {hasDosesToday && (

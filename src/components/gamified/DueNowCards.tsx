@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Syringe, Check, Sun, Sunset, Moon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface DueNowDose {
     id: string;
@@ -36,16 +37,21 @@ function DoseCard({ dose, onLogDose, isLogging }: {
     isLogging?: boolean;
 }) {
     return (
-        <div className={cn(
-            "flex items-center gap-3 p-3.5 rounded-2xl border transition-all duration-300",
-            dose.isTaken
-                ? "bg-emerald-500/[0.06] border-emerald-500/15"
-                : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
-        )}>
+        <motion.div
+            layout
+            className={cn(
+                "flex items-center gap-3 p-3.5 rounded-2xl border transition-colors duration-300",
+                dose.isTaken
+                    ? "bg-emerald-500/[0.06] border-emerald-500/15"
+                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
+            )}
+        >
             {/* Color dot */}
-            <div
+            <motion.div
                 className="h-3 w-3 rounded-full shrink-0"
                 style={{ backgroundColor: dose.color, opacity: dose.isTaken ? 0.5 : 1 }}
+                animate={dose.isTaken ? { scale: [1, 1.4, 1] } : {}}
+                transition={{ duration: 0.3 }}
             />
 
             {/* Info */}
@@ -65,29 +71,39 @@ function DoseCard({ dose, onLogDose, isLogging }: {
             </div>
 
             {/* Action */}
-            {dose.isTaken ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="h-8 w-8 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                        <Check className="h-4 w-4 text-emerald-400" />
-                    </div>
-                    {dose.takenAt && (
-                        <span className="text-[10px] text-emerald-400/60 font-medium">
-                            {format(new Date(dose.takenAt), 'h:mm a')}
-                        </span>
-                    )}
-                </div>
-            ) : (
-                <Button
-                    size="sm"
-                    className="h-10 px-4 rounded-xl text-xs font-semibold shrink-0"
-                    disabled={isLogging}
-                    onClick={() => onLogDose(dose)}
-                >
-                    <Syringe className="h-3.5 w-3.5 mr-1" />
-                    Log
-                </Button>
-            )}
-        </div>
+            <AnimatePresence mode="wait">
+                {dose.isTaken ? (
+                    <motion.div
+                        key="done"
+                        className="flex items-center gap-1.5 shrink-0"
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                    >
+                        <div className="h-8 w-8 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                            <Check className="h-4 w-4 text-emerald-400" />
+                        </div>
+                        {dose.takenAt && (
+                            <span className="text-[10px] text-emerald-400/60 font-medium">
+                                {format(new Date(dose.takenAt), 'h:mm a')}
+                            </span>
+                        )}
+                    </motion.div>
+                ) : (
+                    <motion.div key="log" whileTap={{ scale: 0.92 }}>
+                        <Button
+                            size="sm"
+                            className="h-10 px-4 rounded-xl text-xs font-semibold shrink-0"
+                            disabled={isLogging}
+                            onClick={() => onLogDose(dose)}
+                        >
+                            <Syringe className="h-3.5 w-3.5 mr-1" />
+                            Log
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 }
 
@@ -112,11 +128,18 @@ export function DueNowCards({ doses, currentWindow, onLogDose, isLogging }: DueN
                             {currentDoses.filter(d => d.isTaken).length}/{currentDoses.length}
                         </span>
                     </div>
-                    <div className="space-y-2">
+                    <motion.div
+                        className="space-y-2"
+                        initial="hidden"
+                        animate="show"
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+                    >
                         {currentDoses.map(dose => (
-                            <DoseCard key={dose.id} dose={dose} onLogDose={onLogDose} isLogging={isLogging} />
+                            <motion.div key={dose.id} variants={{ hidden: { opacity: 0, x: -16 }, show: { opacity: 1, x: 0 } }}>
+                                <DoseCard dose={dose} onLogDose={onLogDose} isLogging={isLogging} />
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
                 </div>
             )}
 

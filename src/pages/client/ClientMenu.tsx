@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GlassCard, CardContent } from '@/components/ui/glass-card';
+import { motion } from 'framer-motion';
 import {
     User,
     ListChecks,
@@ -80,12 +81,17 @@ export default function ClientMenu() {
                 </p>
             </div>
 
-            <div className="space-y-3">
+            <motion.div
+                className="space-y-3"
+                initial="hidden"
+                animate="show"
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+            >
                 {menuItems.map((item) => {
                     const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
                     return (
+                        <motion.div key={item.path} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }}>
                         <Button
-                            key={item.path}
                             variant="secondary"
                             className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
                             onClick={() => navigate(item.path)}
@@ -107,9 +113,10 @@ export default function ClientMenu() {
                             </div>
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </Button>
+                        </motion.div>
                     );
                 })}
-            </div>
+            </motion.div>
 
             {/* Sign Out */}
             <GlassCard className="border-destructive/20">

@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
+import { motion } from 'framer-motion';
 import {
     Package,
     Clock,
@@ -65,8 +67,27 @@ export default function ClientOrders() {
 
     if (isLoadingContact || isLoading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-6 pb-20">
+                <div>
+                    <Skeleton className="h-7 w-32 mb-2" />
+                    <Skeleton className="h-4 w-48" />
+                </div>
+                <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <GlassCard key={i}>
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex gap-2">
+                                    <Skeleton className="h-5 w-20 rounded-full" />
+                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Skeleton className="h-4 w-full" />
+                                    <Skeleton className="h-4 w-3/4" />
+                                </div>
+                            </CardContent>
+                        </GlassCard>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -93,12 +114,19 @@ export default function ClientOrders() {
 
             {/* Orders List */}
             {!orders || orders.length === 0 ? (
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <GlassCard>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Package className="h-10 w-10 text-muted-foreground mb-3" />
+                        <motion.div
+                            className="p-4 rounded-full bg-secondary/50 mb-4"
+                            animate={{ y: [0, -6, 0] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                            <Package className="h-8 w-8 text-muted-foreground/60" />
+                        </motion.div>
                         <p className="font-medium">No orders yet</p>
-                        <p className="text-sm text-muted-foreground mt-1 text-center">
-                            Visit the store to place your first order
+                        <p className="text-sm text-muted-foreground mt-1 text-center max-w-[240px]">
+                            Your orders will appear here once you place your first one
                         </p>
                         <Button className="mt-4" onClick={() => navigate('/store')}>
                             <ShoppingBag className="h-4 w-4 mr-2" />
@@ -106,14 +134,21 @@ export default function ClientOrders() {
                         </Button>
                     </CardContent>
                 </GlassCard>
+                </motion.div>
             ) : (
-                <div className="space-y-3">
+                <motion.div
+                    className="space-y-3"
+                    initial="hidden"
+                    animate="show"
+                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+                >
                     {orders.map((order) => {
                         const statusInfo = getStatus(order.status);
                         const items = order.sales_order_items || [];
 
                         return (
-                            <GlassCard key={order.id} className="hover:border-primary/20 transition-colors">
+                            <motion.div key={order.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+                            <GlassCard className="hover:border-primary/20 transition-colors">
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
@@ -204,9 +239,10 @@ export default function ClientOrders() {
                                     )}
                                 </CardContent>
                             </GlassCard>
+                            </motion.div>
                         );
                     })}
-                </div>
+                </motion.div>
             )}
         </div>
     );

@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { GlassCard } from '@/components/ui/glass-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     ShoppingCart,
     Package,
@@ -210,8 +212,28 @@ export default function ClientStore() {
 
     if (isLoadingContact) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-6 pb-20">
+                <div>
+                    <Skeleton className="h-7 w-40 mb-2" />
+                    <Skeleton className="h-4 w-56" />
+                </div>
+                <Skeleton className="h-10 w-full rounded-md" />
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <GlassCard key={i}>
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-28" />
+                                        <Skeleton className="h-3 w-16" />
+                                        <Skeleton className="h-6 w-20 mt-1" />
+                                    </div>
+                                    <Skeleton className="h-9 w-16 rounded-md" />
+                                </div>
+                            </CardContent>
+                        </GlassCard>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -261,8 +283,21 @@ export default function ClientStore() {
                 </h2>
 
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <GlassCard key={i}>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="h-4 w-28" />
+                                            <Skeleton className="h-3 w-16" />
+                                            <Skeleton className="h-6 w-20 mt-1" />
+                                        </div>
+                                        <Skeleton className="h-9 w-16 rounded-md" />
+                                    </div>
+                                </CardContent>
+                            </GlassCard>
+                        ))}
                     </div>
                 ) : isError ? (
                     <div className="text-center py-12 text-muted-foreground">
@@ -274,7 +309,12 @@ export default function ClientStore() {
                         <p className="text-sm">{searchQuery ? 'No peptides match your search.' : 'No peptides available right now.'}</p>
                     </div>
                 ) : (
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                    <motion.div
+                        className="grid gap-3 grid-cols-1 sm:grid-cols-2"
+                        initial="hidden"
+                        animate="show"
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+                    >
                         {filteredPeptides?.map((peptide) => {
                             const price = getClientPrice(peptide);
                             const retail = Number(peptide.retail_price || 0);
@@ -284,7 +324,8 @@ export default function ClientStore() {
                             if (price <= 0 && retail <= 0) return null; // Skip items without a price
 
                             return (
-                                <GlassCard key={peptide.id} className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
+                                <motion.div key={peptide.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+                                <GlassCard className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
@@ -342,14 +383,22 @@ export default function ClientStore() {
                                         </div>
                                     </CardContent>
                                 </GlassCard>
+                                </motion.div>
                             );
                         })}
-                    </div>
+                    </motion.div>
                 )}
             </div>
 
             {/* Cart Summary — Fixed Bottom Card */}
+            <AnimatePresence>
             {cart.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 24, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 24, scale: 0.97 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                >
                 <GlassCard className="border-primary/20 shadow-lg shadow-primary/5 ring-1 ring-primary/10">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-lg">
@@ -441,7 +490,9 @@ export default function ClientStore() {
                         </Button>
                     </CardContent>
                 </GlassCard>
+                </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Info card */}
             <Card className="bg-muted/20 border-muted/50">

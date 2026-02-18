@@ -3,6 +3,7 @@ import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft,
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -103,9 +104,19 @@ export function ClientLayout() {
             </header>
 
             {/* Content */}
-            <main id="main-content" className="flex-1 p-4 pb-24 overflow-x-hidden"> {/* Padding bottom for mobile nav */}
+            <main id="main-content" className="flex-1 p-4 pb-24 overflow-x-hidden">
                 <ErrorBoundary>
-                    <Outlet />
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                        >
+                            <Outlet />
+                        </motion.div>
+                    </AnimatePresence>
                 </ErrorBoundary>
             </main>
 
@@ -126,8 +137,15 @@ export function ClientLayout() {
                                     isActive ? "text-primary" : "text-muted-foreground/70 hover:text-foreground"
                                 )}
                             >
-                                <div className={cn("relative p-1.5 rounded-xl transition-colors", isActive && "bg-primary/10")}>
-                                    <item.icon className={cn("h-5 w-5", isActive && "fill-current")} />
+                                <div className="relative p-1.5 rounded-xl">
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="nav-pill"
+                                            className="absolute inset-0 bg-primary/10 rounded-xl"
+                                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                        />
+                                    )}
+                                    <item.icon className={cn("h-5 w-5 relative z-10", isActive && "fill-current")} />
                                     {item.hasBadge && (
                                         item.badgeCount && item.badgeCount > 0
                                             ? <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-600 border-2 border-background text-[10px] font-bold text-white leading-none px-1">{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>
