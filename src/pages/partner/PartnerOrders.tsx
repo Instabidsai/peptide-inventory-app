@@ -19,6 +19,7 @@ import {
     TrendingUp,
     Users,
     ChevronRight,
+    Wand2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTrackingUrl } from '@/lib/tracking';
@@ -258,7 +259,7 @@ interface OrderCardOrder {
     carrier: string | null;
     notes: string | null;
     created_at: string;
-    contacts?: { name: string | null } | null;
+    contacts?: { id: string; name: string | null; email?: string | null } | null;
     profiles?: { full_name: string | null } | null;
     sales_order_items?: Array<{
         id: string;
@@ -357,6 +358,14 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: O
                                     {order.tracking_number}
                                 </a>
                             </div>
+                        )}
+                        {/* Generate Protocol button — only for client orders (not self-orders) */}
+                        {order.contacts?.id && (
+                            <Link to={`/protocol-builder?order=${order.id}&contact=${order.contacts.id}`}>
+                                <Button variant="outline" size="sm" className="mt-2 text-xs h-7">
+                                    <Wand2 className="h-3 w-3 mr-1.5" /> Generate Protocol
+                                </Button>
+                            </Link>
                         )}
                     </div>
                     {/* Right side: total + commission */}

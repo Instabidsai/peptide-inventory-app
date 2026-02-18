@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,14 +57,30 @@ export default function PartnerStore() {
     const checkout = useCheckout();
     const createOrder = useCreateSalesOrder();
     const { toast } = useToast();
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [notes, setNotes] = useState('');
-    const [shippingAddress, setShippingAddress] = useState('');
+    const storageKey = `partner_cart_${user?.id || 'anon'}`;
+
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).cart || [] : []; } catch { return []; }
+    });
+    const [notes, setNotes] = useState(() => {
+        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).notes || '' : ''; } catch { return ''; }
+    });
+    const [shippingAddress, setShippingAddress] = useState(() => {
+        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).shippingAddress || '' : ''; } catch { return ''; }
+    });
     const [searchQuery, setSearchQuery] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => {
+        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).paymentMethod || 'card' : 'card'; } catch { return 'card'; }
+    });
     const [copiedZelle, setCopiedZelle] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [placingOrder, setPlacingOrder] = useState(false);
+
+    // Persist cart state to localStorage
+    useEffect(() => {
+        if (orderPlaced) return; // Don't persist after order is placed (cart is cleared)
+        localStorage.setItem(storageKey, JSON.stringify({ cart, notes, shippingAddress, paymentMethod }));
+    }, [cart, notes, shippingAddress, paymentMethod, storageKey, orderPlaced]);
 
     // Get partner's profile with pricing info
     const { data: partnerProfile } = useQuery({
@@ -190,12 +206,15 @@ export default function PartnerStore() {
         setTimeout(() => setCopiedZelle(false), 2000);
     };
 
+    const clearCartStorage = () => localStorage.removeItem(storageKey);
+
     // Card checkout — existing PsiFi flow
     const handleCardCheckout = () => {
         if (!partnerProfile) return;
         const orgId = partnerProfile!.org_id;
         if (!orgId) return;
 
+        clearCartStorage(); // Clear before redirect to external payment
         checkout.mutate({
             org_id: orgId,
             client_id: null,
@@ -235,6 +254,7 @@ export default function PartnerStore() {
             setCart([]);
             setNotes('');
             setShippingAddress('');
+            clearCartStorage();
             toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });

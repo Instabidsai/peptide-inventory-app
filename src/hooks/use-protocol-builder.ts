@@ -26,16 +26,21 @@ export function useProtocolBuilder() {
     const [items, setItems] = useState<EnrichedProtocolItem[]>([]);
     const [initialized, setInitialized] = useState(false);
 
-    // Contacts list
+    // Contacts list (sales_rep sees only their assigned clients)
+    const isSalesRep = profile?.role === 'sales_rep';
     const { data: contacts } = useQuery({
-        queryKey: ['contacts-list', profile?.org_id],
+        queryKey: ['contacts-list', profile?.org_id, isSalesRep ? profile?.id : 'all'],
         queryFn: async () => {
-            const { data } = await supabase
+            let query = supabase
                 .from('contacts')
                 .select('id, name, email')
                 .eq('org_id', profile!.org_id!)
                 .eq('type', 'customer')
                 .order('name');
+            if (isSalesRep && profile?.id) {
+                query = query.eq('assigned_rep_id', profile.id);
+            }
+            const { data } = await query;
             return data || [];
         },
         enabled: !!profile?.org_id,
