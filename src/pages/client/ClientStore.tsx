@@ -378,8 +378,16 @@ export default function ClientStore() {
                                 const matchedPeptides = template.peptideNames
                                     .map(name => peptides.find(p => p.name?.toLowerCase().startsWith(name.toLowerCase())))
                                     .filter(Boolean) as any[];
+                                // Deduplicate for display (but keep full list for quantities)
+                                const uniqueMatched = [...new Map(matchedPeptides.map((p: any) => [p.id, p])).values()];
                                 const bundlePrice = matchedPeptides.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
-                                const allInCart = matchedPeptides.length > 0 && matchedPeptides.every(p => cart.find(c => c.peptide_id === p.id));
+                                // Count expected qty per peptide from template
+                                const expectedQty: Record<string, number> = {};
+                                matchedPeptides.forEach((p: any) => { expectedQty[p.id] = (expectedQty[p.id] || 0) + 1; });
+                                const allInCart = uniqueMatched.length > 0 && uniqueMatched.every(p => {
+                                    const inCart = cart.find(c => c.peptide_id === p.id);
+                                    return inCart && inCart.quantity >= (expectedQty[p.id] || 1);
+                                });
 
                                 if (matchedPeptides.length === 0) return null; // skip if no matching peptides in stock
 
@@ -401,9 +409,9 @@ export default function ClientStore() {
                                                     <Info className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-1" />
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {matchedPeptides.map((p: any) => (
+                                                    {uniqueMatched.map((p: any) => (
                                                         <Badge key={p.id} variant="secondary" className="text-[10px] px-2 py-0.5">
-                                                            {p.name}
+                                                            {expectedQty[p.id] > 1 ? `${expectedQty[p.id]}x ` : ''}{p.name}
                                                         </Badge>
                                                     ))}
                                                 </div>
@@ -419,11 +427,7 @@ export default function ClientStore() {
                                                             size="sm"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                matchedPeptides.forEach((p: any) => {
-                                                                    if (!cart.find(c => c.peptide_id === p.id)) {
-                                                                        addToCart(p);
-                                                                    }
-                                                                });
+                                                                matchedPeptides.forEach((p: any) => addToCart(p));
                                                             }}
                                                         >
                                                             <Plus className="h-4 w-4 mr-1" />
@@ -864,7 +868,14 @@ export default function ClientStore() {
                         const { template, matched } = selectedProtocol;
                         const Icon = ICON_MAP[template.icon] || Package;
                         const bundlePrice = matched.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
-                        const allInCart = matched.length > 0 && matched.every((p: any) => cart.find(c => c.peptide_id === p.id));
+                        // Deduplicate for display, track quantities
+                        const uniqueMatched = [...new Map(matched.map((p: any) => [p.id, p])).values()] as any[];
+                        const qtyMap: Record<string, number> = {};
+                        matched.forEach((p: any) => { qtyMap[p.id] = (qtyMap[p.id] || 0) + 1; });
+                        const allInCart = uniqueMatched.length > 0 && uniqueMatched.every((p: any) => {
+                            const inCart = cart.find(c => c.peptide_id === p.id);
+                            return inCart && inCart.quantity >= (qtyMap[p.id] || 1);
+                        });
 
                         return (
                             <>
@@ -886,13 +897,14 @@ export default function ClientStore() {
                                     {/* Each peptide in the protocol */}
                                     <p className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider">What's Included</p>
                                     <div className="space-y-3">
-                                        {matched.map((p: any) => {
-                                            const price = getClientPrice(p);
+                                        {uniqueMatched.map((p: any) => {
+                                            const qty = qtyMap[p.id] || 1;
+                                            const price = getClientPrice(p) * qty;
                                             const knowledge = PROTOCOL_KNOWLEDGE[p.name];
                                             return (
                                                 <div key={p.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
                                                     <div className="flex items-center justify-between">
-                                                        <p className="font-semibold text-sm">{p.name}</p>
+                                                        <p className="font-semibold text-sm">{qty > 1 ? `${qty}x ` : ''}{p.name}</p>
                                                         <span className="text-sm font-bold text-primary">${price.toFixed(2)}</span>
                                                     </div>
                                                     {knowledge && (
@@ -934,11 +946,7 @@ export default function ClientStore() {
                                                 size="lg"
                                                 className="w-full h-14 rounded-xl text-base font-semibold shadow-md shadow-primary/20"
                                                 onClick={() => {
-                                                    matched.forEach((p: any) => {
-                                                        if (!cart.find(c => c.peptide_id === p.id)) {
-                                                            addToCart(p);
-                                                        }
-                                                    });
+                                                    matched.forEach((p: any) => addToCart(p));
                                                 }}
                                             >
                                                 <Plus className="h-5 w-5 mr-2" />
