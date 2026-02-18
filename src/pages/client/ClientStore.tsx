@@ -374,8 +374,9 @@ export default function ClientStore() {
                             .map(template => {
                                 const Icon = ICON_MAP[template.icon] || Package;
                                 // Match template peptide names to actual peptides in DB
+                                // DB names include size (e.g. "BPC-157 10mg") so use startsWith
                                 const matchedPeptides = template.peptideNames
-                                    .map(name => peptides.find(p => p.name?.toLowerCase() === name.toLowerCase()))
+                                    .map(name => peptides.find(p => p.name?.toLowerCase().startsWith(name.toLowerCase())))
                                     .filter(Boolean) as any[];
                                 const bundlePrice = matchedPeptides.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
                                 const allInCart = matchedPeptides.length > 0 && matchedPeptides.every(p => cart.find(c => c.peptide_id === p.id));

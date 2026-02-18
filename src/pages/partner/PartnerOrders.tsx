@@ -657,16 +657,8 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                                 </a>
                             </div>
                         )}
-                        {/* Generate Protocol button — only for client orders (not self-orders) */}
-                        {order.contacts?.id && (
-                            <Link to={`/protocol-builder?order=${order.id}&contact=${order.contacts.id}`}>
-                                <Button variant="outline" size="sm" className="mt-2 text-xs h-7">
-                                    <Wand2 className="h-3 w-3 mr-1.5" /> Generate Protocol
-                                </Button>
-                            </Link>
-                        )}
                     </div>
-                    {/* Right side: total + commission + edit hint */}
+                    {/* Right side: total + commission */}
                     <div className="text-right shrink-0">
                         <p className="text-lg font-bold text-primary">${Number(order.total_amount || 0).toFixed(2)}</p>
                         {commission !== undefined && commission > 0 && (
@@ -680,11 +672,21 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                         <p className="text-xs text-muted-foreground">
                             {items.reduce((s, i) => s + Number(i.quantity || 0), 0)} items
                         </p>
-                        <div className="flex items-center justify-end gap-1 mt-1.5 text-xs text-primary/70">
-                            <Pencil className="h-3 w-3" />
-                            <span>Tap to edit</span>
-                        </div>
                     </div>
+                </div>
+                {/* Action buttons — big and visible */}
+                <div className="flex gap-2 mt-3 pt-3 border-t">
+                    <Button className="flex-1 h-10" onClick={onClick}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit Order
+                    </Button>
+                    {order.contacts?.id && (
+                        <Link to={`/protocol-builder?order=${order.id}&contact=${order.contacts.id}`} className="flex-1" onClick={e => e.stopPropagation()}>
+                            <Button variant="outline" className="w-full h-10">
+                                <Wand2 className="h-4 w-4 mr-2" /> Protocol
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </CardContent>
         </Card>
