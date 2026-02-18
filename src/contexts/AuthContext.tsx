@@ -100,6 +100,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Auto-link: if profile has no org, check if their email matches an existing contact
+      // (admin created the contact internally → user signs in with that Gmail → auto-connect)
+      if (profileData && !profileData.org_id && profileData.email) {
+        const { data: matchingContact } = await supabase
+          .from('contacts')
+          .select('id, org_id, type, assigned_rep_id')
+          .eq('email', profileData.email)
+          .is('linked_user_id', null)
+          .not('org_id', 'is', null)
+          .limit(1)
+          .maybeSingle();
+
+        if (matchingContact?.org_id) {
+          const contactRole = matchingContact.type === 'partner' ? 'sales_rep' : 'client';
+
+          // Update profile with the contact's org
+          await supabase.from('profiles').update({
+            org_id: matchingContact.org_id,
+            role: contactRole,
+            parent_rep_id: matchingContact.assigned_rep_id || null,
+          }).eq('id', profileData.id);
+
+          // Create user_role
+          await supabase.from('user_roles').upsert({
+            user_id: userId,
+            org_id: matchingContact.org_id,
+            role: contactRole,
+          }, { onConflict: 'user_id,org_id' });
+
+          // Link the contact to this user
+          await supabase.from('contacts').update({
+            linked_user_id: userId,
+          }).eq('id', matchingContact.id);
+
+          // Refresh profile data with the new org_id
+          const { data: updatedProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (updatedProfile) {
+            profileData = updatedProfile;
+          }
+        }
+      }
+
       setProfile(profileData);
 
       if (profileData?.org_id) {
