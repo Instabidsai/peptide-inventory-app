@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag, HeartPulse, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -19,6 +20,7 @@ import {
 import { QueryError } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 import { MessageThread } from "@/components/messaging/MessageThread";
@@ -107,26 +109,50 @@ export default function ClientMessages() {
             </div>
 
             {isLoading ? (
-                <div className="flex justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-2">
+                                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-4 w-40" />
+                                    <Skeleton className="h-3 w-24" />
+                                </div>
+                                <Skeleton className="h-6 w-20 rounded-full" />
+                            </CardHeader>
+                            <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4 mt-2" /></CardContent>
+                        </Card>
+                    ))}
                 </div>
             ) : isError ? (
                 <QueryError message="Failed to load messages." onRetry={refetch} />
             ) : requests?.length === 0 ? (
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                        <div className="p-4 rounded-full bg-secondary/50 mb-4">
+                        <motion.div
+                            className="p-4 rounded-full bg-secondary/50 mb-4"
+                            animate={{ y: [0, -6, 0] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                        >
                             <MessageSquare className="h-8 w-8 opacity-50" />
-                        </div>
+                        </motion.div>
                         <h3 className="text-lg font-medium mb-1">No messages yet</h3>
                         <p className="text-sm mb-4">You haven't sent any requests or messages.</p>
                         <Button variant="outline" onClick={() => setModalOpen(true)}>Start a conversation</Button>
                     </CardContent>
                 </Card>
+                </motion.div>
             ) : (
-                <div className="grid gap-4">
+                <motion.div
+                    className="grid gap-4"
+                    initial="hidden"
+                    animate="show"
+                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+                >
                     {requests?.map((req) => (
-                        <Card key={req.id} className="overflow-hidden">
+                        <motion.div key={req.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+                        <Card className="overflow-hidden">
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="p-2 rounded-full bg-secondary/50">
@@ -179,8 +205,9 @@ export default function ClientMessages() {
                                 )}
                             </CardContent>
                         </Card>
+                        </motion.div>
                     ))}
-                </div>
+                </motion.div>
             )}
 
             <ClientRequestModal

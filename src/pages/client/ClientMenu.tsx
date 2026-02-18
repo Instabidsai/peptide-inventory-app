@@ -90,7 +90,7 @@ export default function ClientMenu() {
                 {menuItems.map((item) => {
                     const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
                     return (
-                        <motion.div key={item.path} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }}>
+                        <motion.div key={item.path} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }} whileTap={{ scale: 0.97 }}>
                         <Button
                             variant="secondary"
                             className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"

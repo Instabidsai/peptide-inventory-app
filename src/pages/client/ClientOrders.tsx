@@ -147,8 +147,8 @@ export default function ClientOrders() {
                         const items = order.sales_order_items || [];
 
                         return (
-                            <motion.div key={order.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
-                            <GlassCard className="hover:border-primary/20 transition-colors">
+                            <motion.div key={order.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} whileTap={{ scale: 0.98 }}>
+                            <GlassCard className="hover:border-primary/20 transition-all duration-200">
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">

@@ -97,14 +97,32 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Apple-style heading tracking */
+  h1, h2, h3 {
+    letter-spacing: -0.025em;
+  }
+
+  /* Apple-style focus ring */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.5);
+    outline-offset: 2px;
+    border-radius: var(--radius);
   }
 
   /* Selection highlight */
@@ -185,6 +203,21 @@
   .hover-lift:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px -5px hsl(var(--primary) / 0.12), 0 4px 10px -5px hsl(0 0% 0% / 0.2);
+  }
+
+  /* Apple-style press feedback on interactive elements */
+  .press-scale {
+    transition: transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+  .press-scale:active {
+    transform: scale(0.97);
+  }
+
+  /* Apple-style input focus glow */
+  input:focus, textarea:focus, select:focus {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12), 0 0 0 1px hsl(var(--primary) / 0.3);
+    border-color: hsl(var(--primary) / 0.4) !important;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
 
   /* Subtle shimmer background for premium cards */

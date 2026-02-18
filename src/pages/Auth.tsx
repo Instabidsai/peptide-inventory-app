@@ -478,8 +478,8 @@ export default function Auth() {
                     ? 'Create your partner account to start earning'
                     : 'Create an account to access exclusive partner pricing'
                   : mode === 'login'
-                    ? 'Sign in to your peptide inventory account'
-                    : 'Get started with your inventory tracker'}
+                    ? 'Sign in to your personalized peptide protocol'
+                    : 'Get started with ThePeptideAI'}
               </CardDescription>
             </motion.div>
           </CardHeader>
@@ -570,7 +570,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground/50 mt-4">
-          Peptide Inventory Tracker v2.7
+          ThePeptideAI
         </p>
       </motion.div>
     </div>

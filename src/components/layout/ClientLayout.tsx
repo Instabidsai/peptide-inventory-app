@@ -73,18 +73,21 @@ export function ClientLayout() {
             </a>
             {/* Top Bar */}
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/30 bg-card/80 backdrop-blur-md px-4 justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/15">
                         <Home className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="font-semibold text-lg text-foreground">ThePeptideAI</span>
+                    <span className="font-bold text-lg tracking-tight text-gradient-primary">ThePeptideAI</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
                     <Button variant="ghost" size="icon" className="relative" aria-label="Notifications" onClick={() => navigate('/notifications')}>
                         <Bell className="h-5 w-5" />
                         {unreadNotifications && unreadNotifications > 0 && (
-                            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
+                            <>
+                                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500" />
+                                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 animate-ping opacity-75" />
+                            </>
                         )}
                     </Button>
 
@@ -152,7 +155,7 @@ export function ClientLayout() {
                                             : <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-600 border border-background animate-pulse" />
                                     )}
                                 </div>
-                                <span className="text-xs font-medium">{item.label}</span>
+                                <span className={cn("text-[11px] transition-all duration-200", isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
                             </button>
                         );
                     })}

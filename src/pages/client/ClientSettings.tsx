@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, LogOut, User, Lock, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Loader2, LogOut, User, Lock, ChevronRight, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const profileSchema = z.object({
@@ -67,71 +69,112 @@ export default function ClientSettings() {
         }
     };
 
+    const initials = (profile?.full_name || 'U')
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
     return (
-        <div className="space-y-6 max-w-md mx-auto pb-10">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Account</h1>
-                <p className="text-muted-foreground">Manage your profile and preferences</p>
+        <motion.div
+            className="space-y-6 max-w-md mx-auto pb-10"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+        >
+            {/* Profile Hero Card */}
+            <div className="flex flex-col items-center gap-3 pt-2 pb-4">
+                <Avatar className="h-20 w-20 ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-xl font-bold">
+                        {initials}
+                    </AvatarFallback>
+                </Avatar>
+                <div className="text-center">
+                    <h1 className="text-xl font-bold tracking-tight">{profile?.full_name || 'Your Account'}</h1>
+                    <p className="text-sm text-muted-foreground/60">{profile?.email}</p>
+                </div>
             </div>
 
-            <Card className="bg-card border-border shadow-sm">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <User className="h-5 w-5 text-primary" />
-                        <CardTitle>Profile</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <Form {...profileForm}>
-                        <form onSubmit={profileForm.handleSubmit(handleUpdateProfile)} className="space-y-4">
-                            <FormField
-                                control={profileForm.control}
-                                name="full_name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Full Name</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="space-y-2">
-                                <FormLabel>Email</FormLabel>
-                                <Input value={profile?.email || ''} disabled className="bg-muted text-muted-foreground" />
-                                <p className="text-xs text-muted-foreground">Email is linked to your login and cannot be changed here. Contact support if you need to update it.</p>
+            {/* Profile Section */}
+            <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">Profile</p>
+                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                    <CardContent className="p-0">
+                        <Form {...profileForm}>
+                            <form onSubmit={profileForm.handleSubmit(handleUpdateProfile)}>
+                                <FormField
+                                    control={profileForm.control}
+                                    name="full_name"
+                                    render={({ field }) => (
+                                        <FormItem className="px-4 py-3 border-b border-border/30">
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel className="text-sm font-normal text-muted-foreground shrink-0 w-20">Name</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="border-0 bg-transparent text-right focus-visible:ring-0 focus-visible:ring-offset-0 h-auto p-0 text-sm font-medium shadow-none" />
+                                                </FormControl>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <div className="px-4 py-3 border-b border-border/30">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-muted-foreground shrink-0 w-20">Email</span>
+                                        <span className="text-sm font-medium text-muted-foreground/60 truncate">{profile?.email || ''}</span>
+                                    </div>
+                                </div>
+                                <div className="px-4 py-2.5">
+                                    <Button type="submit" disabled={isUpdatingProfile} size="sm" className="w-full h-9">
+                                        {isUpdatingProfile && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                        Save Changes
+                                    </Button>
+                                </div>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Security Section */}
+            <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">Security</p>
+                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                    <CardContent className="p-0">
+                        <button
+                            onClick={() => navigate('/update-password')}
+                            className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-white/[0.03] transition-colors press-scale"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 rounded-lg bg-blue-500/10">
+                                    <Lock className="h-4 w-4 text-blue-400" />
+                                </div>
+                                <span className="text-sm font-medium">Change Password</span>
                             </div>
-
-                            <Button type="submit" disabled={isUpdatingProfile} className="w-full">
-                                {isUpdatingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Changes
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border shadow-sm">
-                <CardContent className="pt-6 space-y-4">
-                    <Button variant="outline" className="w-full justify-between h-12" onClick={() => navigate('/update-password')}>
-                        <div className="flex items-center gap-2">
-                            <Lock className="h-4 w-4 text-muted-foreground" />
-                            <span>Change Password</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-
-                    <Button variant="destructive" className="w-full h-12" onClick={handleSignOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log Out
-                    </Button>
-                </CardContent>
-            </Card>
-
-            <div className="text-center text-xs text-muted-foreground">
-                Version 2.8 • ThePeptideAI
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+                        </button>
+                    </CardContent>
+                </Card>
             </div>
-        </div>
+
+            {/* Sign Out */}
+            <div className="space-y-1">
+                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                    <CardContent className="p-0">
+                        <button
+                            onClick={handleSignOut}
+                            className="flex items-center justify-center gap-2 w-full px-4 py-3.5 hover:bg-red-500/[0.06] transition-colors text-red-400 press-scale"
+                        >
+                            <LogOut className="h-4 w-4" />
+                            <span className="text-sm font-medium">Sign Out</span>
+                        </button>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <p className="text-center text-[11px] text-muted-foreground/30 tracking-wide">
+                ThePeptideAI
+            </p>
+        </motion.div>
     );
 }

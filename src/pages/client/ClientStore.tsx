@@ -324,8 +324,8 @@ export default function ClientStore() {
                             if (price <= 0 && retail <= 0) return null; // Skip items without a price
 
                             return (
-                                <motion.div key={peptide.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
-                                <GlassCard className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
+                                <motion.div key={peptide.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} whileTap={{ scale: 0.98 }}>
+                                <GlassCard className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
