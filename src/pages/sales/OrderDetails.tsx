@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin, Wand2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin, Wand2, Pencil, Save, X, Minus, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/sb_client/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Select,
@@ -58,6 +61,11 @@ export default function OrderDetails() {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
+    const [editing, setEditing] = useState(false);
+    const [editItems, setEditItems] = useState<{ id: string; name: string; quantity: number; unit_price: number }[]>([]);
+    const [editNotes, setEditNotes] = useState('');
+    const [editShippingAddress, setEditShippingAddress] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -151,6 +159,60 @@ export default function OrderDetails() {
         }
     };
 
+    const startEditing = () => {
+        setEditItems(
+            (order.sales_order_items || []).map(item => ({
+                id: item.id,
+                name: item.peptides?.name || 'Unknown',
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+            }))
+        );
+        setEditNotes(order.notes || '');
+        setEditShippingAddress(order.shipping_address || '');
+        setEditing(true);
+    };
+
+    const saveEdits = async () => {
+        setSaving(true);
+        try {
+            // Update each item's quantity
+            for (const item of editItems) {
+                const { error } = await supabase
+                    .from('sales_order_items')
+                    .update({ quantity: item.quantity, unit_price: item.unit_price })
+                    .eq('id', item.id);
+                if (error) throw error;
+            }
+
+            // Delete removed items
+            const currentIds = editItems.map(i => i.id);
+            const originalIds = (order.sales_order_items || []).map(i => i.id);
+            const removedIds = originalIds.filter(id => !currentIds.includes(id));
+            for (const rid of removedIds) {
+                await supabase.from('sales_order_items').delete().eq('id', rid);
+            }
+
+            // Recalculate total
+            const newTotal = editItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+
+            // Update order-level fields
+            updateOrder.mutate({
+                id: order.id,
+                total_amount: newTotal,
+                notes: editNotes || null,
+                shipping_address: editShippingAddress || null,
+            });
+
+            setEditing(false);
+            toast({ title: 'Order updated successfully' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Failed to save', description: err.message });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
             <div className="flex items-center gap-2 mb-4">
@@ -160,6 +222,39 @@ export default function OrderDetails() {
                     <span className="text-foreground font-medium">Order #{order.id.slice(0, 8)}</span>
                 </nav>
             </div>
+
+            {/* ===== EDIT ORDER BUTTON — BIG AND OBVIOUS ===== */}
+            {!editing ? (
+                <Button
+                    className="w-full h-14 text-lg font-semibold bg-blue-600 hover:bg-blue-700"
+                    size="lg"
+                    onClick={startEditing}
+                >
+                    <Pencil className="h-5 w-5 mr-2" />
+                    Edit This Order
+                </Button>
+            ) : (
+                <div className="flex gap-3">
+                    <Button
+                        className="flex-1 h-14 text-lg font-semibold bg-green-600 hover:bg-green-700"
+                        size="lg"
+                        disabled={saving}
+                        onClick={saveEdits}
+                    >
+                        <Save className="h-5 w-5 mr-2" />
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="h-14 text-lg px-6"
+                        size="lg"
+                        onClick={() => setEditing(false)}
+                    >
+                        <X className="h-5 w-5 mr-2" />
+                        Cancel
+                    </Button>
+                </div>
+            )}
 
             {/* Order Progress Timeline */}
             {order.status !== 'cancelled' && (
@@ -256,33 +351,123 @@ export default function OrderDetails() {
 
                             <div>
                                 <h3 className="font-semibold mb-3">Order Items</h3>
-                                <div className="space-y-3">
-                                    {order.sales_order_items?.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center bg-muted/20 p-3 rounded-lg">
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{item.peptides?.name}</span>
-                                                <span className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.unit_price.toFixed(2)}</span>
+                                {editing ? (
+                                    <div className="space-y-3">
+                                        {editItems.map((item, idx) => (
+                                            <div key={item.id} className="flex items-center gap-3 bg-muted/20 p-3 rounded-lg">
+                                                <div className="flex-1">
+                                                    <span className="font-medium">{item.name}</span>
+                                                    <div className="text-xs text-muted-foreground">${item.unit_price.toFixed(2)} each</div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => {
+                                                            if (item.quantity > 1) {
+                                                                const updated = [...editItems];
+                                                                updated[idx] = { ...item, quantity: item.quantity - 1 };
+                                                                setEditItems(updated);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        className="w-16 text-center h-8"
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const updated = [...editItems];
+                                                            updated[idx] = { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) };
+                                                            setEditItems(updated);
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => {
+                                                            const updated = [...editItems];
+                                                            updated[idx] = { ...item, quantity: item.quantity + 1 };
+                                                            setEditItems(updated);
+                                                        }}
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                                <span className="font-bold w-20 text-right">
+                                                    ${(item.quantity * item.unit_price).toFixed(2)}
+                                                </span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                    onClick={() => setEditItems(editItems.filter((_, i) => i !== idx))}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
                                             </div>
-                                            <span className="font-bold">
-                                                ${(item.quantity * item.unit_price).toFixed(2)}
-                                            </span>
+                                        ))}
+                                        <div className="flex justify-between items-center text-lg font-bold pt-3 border-t">
+                                            <span>New Total</span>
+                                            <span>${editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0).toFixed(2)}</span>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {order.sales_order_items?.map(item => (
+                                            <div key={item.id} className="flex justify-between items-center bg-muted/20 p-3 rounded-lg">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{item.peptides?.name}</span>
+                                                    <span className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.unit_price.toFixed(2)}</span>
+                                                </div>
+                                                <span className="font-bold">
+                                                    ${(item.quantity * item.unit_price).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="flex justify-between items-center text-lg font-bold pt-4 border-t">
-                                <span>Total Amount</span>
-                                <span>${order.total_amount.toFixed(2)}</span>
-                            </div>
+                            {!editing && (
+                                <div className="flex justify-between items-center text-lg font-bold pt-4 border-t">
+                                    <span>Total Amount</span>
+                                    <span>${order.total_amount.toFixed(2)}</span>
+                                </div>
+                            )}
 
                             {/* Notes Section */}
-                            {order.notes && (
+                            {editing ? (
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-sm font-medium mb-1 block">Notes</label>
+                                        <Textarea
+                                            value={editNotes}
+                                            onChange={(e) => setEditNotes(e.target.value)}
+                                            placeholder="Order notes..."
+                                            rows={3}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium mb-1 block">Shipping Address</label>
+                                        <Textarea
+                                            value={editShippingAddress}
+                                            onChange={(e) => setEditShippingAddress(e.target.value)}
+                                            placeholder="Shipping address..."
+                                            rows={3}
+                                        />
+                                    </div>
+                                </div>
+                            ) : order.notes ? (
                                 <div className="bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
                                     <h4 className="font-semibold text-amber-400 text-sm mb-1">Notes</h4>
                                     <p className="text-sm text-amber-400/90">{order.notes}</p>
                                 </div>
-                            )}
+                            ) : null}
                         </CardContent>
                     </Card>
                 </div>

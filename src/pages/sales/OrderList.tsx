@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
@@ -272,6 +272,15 @@ export default function OrderList() {
                                             </span>
                                         )}
                                     </div>
+                                    <div className="flex gap-2 mt-3 pt-3 border-t">
+                                        <Button
+                                            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700"
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/sales/${order.id}`); }}
+                                        >
+                                            <Pencil className="h-4 w-4 mr-2" />
+                                            Edit Order
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </motion.div>
@@ -400,9 +409,9 @@ export default function OrderList() {
                                             </TableCell>
                                         )}
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" asChild>
+                                            <Button variant="ghost" size="sm" className="text-blue-400" asChild>
                                                 <Link to={`/sales/${order.id}`}>
-                                                    <Eye className="h-4 w-4 mr-1" /> View
+                                                    <Pencil className="h-4 w-4 mr-1" /> Edit
                                                 </Link>
                                             </Button>
                                             {(!isRep || order.status === 'draft') && (
