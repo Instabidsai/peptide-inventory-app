@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, type SalesOrder } from '@/hooks/use-sales-orders';
+import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
 import printJS from 'print-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,8 @@ export default function OrderDetails() {
     const fulfillOrder = useFulfillOrder();
     const payWithCredit = usePayWithCredit();
     const shipLabel = useCreateShippingLabel();
+    const getRates = useGetShippingRates();
+    const buyLabel = useBuyShippingLabel();
     const { toast } = useToast();
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -66,6 +68,9 @@ export default function OrderDetails() {
     const [editNotes, setEditNotes] = useState('');
     const [editShippingAddress, setEditShippingAddress] = useState('');
     const [saving, setSaving] = useState(false);
+    const [showRatesDialog, setShowRatesDialog] = useState(false);
+    const [availableRates, setAvailableRates] = useState<ShippingRate[]>([]);
+    const [ratesShipmentId, setRatesShipmentId] = useState<string>('');
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -695,27 +700,56 @@ export default function OrderDetails() {
                             )}
 
                             {order.status === 'fulfilled' && !order.tracking_number && order.shipping_status !== 'error' && (
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className="w-full"
-                                    disabled={shipLabel.isPending}
-                                    onClick={() => shipLabel.mutate(order.id)}
-                                >
-                                    {shipLabel.isPending ? 'Creating Label...' : 'Create Shipping Label'}
-                                </Button>
+                                <div className="space-y-2">
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="w-full"
+                                        disabled={getRates.isPending}
+                                        onClick={() => {
+                                            getRates.mutate(order.id, {
+                                                onSuccess: (data) => {
+                                                    setAvailableRates(data.rates);
+                                                    setRatesShipmentId(data.shipment_id);
+                                                    setShowRatesDialog(true);
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {getRates.isPending ? 'Getting Rates...' : 'Choose Carrier & Ship'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full text-xs text-muted-foreground"
+                                        disabled={shipLabel.isPending}
+                                        onClick={() => shipLabel.mutate(order.id)}
+                                    >
+                                        {shipLabel.isPending ? 'Creating...' : 'Quick Ship (USPS Priority)'}
+                                    </Button>
+                                </div>
                             )}
 
                             {order.shipping_status === 'error' && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full border-amber-500/40 text-amber-400"
-                                    disabled={shipLabel.isPending}
-                                    onClick={() => shipLabel.mutate(order.id)}
-                                >
-                                    {shipLabel.isPending ? 'Retrying...' : 'Retry Shipping'}
-                                </Button>
+                                <div className="space-y-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full border-amber-500/40 text-amber-400"
+                                        disabled={getRates.isPending}
+                                        onClick={() => {
+                                            getRates.mutate(order.id, {
+                                                onSuccess: (data) => {
+                                                    setAvailableRates(data.rates);
+                                                    setRatesShipmentId(data.shipment_id);
+                                                    setShowRatesDialog(true);
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {getRates.isPending ? 'Getting Rates...' : 'Retry — Choose Carrier'}
+                                    </Button>
+                                </div>
                             )}
                         </CardContent>
                     </Card>}
@@ -844,6 +878,55 @@ export default function OrderDetails() {
                             Confirm Payment
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Shipping Rate Selection Dialog */}
+            <Dialog open={showRatesDialog} onOpenChange={setShowRatesDialog}>
+                <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Choose Shipping Rate</DialogTitle>
+                        <DialogDescription>
+                            Select a carrier and service for this shipment.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        {availableRates.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No rates available. Check the shipping address.</p>
+                        )}
+                        {availableRates
+                            .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))
+                            .map((rate) => (
+                            <button
+                                key={rate.object_id}
+                                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 disabled:opacity-50"
+                                disabled={buyLabel.isPending}
+                                onClick={() => {
+                                    buyLabel.mutate(
+                                        { orderId: order.id, rateId: rate.object_id },
+                                        { onSuccess: () => setShowRatesDialog(false) }
+                                    );
+                                }}
+                            >
+                                <div className="min-w-0">
+                                    <div className="font-medium text-sm">{rate.provider}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{rate.servicelevel_name}</div>
+                                    {rate.estimated_days && (
+                                        <div className="text-xs text-muted-foreground">
+                                            ~{rate.estimated_days} day{rate.estimated_days !== 1 ? 's' : ''}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <div className="font-semibold text-sm">${parseFloat(rate.amount).toFixed(2)}</div>
+                                    <div className="text-[10px] text-muted-foreground">{rate.currency}</div>
+                                </div>
+                            </button>
+                        ))}
+                        {buyLabel.isPending && (
+                            <p className="text-sm text-center text-muted-foreground py-2">Purchasing label...</p>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
