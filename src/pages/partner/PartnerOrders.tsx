@@ -374,6 +374,13 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                 </SheetHeader>
 
                 <div className="space-y-4 pb-6">
+                    {/* EDIT BUTTON — first thing, big and obvious */}
+                    {canEdit && !editing && (
+                        <Button className="w-full h-14 text-base font-semibold" size="lg" onClick={startEditing}>
+                            <Pencil className="h-5 w-5 mr-2" /> Edit This Order
+                        </Button>
+                    )}
+
                     {/* Order ID */}
                     <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border">
                         <span className="text-xs text-muted-foreground">Order ID:</span>
@@ -418,13 +425,6 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                                 {order.tracking_number}
                             </a>
                         </div>
-                    )}
-
-                    {/* Edit Order — prominent button */}
-                    {canEdit && !editing && (
-                        <Button className="w-full" size="lg" onClick={startEditing}>
-                            <Pencil className="h-4 w-4 mr-2" /> Edit This Order
-                        </Button>
                     )}
 
                     {/* Items — read-only or editable */}
