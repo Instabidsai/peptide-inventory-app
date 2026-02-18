@@ -1,0 +1,14 @@
+{
+  "name": "peptide-label-printer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local print service for shipping labels — sends PDFs directly to the D520 label printer",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "pdf-to-printer": "^5.6.0"
+  }
+}

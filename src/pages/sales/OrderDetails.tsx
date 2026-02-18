@@ -71,6 +71,41 @@ export default function OrderDetails() {
     const [showRatesDialog, setShowRatesDialog] = useState(false);
     const [availableRates, setAvailableRates] = useState<ShippingRate[]>([]);
     const [ratesShipmentId, setRatesShipmentId] = useState<string>('');
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    const directPrint = async (labelUrl: string) => {
+        setIsPrinting(true);
+        try {
+            // Try the local print service first (direct to D520 printer)
+            const res = await fetch('http://localhost:9111/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: labelUrl }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Print service error');
+            }
+            toast({ title: 'Label sent to D520 printer' });
+            // Auto-mark as printed
+            if (order) {
+                updateOrder.mutate(
+                    { id: order.id, shipping_status: 'printed' },
+                    { onSuccess: () => {} }
+                );
+            }
+        } catch (err) {
+            console.warn('Local print service unavailable, falling back to browser print:', err);
+            toast({
+                variant: 'destructive',
+                title: 'Direct print failed',
+                description: 'Print service not running. Start print-service/start.cmd — falling back to browser print.',
+            });
+            printJS({ printable: labelUrl, type: 'pdf' });
+        } finally {
+            setIsPrinting(false);
+        }
+    };
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -619,35 +654,17 @@ export default function OrderDetails() {
                                 </Button>
                             )}
 
-                            {/* Print label - triggers print dialog via print-js */}
+                            {/* Print label — sends directly to D520 printer via local print service */}
                             {order.label_url && !['delivered'].includes(order.shipping_status) && (
                                 <Button
                                     variant="default"
                                     size="sm"
                                     className="w-full bg-indigo-600 hover:bg-indigo-700"
-                                    onClick={() => {
-                                        printJS({ printable: order.label_url!, type: 'pdf' });
-                                    }}
+                                    disabled={isPrinting}
+                                    onClick={() => directPrint(order.label_url!)}
                                 >
-                                    <Printer className="mr-2 h-4 w-4" /> Print Shipping Label
-                                </Button>
-                            )}
-
-                            {/* Confirm Printed - updates shipping_status to 'printed' */}
-                            {order.shipping_status === 'label_created' && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full border-indigo-500/40 text-indigo-400"
-                                    disabled={updateOrder.isPending}
-                                    onClick={() => {
-                                        updateOrder.mutate(
-                                            { id: order.id, shipping_status: 'printed' },
-                                            { onSuccess: () => toast({ title: 'Label marked as printed' }) }
-                                        );
-                                    }}
-                                >
-                                    <CheckCircle className="mr-2 h-4 w-4" /> Confirm Label Printed
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    {isPrinting ? 'Printing...' : 'Print to D520'}
                                 </Button>
                             )}
 
