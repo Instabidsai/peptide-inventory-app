@@ -325,14 +325,14 @@ export default function ClientStore() {
         );
     }
 
-    // Category gradient config
-    const CATEGORY_STYLES: Record<string, { gradient: string; glow: string; iconBg: string }> = {
-        healing: { gradient: 'from-rose-500/20 to-pink-600/10', glow: 'shadow-rose-500/10', iconBg: 'bg-gradient-to-br from-rose-500 to-pink-600' },
-        gh_stack: { gradient: 'from-violet-500/20 to-purple-600/10', glow: 'shadow-violet-500/10', iconBg: 'bg-gradient-to-br from-violet-500 to-purple-600' },
-        weight_loss: { gradient: 'from-orange-500/20 to-amber-600/10', glow: 'shadow-orange-500/10', iconBg: 'bg-gradient-to-br from-orange-500 to-amber-600' },
-        cognitive: { gradient: 'from-cyan-500/20 to-blue-600/10', glow: 'shadow-cyan-500/10', iconBg: 'bg-gradient-to-br from-cyan-500 to-blue-600' },
-        sleep: { gradient: 'from-indigo-500/20 to-violet-600/10', glow: 'shadow-indigo-500/10', iconBg: 'bg-gradient-to-br from-indigo-500 to-violet-600' },
-        anti_aging: { gradient: 'from-fuchsia-500/20 to-amber-500/10', glow: 'shadow-fuchsia-500/10', iconBg: 'bg-gradient-to-br from-fuchsia-500 to-amber-400' },
+    // Category gradient config — with hover glow colors
+    const CATEGORY_STYLES: Record<string, { gradient: string; glow: string; hoverGlow: string; iconBg: string; borderHover: string }> = {
+        healing: { gradient: 'from-rose-500 to-pink-600', glow: 'shadow-rose-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(244,63,94,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-rose-400 to-pink-600', borderHover: 'hover:border-rose-500/25' },
+        gh_stack: { gradient: 'from-violet-500 to-purple-600', glow: 'shadow-violet-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(139,92,246,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-violet-400 to-purple-600', borderHover: 'hover:border-violet-500/25' },
+        weight_loss: { gradient: 'from-orange-500 to-amber-600', glow: 'shadow-orange-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(249,115,22,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-orange-400 to-amber-600', borderHover: 'hover:border-orange-500/25' },
+        cognitive: { gradient: 'from-cyan-500 to-blue-600', glow: 'shadow-cyan-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(6,182,212,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-cyan-400 to-blue-600', borderHover: 'hover:border-cyan-500/25' },
+        sleep: { gradient: 'from-indigo-500 to-violet-600', glow: 'shadow-indigo-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(99,102,241,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-indigo-400 to-violet-600', borderHover: 'hover:border-indigo-500/25' },
+        anti_aging: { gradient: 'from-fuchsia-500 to-amber-400', glow: 'shadow-fuchsia-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(217,70,239,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-fuchsia-400 to-amber-400', borderHover: 'hover:border-fuchsia-500/25' },
     };
 
     return (
@@ -418,50 +418,57 @@ export default function ClientStore() {
                                 return (
                                     <motion.div
                                         key={template.name}
-                                        variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
-                                        whileHover={{ y: -2, transition: { duration: 0.2 } }}
-                                        whileTap={{ scale: 0.98 }}
+                                        variants={{ hidden: { opacity: 0, y: 20, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                                        whileHover={{ y: -4, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+                                        whileTap={{ scale: 0.97 }}
                                     >
                                         <GlassCard
-                                            className={`cursor-pointer group hover:shadow-xl ${catStyle.glow} hover:border-white/[0.12] transition-all duration-300`}
+                                            className={`cursor-pointer group ${catStyle.hoverGlow} ${catStyle.borderHover} hover:bg-white/[0.07] transition-all duration-300`}
                                             onClick={() => setSelectedProtocol({ template, matched: matchedPeptides })}
                                         >
-                                            {/* Gradient accent bar at top */}
-                                            <div className={`h-[2px] bg-gradient-to-r ${catStyle.gradient} opacity-60 group-hover:opacity-100 transition-opacity`} />
-                                            <CardContent className="p-5 space-y-4">
+                                            {/* Gradient accent bar at top — thicker, more visible */}
+                                            <div className={`h-[3px] bg-gradient-to-r ${catStyle.gradient} opacity-50 group-hover:opacity-100 transition-opacity duration-300`} />
+                                            {/* Subtle category glow behind icon on hover */}
+                                            <CardContent className="p-6 space-y-4 relative">
                                                 <div className="flex items-start gap-4">
-                                                    <div className={`h-11 w-11 rounded-xl ${catStyle.iconBg} flex items-center justify-center shrink-0 shadow-lg`}>
-                                                        <Icon className="h-5 w-5 text-white" />
+                                                    <div className="relative">
+                                                        <div className={`absolute inset-0 rounded-2xl ${catStyle.iconBg} blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500`} />
+                                                        <div className={`relative h-12 w-12 rounded-2xl ${catStyle.iconBg} flex items-center justify-center shrink-0 shadow-xl ring-1 ring-white/20`}>
+                                                            <Icon className="h-6 w-6 text-white drop-shadow-sm" />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-bold text-[15px] tracking-tight">{template.name}</p>
-                                                        <p className="text-xs text-muted-foreground/50 mt-1 leading-relaxed line-clamp-2">{template.description}</p>
+                                                    <div className="flex-1 min-w-0 pt-0.5">
+                                                        <p className="font-bold text-base tracking-tight group-hover:text-white transition-colors">{template.name}</p>
+                                                        <p className="text-xs text-muted-foreground/50 mt-1.5 leading-relaxed line-clamp-2">{template.description}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex flex-wrap gap-1.5">
+                                                <div className="flex flex-wrap gap-2">
                                                     {uniqueMatched.map((p: any) => (
-                                                        <Badge key={p.id} variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-white/[0.06] border-white/[0.08] font-medium">
+                                                        <Badge key={p.id} variant="secondary" className="text-[10px] px-3 py-1 bg-white/[0.06] border border-white/[0.08] font-medium rounded-lg backdrop-blur-sm">
                                                             {expectedQty[p.id] > 1 ? `${expectedQty[p.id]}x ` : ''}{p.name}
                                                         </Badge>
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                                                    <span className="text-xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
+                                                <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                                                    <div>
+                                                        <span className="text-2xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
+                                                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">{uniqueMatched.length} peptide{uniqueMatched.length !== 1 ? 's' : ''}</p>
+                                                    </div>
                                                     {allInCart ? (
-                                                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-full">
-                                                            <Check className="h-3.5 w-3.5" />
+                                                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20">
+                                                            <Check className="h-4 w-4" />
                                                             In Cart
                                                         </div>
                                                     ) : (
                                                         <Button
                                                             size="sm"
-                                                            className="rounded-full px-4 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow"
+                                                            className="rounded-xl px-5 h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 transition-all hover:scale-[1.02]"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 matchedPeptides.forEach((p: any) => addToCart(p));
                                                             }}
                                                         >
-                                                            <Plus className="h-4 w-4 mr-1" />
+                                                            <Plus className="h-4 w-4 mr-1.5" />
                                                             Add All
                                                         </Button>
                                                     )}
@@ -544,32 +551,35 @@ export default function ClientStore() {
                             return (
                                 <motion.div
                                     key={peptide.id}
-                                    variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-                                    whileTap={{ scale: 0.98 }}
+                                    variants={{ hidden: { opacity: 0, y: 16, scale: 0.96 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                                    whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+                                    whileTap={{ scale: 0.97 }}
                                 >
                                 <GlassCard
-                                    className="group cursor-pointer hover:bg-white/[0.06] hover:border-white/[0.12] hover:shadow-lg hover:shadow-primary/[0.06] transition-all duration-300"
+                                    className="group cursor-pointer hover:bg-white/[0.08] hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_rgba(16,185,129,0.2),0_20px_60px_-12px_rgba(0,0,0,0.25)] transition-all duration-300"
                                     onClick={() => setSelectedPeptide(peptide)}
                                 >
-                                    <CardContent className="p-4 sm:p-5">
+                                    {/* Subtle emerald shimmer on hover */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-cyan-500/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+                                    <CardContent className="p-5 relative">
                                         <div className="flex items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-sm tracking-tight truncate group-hover:text-primary transition-colors">{peptide.name}</p>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                                                    <span className="text-[10px] text-emerald-400/80 font-medium uppercase tracking-wider">Research Grade</span>
+                                                <p className="font-bold text-[15px] tracking-tight truncate group-hover:text-white transition-colors duration-200">{peptide.name}</p>
+                                                <div className="flex items-center gap-1.5 mt-1.5">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+                                                    <span className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
                                                 </div>
-                                                <div className="flex items-baseline gap-2 mt-2">
-                                                    <p className="text-xl font-extrabold text-gradient-primary">
+                                                <div className="flex items-baseline gap-2.5 mt-2.5">
+                                                    <p className="text-2xl font-extrabold text-gradient-primary">
                                                         ${price.toFixed(2)}
                                                     </p>
                                                     {hasDiscount && (
-                                                        <span className="text-xs text-muted-foreground/50 line-through">
+                                                        <span className="text-xs text-muted-foreground/40 line-through">
                                                             ${retail.toFixed(2)}
                                                         </span>
                                                     )}
                                                     {hasDiscount && (
-                                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/20">
                                                             -{Math.round((1 - price / retail) * 100)}%
                                                         </span>
                                                     )}
@@ -577,23 +587,23 @@ export default function ClientStore() {
                                             </div>
                                             <div className="flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
                                                 {inCart ? (
-                                                    <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-full p-0.5">
+                                                    <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-xl p-1 border border-white/[0.08]">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-full hover:bg-white/[0.08]"
+                                                            className="h-9 w-9 rounded-lg hover:bg-white/[0.1]"
                                                             onClick={() => updateQuantity(peptide.id, -1)}
                                                             aria-label={`Decrease quantity of ${peptide.name}`}
                                                         >
                                                             <Minus className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <span className="w-7 text-center text-sm font-bold">
+                                                        <span className="w-8 text-center text-sm font-extrabold">
                                                             {inCart.quantity}
                                                         </span>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-full hover:bg-white/[0.08]"
+                                                            className="h-9 w-9 rounded-lg hover:bg-white/[0.1]"
                                                             onClick={() => updateQuantity(peptide.id, 1)}
                                                             aria-label={`Increase quantity of ${peptide.name}`}
                                                         >
@@ -603,10 +613,10 @@ export default function ClientStore() {
                                                 ) : (
                                                     <Button
                                                         size="sm"
-                                                        className="rounded-full px-4 shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30 transition-all"
+                                                        className="rounded-xl px-5 h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] transition-all"
                                                         onClick={() => addToCart(peptide)}
                                                     >
-                                                        <Plus className="h-3.5 w-3.5 mr-1" />
+                                                        <Plus className="h-4 w-4 mr-1" />
                                                         Add
                                                     </Button>
                                                 )}
