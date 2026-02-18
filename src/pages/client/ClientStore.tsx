@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useCheckout } from '@/hooks/use-checkout';
+import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +24,14 @@ import {
     Search,
     Info,
     Percent,
+    Shield,
+    ChevronDown,
+    X,
+    Banknote,
+    Smartphone,
+    ExternalLink,
+    Check,
+    Copy,
 } from 'lucide-react';
 import {
     AlertDialog,
@@ -33,6 +43,17 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+
+type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
+
+const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
+const VENMO_HANDLE = 'PureUSPeptide';
 
 interface CartItem {
     peptide_id: string;
@@ -45,11 +66,19 @@ export default function ClientStore() {
     const { user } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const checkout = useCheckout();
+    const createOrder = useCreateSalesOrder();
+    const { toast } = useToast();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+    const [selectedPeptide, setSelectedPeptide] = useState<any>(null);
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+    const [copiedZelle, setCopiedZelle] = useState(false);
+    const [placingOrder, setPlacingOrder] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false);
+    const cartRef = React.useRef<HTMLDivElement>(null);
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
@@ -176,12 +205,17 @@ export default function ClientStore() {
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    // Checkout handler — creates order + redirects to PsiFi payment
-    const handleCheckout = async () => {
+    const copyZelleEmail = () => {
+        navigator.clipboard.writeText(ZELLE_EMAIL);
+        setCopiedZelle(true);
+        setTimeout(() => setCopiedZelle(false), 2000);
+    };
+
+    // Card checkout — PsiFi payment redirect
+    const handleCardCheckout = async () => {
         if (!user?.id) return;
         if (cart.length === 0) return;
 
-        // Get org_id from profile
         const { data: userProfile } = await supabase
             .from('profiles')
             .select('id, org_id')
@@ -208,6 +242,44 @@ export default function ClientStore() {
                 unit_price: i.price,
             })),
         });
+    };
+
+    // Non-card checkout — creates order as awaiting payment
+    const handleAlternativeCheckout = async () => {
+        if (!contact?.id || cart.length === 0) return;
+        setPlacingOrder(true);
+
+        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
+
+        try {
+            await createOrder.mutateAsync({
+                client_id: contact.id,
+                items: cart.map(i => ({
+                    peptide_id: i.peptide_id,
+                    quantity: i.quantity,
+                    unit_price: i.price,
+                })),
+                shipping_address: shippingAddress || undefined,
+                notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}. Payment via ${methodLabel}.\n${notes}`,
+                payment_method: paymentMethod,
+            });
+            setOrderPlaced(true);
+            setCart([]);
+            setNotes('');
+            toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });
+        } finally {
+            setPlacingOrder(false);
+        }
+    };
+
+    const handleCheckout = () => {
+        if (paymentMethod === 'card') {
+            handleCardCheckout();
+        } else {
+            handleAlternativeCheckout();
+        }
     };
 
     if (isLoadingContact) {
@@ -242,9 +314,9 @@ export default function ClientStore() {
         <div className="space-y-6 pb-20">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">Order Peptides</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Peptide Collection</h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                    Browse and order peptides directly from your portal
+                    Premium research compounds delivered to your door
                 </p>
             </div>
 
@@ -274,10 +346,10 @@ export default function ClientStore() {
             <div>
                 <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
                     <Package className="h-5 w-5 text-primary" />
-                    Available Peptides
+                    Our Collection
                     {filteredPeptides && (
                         <Badge variant="secondary" className="text-xs">
-                            {filteredPeptides.length} products
+                            {filteredPeptides.length}
                         </Badge>
                     )}
                 </h2>
@@ -325,15 +397,19 @@ export default function ClientStore() {
 
                             return (
                                 <motion.div key={peptide.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} whileTap={{ scale: 0.98 }}>
-                                <GlassCard className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group">
+                                <GlassCard
+                                    className="hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group cursor-pointer"
+                                    onClick={() => setSelectedPeptide(peptide)}
+                                >
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-sm truncate">{peptide.name}</p>
-                                                {peptide.sku && (
-                                                    <p className="text-xs text-muted-foreground mt-0.5">SKU: {peptide.sku}</p>
-                                                )}
-                                                <div className="flex items-baseline gap-2 mt-1">
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <Shield className="h-3 w-3 text-emerald-400" />
+                                                    <span className="text-[10px] text-emerald-400 font-medium">Research Grade</span>
+                                                </div>
+                                                <div className="flex items-baseline gap-2 mt-1.5">
                                                     <p className="text-xl font-bold text-primary">
                                                         ${price.toFixed(2)}
                                                     </p>
@@ -344,7 +420,7 @@ export default function ClientStore() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-end gap-1">
+                                            <div className="flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
                                                 {inCart ? (
                                                     <div className="flex items-center gap-1">
                                                         <Button
@@ -394,6 +470,7 @@ export default function ClientStore() {
             <AnimatePresence>
             {cart.length > 0 && (
                 <motion.div
+                    ref={cartRef}
                     initial={{ opacity: 0, y: 24, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 24, scale: 0.97 }}
@@ -474,20 +551,151 @@ export default function ClientStore() {
                             />
                         </div>
 
-                        {/* Checkout with Payment */}
-                        <Button
-                            className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
-                            size="lg"
-                            onClick={() => setShowCheckoutConfirm(true)}
-                            disabled={checkout.isPending || cart.length === 0}
-                        >
-                            {checkout.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                                <CreditCard className="h-4 w-4 mr-2" />
-                            )}
-                            Checkout — ${cartTotal.toFixed(2)}
-                        </Button>
+                        {/* Payment Method Selection */}
+                        {!orderPlaced ? (
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium">Payment Method</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([
+                                        { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
+                                        { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
+                                        { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
+                                        { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
+                                    ]).map(m => (
+                                        <Button
+                                            key={m.id}
+                                            variant={paymentMethod === m.id ? 'default' : 'outline'}
+                                            size="sm"
+                                            className="justify-start"
+                                            onClick={() => setPaymentMethod(m.id)}
+                                        >
+                                            <m.icon className="h-4 w-4 mr-2" />
+                                            {m.label}
+                                        </Button>
+                                    ))}
+                                </div>
+
+                                {/* Zelle info */}
+                                {paymentMethod === 'zelle' && (
+                                    <div className="bg-purple-950/30 border border-purple-800 rounded-lg p-3 space-y-2">
+                                        <p className="text-xs font-medium text-purple-300">Send payment via Zelle to:</p>
+                                        <div className="flex items-center gap-2">
+                                            <code className="flex-1 text-sm font-mono bg-background rounded px-2 py-1 border truncate">
+                                                {ZELLE_EMAIL}
+                                            </code>
+                                            <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0" aria-label="Copy Zelle email">
+                                                {copiedZelle ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via your bank's Zelle. We'll confirm when received.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Cash App info */}
+                                {paymentMethod === 'cashapp' && (
+                                    <div className="bg-green-950/30 border border-green-800 rounded-lg p-3 space-y-2">
+                                        <p className="text-xs font-medium text-green-300">Pay via Cash App</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via Cash App. We'll confirm when received.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Venmo info */}
+                                {paymentMethod === 'venmo' && (
+                                    <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-3 space-y-2">
+                                        <p className="text-xs font-medium text-blue-300">Pay via Venmo to @{VENMO_HANDLE}</p>
+                                        <a
+                                            href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:underline"
+                                        >
+                                            <ExternalLink className="h-3 w-3" />
+                                            Open Venmo — ${cartTotal.toFixed(2)}
+                                        </a>
+                                        <p className="text-xs text-muted-foreground">
+                                            Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via the link above or search @{VENMO_HANDLE} in Venmo.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <Button
+                                    className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
+                                    size="lg"
+                                    onClick={() => {
+                                        if (paymentMethod === 'card') {
+                                            setShowCheckoutConfirm(true);
+                                        } else {
+                                            handleCheckout();
+                                        }
+                                    }}
+                                    disabled={checkout.isPending || placingOrder || cart.length === 0}
+                                >
+                                    {(checkout.isPending || placingOrder) ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : paymentMethod === 'card' ? (
+                                        <CreditCard className="h-4 w-4 mr-2" />
+                                    ) : (
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                    )}
+                                    {paymentMethod === 'card'
+                                        ? `Pay with Card — $${cartTotal.toFixed(2)}`
+                                        : `Place Order — $${cartTotal.toFixed(2)}`
+                                    }
+                                </Button>
+                            </div>
+                        ) : (
+                            /* Order placed confirmation (non-card) */
+                            <div className="text-center space-y-3 py-4">
+                                <div className="h-12 w-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
+                                    <Check className="h-6 w-6 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-emerald-400">Order Placed!</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
+                                        {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}
+                                        {paymentMethod === 'zelle' && (
+                                            <> to <strong>{ZELLE_EMAIL}</strong></>
+                                        )}
+                                        {paymentMethod === 'venmo' && (
+                                            <> to <strong>@{VENMO_HANDLE}</strong></>
+                                        )}
+                                    </p>
+                                </div>
+                                {paymentMethod === 'zelle' && (
+                                    <Button variant="outline" size="sm" onClick={copyZelleEmail}>
+                                        {copiedZelle ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                                        Copy Zelle Email
+                                    </Button>
+                                )}
+                                {paymentMethod === 'venmo' && (
+                                    <a
+                                        href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <Button variant="outline" size="sm">
+                                            <ExternalLink className="h-3 w-3 mr-1" />
+                                            Open Venmo to Pay
+                                        </Button>
+                                    </a>
+                                )}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setOrderPlaced(false);
+                                        setPaymentMethod('card');
+                                    }}
+                                >
+                                    Start New Order
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </GlassCard>
                 </motion.div>
@@ -525,6 +733,124 @@ export default function ClientStore() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Floating cart pill — fixed bottom */}
+            <AnimatePresence>
+                {cart.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 40 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        className="fixed bottom-4 left-4 right-4 z-50 max-w-lg mx-auto"
+                    >
+                        <Button
+                            className="w-full h-14 rounded-2xl shadow-xl shadow-primary/25 text-base font-semibold"
+                            size="lg"
+                            onClick={() => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        >
+                            <ShoppingCart className="h-5 w-5 mr-2" />
+                            <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
+                            <span className="mx-2 opacity-40">|</span>
+                            <span>${cartTotal.toFixed(2)}</span>
+                            <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Product detail Sheet */}
+            <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) setSelectedPeptide(null); }}>
+                <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+                    {selectedPeptide && (() => {
+                        const price = getClientPrice(selectedPeptide);
+                        const retail = Number(selectedPeptide.retail_price || 0);
+                        const hasDiscount = assignedRep && price < retail;
+                        const inCart = cart.find(i => i.peptide_id === selectedPeptide.id);
+
+                        return (
+                            <>
+                                <SheetHeader className="pb-4">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Shield className="h-4 w-4 text-emerald-400" />
+                                        <span className="text-xs text-emerald-400 font-medium">Research Grade</span>
+                                    </div>
+                                    <SheetTitle className="text-2xl font-bold tracking-tight text-left">
+                                        {selectedPeptide.name}
+                                    </SheetTitle>
+                                </SheetHeader>
+
+                                <div className="space-y-5 pb-6">
+                                    {/* Description */}
+                                    {selectedPeptide.description && (
+                                        <p className="text-sm text-muted-foreground leading-relaxed">
+                                            {selectedPeptide.description}
+                                        </p>
+                                    )}
+
+                                    {/* Price */}
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-3xl font-bold text-primary">${price.toFixed(2)}</span>
+                                        {hasDiscount && (
+                                            <span className="text-lg text-muted-foreground line-through">${retail.toFixed(2)}</span>
+                                        )}
+                                        {hasDiscount && (
+                                            <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20">
+                                                {Math.round((1 - price / retail) * 100)}% off
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    {/* Quantity + Add to cart */}
+                                    {inCart ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-center gap-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-11 w-11 rounded-xl"
+                                                    onClick={() => updateQuantity(selectedPeptide.id, -1)}
+                                                >
+                                                    <Minus className="h-5 w-5" />
+                                                </Button>
+                                                <span className="text-2xl font-bold w-12 text-center">{inCart.quantity}</span>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-11 w-11 rounded-xl"
+                                                    onClick={() => updateQuantity(selectedPeptide.id, 1)}
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                            <p className="text-center text-sm text-muted-foreground">
+                                                Subtotal: <span className="font-semibold text-foreground">${(price * inCart.quantity).toFixed(2)}</span>
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            size="lg"
+                                            className="w-full h-14 rounded-xl text-base font-semibold shadow-md shadow-primary/20"
+                                            onClick={() => addToCart(selectedPeptide)}
+                                        >
+                                            <Plus className="h-5 w-5 mr-2" />
+                                            Add to Cart — ${price.toFixed(2)}
+                                        </Button>
+                                    )}
+
+                                    {/* Storage info */}
+                                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1.5">
+                                        <p className="text-xs font-medium text-muted-foreground/80">Storage & Handling</p>
+                                        <p className="text-xs text-muted-foreground/60">
+                                            Store unreconstituted vials at room temperature or refrigerated. After reconstitution, store refrigerated (2-8°C) and use within 30 days.
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

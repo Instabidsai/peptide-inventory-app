@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/sb_client/client";
 import { useToast } from "@/hooks/use-toast";
+import { calculateDoseUnits } from "@/utils/dose-utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -176,8 +177,8 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                                         const protocolItem = protocols.flatMap(p => p.protocol_items || []).find(i => i.peptide_id === vial.peptide_id);
                                                                         if (protocolItem) {
                                                                             const doseMg = protocolItem.dosage_unit === 'mcg' ? protocolItem.dosage_amount / 1000 : protocolItem.dosage_amount;
-                                                                            const units = (doseMg / vial.concentration_mg_ml) * 100;
-                                                                            return `Dose: ${units.toFixed(0)} units (${protocolItem.dosage_amount}${protocolItem.dosage_unit})`;
+                                                                            const units = calculateDoseUnits(doseMg, vial.concentration_mg_ml);
+                                                                            return `Dose: ${units} units (${protocolItem.dosage_amount}${protocolItem.dosage_unit})`;
                                                                         }
                                                                         return null;
                                                                     })()}
@@ -424,7 +425,7 @@ function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryIte
                                     <div className="text-right">
                                         <span className="text-xl font-bold text-primary">
                                             {/* Units = (Dose / Conc) * 100 */}
-                                            {((parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1)) / vial.concentration_mg_ml * 100).toFixed(1)}
+                                            {calculateDoseUnits(parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1), vial.concentration_mg_ml)}
                                         </span>
                                         <span className="text-xs text-muted-foreground ml-1">units</span>
                                     </div>

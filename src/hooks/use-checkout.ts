@@ -22,7 +22,7 @@ interface CheckoutInput {
 
 /**
  * Hook that handles the full checkout flow:
- * 1. Creates a sales_order in Supabase with status 'pending_payment'
+ * 1. Creates a sales_order in Supabase with status 'submitted'
  * 2. Calls our Vercel serverless function to create a PsiFi checkout session
  * 3. Redirects the user to PsiFi's hosted payment page
  *
@@ -48,7 +48,7 @@ export function useCheckout() {
                     org_id: input.org_id,
                     client_id: input.client_id || null,
                     rep_id: input.rep_id || null,
-                    status: 'pending',
+                    status: 'submitted',
                     payment_status: 'unpaid',
                     psifi_status: 'none',
                     total_amount: input.total_amount,

@@ -13,6 +13,7 @@ import { SuggestedStack } from "@/components/regimen/SuggestedStack";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
+import { calculateDoseUnits } from "@/utils/dose-utils";
 
 export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
@@ -76,8 +77,8 @@ export default function ClientRegimen() {
 
                             let unitsLabel = '';
                             if (activeVial?.concentration_mg_ml) {
-                                const units = (doseMg / activeVial.concentration_mg_ml) * 100;
-                                unitsLabel = ` - Take ${units.toFixed(0)} units`;
+                                const units = calculateDoseUnits(doseMg, activeVial.concentration_mg_ml);
+                                unitsLabel = ` - Take ${units} units`;
                             }
 
                             return {

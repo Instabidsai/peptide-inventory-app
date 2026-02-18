@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { ClientInventoryItem } from '@/types/regimen';
 import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
+import { calculateDoseUnits } from '@/utils/dose-utils';
 
 interface SimpleVialsProps {
     inventory: ClientInventoryItem[];
@@ -78,41 +79,48 @@ function UnmixedCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; 
             )}
 
             <div className="space-y-2.5">
-                {/* Quick-fill + input row */}
-                {knowledge?.reconstitutionMl ? (
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
+                {/* Quick-fill: big primary button when we know the amount */}
+                {knowledge?.reconstitutionMl && !waterMl ? (
+                    <div className="space-y-2">
+                        <Button
+                            className="w-full h-12 rounded-xl text-sm font-semibold"
+                            onClick={() => setWaterMl(String(knowledge.reconstitutionMl))}
+                        >
+                            <Beaker className="h-4 w-4 mr-2" />
+                            Add {knowledge.reconstitutionMl}mL Water (Recommended)
+                        </Button>
+                        <button
+                            type="button"
+                            onClick={() => setWaterMl('0')}
+                            className="w-full text-center text-[11px] text-muted-foreground/40 hover:text-muted-foreground/60 py-1"
+                        >
+                            Enter custom amount instead
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        <div className="relative">
                             <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                             <Input
                                 type="number"
                                 step="0.1"
                                 min="0.1"
-                                placeholder="mL water"
-                                value={waterMl}
+                                placeholder="Bacteriostatic water (mL)"
+                                value={waterMl === '0' ? '' : waterMl}
                                 onChange={e => setWaterMl(e.target.value)}
                                 className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
                             />
                         </div>
-                        <Button
-                            variant="outline"
-                            className="h-11 px-3 rounded-xl text-xs border-blue-500/20 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 shrink-0"
-                            onClick={() => setWaterMl(String(knowledge.reconstitutionMl))}
-                        >
-                            Use {knowledge.reconstitutionMl} mL
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="relative">
-                        <Beaker className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                        <Input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            placeholder="Bacteriostatic water (mL)"
-                            value={waterMl}
-                            onChange={e => setWaterMl(e.target.value)}
-                            className="h-11 pl-10 text-sm rounded-xl bg-white/[0.03] border-white/[0.06]"
-                        />
+                        {knowledge?.reconstitutionMl && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full h-9 rounded-xl text-xs border-blue-500/20 text-blue-400 hover:bg-blue-500/10"
+                                onClick={() => setWaterMl(String(knowledge.reconstitutionMl))}
+                            >
+                                Use recommended: {knowledge.reconstitutionMl}mL
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -190,7 +198,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
 
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseNum = parseFloat(doseMg) || 0;
-    const units = concentration > 0 && doseNum > 0 ? Math.round((doseNum / concentration) * 100) : 0;
+    const units = calculateDoseUnits(doseNum, concentration);
 
     const tiers = knowledge?.dosingTiers ?? [];
 
@@ -473,7 +481,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
     const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseMg = Number(vial.dose_amount_mg) || 0;
-    const units = concentration > 0 && doseMg > 0 ? Math.round((doseMg / concentration) * 100) : 0;
+    const units = calculateDoseUnits(doseMg, concentration);
     const scheduleLabel = getScheduleLabel(vial);
     const TimeIcon = vial.dose_time_of_day ? TIME_ICONS[vial.dose_time_of_day as keyof typeof TIME_ICONS] : null;
 
@@ -787,8 +795,13 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                                     : 'Vials from new orders will appear here.'}
                             </p>
                         </div>
-                    ) : (
-                        sortedFridge.map((vial) => {
+                    ) : (() => {
+                        // Group vials by state category for clear section headers
+                        const unmixed = sortedFridge.filter(v => getVialState(v, todayAbbr) === 'unmixed');
+                        const needsSchedule = sortedFridge.filter(v => getVialState(v, todayAbbr) === 'needs_schedule');
+                        const active = sortedFridge.filter(v => !['unmixed', 'needs_schedule'].includes(getVialState(v, todayAbbr)));
+
+                        const renderVial = (vial: ClientInventoryItem) => {
                             const state = getVialState(vial, todayAbbr);
                             const k = getKnowledge(vial);
                             switch (state) {
@@ -805,8 +818,50 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                                 case 'not_today':
                                     return <ActiveCard key={vial.id} vial={vial} isDueToday={false} isLow={false} actions={actions} knowledge={k} />;
                             }
-                        })
-                    )}
+                        };
+
+                        return (
+                            <>
+                                {/* Section: Ready to Mix */}
+                                {unmixed.length > 0 && (
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Beaker className="h-3.5 w-3.5 text-amber-400" />
+                                            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Ready to Mix</span>
+                                            <span className="text-[10px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">{unmixed.length}</span>
+                                        </div>
+                                        {unmixed.map(renderVial)}
+                                    </div>
+                                )}
+
+                                {/* Section: Set Your Schedule */}
+                                {needsSchedule.length > 0 && (
+                                    <div className="space-y-2.5">
+                                        {unmixed.length > 0 && <div className="h-px bg-white/[0.04]" />}
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Sun className="h-3.5 w-3.5 text-blue-400" />
+                                            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Set Your Schedule</span>
+                                            <span className="text-[10px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">{needsSchedule.length}</span>
+                                        </div>
+                                        {needsSchedule.map(renderVial)}
+                                    </div>
+                                )}
+
+                                {/* Section: Active in Fridge */}
+                                {active.length > 0 && (
+                                    <div className="space-y-2.5">
+                                        {(unmixed.length > 0 || needsSchedule.length > 0) && <div className="h-px bg-white/[0.04]" />}
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Droplets className="h-3.5 w-3.5 text-emerald-400" />
+                                            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">In Your Fridge</span>
+                                            <span className="text-[10px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">{active.length}</span>
+                                        </div>
+                                        {active.map(renderVial)}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
 
                     {/* Remove from fridge */}
                     {sortedFridge.length > 0 && (

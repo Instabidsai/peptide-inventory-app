@@ -1,18 +1,26 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAI } from '@/hooks/use-ai';
 import { useAIKnowledge } from '@/hooks/use-ai-knowledge';
 import { PeptideAIKnowledgePanel } from './PeptideAIKnowledgePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Bot, User, Sparkles, Plus, Paperclip, Brain } from 'lucide-react';
+import { Loader2, Send, Bot, User, Sparkles, Plus, Paperclip, Brain, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 
 const ACCEPTED_TYPES = '.pdf,.jpg,.jpeg,.png,.webp';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const STARTER_QUESTIONS = [
+    "What should I take today?",
+    "Explain my current protocol",
+    "How do I reconstitute a vial?",
+    "What are my peptide interactions?",
+];
 
 export const AIChatInterface = () => {
     const { messages, sendMessage, isLoading, isLoadingHistory, startNewConversation } = useAI();
@@ -111,6 +119,32 @@ export const AIChatInterface = () => {
                         </div>
                     ) : (
                         <div className="space-y-3">
+                            {/* Starter questions when conversation is empty */}
+                            {messages.length === 0 && !isLoading && (
+                                <div className="flex flex-col items-center justify-center py-8 space-y-5">
+                                    <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                                        <MessageCircle className="h-7 w-7 text-emerald-400" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="font-semibold text-sm">How can I help?</p>
+                                        <p className="text-xs text-muted-foreground/60">Ask me anything about your peptides and protocols</p>
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+                                        {STARTER_QUESTIONS.map((q) => (
+                                            <Button
+                                                key={q}
+                                                variant="outline"
+                                                size="sm"
+                                                className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]"
+                                                onClick={() => { sendMessage(q); }}
+                                            >
+                                                {q}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {messages.map((msg) => (
                                 <div
                                     key={msg.id}
@@ -121,7 +155,7 @@ export const AIChatInterface = () => {
                                     )}
                                 >
                                     {msg.role === 'assistant' && (
-                                        <Avatar className="h-7 w-7 mt-1 border border-white/[0.06]">
+                                        <Avatar className="h-7 w-7 mt-1 shrink-0 border border-white/[0.06]">
                                             <AvatarImage src="/ai-avatar.png" />
                                             <AvatarFallback className="bg-emerald-500/10 text-emerald-400"><Bot size={14} /></AvatarFallback>
                                         </Avatar>
@@ -135,7 +169,13 @@ export const AIChatInterface = () => {
                                                 : "bg-white/[0.04] border border-white/[0.06] text-foreground rounded-tl-sm"
                                         )}
                                     >
-                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        {msg.role === 'assistant' ? (
+                                            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300">
+                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        )}
                                         <div className={cn(
                                             "text-[10px] mt-1.5 opacity-50",
                                             msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
@@ -145,7 +185,7 @@ export const AIChatInterface = () => {
                                     </div>
 
                                     {msg.role === 'user' && (
-                                        <Avatar className="h-7 w-7 mt-1 border border-white/[0.06]">
+                                        <Avatar className="h-7 w-7 mt-1 shrink-0 border border-white/[0.06]">
                                             <AvatarFallback className="bg-white/[0.04] text-muted-foreground"><User size={14} /></AvatarFallback>
                                         </Avatar>
                                     )}

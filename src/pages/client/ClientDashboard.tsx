@@ -5,7 +5,8 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { ChevronRight, Loader2, Sparkles, User, Flame, Target, Calendar } from "lucide-react";
+import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Flame, Target, Calendar } from "lucide-react";
+import { Progress } from '@/components/ui/progress';
 import { format, isSameDay, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ import { SimpleVials } from '@/components/regimen/SimpleVials';
 import { WeekStrip } from '@/components/regimen/WeekStrip';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { isDoseDay } from '@/types/regimen';
+import { calculateDoseUnits } from '@/utils/dose-utils';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChatInterface } from "@/components/ai/AIChatInterface";
@@ -122,9 +124,7 @@ function ClientDashboardContent() {
 
             const concentration = Number(vial.concentration_mg_ml) || 0;
             const doseAmountMg = Number(vial.dose_amount_mg) || 0;
-            const units = concentration > 0 && doseAmountMg > 0
-                ? Math.round((doseAmountMg / concentration) * 100)
-                : 0;
+            const units = calculateDoseUnits(doseAmountMg, concentration);
             const timeOfDay = (vial.dose_time_of_day as TimeWindow) || 'morning';
 
             todayDoses.push({
@@ -330,55 +330,7 @@ function ClientDashboardContent() {
                 </TabsList>
 
                 <TabsContent value="protocol" className="space-y-5">
-                    {/* ─── Peptide Rings (hero) ─── */}
-                    {hasDosesToday && (
-                        <GlassCard className="border-white/[0.04] overflow-hidden">
-                            <CardContent className="pt-6 pb-5">
-                                <PeptideRings doses={gamified.ringDoses} />
-                            </CardContent>
-                        </GlassCard>
-                    )}
-
-                    {/* ─── Stats Row ─── */}
-                    <motion.div
-                        className="grid grid-cols-2 gap-3"
-                        initial="hidden"
-                        animate="show"
-                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12 } } }}
-                    >
-                        <motion.div variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}>
-                        <GlassCard className="border-white/[0.04] hover-lift">
-                            <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
-                                <div className="p-2 rounded-xl bg-primary/10 mb-1">
-                                    <Flame className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="text-2xl font-bold tracking-tight text-primary">
-                                    {gamified.streak}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">
-                                    Day Streak
-                                </div>
-                            </CardContent>
-                        </GlassCard>
-                        </motion.div>
-                        <motion.div variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}>
-                        <GlassCard className="border-white/[0.04] hover-lift">
-                            <CardContent className="pt-5 pb-4 flex flex-col items-center justify-center gap-1.5">
-                                <div className="p-2 rounded-xl bg-emerald-500/10 mb-1">
-                                    <Target className="h-4 w-4 text-emerald-400" />
-                                </div>
-                                <div className="text-2xl font-bold tracking-tight text-emerald-400">
-                                    {gamified.adherenceRate}%
-                                </div>
-                                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">
-                                    30-Day Adherence
-                                </div>
-                            </CardContent>
-                        </GlassCard>
-                        </motion.div>
-                    </motion.div>
-
-                    {/* ─── Due Now Cards ─── */}
+                    {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
                     {hasDosesToday && (
                         <GlassCard className="border-white/[0.04] overflow-hidden">
                             <CardContent className="pt-5 pb-4">
@@ -409,20 +361,88 @@ function ClientDashboardContent() {
                         </GlassCard>
                     )}
 
+                    {/* ─── Progress Bar (compact replacement for rings) ─── */}
+                    {hasDosesToday && (() => {
+                        const totalDoses = gamified.todayDoses.length;
+                        const doneDoses = gamified.todayDoses.filter(d => d.isTaken).length;
+                        const pct = totalDoses > 0 ? Math.round((doneDoses / totalDoses) * 100) : 0;
+                        return (
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center gap-3 px-1"
+                            >
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Flame className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-bold text-primary">{gamified.streak}d</span>
+                                </div>
+                                <Progress
+                                    value={pct}
+                                    className="flex-1 h-3 rounded-full [&>div]:bg-gradient-to-r [&>div]:from-emerald-600 [&>div]:to-emerald-400 [&>div]:rounded-full"
+                                />
+                                <span className="text-sm font-semibold text-emerald-400 shrink-0">
+                                    {doneDoses}/{totalDoses}
+                                </span>
+                            </motion.div>
+                        );
+                    })()}
+
+                    {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
+                    <SimpleVials inventory={inventory || []} contactId={contact?.id} />
+
                     {/* ─── Week Calendar Strip ─── */}
                     <WeekStrip inventory={inventory || []} />
 
-                    {/* ─── 90-Day Compliance Heatmap ─── */}
-                    {gamified.heatmapData.some(d => d.total > 0) && (
-                        <GlassCard className="border-white/[0.04] overflow-hidden">
-                            <CardContent className="py-3">
-                                <ComplianceHeatmap data={gamified.heatmapData} />
-                            </CardContent>
-                        </GlassCard>
-                    )}
+                    {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
+                    <GlassCard className="border-white/[0.04] overflow-hidden">
+                        <button
+                            onClick={() => {
+                                const el = document.getElementById('stats-content');
+                                if (el) el.classList.toggle('hidden');
+                                const chevron = document.getElementById('stats-chevron');
+                                if (chevron) chevron.classList.toggle('rotate-180');
+                            }}
+                            className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-white/[0.02]"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-white/[0.04] text-muted-foreground/60">
+                                    <Target className="h-4 w-4" />
+                                </div>
+                                <span className="font-semibold text-sm tracking-tight">My Stats</span>
+                                <span className="text-xs text-muted-foreground/40">
+                                    {gamified.adherenceRate}% adherence
+                                </span>
+                            </div>
+                            <div id="stats-chevron" className="p-1 rounded-lg bg-white/[0.04] transition-transform duration-200">
+                                <ChevronDown className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
+                        </button>
+                        <div id="stats-content" className="hidden">
+                            <CardContent className="pt-0 pb-4 space-y-4">
+                                {/* Stats Row */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
+                                        <Flame className="h-4 w-4 text-primary" />
+                                        <div className="text-2xl font-bold tracking-tight text-primary">{gamified.streak}</div>
+                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Day Streak</div>
+                                    </div>
+                                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
+                                        <Target className="h-4 w-4 text-emerald-400" />
+                                        <div className="text-2xl font-bold tracking-tight text-emerald-400">{gamified.adherenceRate}%</div>
+                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Adherence</div>
+                                    </div>
+                                </div>
 
-                    {/* ─── Fridge (Vial Lifecycle Manager) ─── */}
-                    <SimpleVials inventory={inventory || []} contactId={contact?.id} />
+                                {/* Peptide Rings */}
+                                {hasDosesToday && <PeptideRings doses={gamified.ringDoses} />}
+
+                                {/* Heatmap */}
+                                {gamified.heatmapData.some(d => d.total > 0) && (
+                                    <ComplianceHeatmap data={gamified.heatmapData} />
+                                )}
+                            </CardContent>
+                        </div>
+                    </GlassCard>
 
                     {/* ─── Full Regimen Link ─── */}
                     <button

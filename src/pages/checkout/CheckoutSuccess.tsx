@@ -12,6 +12,10 @@ import {
     ArrowRight,
     ShoppingBag,
     Clock,
+    Copy,
+    Check,
+    Truck,
+    Mail,
 } from 'lucide-react';
 
 export default function CheckoutSuccess() {
@@ -19,6 +23,15 @@ export default function CheckoutSuccess() {
     const navigate = useNavigate();
     const orderId = searchParams.get('orderId');
     const [showConfetti, setShowConfetti] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const copyOrderId = () => {
+        if (orderId) {
+            navigator.clipboard.writeText(orderId);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     // Poll order status to confirm payment via webhook
     const { data: order, isLoading } = useQuery({
@@ -130,6 +143,38 @@ export default function CheckoutSuccess() {
                 </CardContent>
             </Card>
 
+            {/* Order Timeline */}
+            {isPaid && (
+                <Card>
+                    <CardContent className="pt-6 pb-4">
+                        <h2 className="font-semibold text-sm mb-4">Order Progress</h2>
+                        <div className="space-y-0">
+                            {[
+                                { label: 'Confirmed', icon: CheckCircle2, active: true },
+                                { label: 'Processing', icon: Package, active: true },
+                                { label: 'Shipping', icon: Truck, active: false },
+                                { label: 'Delivered', icon: CheckCircle2, active: false },
+                            ].map((step, i) => (
+                                <div key={step.label} className="flex items-start gap-3">
+                                    <div className="flex flex-col items-center">
+                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center ${step.active ? 'bg-emerald-500/15' : 'bg-white/[0.04]'}`}>
+                                            <step.icon className={`h-3.5 w-3.5 ${step.active ? 'text-emerald-400' : 'text-muted-foreground/40'}`} />
+                                        </div>
+                                        {i < 3 && <div className={`w-px h-5 ${step.active ? 'bg-emerald-500/30' : 'bg-white/[0.06]'}`} />}
+                                    </div>
+                                    <p className={`text-sm pt-1 ${step.active ? 'font-medium' : 'text-muted-foreground/50'}`}>
+                                        {step.label}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground/60 mt-3">
+                            Most orders ship within 1-2 business days.
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Order Summary */}
             {order && (
                 <Card>
@@ -145,7 +190,7 @@ export default function CheckoutSuccess() {
                         </div>
 
                         <div className="space-y-2 text-sm">
-                            {order.sales_order_items?.map((item) => (
+                            {order.sales_order_items?.map((item: any) => (
                                 <div key={item.id} className="flex justify-between">
                                     <span className="text-muted-foreground">
                                         {item.peptides?.name || 'Unknown'} × {item.quantity}
@@ -164,9 +209,20 @@ export default function CheckoutSuccess() {
                             </span>
                         </div>
 
-                        <p className="text-xs text-muted-foreground">
-                            Order ID: {order.id?.slice(0, 8)}...
-                        </p>
+                        {/* Full Order ID with copy */}
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                            <span className="text-xs text-muted-foreground/60">Order ID:</span>
+                            <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyOrderId}>
+                                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                            </Button>
+                        </div>
+
+                        {/* Email confirmation note */}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span>Confirmation details sent to your email</span>
+                        </div>
                     </CardContent>
                 </Card>
             )}
