@@ -154,23 +154,51 @@ const STATE_NAMES: Record<string, string> = {
 const VALID_ABBRS = new Set(Object.values(STATE_NAMES));
 
 function parseAddress(raw: string) {
-    if (!raw || raw.trim().length < 10) return null;
-    const cleaned = raw.replace(/\n/g, ', ').replace(/\s+/g, ' ').trim();
+    if (!raw || raw.trim().length < 5) return null;
 
-    // 1. Extract ZIP code from the end
-    const zipMatch = cleaned.match(/(\d{5}(?:-\d{4})?)\s*$/);
+    // Split into lines, trim each, drop empties
+    const lines = raw.split(/\n/).map(l => l.trim()).filter(Boolean);
+
+    // Pull out unit/apartment/suite/loft lines → becomes street2
+    let street2 = '';
+    const UNIT_RE = /^(apt|apartment|unit|suite|ste|loft|#)\s*/i;
+    const addressLines: string[] = [];
+    for (const line of lines) {
+        const stripped = line.replace(/^,/, '').trim();
+        if (UNIT_RE.test(stripped)) {
+            street2 = stripped;
+        } else if (/^(US|USA|United States)\s*$/i.test(stripped)) {
+            // drop country line
+        } else {
+            addressLines.push(stripped);
+        }
+    }
+
+    // Rejoin remaining lines with comma separator
+    const cleaned = addressLines.join(', ').replace(/\s+/g, ' ').trim();
+    if (cleaned.length < 5) return null;
+
+    // 1. Extract ZIP code — find FIRST 5-digit ZIP anywhere in string
+    const zipMatch = cleaned.match(/\b(\d{5}(?:-\d{4})?)\b/);
     if (!zipMatch) return null;
     const zip = zipMatch[1];
+
+    // Everything before the ZIP is the address body, everything after is ignored (or unit info)
     let rest = cleaned.slice(0, zipMatch.index).replace(/,?\s*$/, '').trim();
+    // Also check for trailing text after ZIP that might be unit info
+    const afterZip = cleaned.slice((zipMatch.index || 0) + zipMatch[0].length).trim();
+    if (afterZip && !street2) {
+        // Could be unit info like "Apt B" or leftover text
+        street2 = afterZip.replace(/^,?\s*/, '');
+    }
+
+    // Strip country if still present
     rest = rest.replace(/,?\s*(?:US|USA|United States)\s*$/i, '').trim();
 
-    // 2. Extract state — try full name first (unambiguous), then 2-letter abbreviation
+    // 2. Extract state — try full name first, then 2-letter abbreviation
     let state = '';
 
-    // Try full state names (longest first to match "New Hampshire" before "New")
-    const lower = rest.toLowerCase();
     for (const [name, abbr] of Object.entries(STATE_NAMES).sort((a, b) => b[0].length - a[0].length)) {
-        // Must appear at end, preceded by space or comma
         const re = new RegExp('[,\\s]' + name.replace(/ /g, '\\s+') + '\\s*$', 'i');
         const m = rest.match(re);
         if (m) {
@@ -180,7 +208,6 @@ function parseAddress(raw: string) {
         }
     }
 
-    // Try 2-letter abbreviation (must be a standalone word AND a valid state code)
     if (!state) {
         const abbrMatch = rest.match(/(?:,\s*|\s+)([A-Z]{2})\s*$/i);
         if (abbrMatch && VALID_ABBRS.has(abbrMatch[1].toUpperCase())) {
@@ -189,14 +216,22 @@ function parseAddress(raw: string) {
         }
     }
 
-    // No state found — try to infer from ZIP prefix
+    // Infer from ZIP prefix if needed
     if (!state) {
         const z = parseInt(zip.slice(0, 3));
         if (z >= 330 && z <= 349) state = 'FL';
         else if (z >= 100 && z <= 149) state = 'NY';
         else if (z >= 900 && z <= 961) state = 'CA';
         else if (z >= 750 && z <= 799) state = 'TX';
-        // If still unknown, let Shippo validate
+        else if (z >= 600 && z <= 629) state = 'IL';
+        else if (z >= 150 && z <= 196) state = 'PA';
+        else if (z >= 200 && z <= 205) state = 'DC';
+        else if (z >= 206 && z <= 219) state = 'MD';
+        else if (z >= 220 && z <= 246) state = 'VA';
+        else if (z >= 300 && z <= 319) state = 'GA';
+        else if (z >= 270 && z <= 289) state = 'NC';
+        else if (z >= 430 && z <= 459) state = 'OH';
+        else if (z >= 480 && z <= 499) state = 'MI';
     }
     if (!state) return null;
 
@@ -207,14 +242,12 @@ function parseAddress(raw: string) {
         street1 = rest.slice(0, lastComma).trim();
         city = rest.slice(lastComma + 1).trim();
     } else {
-        // No comma — split after last number token + any street suffix
         const SUFFIXES = /^(st|street|ave|avenue|blvd|boulevard|dr|drive|rd|road|ct|court|ln|lane|way|pl|place|cir|circle|ter|terrace|trl|trail|pkwy|parkway|hwy|highway|nw|ne|sw|se|n|s|e|w)$/i;
         const tokens = rest.split(' ');
         let splitIdx = tokens.length;
         for (let i = tokens.length - 1; i >= 0; i--) {
             if (/\d/.test(tokens[i])) { splitIdx = i + 1; break; }
         }
-        // Include trailing street suffixes (e.g. "12th St" or "5th Ave NW")
         while (splitIdx < tokens.length && SUFFIXES.test(tokens[splitIdx])) splitIdx++;
         if (splitIdx >= tokens.length) splitIdx = Math.max(1, Math.ceil(tokens.length / 2));
         street1 = tokens.slice(0, splitIdx).join(' ');
@@ -222,7 +255,10 @@ function parseAddress(raw: string) {
     }
 
     if (!street1 || !city) return null;
-    return { street1, city, state, zip, country: 'US' };
+
+    const result: any = { street1, city, state, zip, country: 'US' };
+    if (street2) result.street2 = street2;
+    return result;
 }
 
 async function shippoPost(endpoint: string, apiKey: string, body: object) {
