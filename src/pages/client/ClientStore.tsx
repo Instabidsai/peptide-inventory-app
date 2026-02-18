@@ -43,6 +43,13 @@ import {
     Zap,
     Beaker,
     Dna,
+    AlertTriangle,
+    Pill,
+    Users,
+    ChevronRight,
+    Syringe,
+    Clock,
+    Repeat,
 } from 'lucide-react';
 import { PROTOCOL_TEMPLATES, PROTOCOL_KNOWLEDGE, lookupKnowledge } from '@/data/protocol-knowledge';
 import type { ProtocolTemplate } from '@/data/protocol-knowledge';
@@ -158,6 +165,26 @@ function canSeeTrt(userId?: string, role?: string): boolean {
 function isTrtProduct(name: string): boolean {
     const lower = name.toLowerCase();
     return lower.includes('trt') || lower.includes('testosterone');
+}
+
+// Find protocol templates that include a given peptide, and return the other peptides in those stacks
+function getRelatedStacks(peptideName: string, allPeptides: any[]): { templateName: string; category: string; icon: string; otherPeptides: string[] }[] {
+    const baseName = peptideName.replace(/\s+\d+mg(\/\d+mg)?$/i, '').toLowerCase();
+    const stacks: { templateName: string; category: string; icon: string; otherPeptides: string[] }[] = [];
+    for (const template of PROTOCOL_TEMPLATES) {
+        if (template.category === 'full') continue; // skip the mega-protocol
+        if (template.defaultTierId) continue; // skip variant templates
+        const matchIdx = template.peptideNames.findIndex(n => n.toLowerCase().startsWith(baseName) || baseName.startsWith(n.toLowerCase()));
+        if (matchIdx === -1) continue;
+        const others = [...new Set(template.peptideNames.filter((_, i) => i !== matchIdx))];
+        // Map template names back to display names from allPeptides
+        const otherDisplayNames = others.map(n => {
+            const match = allPeptides?.find((p: any) => p.name?.toLowerCase().startsWith(n.toLowerCase()));
+            return match?.name || n;
+        });
+        stacks.push({ templateName: template.name, category: template.category, icon: template.icon, otherPeptides: otherDisplayNames });
+    }
+    return stacks;
 }
 
 interface CartItem {
@@ -1185,26 +1212,27 @@ export default function ClientStore() {
 
             {/* Product detail Sheet */}
             <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) setSelectedPeptide(null); }}>
-                <SheetContent side="bottom" className="rounded-t-3xl max-h-[75vh] overflow-y-auto border-t border-white/[0.1]">
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/[0.1]">
                     {selectedPeptide && (() => {
                         const price = getClientPrice(selectedPeptide);
                         const retail = Number(selectedPeptide.retail_price || 0);
                         const hasDiscount = assignedRep && price < retail;
                         const inCart = cart.find(i => i.peptide_id === selectedPeptide.id);
                         const detailDesc = getPeptideDescription(selectedPeptide.name) || selectedPeptide.description;
-                        const detailKnowledge = lookupKnowledge(selectedPeptide.name);
+                        const dk = lookupKnowledge(selectedPeptide.name);
+                        const relatedStacks = getRelatedStacks(selectedPeptide.name, peptides || []);
 
                         return (
                             <>
                                 <div className="h-1 rounded-full mx-auto w-12 bg-gradient-to-r from-primary to-emerald-400 opacity-60 mb-5 -mt-1" />
-                                <SheetHeader className="pb-5">
+                                <SheetHeader className="pb-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                         <span className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-[0.15em]">Research Grade</span>
-                                        {detailKnowledge?.administrationRoute && (
+                                        {dk?.administrationRoute && (
                                             <>
                                                 <span className="text-white/10">|</span>
-                                                <span className="text-[10px] text-muted-foreground/50 font-medium capitalize">{detailKnowledge.administrationRoute}</span>
+                                                <span className="text-[10px] text-muted-foreground/50 font-medium capitalize">{dk.administrationRoute}</span>
                                             </>
                                         )}
                                     </div>
@@ -1214,30 +1242,31 @@ export default function ClientStore() {
                                 </SheetHeader>
 
                                 <div className="space-y-5 pb-8">
+                                    {/* Description */}
                                     {detailDesc && (
                                         <p className="text-sm text-muted-foreground/70 leading-relaxed">
                                             {detailDesc}
                                         </p>
                                     )}
 
-                                    {/* Dosing quick-reference */}
-                                    {detailKnowledge && (
+                                    {/* Quick-reference pills */}
+                                    {dk && (
                                         <div className="flex flex-wrap gap-2">
                                             <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 border border-primary/15 text-primary/70 font-semibold">
-                                                {detailKnowledge.defaultDoseAmount} {detailKnowledge.defaultDoseUnit}
+                                                {dk.defaultDoseAmount} {dk.defaultDoseUnit}
                                             </span>
                                             <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
-                                                {detailKnowledge.defaultFrequency}
+                                                {dk.defaultFrequency}
                                             </span>
                                             <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
-                                                {detailKnowledge.defaultTiming}
+                                                {dk.defaultTiming}
                                             </span>
                                             <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium capitalize">
-                                                {detailKnowledge.administrationRoute}
+                                                {dk.administrationRoute}
                                             </span>
-                                            {detailKnowledge.vialSizeMg && (
+                                            {dk.vialSizeMg > 0 && (
                                                 <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
-                                                    {detailKnowledge.vialSizeMg}mg vial
+                                                    {dk.vialSizeMg}mg vial
                                                 </span>
                                             )}
                                         </div>
@@ -1256,25 +1285,15 @@ export default function ClientStore() {
                                         )}
                                     </div>
 
-                                    {/* Quantity + Add to cart */}
+                                    {/* Add to cart / quantity */}
                                     {inCart ? (
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-12 w-12 rounded-xl border-white/[0.1]"
-                                                    onClick={() => updateQuantity(selectedPeptide.id, -1)}
-                                                >
+                                                <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" onClick={() => updateQuantity(selectedPeptide.id, -1)}>
                                                     <Minus className="h-5 w-5" />
                                                 </Button>
                                                 <span className="text-3xl font-extrabold w-14 text-center">{inCart.quantity}</span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-12 w-12 rounded-xl border-white/[0.1]"
-                                                    onClick={() => updateQuantity(selectedPeptide.id, 1)}
-                                                >
+                                                <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" onClick={() => updateQuantity(selectedPeptide.id, 1)}>
                                                     <Plus className="h-5 w-5" />
                                                 </Button>
                                             </div>
@@ -1293,7 +1312,151 @@ export default function ClientStore() {
                                         </Button>
                                     )}
 
-                                    {/* Storage info */}
+                                    {/* ── Reconstitution Info ── */}
+                                    {dk && dk.vialSizeMg > 0 && dk.reconstitutionMl > 0 && (
+                                        <div className="p-4 rounded-2xl bg-cyan-500/[0.04] border border-cyan-500/[0.1] space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Beaker className="h-3.5 w-3.5 text-cyan-400/70" />
+                                                <p className="text-[10px] font-semibold text-cyan-400/60 uppercase tracking-[0.12em]">Reconstitution</p>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                                                Add <strong className="text-foreground/80">{dk.reconstitutionMl}mL</strong> of bacteriostatic water to the <strong className="text-foreground/80">{dk.vialSizeMg}mg</strong> vial.
+                                                {dk.reconstitutionMl > 0 && dk.vialSizeMg > 0 && (
+                                                    <> Concentration: <strong className="text-foreground/80">{(dk.vialSizeMg / dk.reconstitutionMl).toFixed(1)}mg/mL</strong>.</>
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* ── Dosing Tiers ── */}
+                                    {dk?.dosingTiers && dk.dosingTiers.length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Syringe className="h-3.5 w-3.5 text-primary/60" />
+                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Dosing Protocols</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {dk.dosingTiers.map((tier, idx) => (
+                                                    <div key={tier.id} className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-xs font-bold text-foreground/90">{tier.label}</p>
+                                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 font-semibold">
+                                                                {tier.doseAmount} {tier.doseUnit}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground/45">
+                                                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{tier.frequency}</span>
+                                                            <span>{tier.timing}</span>
+                                                        </div>
+                                                        {tier.notes && (
+                                                            <p className="text-[11px] text-muted-foreground/55 leading-relaxed">{tier.notes}</p>
+                                                        )}
+                                                        {tier.dosageSchedule && (
+                                                            <p className="text-[10px] text-muted-foreground/40 leading-relaxed whitespace-pre-line font-mono bg-white/[0.02] rounded-lg p-2 border border-white/[0.04]">
+                                                                {tier.dosageSchedule}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ── Cycle Pattern ── */}
+                                    {dk?.cyclePattern && (
+                                        <div className="p-4 rounded-2xl bg-violet-500/[0.04] border border-violet-500/[0.1] space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Repeat className="h-3.5 w-3.5 text-violet-400/70" />
+                                                <p className="text-[10px] font-semibold text-violet-400/60 uppercase tracking-[0.12em]">Cycle Pattern</p>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground/60 leading-relaxed">{dk.cyclePattern}</p>
+                                        </div>
+                                    )}
+
+                                    {/* ── Warning ── */}
+                                    {dk?.warningText && (
+                                        <div className="p-4 rounded-2xl bg-amber-500/[0.06] border border-amber-500/[0.12] space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="h-3.5 w-3.5 text-amber-400/70" />
+                                                <p className="text-[10px] font-semibold text-amber-400/60 uppercase tracking-[0.12em]">Important Note</p>
+                                            </div>
+                                            <p className="text-xs text-amber-200/50 leading-relaxed">{dk.warningText}</p>
+                                        </div>
+                                    )}
+
+                                    {/* ── Supplement Notes ── */}
+                                    {dk?.supplementNotes && dk.supplementNotes.length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Pill className="h-3.5 w-3.5 text-emerald-400/60" />
+                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Recommended Supplements</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {dk.supplementNotes.map((supp, idx) => (
+                                                    <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-start gap-3">
+                                                        <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                            <Pill className="h-3.5 w-3.5 text-emerald-400/60" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-foreground/80">{supp.name}</p>
+                                                            <p className="text-[10px] text-primary/60 font-semibold">{supp.dosage}</p>
+                                                            <p className="text-[11px] text-muted-foreground/50 leading-relaxed mt-0.5">{supp.reason}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ── Commonly Stacked With ── */}
+                                    {relatedStacks.length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Users className="h-3.5 w-3.5 text-primary/60" />
+                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Commonly Stacked With</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {relatedStacks.map((stack, idx) => {
+                                                    const StackIcon = ICON_MAP[stack.icon] || Package;
+                                                    const catStyle = CATEGORY_STYLES[stack.category] || CATEGORY_STYLES.healing;
+                                                    return (
+                                                        <div
+                                                            key={idx}
+                                                            className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors cursor-pointer"
+                                                            onClick={() => {
+                                                                // Find and open this protocol template
+                                                                const template = PROTOCOL_TEMPLATES.find(t => t.name === stack.templateName);
+                                                                if (template && peptides) {
+                                                                    const matched = template.peptideNames
+                                                                        .map(n => peptides.find((p: any) => p.name?.toLowerCase().startsWith(n.toLowerCase())))
+                                                                        .filter(Boolean) as any[];
+                                                                    if (matched.length > 0) {
+                                                                        setSelectedPeptide(null);
+                                                                        setTimeout(() => setSelectedProtocol({ template, matched }), 200);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`h-9 w-9 rounded-xl ${catStyle.iconBg} flex items-center justify-center shrink-0 shadow-lg`}>
+                                                                    <StackIcon className="h-4 w-4 text-white" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-bold text-foreground/80">{stack.templateName}</p>
+                                                                    <p className="text-[10px] text-muted-foreground/45 mt-0.5 truncate">
+                                                                        {stack.otherPeptides.join(' + ')}
+                                                                    </p>
+                                                                </div>
+                                                                <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ── Storage & Handling ── */}
                                     <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
                                         <div className="flex items-center gap-2">
                                             <Shield className="h-3.5 w-3.5 text-emerald-400/60" />
