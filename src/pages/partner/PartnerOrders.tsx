@@ -420,16 +420,16 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                         </div>
                     )}
 
+                    {/* Edit Order — prominent button */}
+                    {canEdit && !editing && (
+                        <Button className="w-full" size="lg" onClick={startEditing}>
+                            <Pencil className="h-4 w-4 mr-2" /> Edit This Order
+                        </Button>
+                    )}
+
                     {/* Items — read-only or editable */}
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-semibold">Items</h3>
-                            {canEdit && !editing && (
-                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditing}>
-                                    <Pencil className="h-3 w-3 mr-1" /> Edit Order
-                                </Button>
-                            )}
-                        </div>
+                        <h3 className="text-sm font-semibold">Items</h3>
 
                         {editing ? (
                             <div className="space-y-2">
@@ -666,7 +666,7 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                             </Link>
                         )}
                     </div>
-                    {/* Right side: total + commission */}
+                    {/* Right side: total + commission + edit hint */}
                     <div className="text-right shrink-0">
                         <p className="text-lg font-bold text-primary">${Number(order.total_amount || 0).toFixed(2)}</p>
                         {commission !== undefined && commission > 0 && (
@@ -680,6 +680,10 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                         <p className="text-xs text-muted-foreground">
                             {items.reduce((s, i) => s + Number(i.quantity || 0), 0)} items
                         </p>
+                        <div className="flex items-center justify-end gap-1 mt-1.5 text-xs text-primary/70">
+                            <Pencil className="h-3 w-3" />
+                            <span>Tap to edit</span>
+                        </div>
                     </div>
                 </div>
             </CardContent>
