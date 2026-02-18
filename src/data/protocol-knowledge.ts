@@ -863,6 +863,20 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
         peptideNames: ['GHK-Cu', 'NAD+', 'MOTS-C'],
     },
     {
+        name: 'GLOW',
+        description: 'GHK-Cu + BPC-157 + TB-500 for skin rejuvenation, collagen synthesis, and tissue repair',
+        category: 'anti_aging',
+        icon: 'Sparkles',
+        peptideNames: ['GHK-Cu', 'BPC-157', 'TB-500'],
+    },
+    {
+        name: 'KLOW',
+        description: 'GLOW stack + KPV for enhanced anti-inflammatory support and immune modulation',
+        category: 'anti_aging',
+        icon: 'Sparkles',
+        peptideNames: ['GHK-Cu', 'BPC-157', 'TB-500', 'KPV'],
+    },
+    {
         name: 'Full Protocol',
         description: 'Complete 11-peptide protocol: weight loss, healing, GH, cognitive, and sleep',
         category: 'full',

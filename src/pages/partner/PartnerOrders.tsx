@@ -1,13 +1,23 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUpdateSalesOrder } from '@/hooks/use-sales-orders';
+import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import {
     Package,
     Clock,
@@ -20,6 +30,15 @@ import {
     Users,
     ChevronRight,
     Wand2,
+    Plus,
+    Minus,
+    Pencil,
+    Save,
+    Loader2,
+    MapPin,
+    FileText,
+    Copy,
+    Check,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTrackingUrl } from '@/lib/tracking';
@@ -39,6 +58,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 
 export default function PartnerOrders() {
     const { user } = useAuth();
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
     // Single self-contained query: fetches profile, downline, then orders
     const { data: orderData, isLoading, isError, refetch } = useQuery({
@@ -209,7 +229,7 @@ export default function PartnerOrders() {
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
                             {selfOrders.map((order) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} />
+                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} onClick={() => setSelectedOrder(order)} />
                             ))}
                         </div>
                     )}
@@ -238,13 +258,291 @@ export default function PartnerOrders() {
                                     commission={commissionBySale.get(order.id)}
                                     repName={order.rep_id !== myProfileId ? (repNames.get(order.rep_id) || null) : null}
                                     myName={myName || undefined}
+                                    onClick={() => setSelectedOrder(order)}
                                 />
                             ))
                         )}
                     </div>
                 </>
             )}
+
+            {/* Order Detail / Edit Sheet */}
+            <OrderDetailSheet
+                order={selectedOrder}
+                onClose={() => setSelectedOrder(null)}
+                onUpdated={() => {
+                    refetch();
+                    setSelectedOrder(null);
+                }}
+            />
         </div>
+    );
+}
+
+/* ── Order Detail / Edit Sheet ─────────────────────────────── */
+
+function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: () => void; onUpdated: () => void }) {
+    const updateOrder = useUpdateSalesOrder();
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const [editing, setEditing] = useState(false);
+    const [editShipping, setEditShipping] = useState('');
+    const [editNotes, setEditNotes] = useState('');
+    const [editItems, setEditItems] = useState<Array<{ id: string; peptide_name: string; quantity: number; unit_price: number }>>([]);
+    const [saving, setSaving] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const canEdit = order && (order.status === 'draft' || order.status === 'submitted');
+
+    const startEditing = () => {
+        if (!order) return;
+        setEditShipping(order.shipping_address || '');
+        setEditNotes(order.notes || '');
+        setEditItems((order.sales_order_items || []).map((i: any) => ({
+            id: i.id,
+            peptide_name: i.peptides?.name || 'Unknown',
+            quantity: i.quantity,
+            unit_price: Number(i.unit_price || 0),
+        })));
+        setEditing(true);
+    };
+
+    const handleSave = async () => {
+        if (!order) return;
+        setSaving(true);
+        try {
+            // Update order fields
+            const newTotal = editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+            await updateOrder.mutateAsync({
+                id: order.id,
+                shipping_address: editShipping || null,
+                notes: editNotes || null,
+                total_amount: newTotal,
+            } as any);
+
+            // Update individual item quantities
+            for (const item of editItems) {
+                if (item.quantity <= 0) {
+                    await supabase.from('sales_order_items').delete().eq('id', item.id);
+                } else {
+                    await supabase.from('sales_order_items').update({ quantity: item.quantity }).eq('id', item.id);
+                }
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['partner_network_orders'] });
+            toast({ title: 'Order updated' });
+            setEditing(false);
+            onUpdated();
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Update failed', description: err instanceof Error ? err.message : 'Unknown error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const copyOrderId = () => {
+        if (order?.id) {
+            navigator.clipboard.writeText(order.id);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const updateItemQty = (itemId: string, delta: number) => {
+        setEditItems(prev => prev.map(i =>
+            i.id === itemId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
+        ));
+    };
+
+    if (!order) return null;
+
+    const items = order.sales_order_items || [];
+    const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+    const editTotal = editing ? editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0) : 0;
+
+    return (
+        <Sheet open={!!order} onOpenChange={(open) => { if (!open) { setEditing(false); onClose(); } }}>
+            <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
+                <SheetHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                        <SheetTitle className="text-lg font-bold text-left">Order Details</SheetTitle>
+                        <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                            <span className="mr-1">{statusInfo.icon}</span>
+                            {statusInfo.label}
+                        </Badge>
+                    </div>
+                </SheetHeader>
+
+                <div className="space-y-4 pb-6">
+                    {/* Order ID */}
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border">
+                        <span className="text-xs text-muted-foreground">Order ID:</span>
+                        <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyOrderId}>
+                            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                        </Button>
+                    </div>
+
+                    {/* Date + Client */}
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{format(new Date(order.created_at), 'MMM d, yyyy · h:mm a')}</span>
+                        <span className="font-medium">{order.contacts?.name || 'Self Order'}</span>
+                    </div>
+
+                    {/* Payment + Shipping Status */}
+                    <div className="flex gap-2 flex-wrap">
+                        {order.payment_status && (
+                            <Badge variant="outline" className={`text-xs ${order.payment_status === 'paid' ? 'bg-green-500/10 text-green-500 border-green-500/20' : order.payment_status === 'partial' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-gray-500/10 text-gray-500'}`}>
+                                Payment: {order.payment_status}
+                            </Badge>
+                        )}
+                        {order.shipping_status && order.shipping_status !== 'pending' && (
+                            <Badge variant="outline" className="text-xs">
+                                <Truck className="h-3 w-3 mr-1" />
+                                {order.shipping_status === 'label_created' ? 'Label Created' : order.shipping_status === 'in_transit' ? 'In Transit' : order.shipping_status === 'delivered' ? 'Delivered' : order.shipping_status}
+                            </Badge>
+                        )}
+                    </div>
+
+                    {/* Tracking */}
+                    {order.tracking_number && (
+                        <div className="flex items-center gap-2 text-sm p-2.5 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15">
+                            <Truck className="h-4 w-4 text-emerald-500" />
+                            <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
+                            <a
+                                href={getTrackingUrl(order.carrier, order.tracking_number)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-primary hover:underline"
+                            >
+                                {order.tracking_number}
+                            </a>
+                        </div>
+                    )}
+
+                    {/* Items — read-only or editable */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold">Items</h3>
+                            {canEdit && !editing && (
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditing}>
+                                    <Pencil className="h-3 w-3 mr-1" /> Edit Order
+                                </Button>
+                            )}
+                        </div>
+
+                        {editing ? (
+                            <div className="space-y-2">
+                                {editItems.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">{item.peptide_name}</p>
+                                            <p className="text-xs text-muted-foreground">${item.unit_price.toFixed(2)} each</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQty(item.id, -1)}>
+                                                <Minus className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQty(item.id, 1)}>
+                                                <Plus className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <span className="w-16 text-right text-sm font-semibold">${(item.quantity * item.unit_price).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {editItems.some(i => i.quantity <= 0) && (
+                                    <p className="text-xs text-red-400">Items with 0 quantity will be removed.</p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {items.map((i: any) => (
+                                    <div key={i.id} className="flex justify-between text-sm p-2 rounded-lg bg-muted/20">
+                                        <span>{i.peptides?.name || 'Unknown'} × {i.quantity}</span>
+                                        <span className="font-medium">${(Number(i.unit_price) * i.quantity).toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Total */}
+                    <div className="border-t pt-3 flex justify-between items-center">
+                        <span className="font-medium">Total</span>
+                        <span className="text-xl font-bold text-primary">
+                            ${editing ? editTotal.toFixed(2) : Number(order.total_amount || 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    {/* Shipping Address — editable */}
+                    {editing ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5" /> Shipping Address
+                            </label>
+                            <Textarea
+                                value={editShipping}
+                                onChange={e => setEditShipping(e.target.value)}
+                                rows={2}
+                                placeholder="Enter shipping address..."
+                            />
+                        </div>
+                    ) : order.shipping_address ? (
+                        <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                <MapPin className="h-3 w-3" /> Shipping Address
+                            </p>
+                            <p className="text-sm">{order.shipping_address}</p>
+                        </div>
+                    ) : null}
+
+                    {/* Notes — editable */}
+                    {editing ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5" /> Notes
+                            </label>
+                            <Textarea
+                                value={editNotes}
+                                onChange={e => setEditNotes(e.target.value)}
+                                rows={2}
+                                placeholder="Order notes..."
+                            />
+                        </div>
+                    ) : order.notes ? (
+                        <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                <FileText className="h-3 w-3" /> Notes
+                            </p>
+                            <p className="text-sm text-muted-foreground">{order.notes}</p>
+                        </div>
+                    ) : null}
+
+                    {/* Save / Cancel buttons when editing */}
+                    {editing && (
+                        <div className="flex gap-2 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>
+                                Cancel
+                            </Button>
+                            <Button className="flex-1" onClick={handleSave} disabled={saving}>
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                Save Changes
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Generate Protocol button */}
+                    {!editing && order.contacts?.id && (
+                        <Link to={`/protocol-builder?order=${order.id}&contact=${order.contacts.id}`}>
+                            <Button variant="outline" className="w-full">
+                                <Wand2 className="h-4 w-4 mr-2" /> Generate Protocol
+                            </Button>
+                        </Link>
+                    )}
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
@@ -269,7 +567,7 @@ interface OrderCardOrder {
     }>;
 }
 
-function OrderCard({ order, getStatus, commission, repName, myName }: { order: OrderCardOrder; getStatus: (s: string) => { label: string; color: string; icon: React.ReactNode }; commission?: number; repName?: string | null; myName?: string }) {
+function OrderCard({ order, getStatus, commission, repName, myName, onClick }: { order: OrderCardOrder; getStatus: (s: string) => { label: string; color: string; icon: React.ReactNode }; commission?: number; repName?: string | null; myName?: string; onClick?: () => void }) {
     const statusInfo = getStatus(order.status);
     const items = order.sales_order_items || [];
     const clientName = order.contacts?.name || (order.notes?.includes('PARTNER SELF-ORDER') ? 'Self Order' : 'Unknown');
@@ -278,7 +576,7 @@ function OrderCard({ order, getStatus, commission, repName, myName }: { order: O
     const isDownlineOrder = repName !== null && repName !== undefined;
 
     return (
-        <Card className="bg-card border-border hover:border-primary/20 transition-colors">
+        <Card className="bg-card border-border hover:border-primary/20 transition-colors cursor-pointer" onClick={onClick}>
             <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
