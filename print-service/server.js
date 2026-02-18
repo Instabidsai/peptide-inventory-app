@@ -54,8 +54,8 @@ function downloadFile(url) {
 // Print via SumatraPDF silently to the named printer
 function printPdf(filePath, printerName) {
   return new Promise((resolve, reject) => {
-    // -print-settings "fit" scales the PDF to fit the paper and auto-rotates
-    const args = ['-print-to', printerName, '-print-settings', 'fit', '-silent', filePath];
+    // "fit,landscape" scales to fit AND rotates content to match label orientation
+    const args = ['-print-to', printerName, '-print-settings', 'fit,landscape', '-silent', filePath];
     execFile(SUMATRA, args, { timeout: 30000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(`SumatraPDF error: ${err.message}`));
       resolve({ stdout, stderr });
