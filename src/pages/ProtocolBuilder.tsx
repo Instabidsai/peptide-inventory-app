@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useProtocolBuilder } from '@/hooks/use-protocol-builder';
+import { useProtocols } from '@/hooks/use-protocols';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
 import { TemplatePicker } from '@/components/protocol-builder/TemplatePicker';
 import { ProtocolItemEditor } from '@/components/protocol-builder/ProtocolItemEditor';
@@ -12,12 +13,37 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-    Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2,
+    Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2, Save, Check,
 } from 'lucide-react';
 
 export default function ProtocolBuilder() {
     const builder = useProtocolBuilder();
+    const { createProtocol } = useProtocols(builder.selectedContactId || undefined);
     const [search, setSearch] = useState('');
+    const [saved, setSaved] = useState(false);
+
+    const handleSaveProtocol = async () => {
+        if (builder.items.length === 0) return;
+        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const name = builder.clientName
+            ? `${builder.clientName}'s Protocol - ${today}`
+            : `Protocol - ${today}`;
+
+        await createProtocol.mutateAsync({
+            name,
+            description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
+            contact_id: builder.selectedContactId || undefined,
+            items: builder.items.map(item => ({
+                peptide_id: item.peptideId,
+                dosage_amount: item.doseAmount,
+                dosage_unit: item.doseUnit,
+                frequency: item.frequency,
+                duration_days: 56, // 8 weeks default
+            })),
+        });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+    };
 
     // Filter available peptides by search
     const filteredPeptides = useMemo(() => {
@@ -42,13 +68,22 @@ export default function ProtocolBuilder() {
                 </div>
                 {builder.items.length > 0 && (
                     <div className="flex gap-2">
+                        <Button
+                            variant={saved ? 'outline' : 'default'}
+                            size="sm"
+                            onClick={handleSaveProtocol}
+                            disabled={createProtocol.isPending || saved}
+                        >
+                            {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
+                            {saved ? 'Saved!' : 'Save Protocol'}
+                        </Button>
                         <Button variant="outline" size="sm" onClick={builder.copyHtml}>
                             <Copy className="h-4 w-4 mr-1.5" /> Copy
                         </Button>
                         <Button variant="outline" size="sm" onClick={builder.printProtocol}>
                             <Printer className="h-4 w-4 mr-1.5" /> Print
                         </Button>
-                        <Button size="sm" onClick={builder.openMailto} disabled={!builder.clientEmail}>
+                        <Button variant="outline" size="sm" onClick={builder.openMailto} disabled={!builder.clientEmail}>
                             <Mail className="h-4 w-4 mr-1.5" /> Email {builder.clientName || 'Client'}
                         </Button>
                     </div>

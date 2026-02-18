@@ -101,40 +101,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Auto-link: if profile has no org, check if their email matches an existing contact
-      // (admin created the contact internally → user signs in with that Gmail → auto-connect)
+      // Uses server-side RPC (SECURITY DEFINER) to bypass RLS — new users can't read contacts table
       if (profileData && !profileData.org_id && profileData.email) {
-        const { data: matchingContact } = await supabase
-          .from('contacts')
-          .select('id, org_id, type, assigned_rep_id')
-          .eq('email', profileData.email)
-          .is('linked_user_id', null)
-          .not('org_id', 'is', null)
-          .limit(1)
-          .maybeSingle();
+        const { data: linkResult } = await supabase.rpc('auto_link_contact_by_email', {
+          p_user_id: userId,
+          p_email: profileData.email,
+        });
 
-        if (matchingContact?.org_id) {
-          const contactRole = matchingContact.type === 'partner' ? 'sales_rep' : 'client';
-
-          // Update profile with the contact's org
-          await supabase.from('profiles').update({
-            org_id: matchingContact.org_id,
-            role: contactRole,
-            parent_rep_id: matchingContact.assigned_rep_id || null,
-          }).eq('id', profileData.id);
-
-          // Create user_role
-          await supabase.from('user_roles').upsert({
-            user_id: userId,
-            org_id: matchingContact.org_id,
-            role: contactRole,
-          }, { onConflict: 'user_id,org_id' });
-
-          // Link the contact to this user
-          await supabase.from('contacts').update({
-            linked_user_id: userId,
-          }).eq('id', matchingContact.id);
-
-          // Refresh profile data with the new org_id
+        if (linkResult?.matched) {
+          // Re-fetch profile with the new org_id
           const { data: updatedProfile } = await supabase
             .from('profiles')
             .select('*')
