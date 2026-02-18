@@ -75,16 +75,20 @@ export default function OrderDetails() {
 
     const directPrint = async (labelUrl: string) => {
         setIsPrinting(true);
+        const body = JSON.stringify({ url: labelUrl });
+        const headers = { 'Content-Type': 'application/json' };
         try {
-            // Try the local print service first (direct to D520 printer)
-            const res = await fetch('http://localhost:9111/print', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: labelUrl }),
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || 'Print service error');
+            // Try HTTPS first (required when web app is on HTTPS), then HTTP fallback
+            let res: Response | null = null;
+            for (const base of ['https://localhost:9111', 'http://localhost:9111', 'http://localhost:9112']) {
+                try {
+                    res = await fetch(`${base}/print`, { method: 'POST', headers, body });
+                    break;
+                } catch { /* try next */ }
+            }
+            if (!res || !res.ok) {
+                const err = res ? await res.json().catch(() => ({})) : {};
+                throw new Error(err.error || 'Print service unreachable');
             }
             toast({ title: 'Label sent to D520 printer' });
             // Auto-mark as printed

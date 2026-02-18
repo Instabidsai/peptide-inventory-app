@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { execFile } = require('child_process');
-const https = require('https');
-const http = require('http');
+const httpsLib = require('https');
+const httpLib = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -11,7 +11,6 @@ const app = express();
 const PORT = 9111;
 const PRINTER_NAME = 'D520 Printer';
 
-// SumatraPDF bundled with pdf-to-printer — silent PDF printing on Windows
 const SUMATRA = path.join(__dirname, 'node_modules', 'pdf-to-printer', 'dist', 'SumatraPDF-3.4.6-32.exe');
 
 app.use(cors());
@@ -33,7 +32,7 @@ function downloadFile(url) {
     const tmpFile = path.join(os.tmpdir(), `label-${Date.now()}.pdf`);
 
     const request = (downloadUrl) => {
-      const client = downloadUrl.startsWith('https') ? https : http;
+      const client = downloadUrl.startsWith('https') ? httpsLib : httpLib;
       client.get(downloadUrl, (response) => {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           return request(response.headers.location);
@@ -55,8 +54,8 @@ function downloadFile(url) {
 // Print via SumatraPDF silently to the named printer
 function printPdf(filePath, printerName) {
   return new Promise((resolve, reject) => {
-    // -print-to "Printer" -silent  = print without opening a window
-    const args = ['-print-to', printerName, '-silent', filePath];
+    // -print-settings "fit" scales the PDF to fit the paper and auto-rotates
+    const args = ['-print-to', printerName, '-print-settings', 'fit', '-silent', filePath];
     execFile(SUMATRA, args, { timeout: 30000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(`SumatraPDF error: ${err.message}`));
       resolve({ stdout, stderr });
@@ -92,11 +91,29 @@ app.post('/print', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Label print service running on http://localhost:${PORT}`);
-  console.log(`Target printer: ${PRINTER_NAME}`);
-  console.log(`SumatraPDF: ${fs.existsSync(SUMATRA) ? 'Ready' : 'MISSING'}`);
-  console.log(`Endpoints:`);
-  console.log(`  GET  /health  — check service status`);
-  console.log(`  POST /print   — { url: "https://..." } → prints to ${PRINTER_NAME}`);
-});
+// Start both HTTP and HTTPS servers
+// HTTPS is needed because the web app runs on https:// and browsers block mixed content
+const certPath = path.join(__dirname, 'cert.pem');
+const keyPath = path.join(__dirname, 'key.pem');
+
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+  const sslOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  };
+  httpsLib.createServer(sslOptions, app).listen(PORT, () => {
+    console.log(`Label print service running on https://localhost:${PORT}`);
+    console.log(`Target printer: ${PRINTER_NAME}`);
+    console.log(`SumatraPDF: ${fs.existsSync(SUMATRA) ? 'Ready' : 'MISSING'}`);
+  });
+  // Also listen on HTTP as fallback for local dev
+  httpLib.createServer(app).listen(PORT + 1, () => {
+    console.log(`HTTP fallback on http://localhost:${PORT + 1}`);
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(`Label print service running on http://localhost:${PORT} (no SSL certs found)`);
+    console.log(`Target printer: ${PRINTER_NAME}`);
+    console.log(`SumatraPDF: ${fs.existsSync(SUMATRA) ? 'Ready' : 'MISSING'}`);
+  });
+}
