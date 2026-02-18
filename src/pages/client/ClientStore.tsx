@@ -32,7 +32,16 @@ import {
     ExternalLink,
     Check,
     Copy,
+    Heart,
+    TrendingUp,
+    Flame,
+    Brain,
+    Moon,
+    Sparkles,
+    LayoutGrid,
+    Layers,
 } from 'lucide-react';
+import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -54,6 +63,10 @@ type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
 const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
 const VENMO_HANDLE = 'PureUSPeptide';
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
+};
 
 interface CartItem {
     peptide_id: string;
@@ -341,6 +354,83 @@ export default function ClientStore() {
                     className="pl-9"
                 />
             </div>
+
+            {/* Protocol Bundles */}
+            {!searchQuery && peptides && peptides.length > 0 && (
+                <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                        <Layers className="h-5 w-5 text-primary" />
+                        Recommended Protocols
+                    </h2>
+                    <p className="text-xs text-muted-foreground/60 mb-4">
+                        Pre-built peptide combinations for specific goals
+                    </p>
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                        {PROTOCOL_TEMPLATES
+                            .filter(t => t.category !== 'full') // hide the 11-peptide mega bundle
+                            .filter(t => !t.defaultTierId) // hide variant tiers (Injury, Gentle) — keep main ones
+                            .map(template => {
+                                const Icon = ICON_MAP[template.icon] || Package;
+                                // Match template peptide names to actual peptides in DB
+                                const matchedPeptides = template.peptideNames
+                                    .map(name => peptides.find(p => p.name?.toLowerCase() === name.toLowerCase()))
+                                    .filter(Boolean) as any[];
+                                const bundlePrice = matchedPeptides.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
+                                const allInCart = matchedPeptides.length > 0 && matchedPeptides.every(p => cart.find(c => c.peptide_id === p.id));
+
+                                if (matchedPeptides.length === 0) return null; // skip if no matching peptides in stock
+
+                                return (
+                                    <motion.div key={template.name} whileTap={{ scale: 0.98 }}>
+                                        <GlassCard className="hover:border-primary/30 transition-all duration-200">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <Icon className="h-4.5 w-4.5 text-primary" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-sm">{template.name}</p>
+                                                        <p className="text-xs text-muted-foreground/60 mt-0.5">{template.description}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {matchedPeptides.map((p: any) => (
+                                                        <Badge key={p.id} variant="secondary" className="text-[10px] px-2 py-0.5">
+                                                            {p.name}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                                <div className="flex items-center justify-between pt-1">
+                                                    <span className="text-lg font-bold text-primary">${bundlePrice.toFixed(2)}</span>
+                                                    {allInCart ? (
+                                                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
+                                                            <Check className="h-4 w-4" />
+                                                            In Cart
+                                                        </div>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                matchedPeptides.forEach((p: any) => {
+                                                                    if (!cart.find(c => c.peptide_id === p.id)) {
+                                                                        addToCart(p);
+                                                                    }
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Plus className="h-4 w-4 mr-1" />
+                                                            Add All
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </GlassCard>
+                                    </motion.div>
+                                );
+                            })}
+                    </div>
+                </div>
+            )}
 
             {/* Product Grid */}
             <div>
@@ -742,7 +832,7 @@ export default function ClientStore() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 40 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        className="fixed bottom-4 left-4 right-4 z-50 max-w-lg mx-auto"
+                        className="fixed bottom-20 left-4 right-4 z-30 max-w-lg mx-auto"
                     >
                         <Button
                             className="w-full h-14 rounded-2xl shadow-xl shadow-primary/25 text-base font-semibold"
