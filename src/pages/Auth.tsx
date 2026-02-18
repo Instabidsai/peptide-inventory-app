@@ -232,6 +232,7 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const referralHandled = useRef(false);
+  const linkingInProgress = useRef(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
@@ -274,24 +275,31 @@ export default function Auth() {
 
       // Process referral
       referralHandled.current = true;
+      linkingInProgress.current = true;
       const email = user.email || '';
       const name = profile.full_name || user.user_metadata?.full_name || email;
 
       linkReferral(user.id, email, name, refParam, roleParam).then(async (result) => {
-        sessionStorage.removeItem('partner_ref');
-        sessionStorage.removeItem('partner_ref_role');
+        linkingInProgress.current = false;
         if (result.success) {
+          sessionStorage.removeItem('partner_ref');
+          sessionStorage.removeItem('partner_ref_role');
           await refreshProfile();
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
           console.error('linkReferral failed:', result.error);
-          toast({ variant: 'destructive', title: 'Setup issue', description: 'Could not connect your account automatically. Please contact support.' });
+          // Keep referral in sessionStorage so Onboarding can retry
+          if (refParam) storeSessionReferral(refParam, roleParam);
+          toast({ variant: 'destructive', title: 'Setup issue', description: 'We had trouble connecting your account. Retrying...' });
           navigate('/onboarding', { replace: true });
         }
       });
       return;
     }
+
+    // Referral linking is in progress — don't redirect anywhere yet
+    if (linkingInProgress.current || (referralHandled.current && !profile?.org_id)) return;
 
     // No referral — redirect normally
     if (profile?.org_id) {

@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2 } from 'lucide-react';
-import { linkReferral, consumeSessionReferral } from '@/lib/link-referral';
+import { Loader2, Building2, RefreshCw, MessageCircle } from 'lucide-react';
+import { linkReferral, consumeSessionReferral, storeSessionReferral } from '@/lib/link-referral';
 
 const onboardingSchema = z.object({
   organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
@@ -22,6 +22,8 @@ type OnboardingFormData = z.infer<typeof onboardingSchema>;
 export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [linkFailed, setLinkFailed] = useState(false);
+  const [failedRef, setFailedRef] = useState<{ refId: string; role: 'customer' | 'partner' } | null>(null);
   const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,6 +33,39 @@ export default function Onboarding() {
     resolver: zodResolver(onboardingSchema),
     defaultValues: { organizationName: '' },
   });
+
+  // Check if this user was referred (even if linking failed)
+  const isReferredUser = !!(
+    failedRef ||
+    profile?.parent_rep_id ||
+    sessionStorage.getItem('partner_ref')
+  );
+
+  const attemptLink = (ref: { refId: string; role: 'customer' | 'partner' }) => {
+    if (!user) return;
+    setIsLinking(true);
+    setLinkFailed(false);
+
+    const email = user.email || '';
+    const name = profile?.full_name || user.user_metadata?.full_name || email;
+
+    linkReferral(user.id, email, name, ref.refId, ref.role).then(async (result) => {
+      if (result.success) {
+        await refreshProfile();
+        toast({
+          title: 'Welcome!',
+          description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been connected.',
+        });
+        navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
+      } else {
+        setIsLinking(false);
+        setLinkFailed(true);
+        setFailedRef(ref);
+        // Keep referral in sessionStorage for retry
+        storeSessionReferral(ref.refId, ref.role);
+      }
+    });
+  };
 
   // Check for referral in sessionStorage (Google OAuth fallback + Auth.tsx redirect)
   useEffect(() => {
@@ -46,23 +81,7 @@ export default function Onboarding() {
     if (!ref) return;
 
     linkAttempted.current = true;
-    setIsLinking(true);
-
-    const email = user.email || '';
-    const name = profile?.full_name || user.user_metadata?.full_name || email;
-
-    linkReferral(user.id, email, name, ref.refId, ref.role).then(async (result) => {
-      if (result.success) {
-        await refreshProfile();
-        toast({
-          title: 'Welcome!',
-          description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been connected.',
-        });
-        navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
-      } else {
-        setIsLinking(false);
-      }
-    });
+    attemptLink(ref);
   }, [user, profile]);
 
   // Redirect if user already has an org (covers non-referral case)
@@ -78,6 +97,50 @@ export default function Onboarding() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Setting up your account...</p>
+      </div>
+    );
+  }
+
+  // Referred client whose linking failed — show friendly retry screen, NOT the org form
+  if (linkFailed && failedRef) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md bg-card border-border">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <MessageCircle className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground">
+              Almost There
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              We had a little trouble connecting your account. This usually fixes itself — try again below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              className="w-full"
+              onClick={() => {
+                linkAttempted.current = false;
+                attemptLink(failedRef);
+              }}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                window.location.href = 'mailto:support@thepeptideai.com?subject=Account%20Setup%20Help';
+              }}
+            >
+              Contact Support
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
