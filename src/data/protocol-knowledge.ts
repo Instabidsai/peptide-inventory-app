@@ -806,17 +806,17 @@ export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
 export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     {
         name: 'Healing Stack',
-        description: 'TB-500 + BPC-157 for tissue repair and recovery',
+        description: 'TB-500 20mg + BPC-157 20mg + Tesamorelin for tissue repair, recovery, and growth hormone support',
         category: 'healing',
         icon: 'Heart',
-        peptideNames: ['TB-500', 'BPC-157'],
+        peptideNames: ['TB-500 20mg', 'BPC-157 20mg', 'Tesamorelin'],
     },
     {
         name: 'Healing Stack (Injury)',
-        description: 'TB-500 aggressive loading + BPC-157 2x daily for acute injuries',
+        description: 'TB-500 20mg aggressive loading + BPC-157 20mg 2x daily for acute injuries',
         category: 'healing',
         icon: 'Heart',
-        peptideNames: ['TB-500', 'BPC-157'],
+        peptideNames: ['TB-500 20mg', 'BPC-157 20mg'],
         defaultTierId: 'injury',
     },
     {
