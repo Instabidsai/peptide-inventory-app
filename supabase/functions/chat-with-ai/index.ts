@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import OpenAI from "https://esm.sh/openai@4.28.0";
+import OpenAI from "https://esm.sh/openai@4.86.1";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -186,17 +186,29 @@ serve(async (req) => {
             ragContext && `\n## Expert Knowledge Base\n${ragContext}`,
         ].filter(Boolean).join('\n');
 
-        // 10. Call GPT-4o with web search capability
-        const chatResponse = await openai.chat.completions.create({
-            model: 'gpt-4o-search-preview',
-            web_search_options: {
-                search_context_size: 'medium',
-            },
-            messages: [
-                { role: 'system', content: fullSystemPrompt },
-                ...conversationHistory,
-            ],
-        });
+        // 10. Call GPT-4o with web search capability (fallback to standard gpt-4o)
+        let chatResponse;
+        try {
+            chatResponse = await openai.chat.completions.create({
+                model: 'gpt-4o-search-preview',
+                web_search_options: {
+                    search_context_size: 'medium',
+                },
+                messages: [
+                    { role: 'system', content: fullSystemPrompt },
+                    ...conversationHistory,
+                ],
+            } as any);
+        } catch (searchErr) {
+            console.error('Search model failed, falling back to gpt-4o:', searchErr);
+            chatResponse = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    { role: 'system', content: fullSystemPrompt },
+                    ...conversationHistory,
+                ],
+            });
+        }
 
         const reply = chatResponse.choices[0].message.content || "I couldn't generate a response.";
 
@@ -220,8 +232,9 @@ serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('Error:', error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('chat-with-ai error:', errMsg, error);
+        return new Response(JSON.stringify({ error: errMsg }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

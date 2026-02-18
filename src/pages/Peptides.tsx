@@ -353,7 +353,15 @@ export default function Peptides() {
               <TableBody>
                 {filteredPeptides?.map((peptide, index) => (
                   <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <TableCell className="font-medium">{peptide.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button
+                        className="text-left hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer"
+                        onClick={() => setHistoryPeptide(peptide)}
+                        title="View Sales History"
+                      >
+                        {peptide.name}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {peptide.sku || '-'}
                     </TableCell>

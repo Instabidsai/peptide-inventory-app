@@ -96,14 +96,16 @@ export const useAI = () => {
                 queryClient.invalidateQueries({ queryKey: ['ai-health-profile', user?.id] });
             }, 3000);
         },
-        onError: () => {
+        onError: (error) => {
+            console.error('AI chat error:', error);
+            const errDetail = error instanceof Error ? error.message : String(error);
             // Replace optimistic messages with error
             setOptimisticMessages(prev => [
                 ...prev.filter(m => m.role === 'user'),
                 {
                     id: crypto.randomUUID(),
                     role: 'assistant',
-                    content: "I'm having trouble connecting right now. Please try again.",
+                    content: `I'm having trouble connecting right now. Please try again. (${errDetail})`,
                     timestamp: new Date(),
                     isOptimistic: true,
                 },

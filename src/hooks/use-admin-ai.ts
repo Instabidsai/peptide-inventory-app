@@ -64,13 +64,15 @@ export function useAdminAI() {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Admin AI chat error:', error);
+      const errDetail = error instanceof Error ? error.message : String(error);
       setOptimisticMessages(prev => [
         ...prev.filter(m => m.role === 'user'),
         {
           id: `err-${crypto.randomUUID()}`,
           role: 'assistant',
-          content: "Sorry, something went wrong. Please try again.",
+          content: `Sorry, something went wrong: ${errDetail}. Please try again.`,
           created_at: new Date().toISOString(),
         },
       ]);
