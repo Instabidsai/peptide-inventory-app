@@ -104,6 +104,7 @@ export interface CreateSalesOrderInput {
     payment_method?: string;
     delivery_method?: string;
     commission_amount?: number;
+    auto_fulfill?: boolean; // default false — set true only for admin inline fulfillment
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
@@ -296,9 +297,9 @@ export function useCreateSalesOrder() {
                 toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
             }
 
-            // Auto-fulfill: deduct inventory + create movement (like contacts flow)
+            // Auto-fulfill: deduct inventory + create movement (only when explicitly requested)
             let fulfilled = false;
-            try {
+            if (input.auto_fulfill) try {
                 // Create movement record (created_by FK targets profiles.id, not auth user id)
                 const { data: movement, error: movError } = await supabase
                     .from('movements')
@@ -382,7 +383,7 @@ export function useCreateSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
-            toast({ title: 'Order created and inventory deducted' });
+            toast({ title: input.auto_fulfill ? 'Order created and inventory deducted' : 'Order created' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to create order', description: error.message });

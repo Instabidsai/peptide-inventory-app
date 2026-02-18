@@ -292,7 +292,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const canEdit = order && (order.status === 'draft' || order.status === 'submitted');
+    const canEdit = !!order; // Partners can edit orders in any status
 
     const startEditing = () => {
         if (!order) return;
