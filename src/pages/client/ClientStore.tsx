@@ -40,8 +40,11 @@ import {
     Sparkles,
     LayoutGrid,
     Layers,
+    Zap,
+    Beaker,
+    Dna,
 } from 'lucide-react';
-import { PROTOCOL_TEMPLATES, PROTOCOL_KNOWLEDGE } from '@/data/protocol-knowledge';
+import { PROTOCOL_TEMPLATES, PROTOCOL_KNOWLEDGE, lookupKnowledge } from '@/data/protocol-knowledge';
 import type { ProtocolTemplate } from '@/data/protocol-knowledge';
 import {
     AlertDialog,
@@ -68,6 +71,42 @@ const VENMO_HANDLE = 'PureUSPeptide';
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
     Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
 };
+
+// Short 2-3 sentence descriptions for product cards.
+// Falls back to lookupKnowledge() descriptions, then DB description field.
+const PEPTIDE_CARD_DESCRIPTIONS: Record<string, string> = {
+    'BPC-157': 'A powerful healing peptide derived from gastric proteins that accelerates recovery of tendons, muscles, ligaments, and gut tissue. Promotes new blood vessel formation and reduces inflammation throughout the body.',
+    'TB-500': 'A synthetic fragment of Thymosin Beta-4 that drives cell migration to injury sites for rapid tissue repair. Reduces inflammation and is a staple in healing stacks for muscle, joint, and ligament recovery.',
+    'TB500': 'A synthetic fragment of Thymosin Beta-4 that drives cell migration to injury sites for rapid tissue repair. Reduces inflammation and is a staple in healing stacks for muscle, joint, and ligament recovery.',
+    'Tesamorelin': 'A growth hormone-releasing analog clinically proven to reduce stubborn visceral abdominal fat. Elevates IGF-1 levels to improve body composition, skin quality, and overall metabolic health.',
+    'Ipamorelin': 'A selective growth hormone secretagogue that boosts GH release without spiking cortisol or appetite. Supports lean muscle growth, fat loss, and improved sleep quality with minimal side effects.',
+    'GHK-Cu': 'A naturally occurring copper peptide that stimulates collagen synthesis, wound healing, and skin regeneration. Potent anti-inflammatory and anti-aging properties make it ideal for skin rejuvenation and hair restoration.',
+    'Retatrutide': 'A triple-action agonist targeting GLP-1, GIP, and glucagon receptors for powerful weight management. Suppresses appetite while boosting metabolism — one of the most effective weight loss peptides available.',
+    'MOTS-C': 'A mitochondrial-derived peptide that enhances insulin sensitivity and exercise capacity at the cellular level. Combats age-related metabolic decline and supports fat oxidation during physical activity.',
+    'NAD+': 'An essential coenzyme present in every cell that fuels energy production and DNA repair. Restoring NAD+ levels supports anti-aging pathways, cognitive function, and overall cellular vitality.',
+    'Semax': 'A nootropic peptide derived from ACTH that enhances focus, memory, and cognitive performance. Promotes neurogenesis and provides neuroprotective benefits without stimulant-like side effects.',
+    'Selank': 'An anti-anxiety peptide that improves mental clarity and emotional balance without sedation. Modulates immune function and neurotransmitter activity for calm, focused performance.',
+    'DSIP': 'A neuropeptide that regulates the sleep-wake cycle by promoting deep, restorative delta-wave sleep. Helps normalize cortisol levels and supports recovery from physical and mental stress.',
+    'Tirzepatide': 'A dual GLP-1/GIP receptor agonist delivering exceptional glucose control and weight loss results. Improves insulin sensitivity through complementary incretin pathways with once-weekly dosing.',
+    'Semaglutide': 'A GLP-1 receptor agonist that significantly reduces appetite and promotes sustained weight loss. Slows gastric emptying and signals satiety to the brain for effective metabolic management.',
+    'CJC-1295': 'A growth hormone-releasing hormone analog that provides sustained GH elevation mimicking natural pulses. Enhances recovery, body composition, and sleep quality without sharp hormonal spikes.',
+    'PT-141': 'A melanocortin receptor agonist that enhances sexual desire and function through central nervous system pathways. Works on the brain to stimulate natural arousal — effective for both men and women.',
+    'Epithalon': 'A telomerase-activating peptide that promotes cellular longevity by supporting telomere maintenance. Studied for anti-aging effects including improved sleep, immune function, and cellular resilience.',
+    'Thymosin Alpha-1': 'A potent immune-modulating peptide that enhances T-cell function and strengthens the body\'s defense systems. Used to support immune health during chronic conditions and as an adjunct to recovery protocols.',
+    'KPV': 'A tripeptide with powerful anti-inflammatory properties, especially for gut health and intestinal healing. Derived from alpha-MSH, it reduces inflammation and supports the integrity of the gut lining.',
+    'Hexarelin': 'The most potent growth hormone-releasing peptide (GHRP), triggering significant GH release from the pituitary. Highly effective for body composition but requires cycling due to receptor adaptation.',
+};
+
+function getPeptideDescription(peptideName: string): string | null {
+    // Check our curated short descriptions first (strip dosage for lookup)
+    const baseName = peptideName.replace(/\s+\d+mg$/i, '');
+    if (PEPTIDE_CARD_DESCRIPTIONS[baseName]) return PEPTIDE_CARD_DESCRIPTIONS[baseName];
+    if (PEPTIDE_CARD_DESCRIPTIONS[peptideName]) return PEPTIDE_CARD_DESCRIPTIONS[peptideName];
+    // Fall back to knowledge base
+    const knowledge = lookupKnowledge(peptideName);
+    if (knowledge?.description) return knowledge.description;
+    return null;
+}
 
 interface CartItem {
     peptide_id: string;
@@ -535,41 +574,86 @@ export default function ClientStore() {
                     </div>
                 ) : (
                     <motion.div
-                        className="grid gap-3 grid-cols-1 sm:grid-cols-2"
+                        className="grid gap-4 grid-cols-1 sm:grid-cols-2"
                         initial="hidden"
                         animate="show"
-                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+                        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
                     >
                         {filteredPeptides?.map((peptide) => {
                             const price = getClientPrice(peptide);
                             const retail = Number(peptide.retail_price || 0);
                             const hasDiscount = assignedRep && price < retail;
                             const inCart = cart.find(i => i.peptide_id === peptide.id);
+                            const description = getPeptideDescription(peptide.name) || peptide.description;
+                            const knowledge = lookupKnowledge(peptide.name);
 
                             if (price <= 0 && retail <= 0) return null;
 
                             return (
                                 <motion.div
                                     key={peptide.id}
-                                    variants={{ hidden: { opacity: 0, y: 16, scale: 0.96 }, show: { opacity: 1, y: 0, scale: 1 } }}
-                                    whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+                                    variants={{ hidden: { opacity: 0, y: 20, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                                    whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
                                     whileTap={{ scale: 0.97 }}
                                 >
                                 <GlassCard
-                                    className="group cursor-pointer hover:bg-white/[0.08] hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_rgba(16,185,129,0.2),0_20px_60px_-12px_rgba(0,0,0,0.25)] transition-all duration-300"
+                                    className="group cursor-pointer hover:bg-white/[0.09] hover:border-emerald-500/20 hover:shadow-[0_8px_40px_-8px_rgba(16,185,129,0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
                                     onClick={() => setSelectedPeptide(peptide)}
                                 >
-                                    {/* Subtle emerald shimmer on hover */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-cyan-500/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
-                                    <CardContent className="p-5 relative">
-                                        <div className="flex items-center justify-between gap-4">
+                                    {/* Top accent bar */}
+                                    <div className="h-[2px] bg-gradient-to-r from-emerald-500/40 via-primary/60 to-cyan-500/40 opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+                                    {/* Shimmer overlay on hover */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-cyan-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+                                    <CardContent className="p-5 relative space-y-3">
+                                        {/* Header row: icon + name + badge */}
+                                        <div className="flex items-start gap-3.5">
+                                            <div className="relative shrink-0">
+                                                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-emerald-400 blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                                                <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/10 border border-white/[0.08] flex items-center justify-center group-hover:border-primary/20 transition-colors">
+                                                    <Dna className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors" />
+                                                </div>
+                                            </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-bold text-[15px] tracking-tight truncate group-hover:text-white transition-colors duration-200">{peptide.name}</p>
-                                                <div className="flex items-center gap-1.5 mt-1.5">
+                                                <div className="flex items-center gap-2 mt-1">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
                                                     <span className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
+                                                    {knowledge?.administrationRoute && (
+                                                        <>
+                                                            <span className="text-white/10">|</span>
+                                                            <span className="text-[10px] text-muted-foreground/40 font-medium capitalize">{knowledge.administrationRoute}</span>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <div className="flex items-baseline gap-2.5 mt-2.5">
+                                            </div>
+                                        </div>
+
+                                        {/* Description — the 2-3 sentence write-up */}
+                                        {description && (
+                                            <p className="text-xs text-muted-foreground/55 leading-relaxed line-clamp-3">
+                                                {description}
+                                            </p>
+                                        )}
+
+                                        {/* Dosing hint tags */}
+                                        {knowledge && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}
+                                                </span>
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultFrequency}
+                                                </span>
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultTiming}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Price + actions row */}
+                                        <div className="flex items-end justify-between pt-2 border-t border-white/[0.05]">
+                                            <div>
+                                                <div className="flex items-baseline gap-2">
                                                     <p className="text-2xl font-extrabold text-gradient-primary">
                                                         ${price.toFixed(2)}
                                                     </p>
@@ -578,14 +662,14 @@ export default function ClientStore() {
                                                             ${retail.toFixed(2)}
                                                         </span>
                                                     )}
-                                                    {hasDiscount && (
-                                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                                                            -{Math.round((1 - price / retail) * 100)}%
-                                                        </span>
-                                                    )}
                                                 </div>
+                                                {hasDiscount && (
+                                                    <span className="inline-block mt-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                                        Save {Math.round((1 - price / retail) * 100)}%
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="flex flex-col items-end gap-1" onClick={e => e.stopPropagation()}>
+                                            <div className="flex flex-col items-end" onClick={e => e.stopPropagation()}>
                                                 {inCart ? (
                                                     <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-xl p-1 border border-white/[0.08]">
                                                         <Button
@@ -966,7 +1050,7 @@ export default function ClientStore() {
                                         {uniqueMatched.map((p: any, idx: number) => {
                                             const qty = qtyMap[p.id] || 1;
                                             const price = getClientPrice(p) * qty;
-                                            const knowledge = PROTOCOL_KNOWLEDGE[p.name];
+                                            const knowledge = lookupKnowledge(p.name);
                                             return (
                                                 <motion.div
                                                     key={p.id}
@@ -1052,6 +1136,8 @@ export default function ClientStore() {
                         const retail = Number(selectedPeptide.retail_price || 0);
                         const hasDiscount = assignedRep && price < retail;
                         const inCart = cart.find(i => i.peptide_id === selectedPeptide.id);
+                        const detailDesc = getPeptideDescription(selectedPeptide.name) || selectedPeptide.description;
+                        const detailKnowledge = lookupKnowledge(selectedPeptide.name);
 
                         return (
                             <>
@@ -1060,6 +1146,12 @@ export default function ClientStore() {
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                         <span className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-[0.15em]">Research Grade</span>
+                                        {detailKnowledge?.administrationRoute && (
+                                            <>
+                                                <span className="text-white/10">|</span>
+                                                <span className="text-[10px] text-muted-foreground/50 font-medium capitalize">{detailKnowledge.administrationRoute}</span>
+                                            </>
+                                        )}
                                     </div>
                                     <SheetTitle className="text-2xl font-extrabold tracking-tight text-left">
                                         {selectedPeptide.name}
@@ -1067,10 +1159,33 @@ export default function ClientStore() {
                                 </SheetHeader>
 
                                 <div className="space-y-5 pb-8">
-                                    {selectedPeptide.description && (
+                                    {detailDesc && (
                                         <p className="text-sm text-muted-foreground/70 leading-relaxed">
-                                            {selectedPeptide.description}
+                                            {detailDesc}
                                         </p>
+                                    )}
+
+                                    {/* Dosing quick-reference */}
+                                    {detailKnowledge && (
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 border border-primary/15 text-primary/70 font-semibold">
+                                                {detailKnowledge.defaultDoseAmount} {detailKnowledge.defaultDoseUnit}
+                                            </span>
+                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                                {detailKnowledge.defaultFrequency}
+                                            </span>
+                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                                {detailKnowledge.defaultTiming}
+                                            </span>
+                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium capitalize">
+                                                {detailKnowledge.administrationRoute}
+                                            </span>
+                                            {detailKnowledge.vialSizeMg && (
+                                                <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                                    {detailKnowledge.vialSizeMg}mg vial
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
 
                                     {/* Price */}
