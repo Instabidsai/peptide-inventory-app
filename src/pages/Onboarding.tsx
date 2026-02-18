@@ -1,45 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building2, RefreshCw, MessageCircle } from 'lucide-react';
+import { Loader2, RefreshCw, LogOut, FlaskConical } from 'lucide-react';
 import { linkReferral, consumeSessionReferral, storeSessionReferral } from '@/lib/link-referral';
 
-const onboardingSchema = z.object({
-  organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
-});
-
-type OnboardingFormData = z.infer<typeof onboardingSchema>;
-
 export default function Onboarding() {
-  const [isLoading, setIsLoading] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [linkFailed, setLinkFailed] = useState(false);
   const [failedRef, setFailedRef] = useState<{ refId: string; role: 'customer' | 'partner' } | null>(null);
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const linkAttempted = useRef(false);
-
-  const form = useForm<OnboardingFormData>({
-    resolver: zodResolver(onboardingSchema),
-    defaultValues: { organizationName: '' },
-  });
-
-  // Check if this user was referred (even if linking failed)
-  const isReferredUser = !!(
-    failedRef ||
-    profile?.parent_rep_id ||
-    sessionStorage.getItem('partner_ref')
-  );
 
   const attemptLink = (ref: { refId: string; role: 'customer' | 'partner' }) => {
     if (!user) return;
@@ -61,7 +36,6 @@ export default function Onboarding() {
         setIsLinking(false);
         setLinkFailed(true);
         setFailedRef(ref);
-        // Keep referral in sessionStorage for retry
         storeSessionReferral(ref.refId, ref.role);
       }
     });
@@ -71,7 +45,6 @@ export default function Onboarding() {
   useEffect(() => {
     if (!user || linkAttempted.current) return;
 
-    // Already has an org — go to the app
     if (profile?.org_id) {
       navigate('/', { replace: true });
       return;
@@ -84,12 +57,17 @@ export default function Onboarding() {
     attemptLink(ref);
   }, [user, profile]);
 
-  // Redirect if user already has an org (covers non-referral case)
+  // Redirect if user already has an org
   useEffect(() => {
     if (profile?.org_id) {
       navigate('/', { replace: true });
     }
   }, [profile, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth', { replace: true });
+  };
 
   // Show loading while auto-linking via referral
   if (isLinking) {
@@ -101,15 +79,15 @@ export default function Onboarding() {
     );
   }
 
-  // Referred client whose linking failed — show friendly retry screen, NOT the org form
+  // Referred client whose linking failed — show retry screen
   if (linkFailed && failedRef) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md bg-card border-border">
+        <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="p-3 bg-primary/10 rounded-xl">
-                <MessageCircle className="h-8 w-8 text-primary" />
+              <div className="p-3 bg-primary/10 rounded-xl ring-1 ring-primary/20">
+                <FlaskConical className="h-8 w-8 text-primary" />
               </div>
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">
@@ -130,14 +108,9 @@ export default function Onboarding() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                window.location.href = 'mailto:support@thepeptideai.com?subject=Account%20Setup%20Help';
-              }}
-            >
-              Contact Support
+            <Button variant="outline" className="w-full" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out &amp; Try a Different Account
             </Button>
           </CardContent>
         </Card>
@@ -145,103 +118,61 @@ export default function Onboarding() {
     );
   }
 
-  const handleSubmit = async (data: OnboardingFormData) => {
-    if (!user) return;
-
-    setIsLoading(true);
-
-    try {
-      // 1. Create organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: data.organizationName })
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      // 2. Update profile with org_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ org_id: orgData.id })
-        .eq('user_id', user.id);
-
-      if (profileError) throw profileError;
-
-      // 3. Create user_role with admin
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          org_id: orgData.id,
-          role: 'admin',
-        });
-
-      if (roleError) throw roleError;
-
-      // 4. Refresh profile context
-      await refreshProfile();
-
-      toast({
-        title: 'Organization created!',
-        description: `Welcome to ${data.organizationName}. You're now an admin.`,
-      });
-
-      navigate('/', { replace: true });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Setup failed',
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Default: user has no org and no referral — show friendly screen with sign out
+  // (NOT a "Create Organization" form — regular users should never see that)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md bg-card border-border">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+      </div>
+
+      <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-xl">
-              <Building2 className="h-8 w-8 text-primary" />
+            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/20">
+              <FlaskConical className="h-8 w-8 text-primary" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            Create Your Organization
+            Welcome to ThePeptideAI
           </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Set up your company to start tracking inventory
+          <CardDescription className="text-muted-foreground mt-2">
+            {user?.email
+              ? `Signed in as ${user.email}`
+              : 'Your account needs to be connected to a provider.'}
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="organizationName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Organization Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="PureUSPeptide"
-                        className="bg-secondary border-border"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Organization
-              </Button>
-            </form>
-          </Form>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground text-center">
+            If you received an invite link from your provider, please use that link to get set up. Otherwise, sign out and try again.
+          </p>
+
+          <Button
+            className="w-full"
+            onClick={async () => {
+              // Try refreshing profile in case it was fixed server-side
+              await refreshProfile();
+              if (profile?.org_id) {
+                navigate('/', { replace: true });
+              } else {
+                toast({ title: 'Not connected yet', description: 'Please use the invite link from your provider to get started.' });
+              }
+            }}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh My Account
+          </Button>
+
+          <Button variant="outline" className="w-full" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground/50 mt-4">
+            ThePeptideAI
+          </p>
         </CardContent>
       </Card>
     </div>
