@@ -41,7 +41,8 @@ import {
     LayoutGrid,
     Layers,
 } from 'lucide-react';
-import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
+import { PROTOCOL_TEMPLATES, PROTOCOL_KNOWLEDGE } from '@/data/protocol-knowledge';
+import type { ProtocolTemplate } from '@/data/protocol-knowledge';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -87,6 +88,7 @@ export default function ClientStore() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
     const [selectedPeptide, setSelectedPeptide] = useState<any>(null);
+    const [selectedProtocol, setSelectedProtocol] = useState<{ template: ProtocolTemplate; matched: any[] } | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
     const [copiedZelle, setCopiedZelle] = useState(false);
     const [placingOrder, setPlacingOrder] = useState(false);
@@ -382,7 +384,10 @@ export default function ClientStore() {
 
                                 return (
                                     <motion.div key={template.name} whileTap={{ scale: 0.98 }}>
-                                        <GlassCard className="hover:border-primary/30 transition-all duration-200">
+                                        <GlassCard
+                                            className="hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                                            onClick={() => setSelectedProtocol({ template, matched: matchedPeptides })}
+                                        >
                                             <CardContent className="p-4 space-y-3">
                                                 <div className="flex items-start gap-3">
                                                     <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -390,8 +395,9 @@ export default function ClientStore() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-semibold text-sm">{template.name}</p>
-                                                        <p className="text-xs text-muted-foreground/60 mt-0.5">{template.description}</p>
+                                                        <p className="text-xs text-muted-foreground/60 mt-0.5 line-clamp-2">{template.description}</p>
                                                     </div>
+                                                    <Info className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-1" />
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {matchedPeptides.map((p: any) => (
@@ -410,7 +416,8 @@ export default function ClientStore() {
                                                     ) : (
                                                         <Button
                                                             size="sm"
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 matchedPeptides.forEach((p: any) => {
                                                                     if (!cart.find(c => c.peptide_id === p.id)) {
                                                                         addToCart(p);
@@ -848,6 +855,102 @@ export default function ClientStore() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Protocol detail Sheet */}
+            <Sheet open={!!selectedProtocol} onOpenChange={(open) => { if (!open) setSelectedProtocol(null); }}>
+                <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
+                    {selectedProtocol && (() => {
+                        const { template, matched } = selectedProtocol;
+                        const Icon = ICON_MAP[template.icon] || Package;
+                        const bundlePrice = matched.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
+                        const allInCart = matched.length > 0 && matched.every((p: any) => cart.find(c => c.peptide_id === p.id));
+
+                        return (
+                            <>
+                                <SheetHeader className="pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Icon className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <SheetTitle className="text-xl font-bold tracking-tight text-left">
+                                                {template.name}
+                                            </SheetTitle>
+                                            <p className="text-sm text-muted-foreground mt-0.5">{template.description}</p>
+                                        </div>
+                                    </div>
+                                </SheetHeader>
+
+                                <div className="space-y-4 pb-6">
+                                    {/* Each peptide in the protocol */}
+                                    <p className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider">What's Included</p>
+                                    <div className="space-y-3">
+                                        {matched.map((p: any) => {
+                                            const price = getClientPrice(p);
+                                            const knowledge = PROTOCOL_KNOWLEDGE[p.name];
+                                            return (
+                                                <div key={p.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="font-semibold text-sm">{p.name}</p>
+                                                        <span className="text-sm font-bold text-primary">${price.toFixed(2)}</span>
+                                                    </div>
+                                                    {knowledge && (
+                                                        <>
+                                                            <p className="text-xs text-muted-foreground/70 leading-relaxed line-clamp-3">
+                                                                {knowledge.description}
+                                                            </p>
+                                                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground/50">
+                                                                <span>Dose: {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}</span>
+                                                                <span>Frequency: {knowledge.defaultFrequency}</span>
+                                                                <span>Timing: {knowledge.defaultTiming}</span>
+                                                                <span>Route: {knowledge.administrationRoute}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {!knowledge && p.description && (
+                                                        <p className="text-xs text-muted-foreground/70 leading-relaxed line-clamp-3">
+                                                            {p.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Total + Add All */}
+                                    <div className="border-t pt-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground text-sm">Bundle Total</span>
+                                            <span className="text-2xl font-bold text-primary">${bundlePrice.toFixed(2)}</span>
+                                        </div>
+                                        {allInCart ? (
+                                            <div className="flex items-center justify-center gap-2 py-3 text-emerald-400 font-medium">
+                                                <Check className="h-5 w-5" />
+                                                All items in cart
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                size="lg"
+                                                className="w-full h-14 rounded-xl text-base font-semibold shadow-md shadow-primary/20"
+                                                onClick={() => {
+                                                    matched.forEach((p: any) => {
+                                                        if (!cart.find(c => c.peptide_id === p.id)) {
+                                                            addToCart(p);
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                <Plus className="h-5 w-5 mr-2" />
+                                                Add All to Cart — ${bundlePrice.toFixed(2)}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </SheetContent>
+            </Sheet>
 
             {/* Product detail Sheet */}
             <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) setSelectedPeptide(null); }}>
