@@ -28,7 +28,8 @@ import {
     Package, Truck, CheckCircle, Printer,
     MapPin, User, AlertCircle, PackageCheck,
     ClipboardList, ArrowRight, ExternalLink, Copy,
-    AlertTriangle, RefreshCw, Pill, Clock, Save, HandMetal
+    AlertTriangle, RefreshCw, Pill, Clock, Save, HandMetal,
+    Undo2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getTrackingUrl } from '@/lib/tracking';
@@ -287,6 +288,28 @@ export default function FulfillmentCenter() {
             { id: orderId, shipping_status: 'delivered' },
             {
                 onSuccess: () => toast({ title: 'Marked as picked up!' }),
+                onSettled: () => setActiveOrderId(null),
+            }
+        );
+    };
+
+    const handleMoveToPickPack = (orderId: string) => {
+        setActiveOrderId(orderId);
+        updateOrder.mutate(
+            { id: orderId, status: 'submitted', shipping_status: null as any },
+            {
+                onSuccess: () => toast({ title: 'Moved back to Pick & Pack' }),
+                onSettled: () => setActiveOrderId(null),
+            }
+        );
+    };
+
+    const handleMoveToLabelShip = (orderId: string) => {
+        setActiveOrderId(orderId);
+        updateOrder.mutate(
+            { id: orderId, delivery_method: 'ship' as any, shipping_status: 'pending' as any },
+            {
+                onSuccess: () => toast({ title: 'Moved to Label & Ship' }),
                 onSettled: () => setActiveOrderId(null),
             }
         );
@@ -899,7 +922,7 @@ export default function FulfillmentCenter() {
                                             )}
 
                                             {/* Utility buttons (always visible) */}
-                                            <div className="flex gap-2 pt-1">
+                                            <div className="flex gap-2 pt-1 flex-wrap">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -908,6 +931,15 @@ export default function FulfillmentCenter() {
                                                     onClick={() => handleMarkDelivered(order.id)}
                                                 >
                                                     <CheckCircle className="mr-1 h-3 w-3" /> Already Done
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-amber-500/40 text-amber-400"
+                                                    disabled={busy}
+                                                    onClick={() => handleMoveToPickPack(order.id)}
+                                                >
+                                                    <Undo2 className="mr-1 h-3 w-3" /> Pick & Pack
                                                 </Button>
                                                 <Button
                                                     variant="outline"
@@ -967,7 +999,7 @@ export default function FulfillmentCenter() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
                                                     <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">
                                                         <MapPin className="h-3 w-3 mr-1" /> Local Pickup
                                                     </Badge>
@@ -979,6 +1011,24 @@ export default function FulfillmentCenter() {
                                                     >
                                                         {busy ? 'Updating...' : 'Picked Up'}
                                                         <CheckCircle className="ml-1 h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-blue-500/40 text-blue-400"
+                                                        disabled={busy}
+                                                        onClick={() => handleMoveToLabelShip(order.id)}
+                                                    >
+                                                        <Undo2 className="mr-1 h-3 w-3" /> Label & Ship
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-amber-500/40 text-amber-400"
+                                                        disabled={busy}
+                                                        onClick={() => handleMoveToPickPack(order.id)}
+                                                    >
+                                                        <Undo2 className="mr-1 h-3 w-3" /> Pick & Pack
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
