@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 export default function Settings() {
+  usePageTitle('Settings');
   const { profile, organization, userRole, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);

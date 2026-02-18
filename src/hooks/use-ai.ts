@@ -12,6 +12,20 @@ export type Message = {
     isOptimistic?: boolean;
 };
 
+function friendlyError(error: unknown): string {
+    const msg = error instanceof Error ? error.message : String(error);
+    const lower = msg.toLowerCase();
+    if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed'))
+        return "Looks like you're offline or the server is unreachable. Check your connection and try again.";
+    if (lower.includes('timeout') || lower.includes('timed out'))
+        return "The AI took too long to respond. Please try a shorter question or try again in a moment.";
+    if (lower.includes('rate limit') || lower.includes('429'))
+        return "Too many requests — please wait a few seconds and try again.";
+    if (lower.includes('500') || lower.includes('internal server'))
+        return "The AI service hit an internal error. This is usually temporary — try again shortly.";
+    return `Something went wrong. Please try again. (${msg})`;
+}
+
 export const useAI = () => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
@@ -83,6 +97,8 @@ export const useAI = () => {
             if (error) throw error;
             return data as { reply: string; conversation_id: string };
         },
+        retry: 2,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
         onSuccess: (data) => {
             // Update conversation ID if new
             if (data.conversation_id) setConversationId(data.conversation_id);
@@ -98,14 +114,14 @@ export const useAI = () => {
         },
         onError: (error) => {
             console.error('AI chat error:', error);
-            const errDetail = error instanceof Error ? error.message : String(error);
+            const friendly = friendlyError(error);
             // Replace optimistic messages with error
             setOptimisticMessages(prev => [
                 ...prev.filter(m => m.role === 'user'),
                 {
                     id: crypto.randomUUID(),
                     role: 'assistant',
-                    content: `I'm having trouble connecting right now. Please try again. (${errDetail})`,
+                    content: friendly,
                     timestamp: new Date(),
                     isOptimistic: true,
                 },

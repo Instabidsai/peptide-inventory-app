@@ -1,4 +1,5 @@
 
+import { usePageTitle } from '@/hooks/use-page-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useBottleStats } from '@/hooks/use-bottles';
@@ -41,6 +42,7 @@ const staggerItem = {
 };
 
 export default function AdminDashboard() {
+    usePageTitle('Dashboard');
     const { organization } = useAuth();
     const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>(() => {
         const saved = localStorage.getItem('dashboard_view_mode');

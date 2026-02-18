@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { useHouseholdMembers } from '@/hooks/use-household';
@@ -44,6 +45,7 @@ function getCurrentTimeWindow(): TimeWindow {
 }
 
 function ClientDashboardContent() {
+    usePageTitle('My Dashboard');
     const { data: contact, isLoading: isLoadingContact, isError: isContactError, refetch: refetchContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();

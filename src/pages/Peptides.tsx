@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
 import { usePendingOrdersByPeptide } from '@/hooks/use-orders';
@@ -55,6 +56,7 @@ const peptideSchema = z.object({
 type PeptideFormData = z.infer<typeof peptideSchema>;
 
 export default function Peptides() {
+  usePageTitle('Peptides');
   const { userRole, profile } = useAuth();
   const isMobile = useIsMobile();
   const { data: peptides, isLoading, isError, refetch } = usePeptides();

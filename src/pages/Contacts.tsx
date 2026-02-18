@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact, type ContactType } from '@/hooks/use-contacts';
@@ -58,6 +59,7 @@ const typeColors: Record<ContactType, 'default' | 'secondary' | 'outline'> = {
 };
 
 export default function Contacts() {
+  usePageTitle('Contacts');
   const navigate = useNavigate();
   const { userRole, profile: authProfile } = useAuth();
   const isMobile = useIsMobile();

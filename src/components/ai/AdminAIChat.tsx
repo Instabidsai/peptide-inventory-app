@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAdminAI, type AdminMessage } from '@/hooks/use-admin-ai';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { MessageSquare, X, Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
 
@@ -13,6 +19,7 @@ export function AdminAIChat() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Only show for admin/staff (check both profile.role and user_roles.role)
   const role = userRole?.role || profile?.role;
@@ -30,6 +37,7 @@ export function AdminAIChat() {
     if (!input.trim() || isLoading) return;
     sendMessage(input);
     setInput('');
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const welcomeMessage: AdminMessage = {
@@ -69,16 +77,31 @@ export function AdminAIChat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Clear chat"
-                onClick={clearChat}
-                className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
-                title="Clear chat"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Clear chat"
+                    className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+                    title="Clear chat"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all messages in this conversation. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearChat}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 variant="ghost"
                 size="icon"
@@ -121,7 +144,13 @@ export function AdminAIChat() {
                           : "bg-muted/50 border border-border/50 text-foreground rounded-tl-sm"
                       )}
                     >
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      )}
                       <div className={cn(
                         "text-[10px] mt-1.5 opacity-50",
                         msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
@@ -160,6 +189,7 @@ export function AdminAIChat() {
           {/* Input */}
           <form onSubmit={handleSend} className="p-3 border-t border-border/50 bg-card flex gap-2 shrink-0">
             <Input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Create orders, add contacts, check stock..."

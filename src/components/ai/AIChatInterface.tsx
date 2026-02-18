@@ -30,18 +30,20 @@ export const AIChatInterface = () => {
     const [knowledgePanelOpen, setKnowledgePanelOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [messages]);
+        requestAnimationFrame(() => {
+            scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+    }, [messages, isLoading]);
 
     const handleSend = (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!input.trim() || isLoading) return;
         sendMessage(input);
         setInput('');
+        requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,6 +239,7 @@ export const AIChatInterface = () => {
                         )}
                     </Button>
                     <Input
+                        ref={inputRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask about protocols, symptoms, bloodwork..."

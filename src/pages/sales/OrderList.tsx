@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { useSalesOrders, useMySalesOrders, type SalesOrder, useUpdateSalesOrder, type SalesOrderStatus, useDeleteSalesOrder } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +41,7 @@ import {
 } from "@/components/ui/select";
 
 export default function OrderList() {
+    usePageTitle('Orders');
     const { userRole, profile } = useAuth();
     const navigate = useNavigate();
     const isMobile = useIsMobile();

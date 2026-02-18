@@ -25,6 +25,16 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo);
   }
 
+  static friendlyMessage(error: Error | null): string {
+    if (!error) return 'An unexpected error occurred. Please try refreshing the page.';
+    const msg = error.message.toLowerCase();
+    if (msg.includes('chunk') || msg.includes('loading') || msg.includes('dynamically imported'))
+      return 'A new version of the app is available. Please reload the page to get the latest update.';
+    if (msg.includes('network') || msg.includes('fetch'))
+      return "We couldn't reach the server. Please check your internet connection and try again.";
+    return 'Something unexpected happened. Please try again or reload the page.';
+  }
+
   handleReset = () => {
     this.setState({ hasError: false, error: null });
   };
@@ -45,7 +55,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </div>
             <h2 className="text-xl font-semibold">Something went wrong</h2>
             <p className="text-sm text-muted-foreground">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+              {ErrorBoundary.friendlyMessage(this.state.error)}
             </p>
             <div className="flex gap-3 justify-center">
               <button

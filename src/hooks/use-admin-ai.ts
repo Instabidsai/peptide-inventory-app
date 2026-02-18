@@ -11,6 +11,28 @@ export type AdminMessage = {
   created_at: string;
 };
 
+const ADMIN_DATA_KEYS = [
+  'contacts', 'sales_orders', 'peptides', 'orders', 'lots',
+  'bottles', 'movements', 'commissions', 'expenses', 'protocols',
+  'requests', 'financial-metrics',
+];
+
+function friendlyError(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  const lower = msg.toLowerCase();
+  if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed'))
+    return "Looks like you're offline or the server is unreachable. Check your connection and try again.";
+  if (lower.includes('timeout') || lower.includes('timed out'))
+    return "The AI took too long to respond. Try a simpler request or try again shortly.";
+  if (lower.includes('rate limit') || lower.includes('429'))
+    return "Too many requests — please wait a few seconds and try again.";
+  if (lower.includes('500') || lower.includes('internal server'))
+    return "The AI service hit an internal error. This is usually temporary — try again shortly.";
+  if (lower.includes('401') || lower.includes('unauthorized'))
+    return "Your session may have expired. Try refreshing the page and signing in again.";
+  return `Something went wrong: ${msg}. Please try again.`;
+}
+
 export function useAdminAI() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -47,32 +69,27 @@ export function useAdminAI() {
       if (error) throw error;
       return data as { reply: string };
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onSuccess: () => {
       setOptimisticMessages([]);
       queryClient.invalidateQueries({ queryKey: ['admin-chat', user?.id] });
-      // Refresh data the AI might have changed (covers all admin features)
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
-      queryClient.invalidateQueries({ queryKey: ['peptides'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['lots'] });
-      queryClient.invalidateQueries({ queryKey: ['bottles'] });
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      queryClient.invalidateQueries({ queryKey: ['commissions'] });
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['protocols'] });
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+      // Batch-invalidate admin data after a short delay (AI response may trigger DB changes)
+      setTimeout(() => {
+        for (const key of ADMIN_DATA_KEYS) {
+          queryClient.invalidateQueries({ queryKey: [key] });
+        }
+      }, 500);
     },
     onError: (error) => {
       console.error('Admin AI chat error:', error);
-      const errDetail = error instanceof Error ? error.message : String(error);
+      const friendly = friendlyError(error);
       setOptimisticMessages(prev => [
         ...prev.filter(m => m.role === 'user'),
         {
           id: `err-${crypto.randomUUID()}`,
           role: 'assistant',
-          content: `Sorry, something went wrong: ${errDetail}. Please try again.`,
+          content: friendly,
           created_at: new Date().toISOString(),
         },
       ]);
