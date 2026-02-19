@@ -26,6 +26,8 @@ export async function linkReferral(
   referrerProfileId: string,
   role: 'customer' | 'partner' = 'customer',
 ): Promise<LinkReferralResult> {
+  console.log('[linkReferral] calling RPC with:', { userId, email, fullName, referrerProfileId, role });
+
   const { data, error } = await supabase.rpc('link_referral', {
     p_user_id: userId,
     p_email: email,
@@ -34,14 +36,16 @@ export async function linkReferral(
     p_role: role,
   });
 
+  console.log('[linkReferral] RPC response:', { data, error });
+
   if (error) {
-    console.error('linkReferral RPC error:', error);
-    return { success: false, error: error.message };
+    console.error('[linkReferral] RPC error:', error.message, error.details, error.hint, error.code);
+    return { success: false, error: `RPC: ${error.code || 'ERR'} — ${error.message}` };
   }
 
   if (!data?.success) {
-    console.error('linkReferral failed:', data?.error);
-    return { success: false, error: data?.error || 'Unknown error' };
+    console.error('[linkReferral] RPC returned failure:', data);
+    return { success: false, error: data?.error || `Unknown (data=${JSON.stringify(data)})` };
   }
 
   return { success: true, type: data.type as 'partner' | 'customer' };
