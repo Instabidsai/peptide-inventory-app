@@ -55,7 +55,7 @@ export function AdminAIChat() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center"
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-overlay hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-105 transition-all flex items-center justify-center"
           aria-label="Open admin AI chat"
         >
           <MessageSquare className="h-6 w-6" />
@@ -64,7 +64,7 @@ export function AdminAIChat() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-background border border-border/50 shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card border border-border/60 shadow-overlay flex flex-col overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-border/50 bg-card flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
@@ -72,7 +72,7 @@ export function AdminAIChat() {
                 <Bot className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Admin Assistant</h3>
+                <h3 className="font-bold text-sm">Admin Assistant</h3>
                 <p className="text-[10px] text-muted-foreground">Orders, contacts, inventory</p>
               </div>
             </div>

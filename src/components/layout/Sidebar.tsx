@@ -92,7 +92,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border/50">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-sm shadow-primary/10">
+          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-[0_1px_4px_rgba(0,0,0,0.2),0_0_8px_hsl(160_84%_39%/0.1)]">
             <FlaskConical className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col">
@@ -156,7 +156,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10'
+                  ? 'bg-sidebar-accent text-sidebar-primary shadow-[0_1px_4px_rgba(0,0,0,0.2)] ring-1 ring-primary/10'
                   : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
               )
             }

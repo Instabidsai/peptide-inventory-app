@@ -31,7 +31,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const roleVariant = userRole?.role === 'admin' ? 'default' : userRole?.role === 'staff' ? 'secondary' : 'outline';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-card/80 backdrop-blur-md shadow-[0_1px_3px_rgba(0,0,0,0.15)] px-4 md:px-6">
       <Button
         variant="ghost"
         size="icon"
@@ -46,7 +46,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       <button
         onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
         aria-label="Search"
-        className="hidden md:inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        className="hidden md:inline-flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2 shadow-inset text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
       >
         <Search className="h-3.5 w-3.5" />
         <span>Search...</span>

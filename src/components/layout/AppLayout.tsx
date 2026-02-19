@@ -56,7 +56,7 @@ export function AppLayout() {
 
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.2)] z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <nav className="flex justify-around items-center h-16">
             {partnerNav.map((item) => {
               const isActive = location.pathname === item.path;
