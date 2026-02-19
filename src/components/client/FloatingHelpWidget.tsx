@@ -34,7 +34,7 @@ export function FloatingHelpWidget() {
                         onClick={() => setState('closed')}
                     />
                     {/* Menu card */}
-                    <div className="fixed bottom-36 right-4 z-50 w-64 rounded-2xl bg-card border border-border/50 shadow-2xl p-3 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="fixed bottom-36 right-4 z-50 w-64 rounded-2xl bg-card border border-border/60 shadow-overlay p-3 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-200">
                         <div className="flex items-center justify-between px-1 pb-1">
                             <span className="text-sm font-semibold">How can we help?</span>
                             <button
@@ -82,11 +82,11 @@ export function FloatingHelpWidget() {
 
             {/* AI Chat Panel */}
             {state === 'ai-chat' && (
-                <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-background border border-border/50 shadow-2xl flex flex-col overflow-hidden">
+                <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card/95 backdrop-blur-xl border border-border/60 shadow-overlay flex flex-col overflow-hidden">
                     {/* Close button overlay */}
                     <button
                         onClick={() => setState('closed')}
-                        className="absolute top-3 right-3 z-10 h-8 w-8 rounded-xl bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        className="absolute top-3 right-3 z-10 h-8 w-8 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                         aria-label="Close AI chat"
                     >
                         <X className="h-4 w-4" />

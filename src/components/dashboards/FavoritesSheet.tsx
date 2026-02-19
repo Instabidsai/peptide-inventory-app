@@ -148,14 +148,14 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                         <Button
                             size="sm"
                             variant="secondary"
-                            className="h-24 w-8 rounded-l-xl rounded-r-none shadow-lg border-l border-y bg-background/80 backdrop-blur-md flex flex-col gap-2 p-1 hover:w-10 transition-all group"
+                            className="h-24 w-8 rounded-l-xl rounded-r-none shadow-overlay border-l border-y bg-card/80 backdrop-blur-md flex flex-col gap-2 p-1 hover:w-10 transition-all group"
                         >
                             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                             <span className="text-[10px] font-bold [writing-mode:vertical-lr] text-muted-foreground group-hover:text-foreground">FAVES</span>
                         </Button>
                     </div>
                 </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px] flex flex-col h-full bg-background/95 backdrop-blur-lg">
+                <SheetContent className="w-[400px] sm:w-[540px] flex flex-col h-full bg-card/95 backdrop-blur-xl">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />

@@ -18,7 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download } from 'lucide-react';
+import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -273,6 +274,27 @@ export default function Peptides() {
                 <SelectItem value="inactive">Inactive Only</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" onClick={() => {
+              if (filteredPeptides?.length) {
+                exportToCSV(filteredPeptides.map(p => ({
+                  name: p.name,
+                  sku: p.sku || '',
+                  retail_price: p.retail_price,
+                  active: p.active ? 'Yes' : 'No',
+                  description: p.description || '',
+                  created_at: p.created_at ? format(new Date(p.created_at), 'yyyy-MM-dd') : '',
+                })), 'peptides', [
+                  { key: 'name', label: 'Name' },
+                  { key: 'sku', label: 'SKU' },
+                  { key: 'retail_price', label: 'Retail Price' },
+                  { key: 'active', label: 'Active' },
+                  { key: 'description', label: 'Description' },
+                  { key: 'created_at', label: 'Created' },
+                ]);
+              }
+            }}>
+              <Download className="mr-2 h-4 w-4" /> Export
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

@@ -77,7 +77,7 @@ export const AIChatInterface = () => {
 
     return (
         <>
-            <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto rounded-2xl bg-background/80 backdrop-blur-md border border-white/[0.06] shadow-xl overflow-hidden">
+            <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto rounded-2xl bg-card/80 backdrop-blur-xl border border-white/[0.08] shadow-overlay overflow-hidden">
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
                     <div className="flex items-center gap-2.5">

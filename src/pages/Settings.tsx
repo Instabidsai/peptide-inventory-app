@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
@@ -12,10 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users, Copy, Check, Calendar } from 'lucide-react';
+import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save } from 'lucide-react';
 import { QueryError } from '@/components/ui/query-error';
-import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
 
 const profileSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -28,6 +30,214 @@ const organizationSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
+// ─── Branding Tab ───
+function BrandingTab({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [brand, setBrand] = useState({
+    brand_name: '',
+    admin_brand_name: '',
+    support_email: '',
+    logo_url: '',
+    primary_color: '#7c3aed',
+    app_url: '',
+  });
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ['tenant-config-settings', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('brand_name, admin_brand_name, support_email, logo_url, primary_color, app_url')
+        .eq('org_id', orgId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (config) setBrand(prev => ({ ...prev, ...config }));
+  }, [config]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update(brand)
+        .eq('org_id', orgId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['tenant-config-settings'] });
+      toast({ title: 'Branding updated' });
+    } catch (err: any) {
+      toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Branding</CardTitle>
+        <CardDescription>Customize how your portal looks to clients and staff</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Client-Facing Brand Name</Label>
+            <Input value={brand.brand_name} onChange={e => setBrand(b => ({ ...b, brand_name: e.target.value }))} placeholder="My Peptide Co" />
+          </div>
+          <div className="space-y-2">
+            <Label>Admin Brand Name</Label>
+            <Input value={brand.admin_brand_name} onChange={e => setBrand(b => ({ ...b, admin_brand_name: e.target.value }))} placeholder="My Peptide Admin" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Support Email</Label>
+            <Input type="email" value={brand.support_email} onChange={e => setBrand(b => ({ ...b, support_email: e.target.value }))} placeholder="support@example.com" />
+          </div>
+          <div className="space-y-2">
+            <Label>App URL</Label>
+            <Input value={brand.app_url} onChange={e => setBrand(b => ({ ...b, app_url: e.target.value }))} placeholder="https://app.example.com" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Logo URL</Label>
+            <Input value={brand.logo_url} onChange={e => setBrand(b => ({ ...b, logo_url: e.target.value }))} placeholder="https://example.com/logo.png" />
+            {brand.logo_url && <img src={brand.logo_url} alt="Logo preview" className="h-10 mt-1 rounded" />}
+          </div>
+          <div className="space-y-2">
+            <Label>Primary Color</Label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={brand.primary_color} onChange={e => setBrand(b => ({ ...b, primary_color: e.target.value }))} className="h-10 w-14 rounded border cursor-pointer" />
+              <Input value={brand.primary_color} onChange={e => setBrand(b => ({ ...b, primary_color: e.target.value }))} className="flex-1" />
+              <div className="h-10 w-10 rounded-lg" style={{ backgroundColor: brand.primary_color }} />
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Branding
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Integrations / API Keys Tab ───
+const API_KEY_SERVICES = [
+  { key: 'stripe_secret_key', label: 'Stripe Secret Key', placeholder: 'sk_live_...' },
+  { key: 'stripe_publishable_key', label: 'Stripe Publishable Key', placeholder: 'pk_live_...' },
+  { key: 'shippo_api_key', label: 'Shippo API Key', placeholder: 'shippo_live_...' },
+  { key: 'openai_api_key', label: 'OpenAI API Key (AI Chat)', placeholder: 'sk-...' },
+] as const;
+
+function IntegrationsTab({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [visible, setVisible] = useState<Record<string, boolean>>({});
+  const [keys, setKeys] = useState<Record<string, string>>({});
+
+  const { data: savedKeys, isLoading } = useQuery({
+    queryKey: ['tenant-api-keys', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_api_keys')
+        .select('service, api_key_masked, updated_at')
+        .eq('org_id', orgId);
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const entries = Object.entries(keys).filter(([, v]) => v.trim());
+      for (const [service, apiKey] of entries) {
+        const masked = apiKey.slice(0, 7) + '...' + apiKey.slice(-4);
+        const { error } = await supabase
+          .from('tenant_api_keys')
+          .upsert({
+            org_id: orgId,
+            service,
+            api_key: apiKey,
+            api_key_masked: masked,
+          }, { onConflict: 'org_id,service' });
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ['tenant-api-keys'] });
+      setKeys({});
+      toast({ title: 'API keys saved' });
+    } catch (err: any) {
+      toast({ title: 'Failed to save keys', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  const savedMap = new Map(savedKeys?.map(k => [k.service, k]) || []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Integrations</CardTitle>
+        <CardDescription>
+          Connect your Stripe, Shippo, and AI services. Keys are encrypted at rest.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {API_KEY_SERVICES.map(({ key, label, placeholder }) => {
+          const saved = savedMap.get(key);
+          return (
+            <div key={key} className="space-y-1.5">
+              <Label>{label}</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={visible[key] ? 'text' : 'password'}
+                    value={keys[key] || ''}
+                    onChange={e => setKeys(k => ({ ...k, [key]: e.target.value }))}
+                    placeholder={saved ? `Current: ${saved.api_key_masked}` : placeholder}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {visible[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              {saved && (
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {format(new Date(saved.updated_at), 'MMM d, yyyy h:mm a')}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        <Button onClick={handleSave} disabled={saving || !Object.values(keys).some(v => v.trim())}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
+          Save Keys
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings() {
   usePageTitle('Settings');
   const { profile, organization, userRole, refreshProfile } = useAuth();
@@ -35,7 +245,7 @@ export default function Settings() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingOrg, setIsUpdatingOrg] = useState(false);
 
-  const isAdmin = userRole?.role === 'admin';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
   const [copiedLink, setCopiedLink] = useState(false);
 
   const handleCopyInviteLink = () => {
@@ -134,6 +344,14 @@ export default function Settings() {
                 <Building2 className="h-4 w-4" />
                 Organization
               </TabsTrigger>
+              <TabsTrigger value="branding" className="gap-2">
+                <Palette className="h-4 w-4" />
+                Branding
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="gap-2">
+                <Key className="h-4 w-4" />
+                Integrations
+              </TabsTrigger>
               <TabsTrigger value="team" className="gap-2">
                 <Users className="h-4 w-4" />
                 Team
@@ -218,6 +436,18 @@ export default function Settings() {
                 </Form>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {isAdmin && organization?.id && (
+          <TabsContent value="branding">
+            <BrandingTab orgId={organization.id} />
+          </TabsContent>
+        )}
+
+        {isAdmin && organization?.id && (
+          <TabsContent value="integrations">
+            <IntegrationsTab orgId={organization.id} />
           </TabsContent>
         )}
 
