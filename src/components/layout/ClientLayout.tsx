@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase, Menu } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase, Menu, Dna } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { FloatingHelpWidget } from '@/components/client/FloatingHelpWidget';
 
 export function ClientLayout() {
     const navigate = useNavigate();
@@ -75,7 +76,7 @@ export function ClientLayout() {
             <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/30 bg-card/80 backdrop-blur-md px-4 justify-between">
                 <div className="flex items-center gap-2.5">
                     <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/15">
-                        <Home className="h-4 w-4 text-primary" />
+                        <Dna className="h-4 w-4 text-primary" />
                     </div>
                     <span className="font-bold text-lg tracking-tight text-gradient-primary">ThePeptideAI</span>
                 </div>
@@ -85,8 +86,10 @@ export function ClientLayout() {
                         <Bell className="h-5 w-5" />
                         {unreadNotifications && unreadNotifications > 0 && (
                             <>
-                                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500" />
-                                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 animate-ping opacity-75" />
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 border-2 border-card text-[10px] font-bold text-white leading-none px-1 z-10">
+                                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                                </span>
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 animate-ping opacity-75" />
                             </>
                         )}
                     </Button>
@@ -123,6 +126,9 @@ export function ClientLayout() {
                 </ErrorBoundary>
             </main>
 
+            {/* Floating Help Widget */}
+            <FloatingHelpWidget />
+
             {/* Bottom Navigation (Mobile First) */}
             <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 <nav className="flex justify-around items-center h-16">
@@ -144,7 +150,7 @@ export function ClientLayout() {
                                     {isActive && (
                                         <motion.div
                                             layoutId="nav-pill"
-                                            className="absolute inset-0 bg-primary/10 rounded-xl"
+                                            className="absolute inset-0 bg-primary/10 rounded-xl shadow-[0_2px_12px_rgba(16,185,129,0.25)]"
                                             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                                         />
                                     )}

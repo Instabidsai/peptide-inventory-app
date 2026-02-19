@@ -314,60 +314,93 @@ function ClientDashboardContent() {
     };
 
     if (isLoadingContact) return (
-        <div className="space-y-6 pb-20">
-            <div className="space-y-1">
+        <motion.div
+            className="space-y-6 pb-20"
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+        >
+            <motion.div className="space-y-1" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-7 w-52" />
-            </div>
-            <Skeleton className="h-11 w-full rounded-xl" />
-            <GlassCard><CardContent className="pt-6 pb-5 flex justify-center"><Skeleton className="h-28 w-28 rounded-full" /></CardContent></GlassCard>
-            <div className="grid grid-cols-2 gap-3">
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                <Skeleton className="h-11 w-full rounded-xl" />
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                <GlassCard><CardContent className="pt-6 pb-5 flex justify-center"><Skeleton className="h-28 w-28 rounded-full" /></CardContent></GlassCard>
+            </motion.div>
+            <motion.div className="grid grid-cols-2 gap-3" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
                 <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
                 <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
-            </div>
-            <GlassCard><CardContent className="pt-5 pb-4 space-y-3">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-14 w-full rounded-2xl" />
-                <Skeleton className="h-14 w-full rounded-2xl" />
-            </CardContent></GlassCard>
-        </div>
+            </motion.div>
+            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                <GlassCard><CardContent className="pt-5 pb-4 space-y-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                </CardContent></GlassCard>
+            </motion.div>
+        </motion.div>
     );
 
     if (isContactError) return <QueryError message="Failed to load your profile." onRetry={refetchContact} />;
 
     if (!contact && !isLoadingContact) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-4 p-8">
-                <div className="p-4 bg-primary/10 rounded-full">
-                    <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <h2 className="text-xl font-semibold">Welcome to ThePeptideAI</h2>
-                <p className="text-muted-foreground text-center max-w-md">
-                    Your account is set up! Your profile is being finalized by your provider. In the meantime, feel free to explore or chat with our AI assistant.
-                </p>
-                <div className="flex gap-3 mt-2">
+            <div className="flex flex-col items-center justify-center h-[60vh] space-y-5 p-8">
+                <motion.div
+                    className="p-5 bg-gradient-to-br from-primary/15 to-primary/5 rounded-2xl ring-1 ring-primary/15"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                >
+                    <Sparkles className="h-10 w-10 text-primary" />
+                </motion.div>
+                <motion.div
+                    className="text-center space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                >
+                    <h2 className="text-2xl font-bold tracking-tight">Welcome to <span className="text-gradient-primary">ThePeptideAI</span></h2>
+                    <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
+                        Your account is ready! Your personalized protocol is being prepared by your provider. In the meantime, explore or chat with our AI assistant.
+                    </p>
+                </motion.div>
+                <motion.div
+                    className="flex gap-3 mt-1"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                >
                     <button
                         onClick={() => navigate('/store')}
-                        className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                        className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all hover-lift"
                     >
                         Browse Store
                     </button>
                     <button
                         onClick={() => navigate('/messages')}
-                        className="px-4 py-2 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+                        className="px-5 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-all hover-lift"
                     >
                         Contact Support
                     </button>
-                </div>
-                <div className="w-full max-w-md border border-border/50 rounded-lg p-4 mt-6">
-                    <h3 className="font-medium mb-4 flex items-center gap-2">
+                </motion.div>
+                <motion.div
+                    className="w-full max-w-md border border-border/50 rounded-xl p-4 mt-6 bg-white/[0.02]"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                >
+                    <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm">
                         <Sparkles className="h-4 w-4 text-primary" />
                         Peptide AI Assistant
                     </h3>
                     <div className="h-[400px]">
                         <AIChatInterface />
                     </div>
-                </div>
+                </motion.div>
             </div>
         );
     }
@@ -379,21 +412,45 @@ function ClientDashboardContent() {
 
     return (
         <div className="space-y-6 pb-20">
-            {/* Header / Greeting */}
-            <motion.div
-                className="flex flex-col gap-0.5"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-                <p className="text-sm font-medium text-muted-foreground/60">
-                    {format(today, 'EEEE, MMMM do')}
-                </p>
-                <h1 className="text-2xl font-bold tracking-tight">
-                    Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
-                    <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
-                </h1>
-            </motion.div>
+            {/* Header / Greeting Hero */}
+            <GlassCard className="border-white/[0.04] overflow-hidden relative">
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/[0.08] rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-l-xl" />
+                <CardContent className="pt-5 pb-4 pl-5">
+                    <motion.div
+                        className="flex flex-col gap-1"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                    >
+                        <p className="text-xs font-medium text-muted-foreground/50 tracking-wide">
+                            {format(today, 'EEEE, MMMM do')}
+                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
+                            <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
+                        </h1>
+                        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-white/[0.04]">
+                            {hasDosesToday && (
+                                <span className="text-xs font-medium text-muted-foreground/50">
+                                    <span className="text-emerald-400 font-semibold">{gamified.todayDoses.filter(d => d.isTaken).length}/{gamified.todayDoses.length}</span> doses today
+                                </span>
+                            )}
+                            {gamified.streak > 0 && (
+                                <span className="text-xs font-medium text-muted-foreground/50 flex items-center gap-1">
+                                    <Flame className="h-3 w-3 text-orange-400" />
+                                    {gamified.streak}d streak
+                                </span>
+                            )}
+                            {(inventory?.length ?? 0) > 0 && (
+                                <span className="text-xs font-medium text-muted-foreground/50">
+                                    {inventory?.length} active vial{inventory?.length !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+                    </motion.div>
+                </CardContent>
+            </GlassCard>
 
             <Tabs defaultValue="protocol" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
@@ -433,16 +490,30 @@ function ClientDashboardContent() {
 
                     {/* ─── Rest Day / No Schedule Message ─── */}
                     {!hasDosesToday && hasScheduledVials && (
-                        <GlassCard className="border-white/[0.04] overflow-hidden">
+                        <GlassCard className="border-white/[0.04] overflow-hidden relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.03] to-transparent pointer-events-none" />
                             <CardContent className="py-8">
-                                <div className="flex flex-col items-center gap-2 text-center">
-                                    <div className="p-3 rounded-2xl bg-emerald-500/10">
-                                        <Calendar className="h-5 w-5 text-emerald-400" />
+                                <div className="flex flex-col items-center gap-3 text-center">
+                                    <motion.div
+                                        className="p-4 rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/10"
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                                    >
+                                        <Calendar className="h-6 w-6 text-emerald-400" />
+                                    </motion.div>
+                                    <div className="space-y-1">
+                                        <p className="font-bold text-base tracking-tight">Rest & Recover</p>
+                                        <p className="text-xs text-muted-foreground/50 max-w-[240px] leading-relaxed">
+                                            No doses scheduled today. Your body is recovering — you're right on track.
+                                        </p>
                                     </div>
-                                    <p className="font-semibold text-sm">Rest Day</p>
-                                    <p className="text-xs text-muted-foreground/50 max-w-[200px]">
-                                        No doses scheduled for today. Check your fridge below for upcoming schedules.
-                                    </p>
+                                    {gamified.streak > 0 && (
+                                        <div className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+                                            <Flame className="h-3.5 w-3.5 text-orange-400" />
+                                            <span className="text-xs font-semibold text-muted-foreground/70">{gamified.streak} day streak</span>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </GlassCard>
@@ -532,21 +603,22 @@ function ClientDashboardContent() {
                     </GlassCard>
 
                     {/* ─── Full Regimen Link ─── */}
-                    <button
+                    <motion.button
                         onClick={() => navigate('/my-regimen')}
-                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all duration-200"
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-primary/10 transition-all duration-300 group"
+                        whileTap={{ scale: 0.98 }}
                     >
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-white/[0.04]">
-                                <Calendar className="h-4 w-4 text-muted-foreground/60" />
+                            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/10 group-hover:ring-primary/20 transition-all">
+                                <Calendar className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
                             </div>
                             <div className="text-left">
-                                <div className="font-medium text-sm">Full Regimen</div>
+                                <div className="font-semibold text-sm tracking-tight">Full Regimen</div>
                                 <div className="text-xs text-muted-foreground/40">View all protocol details</div>
                             </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
-                    </button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
+                    </motion.button>
                 </TabsContent>
 
                 <TabsContent value="ai-coach" className="min-h-[400px] md:min-h-[600px]">

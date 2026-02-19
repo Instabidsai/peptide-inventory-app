@@ -585,7 +585,8 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground/50 mt-4">
-          ThePeptideAI
+          <span className="font-semibold text-gradient-primary">ThePeptideAI</span>
+          <span className="block mt-0.5 text-muted-foreground/30">Your AI-Powered Peptide Protocol</span>
         </p>
       </motion.div>
     </div>

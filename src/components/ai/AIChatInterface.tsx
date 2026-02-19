@@ -11,6 +11,7 @@ import { Loader2, Send, Bot, User, Sparkles, Plus, Paperclip, Brain, MessageCirc
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ACCEPTED_TYPES = '.pdf,.jpg,.jpeg,.png,.webp';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -26,6 +27,8 @@ export const AIChatInterface = () => {
     const { messages, sendMessage, isLoading, isLoadingHistory, startNewConversation } = useAI();
     const { uploadDocument, documents } = useAIKnowledge();
     const { toast } = useToast();
+    const { profile } = useAuth();
+    const firstName = profile?.full_name?.split(' ')[0] || '';
     const [input, setInput] = useState('');
     const [knowledgePanelOpen, setKnowledgePanelOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -128,7 +131,7 @@ export const AIChatInterface = () => {
                                         <MessageCircle className="h-7 w-7 text-emerald-400" />
                                     </div>
                                     <div className="text-center space-y-1">
-                                        <p className="font-semibold text-sm">How can I help?</p>
+                                        <p className="font-semibold text-sm">How can I help{firstName ? `, ${firstName}` : ''}?</p>
                                         <p className="text-xs text-muted-foreground/60">Ask me anything about your peptides and protocols</p>
                                     </div>
                                     <div className="flex flex-wrap justify-center gap-2 max-w-sm">
