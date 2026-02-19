@@ -45,7 +45,10 @@ BEGIN
     role = v_app_role,
     partner_tier = CASE WHEN v_is_partner THEN 'associate' ELSE partner_tier END,
     commission_rate = CASE WHEN v_is_partner THEN 0.075 ELSE commission_rate END,
-    price_multiplier = CASE WHEN v_is_partner THEN 0.75 ELSE price_multiplier END,
+    -- Customers: 20% off retail (0.80). Partners: use cost_multiplier mode instead.
+    price_multiplier = CASE WHEN v_is_partner THEN 1.0 ELSE 0.80 END,
+    pricing_mode = CASE WHEN v_is_partner THEN 'cost_multiplier' ELSE pricing_mode END,
+    cost_plus_markup = CASE WHEN v_is_partner THEN 2.0 ELSE cost_plus_markup END,
     updated_at = now()
   WHERE user_id = p_user_id;
 

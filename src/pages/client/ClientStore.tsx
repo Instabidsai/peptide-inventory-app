@@ -195,7 +195,7 @@ interface CartItem {
 }
 
 export default function ClientStore() {
-    const { user, userRole } = useAuth();
+    const { user, userRole, profile: authProfile } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const checkout = useCheckout();
     const createOrder = useCreateSalesOrder();
@@ -277,10 +277,14 @@ export default function ClientStore() {
         enabled: !!assignedRep && repPricingMode === 'cost_plus',
     });
 
-    // Calculate client price: if rep assigned, apply rep's pricing model; otherwise retail
+    // Calculate client price: customers get their own discount; partners get rep's pricing model
     const getClientPrice = (peptide: { id: string; retail_price?: number | null }): number => {
         const retail = Number(peptide.retail_price || 0);
-        if (!assignedRep) return retail;
+        // Regular customers: use their own price_multiplier (e.g. 0.80 = 20% off)
+        if (!assignedRep || contact?.type === 'customer') {
+            const customerMultiplier = Number(authProfile?.price_multiplier) || 1.0;
+            return Math.round(retail * customerMultiplier * 100) / 100;
+        }
 
         const mode = assignedRep.pricing_mode || 'percentage';
         const multiplier = Number(assignedRep.price_multiplier) || 1.0;
@@ -291,10 +295,16 @@ export default function ClientStore() {
             if (avgCost > 0) {
                 return Math.round((avgCost + markup) * 100) / 100;
             }
-            // Fallback to percentage if no lot cost data
         }
 
-        // percentage mode
+        if (mode === 'cost_multiplier' && lotCosts) {
+            const avgCost = lotCosts[peptide.id] || 0;
+            if (avgCost > 0) {
+                return Math.round(avgCost * markup * 100) / 100;
+            }
+        }
+
+        // percentage mode (fallback)
         return Math.round(retail * multiplier * 100) / 100;
     };
 
@@ -469,8 +479,8 @@ export default function ClientStore() {
                 </p>
             </div>
 
-            {/* Partner discount banner */}
-            {assignedRep && Number(assignedRep.price_multiplier || 1) < 1 && (
+            {/* Discount banner */}
+            {Number(authProfile?.price_multiplier || 1) < 1 && (
                 <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -480,7 +490,7 @@ export default function ClientStore() {
                         <Percent className="h-4 w-4 text-white" />
                     </div>
                     <p className="text-xs text-emerald-300 leading-relaxed">
-                        Partner pricing active — you're getting <strong className="text-emerald-200">{Math.round((1 - Number(assignedRep.price_multiplier)) * 100)}% off</strong> retail on all products.
+                        You're getting <strong className="text-emerald-200">{Math.round((1 - Number(authProfile?.price_multiplier)) * 100)}% off</strong> retail on all products.
                     </p>
                 </motion.div>
             )}
@@ -664,7 +674,7 @@ export default function ClientStore() {
                         {filteredPeptides?.map((peptide) => {
                             const price = getClientPrice(peptide);
                             const retail = Number(peptide.retail_price || 0);
-                            const hasDiscount = assignedRep && price < retail;
+                            const hasDiscount = price < retail;
                             const inCart = cart.find(i => i.peptide_id === peptide.id);
                             const description = getPeptideDescription(peptide.name) || peptide.description;
                             const knowledge = lookupKnowledge(peptide.name);
@@ -1216,7 +1226,7 @@ export default function ClientStore() {
                     {selectedPeptide && (() => {
                         const price = getClientPrice(selectedPeptide);
                         const retail = Number(selectedPeptide.retail_price || 0);
-                        const hasDiscount = assignedRep && price < retail;
+                        const hasDiscount = price < retail;
                         const inCart = cart.find(i => i.peptide_id === selectedPeptide.id);
                         const detailDesc = getPeptideDescription(selectedPeptide.name) || selectedPeptide.description;
                         const dk = lookupKnowledge(selectedPeptide.name);
