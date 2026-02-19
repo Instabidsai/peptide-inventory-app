@@ -224,7 +224,7 @@ export default function OrderDetails() {
                 <nav className="flex items-center text-sm text-muted-foreground">
                     <Link to="/sales" className="hover:text-foreground transition-colors">Sales Orders</Link>
                     <span className="mx-2">/</span>
-                    <span className="text-foreground font-medium">Order #{order.id.slice(0, 8)}</span>
+                    <span className="text-foreground font-semibold">Order #{order.id.slice(0, 8)}</span>
                 </nav>
             </div>
 
@@ -468,7 +468,7 @@ export default function OrderDetails() {
                                     </div>
                                 </div>
                             ) : order.notes ? (
-                                <div className="bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
+                                <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/20">
                                     <h4 className="font-semibold text-amber-400 text-sm mb-1">Notes</h4>
                                     <p className="text-sm text-amber-400/90">{order.notes}</p>
                                 </div>

@@ -152,19 +152,34 @@ export class PsiFiProvider implements PaymentProvider {
 
 // ── Factory ─────────────────────────────────────────────────────
 
+import { StripeProvider } from './stripe-provider';
+
 /**
  * Returns the configured payment provider.
- * Currently always returns PsiFi. To add Stripe:
- *   1. Create a StripeProvider class implementing PaymentProvider
- *   2. Check tenant config or env var to pick the provider
+ * Checks for Stripe first (preferred), then falls back to PsiFi.
+ * Per-tenant providers can be resolved by passing tenant API keys.
  */
-export function getPaymentProvider(): PaymentProvider {
-    const apiKey = process.env.PSIFI_API_KEY;
-    const webhookSecret = process.env.PSIFI_WEBHOOK_SECRET;
+export function getPaymentProvider(tenantKeys?: {
+    stripe_secret_key?: string;
+    stripe_webhook_secret?: string;
+    psifi_api_key?: string;
+    psifi_webhook_secret?: string;
+}): PaymentProvider {
+    // Check tenant-specific Stripe keys first
+    const stripeKey = tenantKeys?.stripe_secret_key || process.env.STRIPE_SECRET_KEY;
+    const stripeWebhookSecret = tenantKeys?.stripe_webhook_secret || process.env.STRIPE_WEBHOOK_SECRET;
 
-    if (!apiKey || !webhookSecret) {
-        throw new Error('Payment provider not configured: missing PSIFI_API_KEY or PSIFI_WEBHOOK_SECRET');
+    if (stripeKey && stripeWebhookSecret) {
+        return new StripeProvider(stripeKey, stripeWebhookSecret);
     }
 
-    return new PsiFiProvider(apiKey, webhookSecret);
+    // Fall back to PsiFi
+    const psifiKey = tenantKeys?.psifi_api_key || process.env.PSIFI_API_KEY;
+    const psifiWebhookSecret = tenantKeys?.psifi_webhook_secret || process.env.PSIFI_WEBHOOK_SECRET;
+
+    if (psifiKey && psifiWebhookSecret) {
+        return new PsiFiProvider(psifiKey, psifiWebhookSecret);
+    }
+
+    throw new Error('No payment provider configured: set STRIPE_SECRET_KEY or PSIFI_API_KEY');
 }

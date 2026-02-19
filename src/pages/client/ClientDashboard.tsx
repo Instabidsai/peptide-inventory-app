@@ -456,10 +456,10 @@ function ClientDashboardContent() {
 
             <Tabs defaultValue="protocol" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
-                    <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-sm">
+                    <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         My Protocol
                     </TabsTrigger>
-                    <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-sm">
+                    <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         <Sparkles className="h-3.5 w-3.5" />
                         Peptide AI
                     </TabsTrigger>

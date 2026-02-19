@@ -142,7 +142,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
     if (isLoading) return <div className="p-4 flex justify-center"><Loader2 className="animate-spin" /></div>;
 
     return (
-        <div className={cn("flex flex-col h-[500px] border rounded-md bg-background", className)}>
+        <div className={cn("flex flex-col h-[500px] border border-border/60 rounded-xl bg-card", className)}>
             {/* Context Banner */}
             {requestContext && requestContext.context_type && (
                 <div className="bg-secondary/30 text-xs px-4 py-2 border-b flex items-center gap-2 text-muted-foreground">

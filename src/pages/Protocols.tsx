@@ -104,7 +104,7 @@ export default function Protocols() {
                                 <h4 className="text-sm font-medium">Protocol Items</h4>
 
                                 {/* Item Builder Input */}
-                                <div className="grid gap-4 border p-4 rounded-md bg-muted/50">
+                                <div className="grid gap-4 border border-border/60 p-4 rounded-lg bg-muted/50">
                                     <div className="grid gap-2">
                                         <Label>Peptide</Label>
                                         <Select
@@ -195,7 +195,7 @@ export default function Protocols() {
                                 {items.length > 0 && (
                                     <div className="space-y-2">
                                         {items.map((item, idx) => (
-                                            <div key={`${item.peptideName}-${item.frequency}-${idx}`} className="flex items-center justify-between p-3 border rounded-md bg-card">
+                                            <div key={`${item.peptideName}-${item.frequency}-${idx}`} className="flex items-center justify-between p-3 border border-border/60 rounded-lg bg-card">
                                                 <div className="text-sm">
                                                     <span className="font-semibold">{item.peptideName}</span>: {item.dosageAmount}{item.dosageUnit} {item.frequency} for {item.duration} days ({item.costMultiplier}x)
                                                 </div>

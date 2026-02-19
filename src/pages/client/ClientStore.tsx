@@ -912,7 +912,7 @@ export default function ClientStore() {
 
                         {/* Shipping */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Shipping Address</label>
+                            <label className="text-sm font-semibold">Shipping Address</label>
                             <Textarea
                                 placeholder="Enter your shipping address..."
                                 value={shippingAddress}
@@ -923,7 +923,7 @@ export default function ClientStore() {
 
                         {/* Notes */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Notes (optional)</label>
+                            <label className="text-sm font-semibold">Notes (optional)</label>
                             <Input
                                 placeholder="Any special instructions..."
                                 value={notes}
@@ -934,7 +934,7 @@ export default function ClientStore() {
                         {/* Payment Method Selection */}
                         {!orderPlaced ? (
                             <div className="space-y-3">
-                                <label className="text-sm font-medium">Payment Method</label>
+                                <label className="text-sm font-semibold">Payment Method</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {([
                                         { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
@@ -960,7 +960,7 @@ export default function ClientStore() {
                                     <div className="bg-purple-950/30 border border-purple-800 rounded-lg p-3 space-y-2">
                                         <p className="text-xs font-medium text-purple-300">Send payment via Zelle to:</p>
                                         <div className="flex items-center gap-2">
-                                            <code className="flex-1 text-sm font-mono bg-background rounded px-2 py-1 border truncate">
+                                            <code className="flex-1 text-sm font-mono bg-card/50 rounded-lg px-2 py-1 border border-border/60 truncate">
                                                 {ZELLE_EMAIL}
                                             </code>
                                             <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0" aria-label="Copy Zelle email">

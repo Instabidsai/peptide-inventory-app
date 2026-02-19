@@ -361,7 +361,7 @@ export default function ClientResources() {
                                                 <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">
                                                     {resource.type}
                                                 </span>
-                                                <h4 className="text-sm font-medium text-white mt-0.5 line-clamp-2 leading-snug">
+                                                <h4 className="text-sm font-semibold text-white mt-0.5 line-clamp-2 leading-snug">
                                                     {resource.title}
                                                 </h4>
                                                 <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
@@ -551,7 +551,7 @@ export default function ClientResources() {
                                         )}
                                     </div>
                                     <div className="p-3">
-                                        <h4 className="font-medium text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
+                                        <h4 className="font-semibold text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
                                         <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resource.description}</p>
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-gray-500 capitalize">{resource.type}</span>

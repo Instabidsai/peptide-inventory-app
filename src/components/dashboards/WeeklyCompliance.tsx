@@ -48,9 +48,9 @@ export function WeeklyCompliance() {
     });
 
     return (
-        <Card className="shadow-sm">
+        <Card className="shadow-card">
             <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Weekly Calorie Compliance</CardTitle>
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Weekly Calorie Compliance</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between items-center">

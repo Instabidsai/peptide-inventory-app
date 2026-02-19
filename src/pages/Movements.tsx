@@ -369,7 +369,7 @@ function MovementDetailsDialog({
           <div>
             <label className="text-sm text-muted-foreground">Notes</label>
             <textarea
-              className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full mt-1 rounded-lg border border-input bg-card/50 px-4 py-2.5 text-sm shadow-inset ring-offset-background placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

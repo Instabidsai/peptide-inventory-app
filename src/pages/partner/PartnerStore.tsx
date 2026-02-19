@@ -532,7 +532,7 @@ export default function PartnerStore() {
                                                 <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 space-y-2">
                                                     <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Send payment via Zelle to:</p>
                                                     <div className="flex items-center gap-2">
-                                                        <code className="flex-1 text-sm font-mono bg-white dark:bg-background rounded px-2 py-1 border">
+                                                        <code className="flex-1 text-sm font-mono bg-white dark:bg-card/50 rounded-lg px-2 py-1 border border-border/60">
                                                             {ZELLE_EMAIL}
                                                         </code>
                                                         <Button variant="outline" size="sm" onClick={copyZelleEmail} className="shrink-0" aria-label="Copy Zelle email address">
@@ -650,7 +650,7 @@ export default function PartnerStore() {
                     </Card>
 
                     {/* Savings summary card */}
-                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 shadow-sm shadow-green-500/5">
+                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 shadow-card">
                         <CardContent className="pt-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Tag className="h-4 w-4 text-green-500" />

@@ -103,7 +103,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
-              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/30 shadow-sm shadow-emerald-500/10">
+              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/30 shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                 <DollarSign className="h-3 w-3" />
                 <span>${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>

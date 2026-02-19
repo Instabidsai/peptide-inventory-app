@@ -614,7 +614,7 @@ export default function Finance() {
                             <CardDescription>Pending payments for inventory orders.</CardDescription>
                         </div>
                         {selectedOrders.size > 0 && (
-                            <Button onClick={() => setIsBulkPayOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+                            <Button onClick={() => setIsBulkPayOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-btn">
                                 Pay Selected ({selectedOrders.size}) - ${selectedTotal.toFixed(2)}
                             </Button>
                         )}

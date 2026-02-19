@@ -418,7 +418,7 @@ function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryIte
 
                     <div className="bg-muted p-3 rounded text-sm space-y-2">
                         {vial.concentration_mg_ml && doseAmount && parseFloat(doseAmount) > 0 && (
-                            <div className="bg-background border rounded p-2 mb-2">
+                            <div className="bg-card/50 border border-border/60 rounded-lg p-2 mb-2">
                                 <Label className="text-xs text-muted-foreground uppercase tracking-wider">Syringe Prep Helper</Label>
                                 <div className="flex justify-between items-baseline mt-1">
                                     <span className="text-sm">Pull to:</span>

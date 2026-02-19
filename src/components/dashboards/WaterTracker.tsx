@@ -128,7 +128,7 @@ export function WaterTracker() {
     };
 
     return (
-        <Card className="shadow-sm bg-card">
+        <Card className="shadow-card bg-card">
             <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Droplets className="h-5 w-5 text-blue-500" />

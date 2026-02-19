@@ -67,7 +67,7 @@ function NetworkTabContent({ repId }: { repId: string }) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Network Strategy</h3>
+                <h3 className="text-lg font-semibold">Network Strategy</h3>
                 <div className="flex gap-2">
                     <Badge variant="outline">Reps: {downline?.length || 0}</Badge>
                     <Badge variant="outline" className="border-blue-500/40 text-blue-400">Clients: {clientNodes.length}</Badge>
@@ -136,7 +136,7 @@ export default function PartnerDetail() {
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Commission Rate</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Commission Rate</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -145,7 +145,7 @@ export default function PartnerDetail() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Partner Tier</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Partner Tier</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -154,7 +154,7 @@ export default function PartnerDetail() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Joined</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Joined</CardTitle>
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>

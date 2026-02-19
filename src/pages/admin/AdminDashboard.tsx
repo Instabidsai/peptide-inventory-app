@@ -513,7 +513,7 @@ export default function AdminDashboard() {
 
             {/* Secondary Stats */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
-                <motion.div variants={staggerItem}><Card className="bg-card border-border">
+                <motion.div variants={staggerItem}><Card className="bg-card border-border/60">
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-around">
                             <Link to="/movements?type=loss" className="group text-center">
@@ -529,7 +529,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card></motion.div>
 
-                <motion.div variants={staggerItem}><Card className="md:col-span-1 bg-card border-border">
+                <motion.div variants={staggerItem}><Card className="md:col-span-1 bg-card border-border/60">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-base">Recent Feedback</CardTitle>
@@ -559,7 +559,7 @@ export default function AdminDashboard() {
 
                 {/* Low Stock Alerts */}
                 {lowStock.length > 0 && (
-                    <Card className="md:col-span-1 bg-card border-border border-amber-500/30">
+                    <Card className="md:col-span-1 bg-card border-border/60 border-amber-500/30">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-base flex items-center gap-2">
@@ -594,7 +594,7 @@ export default function AdminDashboard() {
 
                 {/* Top Sellers */}
                 {topSellers && topSellers.length > 0 && (
-                    <Card className="md:col-span-1 bg-card border-border">
+                    <Card className="md:col-span-1 bg-card border-border/60">
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4 text-green-500" />
@@ -620,7 +620,7 @@ export default function AdminDashboard() {
                     </Card>
                 )}
 
-                <motion.div variants={staggerItem} className="md:col-span-2"><Card className="bg-card border-border">
+                <motion.div variants={staggerItem} className="md:col-span-2"><Card className="bg-card border-border/60">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>

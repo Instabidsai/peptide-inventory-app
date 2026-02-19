@@ -159,7 +159,7 @@ export default function ClientMessages() {
                                         {getTypeIcon(req.type)}
                                     </div>
                                     <div>
-                                        <CardTitle className="text-base font-medium">
+                                        <CardTitle className="text-base font-semibold">
                                             {req.subject || "No Subject"}
                                         </CardTitle>
                                         <CardDescription className="text-xs">

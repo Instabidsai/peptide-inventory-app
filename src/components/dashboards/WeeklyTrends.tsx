@@ -121,7 +121,7 @@ export function WeeklyTrends() {
     if (!weeklyData.chartData || !weeklyData.stats) return null;
 
     return (
-        <Card className="shadow-sm bg-card">
+        <Card className="shadow-card bg-card">
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />

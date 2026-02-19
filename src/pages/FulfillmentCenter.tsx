@@ -669,7 +669,7 @@ export default function FulfillmentCenter() {
 
                                             {/* Notes */}
                                             {order.notes && (
-                                                <div className="bg-amber-500/10 p-3 rounded-md border border-amber-500/20 text-sm">
+                                                <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-sm">
                                                     <strong className="text-amber-400">Note:</strong> {order.notes}
                                                 </div>
                                             )}
@@ -775,7 +775,7 @@ export default function FulfillmentCenter() {
                                         <CardContent className="space-y-4">
                                             {/* Shipping Error */}
                                             {hasError && order.shipping_error && (
-                                                <div className="bg-red-900/20 border border-red-500/40 p-3 rounded-md text-sm text-red-400">
+                                                <div className="bg-red-900/20 border border-red-500/40 p-3 rounded-lg text-sm text-red-400">
                                                     <strong>Error:</strong> {order.shipping_error}
                                                 </div>
                                             )}

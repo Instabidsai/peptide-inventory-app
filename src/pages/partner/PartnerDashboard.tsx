@@ -239,7 +239,7 @@ export default function PartnerDashboard() {
                     onClick={() => setActiveSheet('commissions')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Available Commission</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Available Commission</CardTitle>
                         <Wallet className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -255,7 +255,7 @@ export default function PartnerDashboard() {
                     onClick={() => setActiveSheet('commissions')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Commissions</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Pending Commissions</CardTitle>
                         <Clock className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
@@ -264,11 +264,11 @@ export default function PartnerDashboard() {
                     </CardContent>
                 </Card>
                 <Card
-                    className={`cursor-pointer transition-all duration-300 ${(totalOwed) > 0 ? 'border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/10' : 'border-border hover:bg-muted/30 hover:border-border/60'}`}
+                    className={`cursor-pointer transition-all duration-300 ${(totalOwed) > 0 ? 'border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/10' : 'border-border/60 hover:bg-muted/30 hover:border-border/80'}`}
                     onClick={() => setActiveSheet('owed')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Amount Owed</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Amount Owed</CardTitle>
                         <AlertTriangle className={`h-4 w-4 ${totalOwed > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
                     </CardHeader>
                     <CardContent>
@@ -285,7 +285,7 @@ export default function PartnerDashboard() {
                     onClick={() => setActiveSheet('earnings')}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Lifetime Earnings</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Lifetime Earnings</CardTitle>
                         <DollarSign className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
@@ -295,7 +295,7 @@ export default function PartnerDashboard() {
                 </Card>
                 <Card className="hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">My Network</CardTitle>
+                        <CardTitle className="text-sm font-semibold">My Network</CardTitle>
                         <Users className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
@@ -309,7 +309,7 @@ export default function PartnerDashboard() {
 
             {/* Apply Commission Banner — shown when available commissions AND owed exist */}
             {(stats.available + creditBalance) > 0 && totalOwed > 0 && (
-                <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 shadow-sm shadow-primary/5">
+                <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 shadow-card">
                     <CardContent className="flex items-center justify-between py-4">
                         <div className="flex items-center gap-3">
                             <ArrowRightLeft className="h-5 w-5 text-primary" />
@@ -754,9 +754,9 @@ export default function PartnerDashboard() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Assign To</label>
+                            <label className="text-sm font-semibold">Assign To</label>
                             <select
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="flex h-11 w-full rounded-lg border border-input bg-card/50 px-4 py-2.5 text-sm shadow-inset ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 value={newPerson.assignedTo}
                                 onChange={e => setNewPerson(p => ({ ...p, assignedTo: e.target.value }))}
                             >

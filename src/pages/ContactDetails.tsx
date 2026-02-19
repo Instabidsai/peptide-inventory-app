@@ -743,7 +743,7 @@ export default function ContactDetails() {
                                     </div>
 
                                     {/* Calc Summary - Simplified */}
-                                    <div className="bg-muted p-3 rounded-md text-sm space-y-2">
+                                    <div className="bg-muted p-3 rounded-lg text-sm space-y-2">
                                         <div className="flex items-center gap-2 font-semibold border-b border-border pb-2">
                                             <Calculator className="h-4 w-4" />
                                             <span>Regimen Supply Plan</span>
@@ -893,7 +893,7 @@ export default function ContactDetails() {
                         ) : (householdMembers?.length ?? 0) > 0 ? (
                             <div className="space-y-2">
                                 {householdMembers!.map(member => (
-                                    <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                                    <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-card/50">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                                 <span className="text-xs font-bold text-primary">
@@ -1531,7 +1531,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
                     <div className="grid gap-2 sm:grid-cols-2">
                         {protocol.protocol_supplements?.map((supp) => (
-                            <div key={supp.id} className="relative group border rounded-md p-3 hover:bg-muted/50 transition-colors">
+                            <div key={supp.id} className="relative group border border-border/60 rounded-lg p-3 hover:bg-muted/50 transition-colors">
                                 <div className="flex gap-3">
                                     {supp.supplements?.image_url ? (
                                         <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt={supp.supplements.name} />
@@ -1817,7 +1817,7 @@ function ResourceList({ contactId }: { contactId: string }) {
     return (
         <div className="space-y-2">
             {resources.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-2 border rounded-md bg-muted/50 text-sm">
+                <div key={r.id} className="flex items-center justify-between p-2 border border-border/60 rounded-lg bg-muted/50 text-sm">
                     <div className="flex items-center gap-2 overflow-hidden">
                         {r.type === 'video' ? <FlaskConical className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                         <span className="truncate">{r.title}</span>
@@ -2169,7 +2169,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                         <AccordionContent className="pt-2 pb-4">
                                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                                 {items.map((item) => (
-                                                    <Card key={item.id} className="relative overflow-hidden group border shadow-sm">
+                                                    <Card key={item.id} className="relative overflow-hidden group border border-border/60 shadow-card">
                                                         <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
                                                         {/* Action Menu (Same as before) */}
@@ -2299,7 +2299,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
 
                             {/* If no matching protocol items found */}
                             {(!assignedProtocols || assignedProtocols.every(p => !p.protocol_items?.some((i) => i.peptide_id === linkingItem?.peptide_id))) && (
-                                <div className="text-sm text-amber-400 bg-amber-500/10 p-4 rounded-md border border-amber-500/20">
+                                <div className="text-sm text-amber-400 bg-amber-500/10 p-4 rounded-lg border border-amber-500/20">
                                     No active regimen found for <strong>{linkingItem?.peptide?.name}</strong>.
                                     Please create a regimen for this peptide first.
                                 </div>

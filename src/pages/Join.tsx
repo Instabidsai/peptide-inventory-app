@@ -64,7 +64,7 @@ export default function Join() {
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                     {error && (
-                        <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-md text-center">
+                        <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center">
                             {error}
                         </div>
                     )}
