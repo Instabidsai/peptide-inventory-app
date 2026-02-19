@@ -562,8 +562,34 @@ export default function ClientStore() {
                                                 </div>
                                                 <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
                                                     <div>
-                                                        <span className="text-2xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
-                                                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">{uniqueMatched.length} peptide{uniqueMatched.length !== 1 ? 's' : ''}</p>
+                                                        {(() => {
+                                                            const bundleRetail = matchedPeptides.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
+                                                            const bundleHasDiscount = bundlePrice < bundleRetail && bundleRetail > 0;
+                                                            const bundleDiscountPct = bundleHasDiscount ? Math.round((1 - bundlePrice / bundleRetail) * 100) : 0;
+                                                            const isCustomerBundle = !assignedRep || contact?.type === 'customer';
+                                                            const bundleDiscountLabel = bundleHasDiscount
+                                                                ? isCustomerBundle ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null
+                                                                : null;
+                                                            return (
+                                                                <>
+                                                                    {bundleHasDiscount && (
+                                                                        <div className="mb-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25 inline-block">
+                                                                            <span className="text-sm font-extrabold text-emerald-400">{bundleDiscountPct}% off</span>
+                                                                            {bundleDiscountLabel && (
+                                                                                <span className="text-xs font-semibold text-emerald-400/70 ml-1.5">· {bundleDiscountLabel}</span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex items-baseline gap-2">
+                                                                        <span className="text-2xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
+                                                                        {bundleHasDiscount && (
+                                                                            <span className="text-sm text-muted-foreground/40 line-through">${bundleRetail.toFixed(2)}</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] text-muted-foreground/40 mt-0.5">{uniqueMatched.length} peptide{uniqueMatched.length !== 1 ? 's' : ''}</p>
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     {allInCart ? (
                                                         <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20">
@@ -735,21 +761,28 @@ export default function ClientStore() {
                                         {/* Price + actions row */}
                                         <div className="flex items-end justify-between pt-2 border-t border-white/[0.05]">
                                             <div>
+                                                {hasDiscount && (
+                                                    <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25">
+                                                        <span className="text-sm font-extrabold text-emerald-400">
+                                                            {discountPct}% off
+                                                        </span>
+                                                        {discountLabel && (
+                                                            <span className="text-xs font-semibold text-emerald-400/70 ml-1.5">
+                                                                · {discountLabel}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <div className="flex items-baseline gap-2">
                                                     <p className="text-2xl font-extrabold text-gradient-primary">
                                                         ${price.toFixed(2)}
                                                     </p>
                                                     {hasDiscount && (
-                                                        <span className="text-xs text-muted-foreground/40 line-through">
+                                                        <span className="text-sm text-muted-foreground/40 line-through">
                                                             ${retail.toFixed(2)}
                                                         </span>
                                                     )}
                                                 </div>
-                                                {hasDiscount && (
-                                                    <span className="inline-block mt-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                                                        {discountPct}% off{discountLabel ? ` · ${discountLabel}` : ''}
-                                                    </span>
-                                                )}
                                             </div>
                                             <div className="flex flex-col items-end" onClick={e => e.stopPropagation()}>
                                                 {inCart ? (
@@ -1148,7 +1181,20 @@ export default function ClientStore() {
                                                             )}
                                                             <p className="font-bold text-sm">{p.name}</p>
                                                         </div>
-                                                        <span className="text-sm font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
+                                                        <div className="text-right">
+                                                            <span className="text-sm font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
+                                                            {(() => {
+                                                                const itemRetail = Number(p.retail_price || 0) * qty;
+                                                                const itemHasDiscount = price < itemRetail && itemRetail > 0;
+                                                                const itemPct = itemHasDiscount ? Math.round((1 - price / itemRetail) * 100) : 0;
+                                                                return itemHasDiscount ? (
+                                                                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                                                        <span className="text-[11px] text-muted-foreground/40 line-through">${itemRetail.toFixed(2)}</span>
+                                                                        <span className="text-[11px] font-bold text-emerald-400">{itemPct}% off</span>
+                                                                    </div>
+                                                                ) : null;
+                                                            })()}
+                                                        </div>
                                                     </div>
                                                     {knowledge && (
                                                         <>
@@ -1181,10 +1227,39 @@ export default function ClientStore() {
 
                                     {/* Total + Add All */}
                                     <div className="border-t border-white/[0.06] pt-5 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-muted-foreground/60 text-sm font-medium">Bundle Total</span>
-                                            <span className="text-3xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
-                                        </div>
+                                        {(() => {
+                                            const sheetRetail = matched.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
+                                            const sheetHasDiscount = bundlePrice < sheetRetail && sheetRetail > 0;
+                                            const sheetPct = sheetHasDiscount ? Math.round((1 - bundlePrice / sheetRetail) * 100) : 0;
+                                            const isCustomerSheet = !assignedRep || contact?.type === 'customer';
+                                            const sheetLabel = sheetHasDiscount
+                                                ? isCustomerSheet ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null
+                                                : null;
+                                            return (
+                                                <>
+                                                    {sheetHasDiscount && (
+                                                        <div className="flex justify-center">
+                                                            <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25">
+                                                                <span className="text-base font-extrabold text-emerald-400">{sheetPct}% off</span>
+                                                                {sheetLabel && (
+                                                                    <span className="text-sm font-semibold text-emerald-400/70 ml-2">· {sheetLabel}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground/60 text-sm font-medium">Bundle Total</span>
+                                                        <div className="text-right">
+                                                            <span className="text-3xl font-extrabold text-gradient-primary">${bundlePrice.toFixed(2)}</span>
+                                                            {sheetHasDiscount && (
+                                                                <p className="text-sm text-muted-foreground/40 line-through">${sheetRetail.toFixed(2)}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+
                                         {allInCart ? (
                                             <div className="flex items-center justify-center gap-2.5 py-4 text-emerald-400 font-semibold bg-emerald-500/[0.08] rounded-2xl border border-emerald-500/20">
                                                 <Check className="h-5 w-5" />
@@ -1273,16 +1348,26 @@ export default function ClientStore() {
                                     )}
 
                                     {/* Price */}
-                                    <div className="flex items-baseline gap-3">
-                                        <span className="text-4xl font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
-                                        {hasDiscount && (
-                                            <span className="text-lg text-muted-foreground/40 line-through">${retail.toFixed(2)}</span>
-                                        )}
-                                        {hasDiscount && (
-                                            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                                                Save {Math.round((1 - price / retail) * 100)}%
-                                            </span>
-                                        )}
+                                    <div className="space-y-2">
+                                        {hasDiscount && (() => {
+                                            const detailPct = Math.round((1 - price / retail) * 100);
+                                            const isCustomerDetail = !assignedRep || contact?.type === 'customer';
+                                            const detailLabel = isCustomerDetail ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null;
+                                            return (
+                                                <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25 inline-flex items-center">
+                                                    <span className="text-lg font-extrabold text-emerald-400">{detailPct}% off</span>
+                                                    {detailLabel && (
+                                                        <span className="text-sm font-semibold text-emerald-400/70 ml-2">· {detailLabel}</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                        <div className="flex items-baseline gap-3">
+                                            <span className="text-4xl font-extrabold text-gradient-primary">${price.toFixed(2)}</span>
+                                            {hasDiscount && (
+                                                <span className="text-lg text-muted-foreground/40 line-through">${retail.toFixed(2)}</span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Add to cart / quantity */}
