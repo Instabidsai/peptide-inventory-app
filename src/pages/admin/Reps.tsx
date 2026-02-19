@@ -366,8 +366,7 @@ export default function Reps() {
                                                         }
                                                     </TableCell>
                                                 </TableRow>,
-                                                ...children.flatMap(child => renderRow(child, depth + 1)),
-                                                // Render customer contacts as leaf nodes under this partner
+                                                // Direct customers listed FIRST (blue) right under this partner
                                                 ...clients.map(client => (
                                                     <TableRow key={`client-${client.id}`}>
                                                         <TableCell>
@@ -409,7 +408,9 @@ export default function Reps() {
                                                         <TableCell></TableCell>
                                                         <TableCell className="text-blue-500/70 text-sm">{rep.full_name}</TableCell>
                                                     </TableRow>
-                                                ))
+                                                )),
+                                                // Then child partners (white indentation) with their own subtrees
+                                                ...children.flatMap(child => renderRow(child, depth + 1)),
                                             ];
                                         };
 

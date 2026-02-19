@@ -54,10 +54,14 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
     const style = getTierStyle(node.partner_tier);
     const isClient = node.isClient === true;
 
-    // Find direct children
-    const children = allNodes.filter(
-        n => n.parent_rep_id === node.id
-    );
+    // Find direct children — clients (blue) listed first, then partner downline
+    const children = allNodes
+        .filter(n => n.parent_rep_id === node.id)
+        .sort((a, b) => {
+            if (a.isClient && !b.isClient) return -1;
+            if (!a.isClient && b.isClient) return 1;
+            return 0;
+        });
     const hasChildren = children.length > 0;
 
     const handleClick = () => {

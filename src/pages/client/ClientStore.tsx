@@ -251,8 +251,13 @@ export default function ClientStore() {
         enabled: !!contact?.id,
     });
 
-    // Fetch avg lot costs for cost_plus pricing (only if rep uses cost_plus mode)
-    const repPricingMode = assignedRep?.pricing_mode || 'percentage';
+    // Determine pricing profile: partners use their OWN profile settings,
+    // customers use their own price_multiplier. assignedRep is for commission tracking only.
+    const isPartner = contact?.type === 'partner';
+    const pricingProfile = isPartner ? authProfile : assignedRep;
+    const pricingMode = pricingProfile?.pricing_mode || 'percentage';
+
+    // Fetch avg lot costs for cost-based pricing (cost_plus or cost_multiplier)
     const { data: lotCosts } = useQuery({
         queryKey: ['client_lot_costs'],
         queryFn: async () => {
@@ -274,21 +279,24 @@ export default function ClientStore() {
             });
             return result;
         },
-        enabled: !!assignedRep && (repPricingMode === 'cost_plus' || repPricingMode === 'cost_multiplier'),
+        enabled: isPartner && (pricingMode === 'cost_plus' || pricingMode === 'cost_multiplier'),
     });
 
-    // Calculate client price: customers get their own discount; partners get rep's pricing model
+    // Calculate client price:
+    // - Customers: retail × their own price_multiplier (e.g. 0.80 = 20% off)
+    // - Partners: use their OWN profile's pricing_mode / cost_plus_markup / price_multiplier
     const getClientPrice = (peptide: { id: string; retail_price?: number | null }): number => {
         const retail = Number(peptide.retail_price || 0);
-        // Regular customers: use their own price_multiplier (e.g. 0.80 = 20% off)
-        if (!assignedRep || contact?.type === 'customer') {
+
+        if (!isPartner) {
             const customerMultiplier = Number(authProfile?.price_multiplier) || 1.0;
             return Math.round(retail * customerMultiplier * 100) / 100;
         }
 
-        const mode = assignedRep.pricing_mode || 'percentage';
-        const multiplier = Number(assignedRep.price_multiplier) || 1.0;
-        const markup = Number(assignedRep.cost_plus_markup) || 0;
+        // Partner pricing — from their OWN profile
+        const mode = pricingProfile?.pricing_mode || 'percentage';
+        const multiplier = Number(pricingProfile?.price_multiplier) || 1.0;
+        const markup = Number(pricingProfile?.cost_plus_markup) || 0;
 
         if (mode === 'cost_plus' && lotCosts) {
             const avgCost = lotCosts[peptide.id] || 0;
@@ -566,9 +574,9 @@ export default function ClientStore() {
                                                             const bundleRetail = matchedPeptides.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
                                                             const bundleHasDiscount = bundlePrice < bundleRetail && bundleRetail > 0;
                                                             const bundleDiscountPct = bundleHasDiscount ? Math.round((1 - bundlePrice / bundleRetail) * 100) : 0;
-                                                            const isCustomerBundle = !assignedRep || contact?.type === 'customer';
+                                                            const isCustomerBundle = !isPartner;
                                                             const bundleDiscountLabel = bundleHasDiscount
-                                                                ? isCustomerBundle ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null
+                                                                ? isCustomerBundle ? 'Friends & Family' : pricingMode === 'cost_plus' ? 'Preferred Pricing' : null
                                                                 : null;
                                                             return (
                                                                 <>
@@ -683,11 +691,11 @@ export default function ClientStore() {
                             const hasDiscount = price < retail;
                             const discountPct = hasDiscount ? Math.round((1 - price / retail) * 100) : 0;
                             // Determine discount label based on pricing mode
-                            const isCustomer = !assignedRep || contact?.type === 'customer';
+                            const isCustomer = !isPartner;
                             const discountLabel = hasDiscount
                                 ? isCustomer
                                     ? 'Friends & Family'
-                                    : repPricingMode === 'cost_plus'
+                                    : pricingMode === 'cost_plus'
                                         ? 'Preferred Pricing'
                                         : null // cost_multiplier or percentage — just show "X% off"
                                 : null;
@@ -1231,9 +1239,9 @@ export default function ClientStore() {
                                             const sheetRetail = matched.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
                                             const sheetHasDiscount = bundlePrice < sheetRetail && sheetRetail > 0;
                                             const sheetPct = sheetHasDiscount ? Math.round((1 - bundlePrice / sheetRetail) * 100) : 0;
-                                            const isCustomerSheet = !assignedRep || contact?.type === 'customer';
+                                            const isCustomerSheet = !isPartner;
                                             const sheetLabel = sheetHasDiscount
-                                                ? isCustomerSheet ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null
+                                                ? isCustomerSheet ? 'Friends & Family' : pricingMode === 'cost_plus' ? 'Preferred Pricing' : null
                                                 : null;
                                             return (
                                                 <>
@@ -1351,8 +1359,8 @@ export default function ClientStore() {
                                     <div className="space-y-2">
                                         {hasDiscount && (() => {
                                             const detailPct = Math.round((1 - price / retail) * 100);
-                                            const isCustomerDetail = !assignedRep || contact?.type === 'customer';
-                                            const detailLabel = isCustomerDetail ? 'Friends & Family' : repPricingMode === 'cost_plus' ? 'Preferred Pricing' : null;
+                                            const isCustomerDetail = !isPartner;
+                                            const detailLabel = isCustomerDetail ? 'Friends & Family' : pricingMode === 'cost_plus' ? 'Preferred Pricing' : null;
                                             return (
                                                 <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25 inline-flex items-center">
                                                     <span className="text-lg font-extrabold text-emerald-400">{detailPct}% off</span>
