@@ -29,7 +29,6 @@ interface Reply {
     is_internal: boolean;
     sender?: {
         full_name: string | null;
-        role: string;
     };
 }
 
@@ -55,7 +54,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                 .from('request_replies')
                 .select(`
                     *,
-                    sender:profiles!user_id(full_name, role)
+                    sender:profiles!request_replies_profile_fk(full_name)
                 `)
                 .eq('request_id', requestId)
                 .order('created_at', { ascending: true });
@@ -70,7 +69,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
     const { data: requestContext } = useQuery({
         queryKey: ['request-details', requestId],
         queryFn: async () => {
-            const { data } = await supabase.from('client_requests').select('context_type, context_id').eq('id', requestId).single();
+            const { data } = await supabase.from('client_requests').select('user_id, context_type, context_id').eq('id', requestId).single();
             return data;
         },
         enabled: !!requestId
@@ -164,7 +163,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
 
                     {replies?.map((reply) => {
                         const isMe = reply.user_id === user?.id;
-                        const isFromAdmin = reply.sender?.role !== 'customer'; // Assuming roles: customer vs admin/employee
+                        const isFromAdmin = requestContext?.user_id ? reply.user_id !== requestContext.user_id : false;
 
                         // Hide internal notes from clients
                         if (reply.is_internal && userRole === 'client') return null;

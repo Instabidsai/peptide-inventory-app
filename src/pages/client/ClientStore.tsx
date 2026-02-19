@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
@@ -50,6 +51,7 @@ import {
     Syringe,
     Clock,
     Repeat,
+    MessageSquare,
 } from 'lucide-react';
 import { PROTOCOL_TEMPLATES, PROTOCOL_KNOWLEDGE, lookupKnowledge } from '@/data/protocol-knowledge';
 import type { ProtocolTemplate } from '@/data/protocol-knowledge';
@@ -200,6 +202,7 @@ export default function ClientStore() {
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
+    const navigate = useNavigate();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
@@ -1077,6 +1080,21 @@ export default function ClientStore() {
                 </motion.div>
             )}
             </AnimatePresence>
+
+            {/* Got questions? CTA */}
+            <div
+                onClick={() => navigate('/messages')}
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500/[0.08] to-purple-500/[0.08] border border-blue-400/[0.12] cursor-pointer hover:border-blue-400/[0.25] transition-all group"
+            >
+                <div className="h-9 w-9 rounded-xl bg-blue-500/[0.12] flex items-center justify-center shrink-0 group-hover:bg-blue-500/[0.2] transition-colors">
+                    <MessageSquare className="h-4 w-4 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground/90">Got questions?</p>
+                    <p className="text-xs text-muted-foreground/60">Send us a message — we're here to help.</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-blue-400/60 transition-colors shrink-0" />
+            </div>
 
             {/* Info card */}
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">

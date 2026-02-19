@@ -29,7 +29,7 @@ export default function AdminRequests() {
                 .from('client_requests')
                 .select(`
             *,
-            profile:user_id(full_name, email),
+            profile:profiles!client_requests_profile_fk(full_name, email),
             peptide:peptides(name, id)
         `)
                 .order('created_at', { ascending: false });
