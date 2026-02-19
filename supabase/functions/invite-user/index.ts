@@ -2,14 +2,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const VERSION = "1.4.0"; // Persistent Link Storage
+const VERSION = "1.5.0"; // Optimized user lookup + CORS
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
 }
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -27,16 +35,9 @@ serve(async (req) => {
 
         console.log(`[${VERSION}] Processing invite for: ${email} as ${role || 'client'}`)
 
-        // STRATEGY: Scanner-Proof Claim Token
-        // 1. Generate a Safe Token (UUID)
-        // 2. Save it to the Contact with Expiry
-        // 3. Send USER a link to /join?token=...
-        // 4. User clicks -> /join calls exchange-token -> Gets real Magic Link
-
         const claimToken = crypto.randomUUID();
-        // 7 Day Expiry
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        const baseUrl = redirect_origin || Deno.env.get('PUBLIC_SITE_URL') || 'https://app.thepeptideai.com';
+        const baseUrl = redirect_origin || Deno.env.get('PUBLIC_SITE_URL') || '';
         const safeLink = `${baseUrl}/join?token=${claimToken}`;
 
         // Update Contact with Token
@@ -45,75 +46,51 @@ serve(async (req) => {
             .update({
                 claim_token: claimToken,
                 claim_token_expires_at: expiresAt,
-                invite_link: safeLink, // Save safe link for reference
+                invite_link: safeLink,
                 tier: tier || 'family'
             })
             .eq('id', contact_id);
 
         if (updateError) {
-            // Non-fatal: claim token is for invite links, not critical for user creation
             console.warn('Claim token update failed (non-fatal):', JSON.stringify(updateError));
         }
 
-        // We also want to ensure the user exists in Auth, even if we don't log them in yet.
-        // This ensures the exchange-step doesn't have to create users (which is slower).
-        // Try to get user by email
-        const { data: userList } = await supabaseClient.auth.admin.listUsers();
-        // Note: listUsers is paginated, relying on exact email search is better if available, 
-        // but createUser is idempotent-ish if we handle error.
-
-        // Actually, easiest way: Try to create. If exists, good.
-        const { error: createError } = await supabaseClient.auth.admin.createUser({
+        // Create user if not exists — createUser returns the user on success,
+        // or errors with "already registered" if they exist already.
+        const { data: createData, error: createError } = await supabaseClient.auth.admin.createUser({
             email: email,
             email_confirm: true,
             user_metadata: { role: role || 'client' }
         });
 
-        if (createError && !createError.message?.includes('already registered')) {
-            console.error('User creation warning:', createError);
-            // proceed anyway, maybe they exist
+        let userId: string | undefined;
+
+        if (createData?.user) {
+            // New user created successfully
+            userId = createData.user.id;
+        } else if (createError?.message?.includes('already registered')) {
+            // User already exists — look up by email using admin API with filter
+            // listUsers supports page/perPage but no email filter, so we use a single page lookup
+            const { data: userList } = await supabaseClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            const found = userList?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+            if (found) userId = found.id;
+        } else if (createError) {
+            console.error('User creation error:', createError);
         }
 
-        // If parent_rep_id is provided, we need to link the new user's profile to it.
-        if (parent_rep_id) {
-            // 1. Get the user ID (either from creation or lookup)
-            const { data: userData } = await supabaseClient.auth.admin.listUsers();
-            // This is inefficient but we need the ID. Ideally we use the ID returned from createUser if success.
-            // Let's optimize: if createError is null, we have the ID.
+        // Link to parent rep if provided
+        if (parent_rep_id && userId) {
+            console.log(`Linking User ${userId} to Parent Rep ${parent_rep_id}`);
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .update({
+                    parent_rep_id: parent_rep_id,
+                    role: role || 'sales_rep',
+                    partner_tier: 'standard'
+                })
+                .eq('user_id', userId);
 
-            let userId: string | undefined;
-
-            // First, try to get ID from list by email to be sure
-            // Because createUser response structure is { data: { user: ... } }
-            // Let's actually use the response from createUser if possible, but listUsers is safer for "already exists" case.
-            // Actually, we can just search precisely.
-            const { data: users } = await supabaseClient.from('auth.users').select('id').eq('email', email).maybeSingle();
-            // wait, we can't select from auth.users via generic client easily without service role + special config sometimes.
-            // Best to use auth admin api
-
-            // Re-fetch strict
-            const { data: foundUsers, error: listError } = await supabaseClient.auth.admin.listUsers();
-            // listUsers doesn't filter by email in args? No.
-            // We have to iterate.
-            const specificUser = foundUsers?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-            if (specificUser) {
-                userId = specificUser.id;
-                console.log(`Linking User ${userId} to Parent Rep ${parent_rep_id}`);
-
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .update({
-                        parent_rep_id: parent_rep_id,
-                        role: role || 'sales_rep', // Ensure role is set if upgrading
-                        partner_tier: 'standard' // Default tier
-                    })
-                    .eq('user_id', userId); // profiles.user_id matches auth.users.id
-
-                if (profileError) console.error("Failed to link parent rep:", profileError);
-            } else {
-                console.error("User created/invited but not found for linking.");
-            }
+            if (profileError) console.error("Failed to link parent rep:", profileError);
         }
 
         return new Response(
@@ -137,7 +114,7 @@ serve(async (req) => {
                 error: error.message
             }),
             {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
                 status: 200,
             },
         )

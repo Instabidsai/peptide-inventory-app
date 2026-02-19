@@ -3,17 +3,41 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import OpenAI from "https://esm.sh/openai@4.28.0";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
+        // Auth: require valid JWT
+        const authHeader = req.headers.get('Authorization') ?? '';
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        );
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(
+            authHeader.replace('Bearer ', '')
+        );
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
         const { document_id } = await req.json();
         if (!document_id) throw new Error('document_id required');
 
@@ -35,6 +59,14 @@ serve(async (req) => {
 
         if (docError || !doc) throw new Error('Document not found');
 
+        // Verify document ownership
+        if (doc.user_id !== user.id) {
+            return new Response(JSON.stringify({ error: 'Forbidden' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            });
+        }
+
         // Mark as processing
         await supabase.from('ai_documents')
             .update({ status: 'processing' })
@@ -53,7 +85,6 @@ serve(async (req) => {
             .some(t => doc.file_type.includes(t));
 
         if (isImage || doc.file_type.includes('pdf')) {
-            // Convert to base64
             const arrayBuffer = await fileData.arrayBuffer();
             const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
             const mimeType = doc.file_type.includes('pdf') ? 'application/pdf' : `image/${doc.file_type.split('/').pop() || 'jpeg'}`;
@@ -206,7 +237,7 @@ serve(async (req) => {
         console.error('Error:', error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }
 });

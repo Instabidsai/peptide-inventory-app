@@ -7,6 +7,7 @@ import { useClientProfile } from '@/hooks/use-client-profile';
 import { useValidatedCheckout } from '@/hooks/use-checkout';
 import { useCreateValidatedOrder } from '@/hooks/use-sales-orders';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +74,7 @@ import {
 
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
-const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
+// Zelle email loaded from tenant config in component
 const VENMO_HANDLE = 'PureUSPeptide';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -201,6 +202,7 @@ export default function ClientStore() {
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
+    const { zelle_email: ZELLE_EMAIL } = useTenantConfig();
     const navigate = useNavigate();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');

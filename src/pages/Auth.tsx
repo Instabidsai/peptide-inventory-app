@@ -13,6 +13,7 @@ import { Loader2, FlaskConical, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { linkReferral, storeSessionReferral } from '@/lib/link-referral';
 
 const loginSchema = z.object({
@@ -233,6 +234,7 @@ export default function Auth() {
   const { toast } = useToast();
   const referralHandled = useRef(false);
   const linkingInProgress = useRef(false);
+  const { brand_name: brandName } = useTenantConfig();
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
@@ -494,7 +496,7 @@ export default function Auth() {
                     : 'Create an account to access exclusive partner pricing'
                   : mode === 'login'
                     ? 'Sign in to your personalized peptide protocol'
-                    : 'Get started with ThePeptideAI'}
+                    : `Get started with ${brandName}`}
               </CardDescription>
             </motion.div>
           </CardHeader>
@@ -585,7 +587,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground/50 mt-4">
-          <span className="font-semibold text-gradient-primary">ThePeptideAI</span>
+          <span className="font-semibold text-gradient-primary">{brandName}</span>
           <span className="block mt-0.5 text-muted-foreground/30">Your AI-Powered Peptide Protocol</span>
         </p>
       </motion.div>

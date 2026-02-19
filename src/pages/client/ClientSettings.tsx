@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Loader2, LogOut, User, Lock, ChevronRight, Shield } from 'lucide-react';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { useNavigate } from 'react-router-dom';
 
 const profileSchema = z.object({
@@ -26,6 +27,7 @@ export default function ClientSettings() {
     const { toast } = useToast();
     const navigate = useNavigate();
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+    const { brand_name: brandName } = useTenantConfig();
 
     const profileForm = useForm<ProfileFormData>({
         resolver: zodResolver(profileSchema),
@@ -173,7 +175,7 @@ export default function ClientSettings() {
             </div>
 
             <p className="text-center text-[11px] text-muted-foreground/30 tracking-wide">
-                ThePeptideAI
+                {brandName}
             </p>
         </motion.div>
     );

@@ -28,11 +28,11 @@ if (!SHIPPO_API_KEY || SHIPPO_API_KEY === 'shippo_test_REPLACE_ME') {
 }
 
 const FROM_ADDRESS = {
-    name: process.env.SHIP_FROM_NAME || 'NextGen Research Labs',
-    street1: process.env.SHIP_FROM_STREET || '2432 SW 12th St',
-    city: process.env.SHIP_FROM_CITY || 'Deerfield Beach',
-    state: process.env.SHIP_FROM_STATE || 'FL',
-    zip: process.env.SHIP_FROM_ZIP || '33442',
+    name: process.env.SHIP_FROM_NAME || '',
+    street1: process.env.SHIP_FROM_STREET || '',
+    city: process.env.SHIP_FROM_CITY || '',
+    state: process.env.SHIP_FROM_STATE || '',
+    zip: process.env.SHIP_FROM_ZIP || '',
     country: process.env.SHIP_FROM_COUNTRY || 'US',
     phone: process.env.SHIP_FROM_PHONE || '',
     email: process.env.SHIP_FROM_EMAIL || '',

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw, LogOut, FlaskConical } from 'lucide-react';
 import { linkReferral, consumeSessionReferral, storeSessionReferral } from '@/lib/link-referral';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 export default function Onboarding() {
   const [isLinking, setIsLinking] = useState(false);
@@ -15,6 +16,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const linkAttempted = useRef(false);
+  const { brand_name: brandName } = useTenantConfig();
 
   const attemptLink = (ref: { refId: string; role: 'customer' | 'partner' }) => {
     if (!user) return;
@@ -135,7 +137,7 @@ export default function Onboarding() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            Welcome to ThePeptideAI
+            Welcome to {brandName}
           </CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             {user?.email
@@ -171,7 +173,7 @@ export default function Onboarding() {
           </Button>
 
           <p className="text-center text-xs text-muted-foreground/50 mt-4">
-            ThePeptideAI
+            {brandName}
           </p>
         </CardContent>
       </Card>

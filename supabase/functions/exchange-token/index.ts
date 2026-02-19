@@ -1,12 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
 }
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -39,7 +47,7 @@ serve(async (req) => {
         }
 
         // 2. Generate the REAL Magic Link (One-Time Use)
-        const baseUrlRaw = Deno.env.get('PUBLIC_SITE_URL') || 'https://app.thepeptideai.com';
+        const baseUrlRaw = Deno.env.get('PUBLIC_SITE_URL') || '';
 
         // Use URL constructor for safety (Fixes the "concatenation" bug)
         // If baseUrlRaw is "https://app...", this ensures we get "https://app.../update-password"
@@ -57,14 +65,11 @@ serve(async (req) => {
 
         if (linkError) throw linkError
 
-        // 3. Return the Magic Link with DEBUG info
+        // 3. Return the Magic Link
         return new Response(
             JSON.stringify({
                 success: true,
                 url: linkData.properties.action_link,
-                // Debug fields to show in the "Green Box"
-                debug_base_url: baseUrlRaw,
-                debug_computed_redirect: redirectUrl
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )

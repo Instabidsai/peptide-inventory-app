@@ -116,7 +116,7 @@ function escapeHtml(str: string): string {
 
 // ── HTML Generator ─────────────────────────────────────────────
 
-export function generateProtocolHtml({ items, clientName, orgName = 'NextGen Research Labs' }: GeneratorOptions): string {
+export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Admin' }: GeneratorOptions): string {
     const itemsHtml = items.map((item, idx) => {
         const ml = calcMl(item);
         const units = calcUnits(ml);
@@ -259,9 +259,9 @@ export function generateProtocolHtml({ items, clientName, orgName = 'NextGen Res
 
 // ── Plain Text Generator (for mailto:) ─────────────────────────
 
-export function generateProtocolPlainText({ items, clientName, orgName = 'NextGen Research Labs' }: GeneratorOptions): string {
+export function generateProtocolPlainText({ items, clientName, orgName = 'Peptide Admin' }: GeneratorOptions): string {
     const lines: string[] = [];
-    lines.push('NEXT GEN PEPTIDE PROTOCOLS');
+    lines.push(`${orgName.toUpperCase()} PEPTIDE PROTOCOLS`);
     lines.push('');
     lines.push('Disclaimer: The following information is for educational purposes only and does not constitute medical advice. Always consult with a qualified healthcare professional before beginning any peptide therapy.');
     lines.push('');

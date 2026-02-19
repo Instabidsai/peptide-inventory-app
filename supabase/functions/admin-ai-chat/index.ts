@@ -3,13 +3,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
-const SYSTEM_PROMPT = `You are the admin assistant for NextGen Research Labs peptide inventory system. You have FULL access to every admin feature in the app.
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    };
+}
+
+const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide Admin';
+
+const SYSTEM_PROMPT = `You are the admin assistant for ${BRAND_NAME} peptide inventory system. You have FULL access to every admin feature in the app.
 
 You can help with:
 - CONTACTS: Search, create, update contacts/clients
@@ -641,6 +649,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   try {

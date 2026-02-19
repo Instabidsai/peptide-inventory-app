@@ -3,12 +3,20 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import OpenAI from "https://esm.sh/openai@4.86.1";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
-const SYSTEM_PROMPT = `You are Peptide AI — an expert peptide protocol consultant built into PeptideHealth.
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
+
+const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide AI';
+
+const SYSTEM_PROMPT = `You are ${BRAND_NAME} — an expert peptide protocol consultant.
 
 ## Who You Are
 You are a knowledgeable, proactive research partner who helps users optimize their peptide protocols. You actively cross-reference symptoms, bloodwork, and side effects against what they're running. You search for studies, mechanisms of action, and interactions when you need deeper information. You remember everything they tell you.
@@ -25,6 +33,8 @@ You are a knowledgeable, proactive research partner who helps users optimize the
 Only flag genuinely concerning health markers — severely elevated blood pressure, signs of serious adverse reactions, symptoms suggesting emergency medical attention. For routine protocol questions, dosing adjustments, and general health optimization, you ARE the consultant. Help them directly.`;
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }

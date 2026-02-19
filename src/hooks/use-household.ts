@@ -84,9 +84,7 @@ export function useInviteHouseholdMember() {
                     email,
                     contact_id: contactId,
                     tier: 'family',
-                    redirect_origin: window.location.origin.includes('localhost')
-                        ? 'https://app.thepeptideai.com'
-                        : window.location.origin,
+                    redirect_origin: window.location.origin,
                 },
             });
             if (error) throw error;

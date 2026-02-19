@@ -326,9 +326,7 @@ export default function ContactDetails() {
                     tier: inviteTier,
                     // STRATEGY: "Prod-or-Bust"
                     // Force redirect to the production domain for consistency.
-                    redirect_origin: window.location.origin.includes('localhost')
-                        ? `${window.location.origin}/update-password`
-                        : 'https://app.thepeptideai.com/update-password'
+                    redirect_origin: `${window.location.origin}/update-password`
                 }
             });
 

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 import {
     ShoppingCart,
     Package,
@@ -49,7 +50,7 @@ interface CartItem {
 //   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
-const ZELLE_EMAIL = 'admin@nextgenresearchlabs.com';
+// Zelle email loaded from tenant config in component
 const VENMO_HANDLE = 'PureUSPeptide';
 
 export default function PartnerStore() {
@@ -57,6 +58,7 @@ export default function PartnerStore() {
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
+    const { zelle_email: ZELLE_EMAIL } = useTenantConfig();
     const storageKey = `partner_cart_${user?.id || 'anon'}`;
 
     const [cart, setCart] = useState<CartItem[]>(() => {

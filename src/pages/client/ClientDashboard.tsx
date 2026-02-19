@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
 import { WeekStrip } from '@/components/regimen/WeekStrip';
 import { useVialActions } from '@/hooks/use-vial-actions';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { isDoseDay } from '@/types/regimen';
 import { calculateDoseUnits } from '@/utils/dose-utils';
 
@@ -46,6 +47,7 @@ function getCurrentTimeWindow(): TimeWindow {
 
 function ClientDashboardContent() {
     usePageTitle('My Dashboard');
+    const { brand_name: brandName } = useTenantConfig();
     const { data: contact, isLoading: isLoadingContact, isError: isContactError, refetch: refetchContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
@@ -363,7 +365,7 @@ function ClientDashboardContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                 >
-                    <h2 className="text-2xl font-bold tracking-tight">Welcome to <span className="text-gradient-primary">ThePeptideAI</span></h2>
+                    <h2 className="text-2xl font-bold tracking-tight">Welcome to <span className="text-gradient-primary">{brandName}</span></h2>
                     <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
                         Your account is ready! Your personalized protocol is being prepared by your provider. In the meantime, explore or chat with our AI assistant.
                     </p>

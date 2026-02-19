@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FloatingHelpWidget } from '@/components/client/FloatingHelpWidget';
@@ -15,6 +16,7 @@ export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { userRole, user, profile } = useAuth();
+    const { brand_name: brandName } = useTenantConfig();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
     const canGoBack = isAdmin || isSalesRep;
@@ -78,7 +80,7 @@ export function ClientLayout() {
                     <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/15">
                         <Dna className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="font-bold text-lg tracking-tight text-gradient-primary">ThePeptideAI</span>
+                    <span className="font-bold text-lg tracking-tight text-gradient-primary">{brandName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}

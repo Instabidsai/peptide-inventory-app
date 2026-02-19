@@ -87,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- Build PsiFi checkout session ---
-        const siteBase = process.env.PUBLIC_SITE_URL || 'https://app.thepeptideai.com';
+        const siteBase = process.env.PUBLIC_SITE_URL || '';
 
         // Since this is a HashRouter SPA, success/cancel URLs use hash fragments
         const successUrl = `${siteBase}/#/checkout/success?orderId=${orderId}`;

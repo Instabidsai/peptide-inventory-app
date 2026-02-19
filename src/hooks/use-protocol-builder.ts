@@ -13,6 +13,7 @@ import {
     calcUnits,
 } from '@/lib/protocol-html-generator';
 import { toast } from 'sonner';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 // ── Hook ───────────────────────────────────────────────────────
 
@@ -50,7 +51,8 @@ export function useProtocolBuilder() {
     const clientName = selectedContact?.name?.split(' ')[0] || '';
     const clientFullName = selectedContact?.name || '';
     const clientEmail = selectedContact?.email || '';
-    const orgName = organization?.name || 'NextGen Research Labs';
+    const { admin_brand_name } = useTenantConfig();
+    const orgName = organization?.name || admin_brand_name;
 
     // ── Enrichment: peptide → EnrichedProtocolItem ─────────────
 
