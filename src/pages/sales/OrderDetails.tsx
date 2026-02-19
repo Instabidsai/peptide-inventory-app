@@ -78,7 +78,7 @@ export default function OrderDetails() {
         const body = JSON.stringify({ url: labelUrl });
         const headers = { 'Content-Type': 'application/json' };
         try {
-            // Try HTTPS first (required when web app is on HTTPS), then HTTP fallback
+            // Try HTTPS first (trusted mkcert cert), then HTTP fallbacks
             let res: Response | null = null;
             for (const base of ['https://localhost:9111', 'http://localhost:9111', 'http://localhost:9112']) {
                 try {
@@ -658,7 +658,7 @@ export default function OrderDetails() {
                                 </Button>
                             )}
 
-                            {/* Print label — sends directly to D520 printer via local print service */}
+                            {/* Print label directly to D520 via local print service */}
                             {order.label_url && !['delivered'].includes(order.shipping_status) && (
                                 <Button
                                     variant="default"
@@ -669,6 +669,24 @@ export default function OrderDetails() {
                                 >
                                     <Printer className="mr-2 h-4 w-4" />
                                     {isPrinting ? 'Printing...' : 'Print to D520'}
+                                </Button>
+                            )}
+
+                            {/* Confirm Printed - updates shipping_status to 'printed' */}
+                            {order.shipping_status === 'label_created' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-indigo-500/40 text-indigo-400"
+                                    disabled={updateOrder.isPending}
+                                    onClick={() => {
+                                        updateOrder.mutate(
+                                            { id: order.id, shipping_status: 'printed' },
+                                            { onSuccess: () => toast({ title: 'Label marked as printed' }) }
+                                        );
+                                    }}
+                                >
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Confirm Label Printed
                                 </Button>
                             )}
 
