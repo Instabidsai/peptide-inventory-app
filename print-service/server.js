@@ -54,8 +54,9 @@ function downloadFile(url) {
 // Print via SumatraPDF silently to the named printer
 function printPdf(filePath, printerName) {
   return new Promise((resolve, reject) => {
-    // "fit,landscape" scales to fit AND rotates content to match label orientation
-    const args = ['-print-to', printerName, '-print-settings', 'fit,landscape', '-silent', filePath];
+    // Shipping labels are 4x6 portrait PDFs — print as-is without rotation or scaling
+    // "portrait" prevents rotation, "noscale" prints at actual size (1:1 for 4x6 on 4x6 label stock)
+    const args = ['-print-to', printerName, '-print-settings', 'noscale,portrait', '-silent', filePath];
     execFile(SUMATRA, args, { timeout: 30000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(`SumatraPDF error: ${err.message}`));
       resolve({ stdout, stderr });
