@@ -118,14 +118,14 @@ export default function ClientRegimen() {
 
         fetchData();
         return () => { mounted = false; };
-    }, [contact, protocols, profileLoading]);
+    }, [contact, protocols, profileLoading, inventoryOwnerId]);
 
     // Handlers
     const handleAddVial = async (data: Partial<ClientInventoryItem>) => {
         if (!contact) return;
 
         const { error } = await supabase.from('client_inventory').insert({
-            contact_id: contact.id,
+            contact_id: inventoryOwnerId || contact.id,
             peptide_id: data.peptide_id,
             batch_number: data.batch_number || null,
             vial_size_mg: Number(data.vial_size_mg),

@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
-import { useCheckout } from '@/hooks/use-checkout';
-import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
+import { useValidatedCheckout } from '@/hooks/use-checkout';
+import { useCreateValidatedOrder } from '@/hooks/use-sales-orders';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -197,8 +197,8 @@ interface CartItem {
 export default function ClientStore() {
     const { user, userRole, profile: authProfile } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
-    const checkout = useCheckout();
-    const createOrder = useCreateSalesOrder();
+    const checkout = useValidatedCheckout();
+    const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
@@ -274,7 +274,7 @@ export default function ClientStore() {
             });
             return result;
         },
-        enabled: !!assignedRep && repPricingMode === 'cost_plus',
+        enabled: !!assignedRep && (repPricingMode === 'cost_plus' || repPricingMode === 'cost_multiplier'),
     });
 
     // Calculate client price: customers get their own discount; partners get rep's pricing model
@@ -357,40 +357,22 @@ export default function ClientStore() {
         setTimeout(() => setCopiedZelle(false), 2000);
     };
 
-    // Card checkout — PsiFi payment redirect
+    // Card checkout — validated server-side pricing + PsiFi payment redirect
     const handleCardCheckout = async () => {
         if (!user?.id) return;
         if (cart.length === 0) return;
 
-        const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('id, org_id')
-            .eq('user_id', user.id)
-            .single();
-
-        if (!userProfile) return;
-        const orgId = userProfile.org_id;
-        if (!orgId) return;
-
-        const repId = assignedRep ? assignedRep.id : null;
-
         checkout.mutate({
-            org_id: orgId,
-            client_id: contact?.id || null,
-            rep_id: repId,
-            total_amount: cartTotal,
-            shipping_address: shippingAddress || undefined,
-            notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
             items: cart.map(i => ({
                 peptide_id: i.peptide_id,
-                name: i.name,
                 quantity: i.quantity,
-                unit_price: i.price,
             })),
+            shipping_address: shippingAddress || undefined,
+            notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
         });
     };
 
-    // Non-card checkout — creates order as awaiting payment
+    // Non-card checkout — server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
         if (!contact?.id || cart.length === 0) return;
         setPlacingOrder(true);
@@ -398,12 +380,10 @@ export default function ClientStore() {
         const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
 
         try {
-            await createOrder.mutateAsync({
-                client_id: contact.id,
+            const result = await createOrder.mutateAsync({
                 items: cart.map(i => ({
                     peptide_id: i.peptide_id,
                     quantity: i.quantity,
-                    unit_price: i.price,
                 })),
                 shipping_address: shippingAddress || undefined,
                 notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}. Payment via ${methodLabel}.\n${notes}`,
@@ -412,7 +392,7 @@ export default function ClientStore() {
             setOrderPlaced(true);
             setCart([]);
             setNotes('');
-            toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
+            toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });
         } finally {
@@ -675,6 +655,16 @@ export default function ClientStore() {
                             const price = getClientPrice(peptide);
                             const retail = Number(peptide.retail_price || 0);
                             const hasDiscount = price < retail;
+                            const discountPct = hasDiscount ? Math.round((1 - price / retail) * 100) : 0;
+                            // Determine discount label based on pricing mode
+                            const isCustomer = !assignedRep || contact?.type === 'customer';
+                            const discountLabel = hasDiscount
+                                ? isCustomer
+                                    ? 'Friends & Family'
+                                    : repPricingMode === 'cost_plus'
+                                        ? 'Preferred Pricing'
+                                        : null // cost_multiplier or percentage — just show "X% off"
+                                : null;
                             const inCart = cart.find(i => i.peptide_id === peptide.id);
                             const description = getPeptideDescription(peptide.name) || peptide.description;
                             const knowledge = lookupKnowledge(peptide.name);
@@ -757,7 +747,7 @@ export default function ClientStore() {
                                                 </div>
                                                 {hasDiscount && (
                                                     <span className="inline-block mt-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                                                        Save {Math.round((1 - price / retail) * 100)}%
+                                                        {discountPct}% off{discountLabel ? ` · ${discountLabel}` : ''}
                                                     </span>
                                                 )}
                                             </div>

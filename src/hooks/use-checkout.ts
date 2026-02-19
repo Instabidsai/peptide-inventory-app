@@ -21,15 +21,9 @@ interface CheckoutInput {
 }
 
 /**
- * Hook that handles the full checkout flow:
- * 1. Creates a sales_order in Supabase with status 'submitted'
- * 2. Calls our Vercel serverless function to create a PsiFi checkout session
- * 3. Redirects the user to PsiFi's hosted payment page
- *
- * TODO: Auto-generate Bottle records when a Lot is created/received.
- * When lot quantity_received is set, create one Bottle record per unit with
- * status 'in_stock'. This logic lives in use-orders.ts or the fulfillment
- * flow (not in this checkout hook). See use-orders.ts for implementation.
+ * @deprecated Use useValidatedCheckout() instead — it calculates prices server-side.
+ * This hook sends client-supplied prices which can be manipulated.
+ * Kept only for admin/rep flows in NewOrder.tsx where custom pricing is intentional.
  */
 export function useCheckout() {
     const { user } = useAuth();
@@ -128,6 +122,99 @@ export function useCheckout() {
             });
         },
         // Note: onSuccess won't fire because we redirect before it can
+    });
+}
+
+/**
+ * Server-side validated checkout flow:
+ * 1. Calls create_validated_order RPC (prices calculated server-side)
+ * 2. Calls our Vercel serverless function to create a PsiFi checkout session
+ * 3. Redirects the user to PsiFi's hosted payment page
+ */
+export function useValidatedCheckout() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (input: {
+            items: { peptide_id: string; quantity: number }[];
+            shipping_address?: string;
+            notes?: string;
+            delivery_method?: string;
+        }) => {
+            if (!user?.id) throw new Error('Not authenticated');
+            if (input.items.length === 0) throw new Error('Cart is empty');
+
+            // 1. Create order with server-validated prices
+            const { data, error } = await supabase.rpc('create_validated_order', {
+                p_items: input.items.map(i => ({ peptide_id: i.peptide_id, quantity: i.quantity })),
+                p_shipping_address: input.shipping_address || null,
+                p_notes: input.notes || null,
+                p_payment_method: 'card',
+                p_delivery_method: input.delivery_method || 'ship',
+            });
+
+            if (error) throw new Error(`Order RPC failed: ${error.message}`);
+
+            const result = data as { success: boolean; error?: string; order_id?: string; total_amount?: number };
+            if (!result.success) {
+                throw new Error(result.error || 'Order validation failed');
+            }
+
+            const orderId = result.order_id!;
+
+            // 2. Mark order as submitted (RPC creates it as 'draft')
+            await supabase
+                .from('sales_orders')
+                .update({ status: 'submitted', psifi_status: 'none' })
+                .eq('id', orderId);
+
+            // 3. Get the user's session token for auth
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Session expired. Please log in again.');
+            }
+
+            // 4. Call our serverless function to create the PsiFi checkout session
+            const response = await fetch('/api/checkout/create-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ orderId }),
+            });
+
+            if (!response.ok) {
+                await supabase.from('sales_orders').delete().eq('id', orderId);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Checkout failed (${response.status})`);
+            }
+
+            const { checkout_url } = await response.json();
+
+            if (!checkout_url) {
+                throw new Error('No checkout URL received from payment processor');
+            }
+
+            // 5. Validate and redirect to checkout
+            try {
+                const parsed = new URL(checkout_url);
+                if (parsed.protocol !== 'https:') throw new Error('Unsafe checkout URL');
+            } catch {
+                throw new Error('Invalid checkout URL received');
+            }
+            window.location.href = checkout_url;
+
+            return { id: orderId, total_amount: result.total_amount! };
+        },
+        onError: (error: Error) => {
+            toast({
+                variant: 'destructive',
+                title: 'Checkout failed',
+                description: error.message,
+            });
+        },
     });
 }
 

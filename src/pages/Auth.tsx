@@ -288,8 +288,6 @@ export default function Auth() {
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
-          console.error('linkReferral failed:', result.error);
-          console.error('linkReferral args:', { userId: user.id, email, name, refParam, roleParam });
           // Keep referral in sessionStorage so Onboarding can retry
           if (refParam) storeSessionReferral(refParam, roleParam);
           toast({ variant: 'destructive', title: 'Referral link error', description: `Error: ${result.error || 'Unknown'} | ref=${refParam?.slice(0,8)}… | user=${user.id.slice(0,8)}…`, duration: 15000 });
@@ -368,10 +366,8 @@ export default function Auth() {
     // If referral param exists, try to link immediately
     if (refParam) {
       const { data: { user: newUser }, error: userErr } = await supabase.auth.getUser();
-      console.log('[referral-signup] getUser:', newUser?.id, 'error:', userErr?.message);
       if (newUser) {
         const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam);
-        console.log('[referral-signup] linkReferral result:', result);
         if (result.success) {
           sessionStorage.removeItem('partner_ref');
           sessionStorage.removeItem('partner_ref_role');
@@ -388,7 +384,6 @@ export default function Auth() {
         return;
       } else {
         // User not confirmed yet — store referral for later
-        console.log('[referral-signup] No confirmed user yet, storing referral for later');
         storeSessionReferral(refParam, roleParam);
       }
     }

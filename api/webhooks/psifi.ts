@@ -115,6 +115,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const statusLower = (status || '').toLowerCase();
 
         if (TERMINAL_SUCCESS.includes(statusLower)) {
+            // Idempotency: check if already paid to prevent duplicate processing
+            const { data: existingOrder } = await supabase
+                .from('sales_orders')
+                .select('payment_status')
+                .eq('id', externalId)
+                .single();
+
+            if (existingOrder?.payment_status === 'paid') {
+                console.log(`[PsiFi Webhook] Order ${externalId} already paid, skipping`);
+                return res.status(200).json({ received: true, action: 'already_paid' });
+            }
+
             // Payment succeeded
             const { error: updateError } = await supabase
                 .from('sales_orders')

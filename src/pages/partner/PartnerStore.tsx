@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCheckout } from '@/hooks/use-checkout';
-import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
+import { useValidatedCheckout } from '@/hooks/use-checkout';
+import { useCreateValidatedOrder } from '@/hooks/use-sales-orders';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,8 +54,8 @@ const VENMO_HANDLE = 'PureUSPeptide';
 
 export default function PartnerStore() {
     const { user, profile } = useAuth();
-    const checkout = useCheckout();
-    const createOrder = useCreateSalesOrder();
+    const checkout = useValidatedCheckout();
+    const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
     const storageKey = `partner_cart_${user?.id || 'anon'}`;
 
@@ -208,30 +208,22 @@ export default function PartnerStore() {
 
     const clearCartStorage = () => localStorage.removeItem(storageKey);
 
-    // Card checkout — existing PsiFi flow
+    // Card checkout — validated server-side pricing + PsiFi flow
     const handleCardCheckout = () => {
         if (!partnerProfile) return;
-        const orgId = partnerProfile!.org_id;
-        if (!orgId) return;
 
         clearCartStorage(); // Clear before redirect to external payment
         checkout.mutate({
-            org_id: orgId,
-            client_id: null,
-            rep_id: partnerProfile!.id,
-            total_amount: cartTotal,
-            shipping_address: shippingAddress || undefined,
-            notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}.\n${notes}`,
             items: cart.map(i => ({
                 peptide_id: i.peptide_id,
-                name: i.name,
                 quantity: i.quantity,
-                unit_price: i.yourPrice,
             })),
+            shipping_address: shippingAddress || undefined,
+            notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}.\n${notes}`,
         });
     };
 
-    // Non-card checkout — creates order as awaiting payment
+    // Non-card checkout — server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
         if (!partnerProfile || cart.length === 0) return;
         setPlacingOrder(true);
@@ -239,12 +231,10 @@ export default function PartnerStore() {
         const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
 
         try {
-            await createOrder.mutateAsync({
-                client_id: partnerProfile!.id,
+            const result = await createOrder.mutateAsync({
                 items: cart.map(i => ({
                     peptide_id: i.peptide_id,
                     quantity: i.quantity,
-                    unit_price: i.yourPrice,
                 })),
                 shipping_address: shippingAddress || undefined,
                 notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
@@ -255,7 +245,7 @@ export default function PartnerStore() {
             setNotes('');
             setShippingAddress('');
             clearCartStorage();
-            toast({ title: 'Order placed!', description: `Send $${cartTotal.toFixed(2)} via ${methodLabel} to complete your order.` });
+            toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });
         } finally {

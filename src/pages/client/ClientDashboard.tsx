@@ -181,6 +181,7 @@ function ClientDashboardContent() {
                 currentQuantityMg: vial.current_quantity_mg,
                 memberName,
                 memberContactId,
+                isOtherMember: !!memberContactId && memberContactId !== contact?.id,
             });
             colorIdx++;
         }
@@ -296,14 +297,18 @@ function ClientDashboardContent() {
 
     // ── Unified dose logging (protocol log + vial decrement) ────
     const handleLogDose = (dose: DueNowDose) => {
+        // In household mode, only allow logging your own doses (not other members')
+        if (dose.memberContactId && dose.memberContactId !== contact?.id) {
+            return; // Can't log another member's protocol
+        }
+
         // 1. Log protocol compliance (if linked)
         if (dose.protocolItemId) {
             logProtocolUsage.mutate({ itemId: dose.protocolItemId });
         }
-        // 2. Decrement vial quantity
+        // 2. Atomic vial decrement via RPC
         actions.logDose.mutate({
             vialId: dose.vialId,
-            currentQty: dose.currentQuantityMg,
             doseMg: dose.doseAmountMg,
         });
     };
@@ -412,7 +417,7 @@ function ClientDashboardContent() {
                                         currentWindow={gamified.currentWindow}
                                         onLogDose={handleLogDose}
                                         isLogging={logProtocolUsage.isPending || actions.logDose.isPending}
-                                        currentMemberName={contact?.name?.split(' ')[0]}
+                                        currentMemberId={contact?.id}
                                     />
                                 ) : (
                                     <DueNowCards

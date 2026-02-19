@@ -311,13 +311,11 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
         if (!order) return;
         setSaving(true);
         try {
-            // Update order fields
-            const newTotal = editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+            // Update order fields (total_amount recalculated by DB trigger)
             await updateOrder.mutateAsync({
                 id: order.id,
                 shipping_address: editShipping || null,
                 notes: editNotes || null,
-                total_amount: newTotal,
             } as any);
 
             // Update individual item quantities

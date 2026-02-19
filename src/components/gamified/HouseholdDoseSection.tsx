@@ -16,7 +16,7 @@ interface HouseholdDoseSectionProps {
     currentWindow: 'morning' | 'afternoon' | 'evening';
     onLogDose: (dose: DueNowDose) => void;
     isLogging?: boolean;
-    currentMemberName?: string;
+    currentMemberId?: string;
 }
 
 export function HouseholdDoseSection({
@@ -24,41 +24,45 @@ export function HouseholdDoseSection({
     currentWindow,
     onLogDose,
     isLogging,
-    currentMemberName,
+    currentMemberId,
 }: HouseholdDoseSectionProps) {
     if (doses.length === 0) return null;
 
-    // Group by member name, preserving order (owner first)
+    // Group by member contact ID, preserving order (owner first)
     const memberOrder: string[] = [];
     const byMember: Record<string, DueNowDose[]> = {};
+    const memberNames: Record<string, string> = {};
 
     for (const dose of doses) {
+        const key = dose.memberContactId || 'solo';
         const name = dose.memberName || 'You';
-        if (!byMember[name]) {
-            byMember[name] = [];
-            memberOrder.push(name);
+        if (!byMember[key]) {
+            byMember[key] = [];
+            memberOrder.push(key);
+            memberNames[key] = name;
         }
-        byMember[name].push(dose);
+        byMember[key].push(dose);
     }
 
     // Put current user first if they exist in the list
-    if (currentMemberName) {
-        const idx = memberOrder.indexOf(currentMemberName);
+    if (currentMemberId) {
+        const idx = memberOrder.indexOf(currentMemberId);
         if (idx > 0) {
             memberOrder.splice(idx, 1);
-            memberOrder.unshift(currentMemberName);
+            memberOrder.unshift(currentMemberId);
         }
     }
 
     return (
         <div className="space-y-6">
-            {memberOrder.map((name, idx) => {
-                const memberDoses = byMember[name];
+            {memberOrder.map((memberId, idx) => {
+                const memberDoses = byMember[memberId];
+                const name = memberNames[memberId] || 'Member';
                 const colorClass = MEMBER_COLORS[idx % MEMBER_COLORS.length];
-                const isCurrentUser = name === currentMemberName;
+                const isCurrentUser = memberId === currentMemberId;
 
                 return (
-                    <div key={name} className="space-y-3">
+                    <div key={memberId} className="space-y-3">
                         {/* Member header */}
                         <div className="flex items-center gap-2">
                             <div className={cn("p-1.5 rounded-lg bg-white/[0.04]", colorClass)}>

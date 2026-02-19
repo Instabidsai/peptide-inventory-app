@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 import { useContacts } from '@/hooks/use-contacts';
+// Admin/rep-only page: uses useCreateSalesOrder (client-supplied prices are intentional for custom tier pricing)
 import { useCreateSalesOrder } from '@/hooks/use-sales-orders';
 import { useProfile, useRepProfile } from '@/hooks/use-profiles'; // Updated import
 import { Button } from '@/components/ui/button';

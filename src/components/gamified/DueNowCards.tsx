@@ -18,6 +18,8 @@ export interface DueNowDose {
     currentQuantityMg: number;
     memberName?: string;
     memberContactId?: string;
+    /** False when viewing another household member's dose (can't log for them) */
+    isOtherMember?: boolean;
 }
 
 interface DueNowCardsProps {
@@ -105,11 +107,11 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                         <Button
                             size="sm"
                             className="h-12 px-5 rounded-xl text-sm font-semibold shrink-0"
-                            disabled={isLogging}
+                            disabled={isLogging || dose.isOtherMember}
                             onClick={() => onLogDose(dose)}
                         >
                             <Syringe className="h-4 w-4 mr-1.5" />
-                            Log Dose
+                            {dose.isOtherMember ? 'Their Dose' : 'Log Dose'}
                         </Button>
                     </motion.div>
                 )}

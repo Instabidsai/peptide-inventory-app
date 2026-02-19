@@ -7,8 +7,7 @@ export interface HouseholdMember {
     name: string;
     email: string | null;
     household_role: 'owner' | 'member';
-    linked_user_id: string | null;
-    claim_token: string | null;
+    is_linked: boolean;
 }
 
 /** Returns all household members for a given contact. Empty array if no household. */
@@ -49,6 +48,28 @@ export function useAddHouseholdMember(ownerContactId?: string) {
             toast.success('Household member added');
         },
         onError: (e: Error) => toast.error(`Failed to add member: ${e.message}`),
+    });
+}
+
+/** Admin action: removes a member from the household (cannot remove owner). */
+export function useRemoveHouseholdMember() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (memberContactId: string) => {
+            const { data, error } = await supabase
+                .rpc('remove_household_member', { p_member_contact_id: memberContactId });
+            if (error) throw error;
+            const result = data as { success: boolean; error?: string };
+            if (!result.success) throw new Error(result.error || 'Remove failed');
+            return result;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['household-members'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            toast.success('Member removed from household');
+        },
+        onError: (e: Error) => toast.error(`Failed to remove member: ${e.message}`),
     });
 }
 

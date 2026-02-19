@@ -40,6 +40,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ error: 'Invalid or expired token' });
         }
 
+        // Authorization: shipping is admin/sales_rep only
+        const { data: callerRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (callerRole?.role !== 'admin' && callerRole?.role !== 'sales_rep') {
+            return res.status(403).json({ error: 'Only admin/sales_rep can purchase labels' });
+        }
+
         // Validate order exists and is ready for labeling
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')

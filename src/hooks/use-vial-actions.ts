@@ -64,19 +64,17 @@ export function useVialActions(contactId?: string) {
     });
 
     const logDose = useMutation({
-        mutationFn: async ({ vialId, currentQty, doseMg }: {
-            vialId: string; currentQty: number; doseMg: number;
+        mutationFn: async ({ vialId, doseMg }: {
+            vialId: string; doseMg: number;
         }) => {
-            const newQty = Math.max(0, currentQty - doseMg);
-            const { error } = await supabase
-                .from('client_inventory')
-                .update({
-                    current_quantity_mg: newQty,
-                    status: newQty <= 0 ? 'depleted' : 'active',
-                })
-                .eq('id', vialId);
+            const { data, error } = await supabase.rpc('decrement_vial', {
+                p_vial_id: vialId,
+                p_dose_mg: doseMg,
+            });
             if (error) throw error;
-            return { newQty };
+            const result = data as { success: boolean; error?: string; new_quantity_mg?: number };
+            if (!result.success) throw new Error(result.error || 'Decrement failed');
+            return { newQty: result.new_quantity_mg ?? 0 };
         },
         onSuccess: (data) => {
             invalidate();

@@ -58,6 +58,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ error: 'Order not found' });
         }
 
+        // --- Authorization: verify caller is associated with this order ---
+        const { data: callerRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('org_id', order.org_id)
+            .single();
+
+        const isClient = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('linked_user_id', user.id)
+            .eq('id', order.client_id)
+            .single();
+
+        const isStaff = callerRole?.role === 'admin' || callerRole?.role === 'sales_rep';
+        if (!isStaff && !isClient.data) {
+            return res.status(403).json({ error: 'Not authorized for this order' });
+        }
+
         // Safety check: don't create duplicate sessions
         if (order.psifi_session_id && order.psifi_status !== 'failed' && order.psifi_status !== 'cancelled') {
             return res.status(400).json({

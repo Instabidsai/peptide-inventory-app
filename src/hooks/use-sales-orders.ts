@@ -391,6 +391,57 @@ export function useCreateSalesOrder() {
     });
 }
 
+/**
+ * Server-side validated order creation.
+ * Sends ONLY peptide_id + quantity to the DB — prices are calculated
+ * server-side by the create_validated_order SECURITY DEFINER RPC.
+ * Use this for ALL client/partner-facing order creation.
+ */
+export interface ValidatedOrderInput {
+    items: { peptide_id: string; quantity: number }[];
+    shipping_address?: string;
+    notes?: string;
+    payment_method?: string;
+    delivery_method?: string;
+}
+
+export function useCreateValidatedOrder() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (input: ValidatedOrderInput) => {
+            const { data, error } = await supabase.rpc('create_validated_order', {
+                p_items: input.items.map(i => ({ peptide_id: i.peptide_id, quantity: i.quantity })),
+                p_shipping_address: input.shipping_address || null,
+                p_notes: input.notes || null,
+                p_payment_method: input.payment_method || null,
+                p_delivery_method: input.delivery_method || 'ship',
+            });
+
+            if (error) throw new Error(`Order RPC failed: ${error.message}`);
+
+            const result = data as { success: boolean; error?: string; order_id?: string; total_amount?: number };
+            if (!result.success) {
+                throw new Error(result.error || 'Order validation failed');
+            }
+
+            return { id: result.order_id!, total_amount: result.total_amount! };
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            toast({ title: 'Order created' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to create order', description: error.message });
+        },
+    });
+}
+
 export function useUpdateSalesOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
