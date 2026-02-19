@@ -136,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 3. Purchase label
         const transaction = await shippoPost('/transactions', shippoApiKey, {
             rate: selectedRate.object_id,
-            label_file_type: 'PDF',
+            label_file_type: 'PDF_4x6',
             async: false,
         });
 
