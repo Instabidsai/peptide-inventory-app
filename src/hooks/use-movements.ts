@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { parseVialSize } from '@/lib/supply-calculations';
 import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import type { BottleStatus } from './use-bottles';
@@ -113,13 +114,16 @@ const movementTypeToBottleStatus: Record<MovementType, BottleStatus> = {
 };
 
 export function useMovements(contactId?: string) {
+  const { profile } = useAuth();
+  const orgId = profile?.org_id;
   return useQuery({
-    queryKey: ['movements', contactId],
+    queryKey: ['movements', orgId, contactId],
     queryFn: async () => {
-      // 1. Fetch Movements
+      // 1. Fetch Movements (scoped to tenant)
       let query = supabase
         .from('movements')
         .select('*, contacts(id, name), profiles(id, full_name)')
+        .eq('org_id', orgId!)
         .order('movement_date', { ascending: false });
 
       if (contactId) {

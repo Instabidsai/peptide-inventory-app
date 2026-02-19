@@ -75,16 +75,27 @@ export function parseAddress(raw: string) {
     return { street1, city, state, zip, country: 'US' };
 }
 
-export function getFromAddress() {
+export interface ShipFromConfig {
+    ship_from_name?: string;
+    ship_from_street?: string;
+    ship_from_city?: string;
+    ship_from_state?: string;
+    ship_from_zip?: string;
+    ship_from_country?: string;
+    ship_from_phone?: string;
+    ship_from_email?: string;
+}
+
+export function getFromAddress(tenantConfig?: ShipFromConfig) {
     return {
-        name: process.env.SHIP_FROM_NAME || '',
-        street1: process.env.SHIP_FROM_STREET || '',
-        city: process.env.SHIP_FROM_CITY || '',
-        state: process.env.SHIP_FROM_STATE || '',
-        zip: process.env.SHIP_FROM_ZIP || '',
-        country: process.env.SHIP_FROM_COUNTRY || 'US',
-        phone: process.env.SHIP_FROM_PHONE || '',
-        email: process.env.SHIP_FROM_EMAIL || '',
+        name: tenantConfig?.ship_from_name || process.env.SHIP_FROM_NAME || '',
+        street1: tenantConfig?.ship_from_street || process.env.SHIP_FROM_STREET || '',
+        city: tenantConfig?.ship_from_city || process.env.SHIP_FROM_CITY || '',
+        state: tenantConfig?.ship_from_state || process.env.SHIP_FROM_STATE || '',
+        zip: tenantConfig?.ship_from_zip || process.env.SHIP_FROM_ZIP || '',
+        country: tenantConfig?.ship_from_country || process.env.SHIP_FROM_COUNTRY || 'US',
+        phone: tenantConfig?.ship_from_phone || process.env.SHIP_FROM_PHONE || '',
+        email: tenantConfig?.ship_from_email || process.env.SHIP_FROM_EMAIL || '',
     };
 }
 

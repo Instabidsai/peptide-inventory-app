@@ -232,7 +232,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       case "update_contact": {
         const u: any = {};
         for (const key of ["name", "email", "phone", "address", "notes"]) { if (args[key] !== undefined) u[key] = args[key]; }
-        const { error } = await supabase.from("contacts").update(u).eq("id", args.contact_id);
+        const { error } = await supabase.from("contacts").update(u).eq("id", args.contact_id).eq("org_id", orgId);
         if (error) return "Error: " + error.message;
         return "Contact updated: " + Object.keys(u).join(", ");
       }
@@ -270,15 +270,19 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       case "update_peptide": {
         const u: any = {};
         for (const key of ["name", "description", "sku", "retail_price", "active"]) { if (args[key] !== undefined) u[key] = args[key]; }
-        const { error } = await supabase.from("peptides").update(u).eq("id", args.peptide_id);
+        const { error } = await supabase.from("peptides").update(u).eq("id", args.peptide_id).eq("org_id", orgId);
         if (error) return "Error: " + error.message;
         return "Peptide updated: " + Object.keys(u).join(", ");
       }
       case "get_bottle_stats": {
+        // Get org's peptide IDs to scope bottle counts to this tenant
+        const { data: orgPeptides } = await supabase.from("peptides").select("id").eq("org_id", orgId);
+        const peptideIds = orgPeptides?.map((p: any) => p.id) || [];
         const statuses = ["in_stock", "sold", "given_away", "internal_use", "lost", "returned", "expired"];
         const stats: any = {};
         for (const status of statuses) {
-          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", status);
+          if (peptideIds.length === 0) { stats[status] = 0; continue; }
+          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", status).in("peptide_id", peptideIds);
           stats[status] = count || 0;
         }
         const total = Object.values(stats).reduce((s: number, c: any) => s + c, 0);
@@ -286,7 +290,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       }
       case "list_lots": {
         const limit = args.limit || 20;
-        const { data } = await supabase.from("lots").select("id, peptide_id, quantity, cost_per_unit, payment_status, expiry_date, peptides(name)").order("created_at", { ascending: false }).limit(limit);
+        const { data } = await supabase.from("lots").select("id, peptide_id, quantity, cost_per_unit, payment_status, expiry_date, peptides!inner(name, org_id)").eq("peptides.org_id", orgId).order("created_at", { ascending: false }).limit(limit);
         if (!data?.length) return "No lots found.";
         return data.map((l: any) => "#" + l.id.slice(0, 8) + " | " + (l.peptides?.name || "?") + " | " + l.quantity + " units @ $" + Number(l.cost_per_unit).toFixed(2) + " | Payment: " + l.payment_status + " | Expiry: " + (l.expiry_date || "N/A")).join("\n");
       }
@@ -413,7 +417,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       }
       case "list_movements": {
         const limit = args.limit || 15;
-        let query = supabase.from("movements").select("id, type, movement_date, notes, payment_status, amount_paid, contacts(name)").order("movement_date", { ascending: false }).limit(limit);
+        let query = supabase.from("movements").select("id, type, movement_date, notes, payment_status, amount_paid, contacts(name)").eq("org_id", orgId).order("movement_date", { ascending: false }).limit(limit);
         if (args.type) query = query.eq("type", args.type);
         const { data } = await query;
         if (!data?.length) return "No movements found.";
@@ -421,7 +425,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       }
       case "list_commissions": {
         const limit = args.limit || 20;
-        let query = supabase.from("commissions").select("id, amount, commission_rate, type, status, created_at, partner_id, sale_id, profiles(full_name), sales_orders(total_amount, contacts(name))").order("created_at", { ascending: false }).limit(limit);
+        let query = supabase.from("commissions").select("id, amount, commission_rate, type, status, created_at, partner_id, sale_id, profiles(full_name), sales_orders!inner(org_id, total_amount, contacts(name))").eq("sales_orders.org_id", orgId).order("created_at", { ascending: false }).limit(limit);
         if (args.status) query = query.eq("status", args.status);
         if (args.partner_id) query = query.eq("partner_id", args.partner_id);
         const { data } = await query;
@@ -429,7 +433,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         return data.map((c: any) => "#" + c.id.slice(0, 8) + " | " + ((c as any).profiles?.full_name || "Unknown") + " | $" + Number(c.amount).toFixed(2) + " (" + (Number(c.commission_rate) * 100).toFixed(0) + "%) | " + c.type + " | " + c.status + " | Sale $" + Number(c.sales_orders?.total_amount || 0).toFixed(2) + " for " + ((c.sales_orders as any)?.contacts?.name || "?") + " | " + new Date(c.created_at).toLocaleDateString()).join("\n");
       }
       case "get_commission_stats": {
-        const { data } = await supabase.from("commissions").select("amount, status");
+        const { data } = await supabase.from("commissions").select("amount, status, sales_orders!inner(org_id)").eq("sales_orders.org_id", orgId);
         const s = { pending: 0, available: 0, paid: 0, voidCount: 0, total: 0 };
         data?.forEach((c: any) => { const amt = Number(c.amount) || 0; s.total += amt; if (c.status === "pending") s.pending += amt; else if (c.status === "available") s.available += amt; else if (c.status === "paid") s.paid += amt; else if (c.status === "void") s.voidCount++; });
         return "Commission Stats:\n  Pending: $" + s.pending.toFixed(2) + "\n  Available (applied to balance): $" + s.available.toFixed(2) + "\n  Paid (cash): $" + s.paid.toFixed(2) + "\n  Total: $" + s.total.toFixed(2) + "\n  Void records: " + s.voidCount;
@@ -465,31 +469,36 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       }
       case "list_expenses": {
         const limit = args.limit || 20;
-        let query = supabase.from("expenses").select("*").order("date", { ascending: false }).limit(limit);
+        let query = supabase.from("expenses").select("*").eq("org_id", orgId).order("date", { ascending: false }).limit(limit);
         if (args.category) query = query.eq("category", args.category);
         const { data } = await query;
         if (!data?.length) return "No expenses found.";
         return data.map((e: any) => e.date + " | " + e.category + " | $" + Number(e.amount).toFixed(2) + " | " + (e.description || "no desc") + " | " + (e.recipient || "") + " | " + (e.payment_method || "") + " | " + e.status).join("\n");
       }
       case "create_expense": {
-        const { error } = await supabase.from("expenses").insert({ date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
+        const { error } = await supabase.from("expenses").insert({ org_id: orgId, date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
         if (error) return "Error: " + error.message;
         return "Expense recorded: $" + args.amount.toFixed(2) + " (" + args.category + ") on " + args.date;
       }
       case "get_financial_summary": {
         const { data: valuation } = await supabase.rpc("get_inventory_valuation");
         const inventoryValue = valuation?.[0]?.total_value || 0;
-        const { data: salesOrders } = await supabase.from("sales_orders").select("total_amount, cogs_amount, profit_amount, merchant_fee, commission_amount").neq("status", "cancelled");
+        const { data: salesOrders } = await supabase.from("sales_orders").select("total_amount, cogs_amount, profit_amount, merchant_fee, commission_amount").eq("org_id", orgId).neq("status", "cancelled");
         const revenue = salesOrders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
         const orderCogs = salesOrders?.reduce((s: number, o: any) => s + Number(o.cogs_amount || 0), 0) || 0;
         const orderProfit = salesOrders?.reduce((s: number, o: any) => s + Number(o.profit_amount || 0), 0) || 0;
         const merchantFees = salesOrders?.reduce((s: number, o: any) => s + Number(o.merchant_fee || 0), 0) || 0;
         const totalCommission = salesOrders?.reduce((s: number, o: any) => s + Number(o.commission_amount || 0), 0) || 0;
-        const { data: expenses } = await supabase.from("expenses").select("amount, category");
+        const { data: expenses } = await supabase.from("expenses").select("amount, category").eq("org_id", orgId);
         let inventoryExp = 0;
         let operatingExp = 0;
         expenses?.forEach((e: any) => { if (e.category === "inventory") inventoryExp += Number(e.amount); else operatingExp += Number(e.amount); });
-        const { count: stockCount } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock");
+        // Scope bottle count to org's peptides
+        const { data: orgPeps } = await supabase.from("peptides").select("id").eq("org_id", orgId);
+        const pepIds = orgPeps?.map((p: any) => p.id) || [];
+        const { count: stockCount } = pepIds.length > 0
+          ? await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock").in("peptide_id", pepIds)
+          : { count: 0 };
         return "=== FINANCIAL SUMMARY ===\nInventory Value: $" + inventoryValue.toFixed(2) + " (" + (stockCount || 0) + " bottles in stock)\n\nSales Revenue: $" + revenue.toFixed(2) + "\nCOGS: $" + orderCogs.toFixed(2) + "\nGross Profit: $" + (revenue - orderCogs).toFixed(2) + "\n\nCommissions: $" + totalCommission.toFixed(2) + "\nMerchant Fees: $" + merchantFees.toFixed(2) + "\nOrder-based Net Profit: $" + orderProfit.toFixed(2) + "\n\nExpenses - Inventory: $" + inventoryExp.toFixed(2) + " | Operating: $" + operatingExp.toFixed(2) + " | Total: $" + (inventoryExp + operatingExp).toFixed(2) + "\n\nCash Flow Profit: $" + (revenue - orderCogs - operatingExp - inventoryExp).toFixed(2);
       }
       case "list_protocols": {
@@ -511,7 +520,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       }
       case "list_requests": {
         const limit = args.limit || 20;
-        let query = supabase.from("requests").select("id, status, created_at, admin_notes, contacts(name), peptides(name)").order("created_at", { ascending: false }).limit(limit);
+        let query = supabase.from("requests").select("id, status, created_at, admin_notes, contacts!inner(name, org_id), peptides(name)").eq("contacts.org_id", orgId).order("created_at", { ascending: false }).limit(limit);
         if (args.status) query = query.eq("status", args.status);
         const { data } = await query;
         if (!data?.length) return "No requests found.";
@@ -529,14 +538,18 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         const { count: weekOrders } = await supabase.from("sales_orders").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", weekAgo);
         const { data: weekRevenue } = await supabase.from("sales_orders").select("total_amount").eq("org_id", orgId).gte("created_at", weekAgo).neq("status", "cancelled");
         const revenue = weekRevenue?.reduce((s: number, o: any) => s + Number(o.total_amount), 0) || 0;
-        const { count: totalStock } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock");
+        const { data: dashPeptides } = await supabase.from("peptides").select("id").eq("org_id", orgId);
+        const dashPepIds = dashPeptides?.map((p: any) => p.id) || [];
+        const { count: totalStock } = dashPepIds.length > 0
+          ? await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock").in("peptide_id", dashPepIds)
+          : { count: 0 };
         const { count: totalContacts } = await supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId);
-        const { count: pendingRequests } = await supabase.from("requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+        const { count: pendingRequests } = await supabase.from("requests").select("id", { count: "exact", head: true }).eq("status", "pending").in("peptide_id", dashPepIds.length > 0 ? dashPepIds : ["00000000-0000-0000-0000-000000000000"]);
         const { count: pendingPOs } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending");
         return "Dashboard:\n  Orders today: " + (todayOrders || 0) + "\n  Orders this week: " + (weekOrders || 0) + "\n  Revenue this week: $" + revenue.toFixed(2) + "\n  Bottles in stock: " + (totalStock || 0) + "\n  Total contacts: " + (totalContacts || 0) + "\n  Pending client requests: " + (pendingRequests || 0) + "\n  Pending purchase orders: " + (pendingPOs || 0);
       }
       case "get_contact_history": {
-        const { data: contact } = await supabase.from("contacts").select("id, name, email, phone, address, type, notes, created_at").eq("id", args.contact_id).single();
+        const { data: contact } = await supabase.from("contacts").select("id, name, email, phone, address, type, notes, created_at").eq("id", args.contact_id).eq("org_id", orgId).single();
         if (!contact) return "Contact not found.";
         const { data: orders } = await supabase.from("sales_orders").select("id, status, payment_status, total_amount, amount_paid, created_at, sales_order_items(quantity, peptides(name))").eq("client_id", args.contact_id).order("created_at", { ascending: false });
         const totalSpent = orders?.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) || 0;
@@ -563,7 +576,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       case "top_sellers": {
         const by = args.by || "revenue";
         const limit = args.limit || 10;
-        let query = supabase.from("sales_order_items").select("quantity, unit_price, peptide_id, peptides(name), sales_orders!inner(status, created_at)").neq("sales_orders.status", "cancelled");
+        let query = supabase.from("sales_order_items").select("quantity, unit_price, peptide_id, peptides(name), sales_orders!inner(status, created_at, org_id)").eq("sales_orders.org_id", orgId).neq("sales_orders.status", "cancelled");
         if (args.days) {
           const since = new Date(Date.now() - args.days * 86400000).toISOString();
           query = query.gte("sales_orders.created_at", since);
@@ -602,6 +615,9 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         const statusMap: Record<string, string> = { giveaway: "given_away", internal_use: "internal_use", loss: "lost" };
         const bottleStatus = statusMap[args.type];
         if (!bottleStatus) return "Invalid movement type. Use: giveaway, internal_use, or loss.";
+        // Verify peptide belongs to this org before allocating bottles
+        const { data: verifyPep } = await supabase.from("peptides").select("id").eq("id", args.peptide_id).eq("org_id", orgId).single();
+        if (!verifyPep) return "Peptide not found or does not belong to your organization.";
         const { data: bottles } = await supabase.from("bottles").select("id, lots!inner(peptide_id)").eq("status", "in_stock").eq("lots.peptide_id", args.peptide_id).order("created_at", { ascending: true }).limit(args.quantity);
         if (!bottles || bottles.length < args.quantity) return "Insufficient stock. Need " + args.quantity + ", have " + (bottles?.length || 0) + " in stock.";
         const { data: movement, error: mErr } = await supabase.from("movements").insert({ org_id: orgId, type: args.type, contact_id: args.contact_id || null, movement_date: new Date().toISOString().split("T")[0], notes: args.reason || args.type, payment_status: "n/a", amount_paid: 0 }).select().single();
@@ -615,7 +631,7 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
       case "void_order": {
         const resolvedId = await resolveOrderId(supabase, args.order_id);
         if (!resolvedId) return "Error: Could not find order with ID '" + args.order_id + "'.";
-        const { data: order } = await supabase.from("sales_orders").select("id, status, total_amount, notes").eq("id", resolvedId).single();
+        const { data: order } = await supabase.from("sales_orders").select("id, status, total_amount, notes").eq("id", resolvedId).eq("org_id", orgId).single();
         if (!order) return "Order not found.";
         if (order.status === "cancelled") return "Order is already cancelled.";
         let restored = 0;

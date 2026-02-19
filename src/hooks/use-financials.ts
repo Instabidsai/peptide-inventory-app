@@ -24,11 +24,12 @@ export interface FinancialMetrics {
 
 export function useFinancialMetrics() {
     const { profile } = useAuth();
+    const orgId = profile?.org_id;
     return useQuery({
-        queryKey: ['financial-metrics', profile?.org_id],
+        queryKey: ['financial-metrics', orgId],
         queryFn: async (): Promise<FinancialMetrics> => {
             try {
-                // === Phase 1: Fire all independent queries in parallel ===
+                // === Phase 1: Fire all independent queries in parallel (tenant-scoped) ===
                 const [
                     valuationResult,
                     salesResult,
@@ -38,11 +39,11 @@ export function useFinancialMetrics() {
                     orderAggResult,
                 ] = await Promise.all([
                     supabase.rpc('get_inventory_valuation'),
-                    supabase.from('movements').select('id, amount_paid').eq('type', 'sale'),
-                    supabase.from('movements').select('id').in('type', ['internal_use', 'giveaway', 'loss']),
-                    supabase.from('expenses').select('amount, category'),
-                    supabase.from('commissions').select('amount, status'),
-                    supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').neq('status', 'cancelled'),
+                    supabase.from('movements').select('id, amount_paid').eq('org_id', orgId!).eq('type', 'sale'),
+                    supabase.from('movements').select('id').eq('org_id', orgId!).in('type', ['internal_use', 'giveaway', 'loss']),
+                    supabase.from('expenses').select('amount, category').eq('org_id', orgId!),
+                    supabase.from('commissions').select('amount, status, sales_orders!inner(org_id)').eq('sales_orders.org_id', orgId!),
+                    supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').eq('org_id', orgId!).neq('status', 'cancelled'),
                 ]);
 
                 if (valuationResult.error) console.error("Valuation RPC failed:", valuationResult.error);

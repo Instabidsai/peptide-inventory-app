@@ -8,6 +8,7 @@ export type ExpenseCategory = 'startup' | 'operating' | 'inventory' | 'commissio
 
 export interface Expense {
     id: string;
+    org_id?: string;
     created_at: string;
     date: string;
     category: ExpenseCategory;
@@ -22,29 +23,35 @@ export interface Expense {
 
 export function useExpenses() {
     const { profile } = useAuth();
+    const orgId = profile?.org_id;
     return useQuery({
-        queryKey: ['expenses', profile?.org_id],
+        queryKey: ['expenses', orgId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('expenses')
                 .select('*')
                 .order('date', { ascending: false });
 
+            if (orgId) query = query.eq('org_id', orgId);
+
+            const { data, error } = await query;
             if (error) throw error;
             return data as Expense[];
         },
+        enabled: !!orgId,
     });
 }
 
 export function useCreateExpense() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async (expense: Partial<Expense>) => {
             const { error } = await supabase
                 .from('expenses')
-                .insert([expense]);
+                .insert([{ ...expense, org_id: profile?.org_id }]);
 
             if (error) throw error;
         },
