@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
-import printJS from 'print-js';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useNavigate } from 'react-router-dom';
@@ -245,8 +245,40 @@ export default function FulfillmentCenter() {
         });
     };
 
-    const handlePrintLabel = (labelUrl: string) => {
-        printJS({ printable: labelUrl, type: 'pdf' });
+    const handlePrintLabel = async (labelUrl: string) => {
+        // Try local print service first (sends directly to label printer)
+        try {
+            const svc = await fetch('https://localhost:9111/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: labelUrl }),
+            });
+            if (svc.ok) {
+                toast({ title: 'Sent to label printer' });
+                return;
+            }
+        } catch {
+            // Print service not running — fall through
+        }
+
+        // Fallback: try HTTP port
+        try {
+            const svc = await fetch('http://localhost:9112/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: labelUrl }),
+            });
+            if (svc.ok) {
+                toast({ title: 'Sent to label printer' });
+                return;
+            }
+        } catch {
+            // Not available either
+        }
+
+        // Final fallback: open PDF in new tab for manual print
+        window.open(labelUrl, '_blank');
+        toast({ title: 'Label opened in new tab', description: 'Print service not detected — use Ctrl+P to print.' });
     };
 
     const handleMarkPrinted = (orderId: string) => {

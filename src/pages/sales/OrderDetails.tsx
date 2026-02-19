@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
-import printJS from 'print-js';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -71,45 +71,6 @@ export default function OrderDetails() {
     const [showRatesDialog, setShowRatesDialog] = useState(false);
     const [availableRates, setAvailableRates] = useState<ShippingRate[]>([]);
     const [ratesShipmentId, setRatesShipmentId] = useState<string>('');
-    const [isPrinting, setIsPrinting] = useState(false);
-
-    const directPrint = async (labelUrl: string) => {
-        setIsPrinting(true);
-        const body = JSON.stringify({ url: labelUrl });
-        const headers = { 'Content-Type': 'application/json' };
-        try {
-            // Try HTTPS first (trusted mkcert cert), then HTTP fallbacks
-            let res: Response | null = null;
-            for (const base of ['https://localhost:9111', 'http://localhost:9111', 'http://localhost:9112']) {
-                try {
-                    res = await fetch(`${base}/print`, { method: 'POST', headers, body });
-                    break;
-                } catch { /* try next */ }
-            }
-            if (!res || !res.ok) {
-                const err = res ? await res.json().catch(() => ({})) : {};
-                throw new Error(err.error || 'Print service unreachable');
-            }
-            toast({ title: 'Label sent to D520 printer' });
-            // Auto-mark as printed
-            if (order) {
-                updateOrder.mutate(
-                    { id: order.id, shipping_status: 'printed' },
-                    { onSuccess: () => {} }
-                );
-            }
-        } catch (err) {
-            console.warn('Local print service unavailable, falling back to browser print:', err);
-            toast({
-                variant: 'destructive',
-                title: 'Direct print failed',
-                description: 'Print service not running. Start print-service/start.cmd — falling back to browser print.',
-            });
-            printJS({ printable: labelUrl, type: 'pdf' });
-        } finally {
-            setIsPrinting(false);
-        }
-    };
 
     const order = salesOrders?.find(o => o.id === id);
 
@@ -658,17 +619,34 @@ export default function OrderDetails() {
                                 </Button>
                             )}
 
-                            {/* Print label directly to D520 via local print service */}
+                            {/* Print label - sends to local print service or opens in new tab */}
                             {order.label_url && !['delivered'].includes(order.shipping_status) && (
                                 <Button
                                     variant="default"
                                     size="sm"
                                     className="w-full bg-indigo-600 hover:bg-indigo-700"
-                                    disabled={isPrinting}
-                                    onClick={() => directPrint(order.label_url!)}
+                                    onClick={async () => {
+                                        const labelUrl = order.label_url!;
+                                        // Try local print service (HTTPS then HTTP)
+                                        for (const base of ['https://localhost:9111', 'http://localhost:9112']) {
+                                            try {
+                                                const r = await fetch(`${base}/print`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ url: labelUrl }),
+                                                });
+                                                if (r.ok) {
+                                                    toast({ title: 'Sent to label printer' });
+                                                    return;
+                                                }
+                                            } catch { /* service not available */ }
+                                        }
+                                        // Fallback: open in new tab
+                                        window.open(labelUrl, '_blank');
+                                        toast({ title: 'Label opened in new tab', description: 'Print service not detected — use Ctrl+P.' });
+                                    }}
                                 >
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    {isPrinting ? 'Printing...' : 'Print to D520'}
+                                    <Printer className="mr-2 h-4 w-4" /> Print Shipping Label
                                 </Button>
                             )}
 
@@ -917,55 +895,6 @@ export default function OrderDetails() {
                             Confirm Payment
                         </Button>
                     </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Shipping Rate Selection Dialog */}
-            <Dialog open={showRatesDialog} onOpenChange={setShowRatesDialog}>
-                <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Choose Shipping Rate</DialogTitle>
-                        <DialogDescription>
-                            Select a carrier and service for this shipment.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        {availableRates.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">No rates available. Check the shipping address.</p>
-                        )}
-                        {availableRates
-                            .sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount))
-                            .map((rate) => (
-                            <button
-                                key={rate.object_id}
-                                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 disabled:opacity-50"
-                                disabled={buyLabel.isPending}
-                                onClick={() => {
-                                    buyLabel.mutate(
-                                        { orderId: order.id, rateId: rate.object_id },
-                                        { onSuccess: () => setShowRatesDialog(false) }
-                                    );
-                                }}
-                            >
-                                <div className="min-w-0">
-                                    <div className="font-medium text-sm">{rate.provider}</div>
-                                    <div className="text-xs text-muted-foreground truncate">{rate.servicelevel_name}</div>
-                                    {rate.estimated_days && (
-                                        <div className="text-xs text-muted-foreground">
-                                            ~{rate.estimated_days} day{rate.estimated_days !== 1 ? 's' : ''}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <div className="font-semibold text-sm">${parseFloat(rate.amount).toFixed(2)}</div>
-                                    <div className="text-[10px] text-muted-foreground">{rate.currency}</div>
-                                </div>
-                            </button>
-                        ))}
-                        {buyLabel.isPending && (
-                            <p className="text-sm text-center text-muted-foreground py-2">Purchasing label...</p>
-                        )}
-                    </div>
                 </DialogContent>
             </Dialog>
         </div>
