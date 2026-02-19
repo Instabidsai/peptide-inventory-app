@@ -48,6 +48,11 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             roleName = previewRole;
         }
 
+        // Super-admins go to vendor dashboard by default
+        if (roleName === 'super_admin' && location.pathname === '/') {
+            return <Navigate to="/vendor" replace />;
+        }
+
         // Block clients/customers from admin areas
         if (roleName === 'client' || roleName === 'customer') {
             if (!allowedRoles || !allowedRoles.includes(roleName)) {
@@ -61,8 +66,11 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         }
 
         // Enforce strict allowedRoles if provided
+        // super_admin inherits admin access everywhere
         if (allowedRoles && !allowedRoles.includes(roleName)) {
-            return <Navigate to="/" replace />;
+            if (!(roleName === 'super_admin' && allowedRoles.includes('admin'))) {
+                return <Navigate to="/" replace />;
+            }
         }
 
         return <>{children}</>;

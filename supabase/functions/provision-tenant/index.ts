@@ -1,0 +1,238 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const VERSION = "1.0.0";
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    };
+}
+
+interface ProvisionRequest {
+    // Organization
+    org_name: string;
+    // Admin user
+    admin_email: string;
+    admin_name: string;
+    admin_password?: string; // If omitted, sends magic link
+    // Branding
+    brand_name?: string;
+    admin_brand_name?: string;
+    support_email?: string;
+    app_url?: string;
+    logo_url?: string;
+    primary_color?: string;
+    // Shipping (optional — can be set later)
+    ship_from_name?: string;
+    ship_from_street?: string;
+    ship_from_city?: string;
+    ship_from_state?: string;
+    ship_from_zip?: string;
+    ship_from_phone?: string;
+    ship_from_email?: string;
+    // Options
+    seed_sample_peptides?: boolean;
+}
+
+Deno.serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req);
+
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
+    try {
+        // Require service role key — this is a privileged operation
+        const sbUrl = Deno.env.get('SUPABASE_URL');
+        const sbServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (!sbUrl || !sbServiceKey) throw new Error('Missing Supabase config');
+
+        // Verify caller is a super-admin or has service role
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) throw new Error('Unauthorized: no auth header');
+
+        const supabase = createClient(sbUrl, sbServiceKey);
+
+        // Check if caller is super-admin via their JWT
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) throw new Error('Unauthorized: invalid token');
+
+        // Verify super-admin role
+        const { data: callerRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+
+        if (callerRole?.role !== 'super_admin') {
+            throw new Error('Forbidden: only super_admin can provision tenants');
+        }
+
+        const body: ProvisionRequest = await req.json();
+        if (!body.org_name || !body.admin_email || !body.admin_name) {
+            throw new Error('Required: org_name, admin_email, admin_name');
+        }
+
+        console.log(`[${VERSION}] Provisioning tenant: ${body.org_name} for ${body.admin_email}`);
+
+        const results: Record<string, any> = {};
+
+        // ── Step 1: Create Organization ──
+        const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .insert({ name: body.org_name })
+            .select()
+            .single();
+
+        if (orgError) throw new Error(`Org creation failed: ${orgError.message}`);
+        results.org_id = org.id;
+        console.log(`  Created org: ${org.id}`);
+
+        // ── Step 2: Create Tenant Config ──
+        const { error: configError } = await supabase
+            .from('tenant_config')
+            .insert({
+                org_id: org.id,
+                brand_name: body.brand_name || body.org_name,
+                admin_brand_name: body.admin_brand_name || body.org_name,
+                support_email: body.support_email || body.admin_email,
+                app_url: body.app_url || '',
+                logo_url: body.logo_url || '',
+                primary_color: body.primary_color || '#7c3aed',
+                ship_from_name: body.ship_from_name || '',
+                ship_from_street: body.ship_from_street || '',
+                ship_from_city: body.ship_from_city || '',
+                ship_from_state: body.ship_from_state || '',
+                ship_from_zip: body.ship_from_zip || '',
+                ship_from_country: 'US',
+                ship_from_phone: body.ship_from_phone || '',
+                ship_from_email: body.ship_from_email || body.admin_email,
+                zelle_email: '',
+                session_timeout_minutes: 60,
+            });
+
+        if (configError) throw new Error(`Config creation failed: ${configError.message}`);
+        results.config_created = true;
+        console.log(`  Created tenant config`);
+
+        // ── Step 3: Create Admin User ──
+        const createUserPayload: any = {
+            email: body.admin_email,
+            email_confirm: true,
+            user_metadata: { role: 'admin', full_name: body.admin_name },
+        };
+        if (body.admin_password) {
+            createUserPayload.password = body.admin_password;
+        }
+
+        const { data: userData, error: userError } = await supabase.auth.admin.createUser(createUserPayload);
+
+        let adminUserId: string;
+        if (userData?.user) {
+            adminUserId = userData.user.id;
+        } else if (userError?.message?.includes('already registered')) {
+            // User exists — find them
+            const { data: userList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            const found = userList?.users?.find(u => u.email?.toLowerCase() === body.admin_email.toLowerCase());
+            if (!found) throw new Error('User exists but could not be found');
+            adminUserId = found.id;
+            results.admin_user_existed = true;
+        } else if (userError) {
+            throw new Error(`User creation failed: ${userError.message}`);
+        } else {
+            throw new Error('User creation returned no data');
+        }
+
+        results.admin_user_id = adminUserId;
+        console.log(`  Admin user: ${adminUserId}`);
+
+        // ── Step 4: Create Profile ──
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: adminUserId,
+                full_name: body.admin_name,
+                org_id: org.id,
+                role: 'admin',
+            }, { onConflict: 'id' });
+
+        if (profileError) console.warn(`Profile upsert warning: ${profileError.message}`);
+        results.profile_created = true;
+
+        // ── Step 5: Create User Role ──
+        const { error: roleError } = await supabase
+            .from('user_roles')
+            .upsert({
+                user_id: adminUserId,
+                org_id: org.id,
+                role: 'admin',
+            }, { onConflict: 'user_id,org_id' });
+
+        if (roleError) console.warn(`Role upsert warning: ${roleError.message}`);
+        results.role_created = true;
+
+        // ── Step 6: Seed Default Pricing Tiers ──
+        const { error: tierError } = await supabase
+            .from('pricing_tiers')
+            .insert([
+                { org_id: org.id, name: 'Retail', markup_pct: 1.00, is_default: true },
+                { org_id: org.id, name: 'Partner', markup_pct: 0.70, is_default: false },
+                { org_id: org.id, name: 'VIP', markup_pct: 0.80, is_default: false },
+            ]);
+
+        if (tierError) console.warn(`Pricing tiers warning: ${tierError.message}`);
+        results.pricing_tiers_created = true;
+
+        // ── Step 7: Seed Sample Peptides (optional) ──
+        if (body.seed_sample_peptides) {
+            const { error: pepError } = await supabase
+                .from('peptides')
+                .insert([
+                    { org_id: org.id, name: 'BPC-157', sku: 'BPC-5MG', retail_price: 45.00, active: true },
+                    { org_id: org.id, name: 'TB-500', sku: 'TB-5MG', retail_price: 55.00, active: true },
+                    { org_id: org.id, name: 'Semaglutide', sku: 'SEMA-5MG', retail_price: 120.00, active: true },
+                    { org_id: org.id, name: 'CJC-1295', sku: 'CJC-2MG', retail_price: 65.00, active: true },
+                    { org_id: org.id, name: 'Ipamorelin', sku: 'IPA-5MG', retail_price: 55.00, active: true },
+                ]);
+
+            if (pepError) console.warn(`Sample peptides warning: ${pepError.message}`);
+            results.sample_peptides_created = true;
+        }
+
+        console.log(`[${VERSION}] Tenant provisioned successfully: ${org.id}`);
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                version: VERSION,
+                ...results,
+            }),
+            {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            }
+        );
+
+    } catch (error: any) {
+        console.error(`[${VERSION}] Error:`, error.message);
+        return new Response(
+            JSON.stringify({
+                success: false,
+                version: VERSION,
+                error: error.message,
+            }),
+            {
+                headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+                status: error.message.includes('Unauthorized') || error.message.includes('Forbidden') ? 403 : 400,
+            }
+        );
+    }
+});

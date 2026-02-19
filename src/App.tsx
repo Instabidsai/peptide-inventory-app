@@ -56,6 +56,9 @@ const PartnerDashboard = lazyRetry(() => import("./pages/partner/PartnerDashboar
 const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
 const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 
+// Vendor (super-admin)
+const VendorDashboard = lazyRetry(() => import("./pages/vendor/VendorDashboard"));
+
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
 const ClientDashboard = lazyRetry(() => import("./pages/client/ClientDashboard"));
@@ -137,7 +140,7 @@ const App = () => (
 
                             <Route element={
                                 <ProtectedRoute>
-                                    <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment']}>
+                                    <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin']}>
                                         <AppLayout />
                                     </RoleBasedRedirect>
                                 </ProtectedRoute>
@@ -165,6 +168,8 @@ const App = () => (
                                 <Route path="/partner" element={<PartnerDashboard />} />
                                 <Route path="/partner/store" element={<PartnerStore />} />
                                 <Route path="/partner/orders" element={<PartnerOrders />} />
+
+                                <Route path="/vendor" element={<RoleBasedRedirect allowedRoles={['super_admin']}><VendorDashboard /></RoleBasedRedirect>} />
 
                                 <Route path="/bottles" element={<Bottles />} />
 
