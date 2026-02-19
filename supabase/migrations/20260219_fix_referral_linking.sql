@@ -22,6 +22,7 @@ DECLARE
   v_referrer_org_id UUID;
   v_is_partner BOOLEAN;
   v_app_role TEXT;
+  v_contact_type contact_type;
   v_existing_contact UUID;
 BEGIN
   -- 1. Look up referrer (bypasses RLS via SECURITY DEFINER)
@@ -35,6 +36,7 @@ BEGIN
 
   v_is_partner := (p_role = 'partner');
   v_app_role := CASE WHEN v_is_partner THEN 'sales_rep' ELSE 'client' END;
+  v_contact_type := CASE WHEN v_is_partner THEN 'partner'::contact_type ELSE 'customer'::contact_type END;
 
   -- 2. Update new user's profile (bypasses RLS)
   UPDATE profiles SET
@@ -64,7 +66,7 @@ BEGIN
     VALUES (
       COALESCE(NULLIF(p_full_name, ''), p_email),
       p_email,
-      CASE WHEN v_is_partner THEN 'partner' ELSE 'customer' END,
+      v_contact_type,
       v_referrer_org_id,
       v_referrer_id,
       p_user_id
