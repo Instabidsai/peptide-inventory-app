@@ -47,7 +47,7 @@ export function PricingCard({
         "relative rounded-xl border p-6 flex flex-col transition-all duration-300",
         popular
           ? "border-primary bg-primary/5 shadow-card-hover scale-[1.02]"
-          : "border-border/60 bg-card shadow-card hover:shadow-card-hover"
+          : "border-border/60 bg-card shadow-card hover:shadow-card-hover hover:scale-[1.01] hover:border-primary/20"
       )}
     >
       {popular && (

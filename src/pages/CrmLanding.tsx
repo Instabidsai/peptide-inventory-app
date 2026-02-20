@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { motion, useInView, useScroll, useTransform, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   FlaskConical,
@@ -31,6 +31,10 @@ import {
   Lock,
   BadgeCheck,
   ChevronRight,
+  Twitter,
+  Linkedin,
+  Github,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -63,7 +67,11 @@ const shimmerStyle: React.CSSProperties = {
   animation: "shimmer 2.5s ease-in-out infinite",
 };
 
-const shimmerKeyframes = `@keyframes shimmer { 0%,100%{background-position:100% 0} 50%{background-position:0 0} }`;
+const shimmerKeyframes = `
+@keyframes shimmer { 0%,100%{background-position:100% 0} 50%{background-position:0 0} }
+@keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+@keyframes gradient-slide { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+`;
 
 // ─── Animated Counter ────────────────────────────────────────────
 function AnimatedCounter({
@@ -103,16 +111,51 @@ function AnimatedCounter({
   );
 }
 
+// ─── Scroll Progress Bar ─────────────────────────────────────────
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll();
+  const [progress, setProgress] = useState(0);
+  useMotionValueEvent(scrollYProgress, "change", (v) => setProgress(v));
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[60] h-[3px]">
+      <div
+        className="h-full bg-gradient-to-r from-primary via-emerald-400 to-primary rounded-r-full transition-[width] duration-75"
+        style={{ width: `${progress * 100}%` }}
+      />
+    </div>
+  );
+}
+
 // ─── Nav ──────────────────────────────────────────────────────────
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  // Track active section via IntersectionObserver
+  useEffect(() => {
+    const ids = ["features", "ai-showcase", "pricing", "faq"];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
+        });
+      },
+      { rootMargin: "-40% 0px -55% 0px" }
+    );
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
   }, []);
 
   const links = [
@@ -147,9 +190,20 @@ function Nav() {
               <button
                 key={l.id}
                 onClick={() => scrollTo(l.id)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className={`text-sm transition-colors relative ${
+                  activeSection === l.id
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {l.label}
+                {activeSection === l.id && (
+                  <motion.div
+                    layoutId="nav-indicator"
+                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </button>
             ))}
           </div>
@@ -166,8 +220,10 @@ function Nav() {
             <Button
               size="sm"
               onClick={() => navigate("/auth?mode=signup&plan=free")}
+              className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
             >
               Start Free
+              <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
 
@@ -432,14 +488,23 @@ function TrustBar() {
   return (
     <section className="py-10 border-y border-border/30 bg-card/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Trusted by logos */}
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mb-8 opacity-40">
-          {["Pacific Compounding", "BioVantage", "NovaPeptide", "PeptideLogix", "ColdChain Rx"].map((name) => (
-            <div key={name} className="flex items-center gap-1.5">
-              <FlaskConical className="w-4 h-4" />
-              <span className="text-xs font-semibold tracking-wide uppercase">{name}</span>
-            </div>
-          ))}
+        {/* Trusted by logos — infinite marquee */}
+        <div className="relative mb-8 overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-card/20 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-card/20 to-transparent z-10 pointer-events-none" />
+          <div
+            className="flex gap-12 opacity-40 whitespace-nowrap"
+            style={{ animation: "marquee 25s linear infinite", width: "max-content" }}
+          >
+            {[...Array(2)].flatMap((_, dup) =>
+              ["Pacific Compounding", "BioVantage", "NovaPeptide", "PeptideLogix", "ColdChain Rx", "VialTrack", "PeptideWorks", "BioFreeze Labs"].map((name) => (
+                <div key={`${name}-${dup}`} className="flex items-center gap-1.5 shrink-0">
+                  <FlaskConical className="w-4 h-4" />
+                  <span className="text-xs font-semibold tracking-wide uppercase">{name}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10">
@@ -509,7 +574,7 @@ function PainPoints() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-card rounded-lg border border-border/60 p-6 shadow-card"
+              className="bg-card rounded-lg border border-border/60 p-6 shadow-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.02] hover:border-destructive/30"
             >
               <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center mb-4">
                 <c.icon className="w-5 h-5 text-destructive" />
@@ -518,7 +583,7 @@ function PainPoints() {
               <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                 {c.desc}
               </p>
-              <span className="inline-block text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+              <span className="inline-block text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                 {c.stat}
               </span>
             </motion.div>
@@ -562,8 +627,17 @@ function HowItWorks() {
           </p>
         </motion.div>
         <div className="grid sm:grid-cols-3 gap-8 relative">
-          {/* Connector line (desktop only) */}
-          <div className="hidden sm:block absolute top-12 left-[16.5%] right-[16.5%] h-px bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0" />
+          {/* Connector line (desktop only) — animated gradient */}
+          <div className="hidden sm:block absolute top-12 left-[16.5%] right-[16.5%] h-px overflow-hidden">
+            <div
+              className="h-full w-full"
+              style={{
+                background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), hsl(142 76% 36% / 0.5), hsl(var(--primary) / 0.5), transparent)",
+                backgroundSize: "200% 100%",
+                animation: "gradient-slide 3s ease-in-out infinite",
+              }}
+            />
+          </div>
 
           {steps.map((s, i) => (
             <motion.div
@@ -767,9 +841,9 @@ function FeaturesBento() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className={`group relative overflow-hidden rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover ${
+              className={`group relative overflow-hidden rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.01] ${
                 f.hero
-                  ? "ring-1 ring-primary/20 hover:ring-primary/40"
+                  ? "sm:col-span-1 ring-1 ring-primary/20 hover:ring-primary/40 bg-gradient-to-br from-card to-primary/[0.03]"
                   : "hover:border-primary/30"
               }`}
             >
@@ -1251,7 +1325,7 @@ function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-card rounded-xl border border-border/60 p-6 shadow-card flex flex-col"
+              className="bg-card rounded-xl border border-border/60 p-6 shadow-card flex flex-col transition-all duration-300 hover:shadow-card-hover hover:border-primary/20"
             >
               <div className="flex gap-0.5 mb-3">
                 {Array.from({ length: t.stars }).map((_, si) => (
@@ -1273,11 +1347,12 @@ function Testimonials() {
                 }`}>
                   {t.name.split(" ").map(n => n[0]).join("")}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     {t.name}
+                    <BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0" />
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {t.title}, {t.company}
                   </p>
                 </div>
@@ -1421,13 +1496,13 @@ function Pricing() {
         </motion.div>
 
         <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {displayPlans.map((plan) => (
+          {displayPlans.map((plan, i) => (
             <motion.div
               key={plan.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20, delay: i * 0.12 }}
             >
               <PricingCard
                 name={plan.name}
@@ -1549,8 +1624,10 @@ function FinalCta() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           {...fadeInUp}
-          className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-8 sm:p-12 text-center overflow-hidden"
+          className="relative rounded-2xl overflow-hidden"
+          style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--border) / 0.3) 40%, hsl(142 76% 36% / 0.5))" }}
         >
+        <div className="rounded-[15px] bg-gradient-to-br from-primary/10 via-card to-card p-8 sm:p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-[60px] pointer-events-none" />
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
@@ -1575,7 +1652,7 @@ function FinalCta() {
               placeholder="you@peptidecompany.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="flex-1 rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 focus:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-shadow"
             />
             <Button type="submit" className="shadow-btn hover:shadow-btn-hover">
               Start Free
@@ -1598,6 +1675,7 @@ function FinalCta() {
           <p className="mt-3 text-xs text-muted-foreground relative">
             No credit card required. Set up in 2 minutes.
           </p>
+        </div>
         </motion.div>
       </div>
     </section>
@@ -1707,7 +1785,7 @@ function Footer() {
         </div>
 
         {/* Security badges */}
-        <div className="mt-8 flex flex-wrap justify-center gap-4">
+        <div className="mt-8 flex flex-wrap justify-center gap-6">
           {[
             { icon: Shield, label: "SOC2 Ready" },
             { icon: Lock, label: "256-bit Encrypted" },
@@ -1720,8 +1798,25 @@ function Footer() {
           ))}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-border/20 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} PeptideCRM. All rights reserved.
+        <div className="mt-6 pt-6 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} PeptideCRM. All rights reserved.
+          </p>
+          <div className="flex items-center gap-3">
+            {[
+              { icon: Twitter, label: "Twitter" },
+              { icon: Linkedin, label: "LinkedIn" },
+              { icon: Github, label: "GitHub" },
+            ].map((social) => (
+              <button
+                key={social.label}
+                className="w-8 h-8 rounded-full bg-card border border-border/40 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                aria-label={social.label}
+              >
+                <social.icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </footer>
@@ -1737,6 +1832,7 @@ export default function CrmLanding() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <ScrollProgress />
       <Nav />
       <Hero />
       <TrustBar />
