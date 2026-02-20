@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
+function StatCard({ label, value, icon: Icon }: { label: string; value: number | string; icon: React.ElementType }) {
     return (
         <Card>
             <CardContent className="flex items-center gap-4 p-4">
@@ -137,7 +137,7 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
                     </div>
                     <div className="flex items-center gap-3">
                         <Label>Brand Color</Label>
-                        <input type="color" value={form.primary_color} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))} className="h-8 w-12 rounded border cursor-pointer" />
+                        <input type="color" value={form.primary_color} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))} className="h-11 w-14 rounded-lg border border-input bg-card/50 cursor-pointer shadow-inset" />
                         <span className="text-xs text-muted-foreground">{form.primary_color}</span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -214,7 +214,7 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
             </TableCell>
             <TableCell>
                 <Badge variant="outline" className="text-xs">
-                    Active
+                    {tenant.order_count > 0 ? 'Active' : 'New'}
                 </Badge>
             </TableCell>
         </TableRow>
@@ -266,7 +266,7 @@ function BillingTab({ tenants }: { tenants: TenantSummary[] }) {
         <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
                 <StatCard label="Active Subscriptions" value={activeCount} icon={CreditCard} />
-                <StatCard label="Monthly Revenue" value={`$${(mrr / 100).toFixed(0)}`} icon={DollarSign} />
+                <StatCard label="Monthly Revenue" value={`$${(mrr / 100).toFixed(2)}`} icon={DollarSign} />
                 <StatCard label="Free Tier" value={(tenants?.length || 0) - activeCount} icon={Building2} />
             </div>
 
@@ -317,7 +317,7 @@ function BillingTab({ tenants }: { tenants: TenantSummary[] }) {
                             {events.slice(0, 10).map((evt: any) => (
                                 <div key={evt.id} className="flex items-center justify-between text-sm border-b pb-2">
                                     <span className="font-mono text-xs text-muted-foreground">{evt.event_type}</span>
-                                    {evt.amount_cents && <span className="font-medium">${(evt.amount_cents / 100).toFixed(2)}</span>}
+                                    {evt.amount_cents != null && <span className="font-medium">${(evt.amount_cents / 100).toFixed(2)}</span>}
                                     <span className="text-xs text-muted-foreground">{format(new Date(evt.created_at), 'MMM d, h:mm a')}</span>
                                 </div>
                             ))}
@@ -500,7 +500,7 @@ export default function VendorDashboard() {
                             ) : !tenants?.length ? (
                                 <div className="text-center py-12 text-muted-foreground">
                                     <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                                    <p className="text-lg font-medium">No tenants yet</p>
+                                    <p className="text-lg font-semibold">No tenants yet</p>
                                     <p className="text-sm">Click "New Tenant" to provision your first organization.</p>
                                 </div>
                             ) : (

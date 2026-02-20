@@ -104,10 +104,10 @@ export default function ClientNotifications() {
                             animate={{ y: [0, -6, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                            <Bell className="h-8 w-8 opacity-50" />
+                            <Bell className="h-8 w-8 opacity-30" />
                         </motion.div>
-                        <h3 className="text-lg font-medium mb-1">No notifications</h3>
-                        <p className="text-sm">You're all caught up!</p>
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-1">No notifications</h3>
+                        <p className="text-sm text-muted-foreground/70">You're all caught up!</p>
                     </CardContent>
                 </Card>
                 </motion.div>

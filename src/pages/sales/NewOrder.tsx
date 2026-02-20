@@ -356,7 +356,7 @@ export default function NewOrder() {
 
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-6">
                     <div className="space-y-3">
-                        <label className="text-sm font-medium flex items-center gap-2">
+                        <label className="text-sm font-semibold flex items-center gap-2">
                             <User className="h-4 w-4" /> Customer
                         </label>
                         <Select value={selectedContactId} onValueChange={setSelectedContactId}>
@@ -372,7 +372,7 @@ export default function NewOrder() {
                             </SelectContent>
                         </Select>
                         {selectedContact && (
-                            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                            <div className="text-xs text-muted-foreground bg-muted/50 p-2.5 rounded-lg border border-border/40">
                                 {selectedContact.address || "No address on file"}
                             </div>
                         )}
@@ -390,7 +390,7 @@ export default function NewOrder() {
                     <Separator />
 
                     <div className="space-y-3">
-                        <label className="text-sm font-medium">Add Product</label>
+                        <label className="text-sm font-semibold">Add Product</label>
                         <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
                             <PopoverTrigger asChild>
                                 <Button
@@ -448,7 +448,7 @@ export default function NewOrder() {
                                 const tiers = getPricingTiers(item.peptide, item.basePrice, isPartnerOrder);
 
                                 return (
-                                    <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-card">
+                                    <div key={item.peptide.id} className="flex flex-col gap-2 p-3 border border-border/60 rounded-lg bg-card">
                                         <div className="flex justify-between items-start">
                                             <span className="font-medium">{item.peptide.name}</span>
                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.peptide.id)} aria-label={`Remove ${item.peptide.name} from cart`}>
@@ -457,7 +457,7 @@ export default function NewOrder() {
                                         </div>
 
                                         <div className="flex items-center gap-3">
-                                            <div className="flex items-center border rounded-md">
+                                            <div className="flex items-center border border-border/60 rounded-lg">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
@@ -525,7 +525,7 @@ export default function NewOrder() {
 
                     <div className="space-y-3">
                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Delivery Method</label>
+                            <label className="text-sm font-semibold">Delivery Method</label>
                             <div className="flex gap-2">
                                 <Button
                                     type="button"
@@ -549,7 +549,7 @@ export default function NewOrder() {
                         </div>
                         {deliveryMethod === 'ship' && (
                             <div className="space-y-1">
-                                <label className="text-sm font-medium">Shipping Address</label>
+                                <label className="text-sm font-semibold">Shipping Address</label>
                                 <Textarea
                                     placeholder="Enter shipping address if different..."
                                     value={shippingAddress}
@@ -559,7 +559,7 @@ export default function NewOrder() {
                             </div>
                         )}
                         <div className="space-y-1">
-                            <label className="text-sm font-medium">Notes</label>
+                            <label className="text-sm font-semibold">Notes</label>
                             <Textarea
                                 placeholder="Order notes..."
                                 value={notes}

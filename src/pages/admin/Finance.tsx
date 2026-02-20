@@ -369,7 +369,7 @@ export default function Finance() {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Total Expenses</CardTitle>
                         <TrendingDown className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -381,7 +381,7 @@ export default function Finance() {
                 {/* Accounts Payable / Liabilities */}
                 <Card className="border-l-4 border-l-amber-500">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Accounts Payable</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Accounts Payable</CardTitle>
                         <AlertCircle className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
@@ -394,7 +394,7 @@ export default function Finance() {
                 {Object.entries(categoryTotals || {}).slice(0, 2).map(([cat, amount]) => (
                     <Card key={cat}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium capitalize">{cat}</CardTitle>
+                            <CardTitle className="text-sm font-semibold capitalize">{cat}</CardTitle>
                             <PieChart className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -406,7 +406,7 @@ export default function Finance() {
                 {/* Commission Liability Card */}
                 <Card className="border-l-4 border-l-purple-500">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Commission Liability</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Commission Liability</CardTitle>
                         <Users className="h-4 w-4 text-purple-500" />
                     </CardHeader>
                     <CardContent>
@@ -481,7 +481,7 @@ export default function Finance() {
                     <div className="grid gap-4 md:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Order COGS</CardTitle>
+                                <CardTitle className="text-sm font-semibold">Order COGS</CardTitle>
                                 <Receipt className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
@@ -491,7 +491,7 @@ export default function Finance() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Merchant Fees</CardTitle>
+                                <CardTitle className="text-sm font-semibold">Merchant Fees</CardTitle>
                                 <Banknote className="h-4 w-4 text-amber-500" />
                             </CardHeader>
                             <CardContent>
@@ -501,7 +501,7 @@ export default function Finance() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Commissions Total</CardTitle>
+                                <CardTitle className="text-sm font-semibold">Commissions Total</CardTitle>
                                 <Users className="h-4 w-4 text-purple-500" />
                             </CardHeader>
                             <CardContent>
@@ -513,7 +513,7 @@ export default function Finance() {
                         </Card>
                         <Card className={financials.orderBasedProfit >= 0 ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Order Net Profit</CardTitle>
+                                <CardTitle className="text-sm font-semibold">Order Net Profit</CardTitle>
                                 <TrendingUp className="h-4 w-4 text-green-500" />
                             </CardHeader>
                             <CardContent>

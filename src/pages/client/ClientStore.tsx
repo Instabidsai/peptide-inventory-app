@@ -611,7 +611,7 @@ export default function ClientStore() {
                                                     ) : (
                                                         <Button
                                                             size="sm"
-                                                            className="rounded-xl px-5 h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 transition-all hover:scale-[1.02]"
+                                                            className="rounded-xl px-5 h-11 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 transition-all hover:scale-[1.02]"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 matchedPeptides.forEach((p: any) => addToCart(p));
@@ -824,7 +824,7 @@ export default function ClientStore() {
                                                 ) : (
                                                     <Button
                                                         size="sm"
-                                                        className="rounded-xl px-5 h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] transition-all"
+                                                        className="rounded-xl px-5 h-11 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] transition-all"
                                                         onClick={() => addToCart(peptide)}
                                                     >
                                                         <Plus className="h-4 w-4 mr-1" />

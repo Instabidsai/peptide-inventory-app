@@ -51,7 +51,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
         .from('tenant_config')
         .select('brand_name, admin_brand_name, support_email, logo_url, primary_color, app_url')
         .eq('org_id', orgId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -117,7 +117,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
           <div className="space-y-2">
             <Label>Primary Color</Label>
             <div className="flex items-center gap-3">
-              <input type="color" value={brand.primary_color} onChange={e => setBrand(b => ({ ...b, primary_color: e.target.value }))} className="h-10 w-14 rounded border cursor-pointer" />
+              <input type="color" value={brand.primary_color} onChange={e => setBrand(b => ({ ...b, primary_color: e.target.value }))} className="h-11 w-14 rounded-lg border border-input bg-card/50 cursor-pointer shadow-inset" />
               <Input value={brand.primary_color} onChange={e => setBrand(b => ({ ...b, primary_color: e.target.value }))} className="flex-1" />
               <div className="h-10 w-10 rounded-lg" style={{ backgroundColor: brand.primary_color }} />
             </div>
@@ -361,7 +361,7 @@ export default function Settings() {
         </TabsList>
 
         <TabsContent value="profile">
-          <Card className="bg-card border-border">
+          <Card className="bg-card border-border/60">
             <CardHeader>
               <CardTitle>Profile Settings</CardTitle>
               <CardDescription>Update your personal information</CardDescription>
@@ -407,7 +407,7 @@ export default function Settings() {
 
         {isAdmin && (
           <TabsContent value="organization">
-            <Card className="bg-card border-border">
+            <Card className="bg-card border-border/60">
               <CardHeader>
                 <CardTitle>Organization Settings</CardTitle>
                 <CardDescription>Manage your organization details</CardDescription>
@@ -453,7 +453,7 @@ export default function Settings() {
 
         {isAdmin && (
           <TabsContent value="team" className="space-y-6">
-            <Card className="bg-card border-border">
+            <Card className="bg-card border-border/60">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>

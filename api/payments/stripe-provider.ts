@@ -94,9 +94,17 @@ export class StripeProvider implements PaymentProvider {
             .update(signedPayload)
             .digest('hex');
 
-        if (expected !== v1Sig) return null;
+        // Timing-safe comparison to prevent side-channel attacks
+        const a = Buffer.from(expected, 'hex');
+        const b = Buffer.from(v1Sig, 'hex');
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
-        const event = JSON.parse(rawBody);
+        let event: any;
+        try {
+            event = JSON.parse(rawBody);
+        } catch {
+            return null;
+        }
         const obj = event.data?.object || {};
 
         return {

@@ -331,7 +331,7 @@ export default function MacroTracker() {
             <FavoritesSheet onSelect={handleQuickAdd} />
 
             {/* Dashboard Hero Section */}
-            <Card className="mb-6 shadow-md bg-card">
+            <Card className="mb-6 shadow-card bg-card">
                 <CardContent className="pt-6 pb-8">
                     <div className="flex flex-col items-center mb-8">
                         <CircularProgress
@@ -469,7 +469,7 @@ export default function MacroTracker() {
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                            <p className="text-lg font-medium">Analyzing your meal...</p>
+                            <p className="text-lg font-semibold">Analyzing your meal...</p>
                             <p className="text-sm text-muted-foreground">This may take a few seconds</p>
                         </CardContent>
                     </Card>
@@ -484,7 +484,7 @@ export default function MacroTracker() {
                                 <CardTitle>Analysis Results</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-6 p-4 bg-muted rounded-lg">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-6 p-4 bg-card/50 rounded-lg border border-border/40">
                                     <div>
                                         <div className="text-2xl font-bold">{Math.round(result.total_calories)}</div>
                                         <div className="text-xs text-muted-foreground uppercase">Calories</div>
@@ -505,7 +505,7 @@ export default function MacroTracker() {
 
                                 <div className="space-y-4">
                                     {result.foods.map((food, idx) => (
-                                        <div key={`${food.name}-${idx}`} className="flex flex-col gap-3 p-4 border rounded-lg bg-card/50">
+                                        <div key={`${food.name}-${idx}`} className="flex flex-col gap-3 p-4 border border-border/60 rounded-lg bg-card/50">
                                             <div className="flex justify-between items-start">
                                                 <Input
                                                     value={food.name}

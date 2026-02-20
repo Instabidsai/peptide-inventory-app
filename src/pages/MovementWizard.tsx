@@ -225,7 +225,7 @@ export default function MovementWizard() {
 
       {/* Step 1: Type & Details */}
       {step === 1 && (
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border/60">
           <CardHeader>
             <CardTitle>Movement Type</CardTitle>
             <CardDescription>Select the type of movement you want to record</CardDescription>
@@ -287,7 +287,7 @@ export default function MovementWizard() {
 
       {/* Step 2: Select Bottles */}
       {step === 2 && (
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border/60">
           <CardHeader>
             <CardTitle>Select Bottles</CardTitle>
             <CardDescription>
@@ -320,7 +320,7 @@ export default function MovementWizard() {
               </div>
             )}
 
-            <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="border border-border/60 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -362,7 +362,7 @@ export default function MovementWizard() {
 
       {/* Step 3: Set Prices & Review */}
       {step === 3 && (
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border/60">
           <CardHeader>
             <CardTitle>Review & Set Prices</CardTitle>
             <CardDescription>
@@ -378,7 +378,7 @@ export default function MovementWizard() {
                 Set All: Retail
               </Button>
             </div>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border border-border/60 rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>

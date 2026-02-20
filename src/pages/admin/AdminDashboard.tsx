@@ -403,7 +403,7 @@ export default function AdminDashboard() {
             {/* Inventory Overview */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
                 <motion.div variants={staggerItem}><Link to="/bottles?status=in_stock">
-                    <Card className="bg-card border-border/60 hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">In Stock</CardTitle>
                             <Package className="h-4 w-4 text-primary" />
@@ -424,7 +424,7 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/peptides">
-                    <Card className="bg-card border-border/60 hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Peptides</CardTitle>
                             <AlertTriangle className="h-4 w-4 text-warning" />
@@ -448,7 +448,7 @@ export default function AdminDashboard() {
             {/* Movement Stats (Sold / Giveaway / Internal) */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
                 <motion.div variants={staggerItem}><Link to="/movements?type=sale">
-                    <Card className="bg-card border-border/60 hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Total Sold</CardTitle>
                             <ShoppingCart className="h-4 w-4 text-primary" />
@@ -469,7 +469,7 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=giveaway">
-                    <Card className="bg-card border-border/60 hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Given Away</CardTitle>
                             <TrendingUp className="h-4 w-4 text-primary" />
@@ -490,7 +490,7 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=internal_use">
-                    <Card className="bg-card border-border/60 hover:bg-accent/50 transition-colors cursor-pointer">
+                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Internal Use</CardTitle>
                             <TrendingUp className="h-4 w-4 text-blue-500" />
@@ -640,9 +640,9 @@ export default function AdminDashboard() {
                                 ))}
                             </div>
                         ) : recentMovements.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                                <Clock className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                                <p>No movements recorded yet</p>
+                            <div className="text-center py-8">
+                                <Clock className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                                <p className="font-semibold text-muted-foreground">No movements recorded yet</p>
                                 <Button asChild variant="link" className="mt-2">
                                     <Link to="/movements/new">Record your first movement</Link>
                                 </Button>

@@ -40,6 +40,20 @@ CREATE POLICY "Users can insert own org expenses"
   ON expenses FOR INSERT
   WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
+CREATE POLICY "Users can update own org expenses"
+  ON expenses FOR UPDATE
+  USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+
 CREATE POLICY "Users can delete own org expenses"
   ON expenses FOR DELETE
   USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+
+-- Super-admin access to all expenses
+CREATE POLICY "Super admin read all expenses"
+  ON expenses FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin'));
+
+CREATE POLICY "Super admin manage all expenses"
+  ON expenses FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin'));

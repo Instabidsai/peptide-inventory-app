@@ -431,7 +431,7 @@ export default function Lots() {
         </Card>
       </div>
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border/60">
         <CardHeader>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
@@ -456,10 +456,10 @@ export default function Lots() {
               ))}
             </div>
           ) : filteredLots?.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Package className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No lots found</p>
-              <p className="text-sm">Receive your first inventory lot to get started</p>
+            <div className="text-center py-12">
+              <Package className="mx-auto h-12 w-12 mb-4 opacity-30" />
+              <p className="text-lg font-semibold text-muted-foreground">No lots found</p>
+              <p className="text-sm text-muted-foreground/70">Receive your first inventory lot to get started</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -199,13 +199,13 @@ export default function ClientResources() {
                             <h1 className="text-xl font-bold">Research Library</h1>
                         </div>
                         <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                             <Input
                                 aria-label="Search resources"
                                 placeholder="Search peptides, studies, videos..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-11 bg-gray-800/50 border-gray-700 rounded-full text-sm h-10"
+                                className="pl-11 bg-card/50 border-input rounded-full text-sm h-11 shadow-inset"
                             />
                         </div>
                     </div>
@@ -227,14 +227,14 @@ export default function ClientResources() {
                                     <h2 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
                                         {featuredResource.title}
                                     </h2>
-                                    <p className="text-gray-400 text-sm mb-5 line-clamp-2">
+                                    <p className="text-muted-foreground/70 text-sm mb-5 line-clamp-2">
                                         {featuredResource.description || "Tap to view this resource."}
                                     </p>
                                     <button className="w-fit px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-full text-sm transition-colors">
                                         Watch Now
                                     </button>
                                 </div>
-                                <div className="relative aspect-video md:aspect-auto min-h-[200px] bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                <div className="relative aspect-video md:aspect-auto min-h-[200px] bg-gradient-to-br from-card to-background flex items-center justify-center">
                                     {featuredResource.thumbnail_url ? (
                                         <img src={featuredResource.thumbnail_url} alt={featuredResource.title || 'Featured resource'} className="w-full h-full object-cover opacity-80" />
                                     ) : (
@@ -314,7 +314,7 @@ export default function ClientResources() {
                                                             <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-emerald-500 text-white shadow shadow-emerald-500/20">
                                                                 {count} Resources
                                                             </span>
-                                                            <p className="text-[10px] text-gray-400 mt-2 line-clamp-2 leading-tight max-w-[90%]">
+                                                            <p className="text-[10px] text-muted-foreground/70 mt-2 line-clamp-2 leading-tight max-w-[90%]">
                                                                 {theme.description || `Regenerative peptide for tissue repair and gut health.`}
                                                             </p>
                                                         </div>
@@ -345,26 +345,26 @@ export default function ClientResources() {
                                     <div
                                         key={resource.id}
                                         onClick={() => popularResources.length > 0 && setSelectedResource(resource as Resource)}
-                                        className="shrink-0 w-[220px] rounded-xl p-3 cursor-pointer transition-all hover:bg-gray-800/50"
+                                        className="shrink-0 w-[220px] rounded-xl p-3 cursor-pointer transition-all hover:bg-card/50"
                                         style={{
                                             background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.5) 0%, rgba(17, 24, 39, 0.8) 100%)',
                                             border: '1px solid rgba(75, 85, 99, 0.3)'
                                         }}
                                     >
                                         <div className="flex items-start gap-3">
-                                            <div className="p-2 rounded-lg bg-gray-700/50 shrink-0">
-                                                {resource.type === 'video' ? <Video className="h-4 w-4 text-gray-400" /> :
-                                                    resource.type === 'pdf' ? <Download className="h-4 w-4 text-gray-400" /> :
-                                                        <FileText className="h-4 w-4 text-gray-400" />}
+                                            <div className="p-2 rounded-lg bg-card/30 shrink-0">
+                                                {resource.type === 'video' ? <Video className="h-4 w-4 text-muted-foreground/70" /> :
+                                                    resource.type === 'pdf' ? <Download className="h-4 w-4 text-muted-foreground/70" /> :
+                                                        <FileText className="h-4 w-4 text-muted-foreground/70" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">
+                                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">
                                                     {resource.type}
                                                 </span>
                                                 <h4 className="text-sm font-semibold text-white mt-0.5 line-clamp-2 leading-snug">
                                                     {resource.title}
                                                 </h4>
-                                                <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
+                                                <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground/50">
                                                     <span className="text-emerald-400">Author/Source</span>
                                                     <span className="flex items-center gap-1">
                                                         <Eye className="h-3 w-3" /> {resource.view_count || 0}
@@ -396,7 +396,7 @@ export default function ClientResources() {
                                             onClick={() => handleTabChange(tab)}
                                             className={`px-3 py-1 text-xs rounded-full capitalize transition-all ${activeTab === tab
                                                 ? 'bg-emerald-500 text-white font-medium shadow-lg shadow-emerald-500/20'
-                                                : 'text-gray-400 hover:text-white bg-gray-800/30'
+                                                : 'text-muted-foreground/70 hover:text-white bg-card/30'
                                                 }`}
                                         >
                                             {tab}
@@ -411,26 +411,26 @@ export default function ClientResources() {
                                         <button
                                             key={resource.id}
                                             onClick={() => setSelectedResource(resource)}
-                                            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800/50 transition-colors text-left group"
+                                            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-card/50 transition-colors text-left group"
                                         >
                                             <div className="p-1.5 rounded-lg bg-emerald-500/20">
                                                 <Play className="h-3 w-3 text-emerald-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-white truncate">{resource.title}</p>
-                                                <p className="text-[11px] text-gray-500">Uploaded {formatDate(resource.created_at)}</p>
+                                                <p className="text-[11px] text-muted-foreground/50">Uploaded {formatDate(resource.created_at)}</p>
                                             </div>
-                                            <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-emerald-400 transition-colors" />
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-emerald-400 transition-colors" />
                                         </button>
                                     ))}
                                 {getLatestByType(activeTab === 'articles' ? 'article' : activeTab === 'pdfs' ? 'pdf' : activeTab === 'videos' ? 'video' : 'guide').length === 0 && (
-                                    <p className="text-sm text-gray-500 text-center py-6">No {activeTab} uploaded yet.</p>
+                                    <p className="text-sm text-muted-foreground/50 text-center py-6">No {activeTab} uploaded yet.</p>
                                 )}
                             </div>
                             {getLatestByType(activeTab === 'articles' ? 'article' : activeTab === 'pdfs' ? 'pdf' : activeTab === 'videos' ? 'video' : 'guide').length > visibleUploads && (
                                 <button
                                     onClick={() => setVisibleUploads(prev => prev + 4)}
-                                    className="w-full mt-3 py-2.5 text-sm font-medium text-gray-300 bg-gray-800/50 hover:bg-gray-800 hover:text-white rounded-lg transition-all"
+                                    className="w-full mt-3 py-2.5 text-sm font-medium text-muted-foreground bg-card/50 hover:bg-card hover:text-white rounded-lg transition-all"
                                 >
                                     Load More
                                 </button>
@@ -461,22 +461,22 @@ export default function ClientResources() {
                                             <button
                                                 key={topic.id}
                                                 onClick={() => navigate('/community')}
-                                                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800/50 transition-colors text-left group"
+                                                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-card/50 transition-colors text-left group"
                                             >
                                                 <div className="p-1.5 rounded-lg bg-emerald-500/20">
                                                     <MessageSquare className="h-3 w-3 text-emerald-400" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-white truncate">{topic.title}</p>
-                                                    <p className="text-[11px] text-gray-500">
+                                                    <p className="text-[11px] text-muted-foreground/50">
                                                         {topic.message_count} replies • {formatTimeAgo(topic.last_activity_at)}
                                                     </p>
                                                 </div>
-                                                <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-emerald-400 transition-colors" />
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-emerald-400 transition-colors" />
                                             </button>
                                         ))
                                     ) : (
-                                        <p className="text-sm text-gray-500 py-4 text-center">No discussions yet. Start one in the Community Forum!</p>
+                                        <p className="text-sm text-muted-foreground/50 py-4 text-center">No discussions yet. Start one in the Community Forum!</p>
                                     )}
                                 </div>
                             </div>
@@ -490,7 +490,7 @@ export default function ClientResources() {
                 <>
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => { setSelectedTheme(null); setViewMode('library'); }} className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                            <button onClick={() => { setSelectedTheme(null); setViewMode('library'); }} className="p-2 rounded-lg hover:bg-card transition-colors">
                                 <ArrowLeft className="h-5 w-5" />
                             </button>
                             <div className="flex items-center gap-3">
@@ -502,21 +502,21 @@ export default function ClientResources() {
                         </div>
                         <button
                             onClick={toggleSort}
-                            className="px-3 py-1.5 text-sm border border-gray-700 rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 text-sm border border-input rounded-lg hover:bg-card/50 transition-colors flex items-center gap-2"
                         >
                             Filter <ChevronRight className={`h-4 w-4 transition-transform ${sortOrder === 'oldest' ? '-rotate-90' : 'rotate-90'}`} />
                         </button>
                     </div>
 
                     {/* Topic Tabs */}
-                    <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1 w-fit">
+                    <div className="flex gap-1 bg-card/50 rounded-lg p-1 w-fit">
                         {(['overview', 'research', 'videos', 'guides', 'discussion'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setTopicTab(tab)}
-                                className={`px-4 py-2 text-sm rounded-md capitalize transition-all ${topicTab === tab
-                                    ? 'bg-emerald-500 text-white font-medium'
-                                    : 'text-gray-400 hover:text-white'
+                                className={`px-4 py-2 text-sm rounded-lg capitalize transition-all ${topicTab === tab
+                                    ? 'bg-emerald-500 text-white font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.2)]'
+                                    : 'text-muted-foreground/70 hover:text-white'
                                     }`}
                             >
                                 {tab}
@@ -538,11 +538,11 @@ export default function ClientResources() {
                                     className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-all"
                                     style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}
                                 >
-                                    <div className="aspect-video bg-gray-800 flex items-center justify-center relative">
+                                    <div className="aspect-video bg-card flex items-center justify-center relative">
                                         {resource.thumbnail_url ? (
                                             <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" />
                                         ) : (
-                                            <Play className="h-10 w-10 text-gray-600" />
+                                            <Play className="h-10 w-10 text-muted-foreground/40" />
                                         )}
                                         {resource.type === 'video' && resource.duration && (
                                             <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
@@ -552,10 +552,10 @@ export default function ClientResources() {
                                     </div>
                                     <div className="p-3">
                                         <h4 className="font-semibold text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
-                                        <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resource.description}</p>
+                                        <p className="text-xs text-muted-foreground/50 line-clamp-2 mb-2">{resource.description}</p>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-500 capitalize">{resource.type}</span>
-                                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                                            <span className="text-xs text-muted-foreground/50 capitalize">{resource.type}</span>
+                                            <span className="text-xs text-muted-foreground/50 flex items-center gap-1">
                                                 <Eye className="h-3 w-3" /> {resource.view_count || 0}
                                             </span>
                                         </div>
@@ -606,7 +606,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
             <DialogHeader className="p-6 border-b shrink-0">
                 <div className="flex items-center gap-2 mb-2">
                     <Badge variant="outline" className="capitalize">{resource.type}</Badge>
-                    {resource.view_count !== undefined && <span className="text-xs text-gray-500">{resource.view_count} views</span>}
+                    {resource.view_count !== undefined && <span className="text-xs text-muted-foreground/50">{resource.view_count} views</span>}
                 </div>
                 <DialogTitle className="text-2xl">{resource.title}</DialogTitle>
                 {resource.description && <DialogDescription>{resource.description}</DialogDescription>}
@@ -623,7 +623,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                             <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.content) }} />
                         ) : (
                             <div className="flex flex-col gap-4">
-                                <p className="text-gray-400">This resource is available externally.</p>
+                                <p className="text-muted-foreground/70">This resource is available externally.</p>
                                 <Button onClick={() => window.open(resource.url, '_blank')} className="w-fit gap-2">
                                     <ExternalLink className="h-4 w-4" /> {resource.link_button_text || "Open Resource"}
                                 </Button>
@@ -632,18 +632,18 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                     </div>
                 </ScrollArea>
 
-                <div className="flex flex-col h-full bg-gray-900/30">
+                <div className="flex flex-col h-full bg-card/20">
                     <div className="p-4 border-b font-medium flex items-center gap-2">
                         <MessageSquare className="h-4 w-4" /> Comments ({comments?.length || 0})
                     </div>
                     <ScrollArea className="flex-1 p-4">
                         <div className="space-y-4">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> :
-                                comments?.length === 0 ? <p className="text-sm text-gray-500 text-center py-8">No comments yet.</p> :
+                                comments?.length === 0 ? <p className="text-sm text-muted-foreground/50 text-center py-8">No comments yet.</p> :
                                     comments?.map(c => (
-                                        <div key={c.id} className="bg-gray-800/50 p-3 rounded-lg text-sm">
+                                        <div key={c.id} className="bg-card/50 p-3 rounded-lg text-sm">
                                             {c.content}
-                                            <p className="text-[10px] text-gray-500 mt-1">{new Date(c.created_at).toLocaleDateString('en-US')}</p>
+                                            <p className="text-[10px] text-muted-foreground/50 mt-1">{new Date(c.created_at).toLocaleDateString('en-US')}</p>
                                         </div>
                                     ))}
                         </div>

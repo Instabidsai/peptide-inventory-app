@@ -288,7 +288,7 @@ export default function OrderDetails() {
                                         }`}>
                                             <step.icon className="h-4 w-4" />
                                         </div>
-                                        <span className={`text-xs font-medium ${step.done ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                        <span className={`text-xs font-semibold ${step.done ? 'text-green-600' : 'text-muted-foreground'}`}>
                                             {step.label}
                                         </span>
                                     </div>
@@ -359,7 +359,7 @@ export default function OrderDetails() {
                                 {editing ? (
                                     <div className="space-y-3">
                                         {editItems.map((item, idx) => (
-                                            <div key={item.id} className="flex items-center gap-3 bg-muted/20 p-3 rounded-lg">
+                                            <div key={item.id} className="flex items-center gap-3 bg-card/50 p-3 rounded-lg border border-border/40">
                                                 <div className="flex-1">
                                                     <span className="font-medium">{item.name}</span>
                                                     <div className="text-xs text-muted-foreground">${item.unit_price.toFixed(2)} each</div>
@@ -449,7 +449,7 @@ export default function OrderDetails() {
                             {editing ? (
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="text-sm font-medium mb-1 block">Notes</label>
+                                        <label className="text-sm font-semibold mb-1 block">Notes</label>
                                         <Textarea
                                             value={editNotes}
                                             onChange={(e) => setEditNotes(e.target.value)}
@@ -458,7 +458,7 @@ export default function OrderDetails() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-sm font-medium mb-1 block">Shipping Address</label>
+                                        <label className="text-sm font-semibold mb-1 block">Shipping Address</label>
                                         <Textarea
                                             value={editShippingAddress}
                                             onChange={(e) => setEditShippingAddress(e.target.value)}
@@ -486,7 +486,7 @@ export default function OrderDetails() {
                         <CardContent className="space-y-4">
                             {/* Payment Status */}
                             <div>
-                                <label className="text-sm font-medium mb-1 block">Payment Status</label>
+                                <label className="text-sm font-semibold mb-1 block">Payment Status</label>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between">
@@ -513,7 +513,7 @@ export default function OrderDetails() {
 
                             {/* Order Status */}
                             <div>
-                                <label className="text-sm font-medium mb-1 block">Order Status</label>
+                                <label className="text-sm font-semibold mb-1 block">Order Status</label>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between">
@@ -592,7 +592,7 @@ export default function OrderDetails() {
                                 <div className="space-y-1">
                                     <span className="text-xs text-muted-foreground">Tracking</span>
                                     <div className="flex items-center gap-2">
-                                        <code className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1 truncate">
+                                        <code className="text-sm font-mono bg-muted/50 px-3 py-1.5 rounded-lg flex-1 truncate">
                                             {order.tracking_number}
                                         </code>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"

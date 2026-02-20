@@ -126,7 +126,7 @@ export default function Bottles() {
         )}
       </div>
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border/60">
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
@@ -176,10 +176,10 @@ export default function Bottles() {
               ))}
             </div>
           ) : filteredBottles?.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Pill className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No bottles found</p>
-              <p className="text-sm">Bottles are auto-created when you receive lots</p>
+            <div className="text-center py-12">
+              <Pill className="mx-auto h-12 w-12 mb-4 opacity-30" />
+              <p className="text-lg font-semibold text-muted-foreground">No bottles found</p>
+              <p className="text-sm text-muted-foreground/70">Bottles are auto-created when you receive lots</p>
             </div>
           ) : isMobile ? (
             <div className="space-y-3">
@@ -190,7 +190,7 @@ export default function Bottles() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: index * 0.04 }}
                 >
-                  <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+                  <Card className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>

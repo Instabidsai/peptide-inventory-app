@@ -50,15 +50,22 @@ function verifySvixSignature(
     // Svix sends multiple signatures separated by space, each prefixed with version
     // e.g., "v1,<base64sig> v1,<base64sig2>"
     const sigList = signatures.split(' ');
+    const expectedBuf = Buffer.from(expectedSignature, 'base64');
     for (const sig of sigList) {
         const [version, sigValue] = sig.split(',');
-        if (version === 'v1' && sigValue === expectedSignature) {
-            return true;
+        if (version === 'v1' && sigValue) {
+            const sigBuf = Buffer.from(sigValue, 'base64');
+            if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+                return true;
+            }
         }
     }
 
     return false;
 }
+
+// Disable Vercel body parser so we get the raw string for signature verification
+export const config = { api: { bodyParser: false } };
 
 // Terminal statuses that should mark payment as complete
 const TERMINAL_SUCCESS = ['complete', 'completed'];
@@ -79,8 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
-        // --- Verify Svix Signature ---
-        const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        // Read raw body from stream (body parser disabled for signature verification)
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+            chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        const rawBody = Buffer.concat(chunks).toString('utf8');
 
         const svixHeaders = {
             'svix-id': req.headers['svix-id'] as string,
@@ -95,7 +106,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- Parse Event ---
-        const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        let event: any;
+        try {
+            event = JSON.parse(rawBody);
+        } catch {
+            return res.status(400).json({ error: 'Invalid JSON body' });
+        }
 
         const eventType = event.event || event.type;
         const transactionId = event.order_id || event.transaction_id || event.id;
@@ -187,8 +203,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (error: any) {
         console.error('[PsiFi Webhook] Unhandled error:', error);
-        // Return 200 anyway to prevent Svix from retrying for code bugs
-        // Only return non-200 for transient errors (DB down, etc.)
-        return res.status(500).json({ error: 'Internal server error' });
+        // Return 200 to prevent Svix from endlessly retrying code bugs
+        return res.status(200).json({ error: 'Internal server error', received: true });
     }
 }

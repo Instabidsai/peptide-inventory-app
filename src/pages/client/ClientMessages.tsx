@@ -135,10 +135,10 @@ export default function ClientMessages() {
                             animate={{ y: [0, -6, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                            <MessageSquare className="h-8 w-8 opacity-50" />
+                            <MessageSquare className="h-8 w-8 opacity-30" />
                         </motion.div>
-                        <h3 className="text-lg font-medium mb-1">No messages yet</h3>
-                        <p className="text-sm mb-4">You haven't sent any requests or messages.</p>
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-1">No messages yet</h3>
+                        <p className="text-sm text-muted-foreground/70 mb-4">You haven't sent any requests or messages.</p>
                         <Button variant="outline" onClick={() => setModalOpen(true)}>Start a conversation</Button>
                     </CardContent>
                 </Card>

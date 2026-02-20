@@ -54,7 +54,7 @@ export default function AdminSupplements() {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {supplements?.map((item) => (
-                    <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+                    <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-card-hover transition-shadow">
                         <div className="h-48 bg-card relative p-4 border-b">
                             {item.image_url ? (
                                 <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />

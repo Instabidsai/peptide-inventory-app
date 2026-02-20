@@ -436,7 +436,7 @@ export default function Orders() {
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-card border-border">
+                <Card className="bg-card border-border/60">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-amber-500/10">
@@ -450,7 +450,7 @@ export default function Orders() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card border-border">
+                <Card className="bg-card border-border/60">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-green-500/10">
@@ -464,7 +464,7 @@ export default function Orders() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card border-border">
+                <Card className="bg-card border-border/60">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-blue-500/10">
@@ -480,7 +480,7 @@ export default function Orders() {
                 </Card>
             </div>
 
-            <Card className="bg-card border-border">
+            <Card className="bg-card border-border/60">
                 <CardHeader>
                     <div className="flex flex-col gap-4 md:flex-row md:items-center">
                         <div className="relative flex-1">
@@ -517,10 +517,10 @@ export default function Orders() {
                             ))}
                         </div>
                     ) : filteredOrders?.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground">
-                            <ClipboardList className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                            <p className="text-lg font-medium">No orders found</p>
-                            <p className="text-sm">Create your first order to start tracking</p>
+                        <div className="text-center py-12">
+                            <ClipboardList className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                            <p className="text-lg font-semibold text-muted-foreground">No orders found</p>
+                            <p className="text-sm text-muted-foreground/70">Create your first order to start tracking</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">

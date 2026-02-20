@@ -45,7 +45,7 @@ const NotFound = () => {
           <h1 className="text-7xl font-bold text-foreground/20 mb-2">404</h1>
           <h2 className="text-xl font-semibold text-foreground mb-2">Page not found</h2>
           <p className="text-muted-foreground mb-1">
-            The page <code className="text-sm bg-muted px-2 py-0.5 rounded">{location.pathname}</code> doesn't exist.
+            The page <code className="text-sm bg-muted/50 px-2.5 py-0.5 rounded-lg">{location.pathname}</code> doesn't exist.
           </p>
           <p className="text-sm text-muted-foreground/70 mb-8">
             It may have been moved or the link is incorrect.

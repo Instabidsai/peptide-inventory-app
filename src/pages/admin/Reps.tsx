@@ -664,12 +664,12 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-muted-foreground w-20 shrink-0">Customer:</span>
-                                            <code className="flex-1 text-[11px] bg-black/10 rounded px-2 py-1 text-muted-foreground/70 truncate">{customerUrl}</code>
+                                            <code className="flex-1 text-[11px] bg-black/10 rounded-lg px-3 py-1.5 text-muted-foreground/70 truncate">{customerUrl}</code>
                                             <CopyBtn url={customerUrl} copyKey={`${rep.id}-cust`} label="Customer" />
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-violet-400 w-20 shrink-0">Partner:</span>
-                                            <code className="flex-1 text-[11px] bg-violet-500/10 rounded px-2 py-1 text-violet-300/70 truncate">{partnerUrl}</code>
+                                            <code className="flex-1 text-[11px] bg-violet-500/10 rounded-lg px-3 py-1.5 text-violet-300/70 truncate">{partnerUrl}</code>
                                             <CopyBtn url={partnerUrl} copyKey={`${rep.id}-partner`} label="Partner" />
                                         </div>
                                     </div>

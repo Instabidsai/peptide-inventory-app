@@ -96,7 +96,7 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
             <div
                 className={cn(
                     "relative flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200",
-                    "border hover:shadow-md hover:shadow-black/10",
+                    "border border-border/60 hover:shadow-card hover:shadow-black/10",
                     style.border,
                     style.bg,
                     level > 0 && "ml-8"

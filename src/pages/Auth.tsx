@@ -62,7 +62,7 @@ function LoginForm({
                 <Input
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-secondary border-border"
+                  className="bg-secondary border-border/60"
                   autoComplete="email"
                   {...field}
                 />
@@ -148,7 +148,7 @@ function SignupForm({
               <FormControl>
                 <Input
                   placeholder="John Doe"
-                  className="bg-secondary border-border"
+                  className="bg-secondary border-border/60"
                   autoComplete="name"
                   {...field}
                 />
@@ -167,7 +167,7 @@ function SignupForm({
                 <Input
                   type="email"
                   placeholder="you@example.com"
-                  className="bg-secondary border-border"
+                  className="bg-secondary border-border/60"
                   autoComplete="email"
                   {...field}
                 />
@@ -186,7 +186,7 @@ function SignupForm({
                 <Input
                   type="password"
                   placeholder="••••••••"
-                  className="bg-secondary border-border"
+                  className="bg-secondary border-border/60"
                   autoComplete="new-password"
                   {...field}
                 />
@@ -205,7 +205,7 @@ function SignupForm({
                 <Input
                   type="password"
                   placeholder="••••••••"
-                  className="bg-secondary border-border"
+                  className="bg-secondary border-border/60"
                   autoComplete="new-password"
                   {...field}
                 />

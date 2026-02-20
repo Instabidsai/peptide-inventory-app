@@ -200,7 +200,7 @@ function MovementDetailsDialog({
             {isLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : (
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border border-border/60 rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -226,7 +226,7 @@ function MovementDetailsDialog({
           </div>
 
           {/* Financial summary */}
-          <div className="border rounded-lg p-4 space-y-2">
+          <div className="border border-border/60 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">${subtotal.toFixed(2)}</span>
@@ -303,7 +303,7 @@ function MovementDetailsDialog({
 
           {/* Payment section */}
           {!isRefunded && (
-            <div className="border rounded-lg p-4 space-y-3">
+            <div className="border border-border/60 rounded-lg p-4 space-y-3">
               <p className="text-sm font-semibold">Payment</p>
 
               <div className="flex justify-between text-sm">
@@ -597,17 +597,17 @@ export default function Movements() {
       </div>
 
       {filterType !== 'all' && (
-        <div className="flex gap-4 p-4 border rounded-lg bg-muted/30">
+        <div className="flex gap-4 p-4 border border-border/60 rounded-lg bg-card/50">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Filtered Revenue</p>
+            <p className="text-sm font-semibold text-muted-foreground">Filtered Revenue</p>
             <p className="text-2xl font-bold text-green-600">${totalRevenue.toFixed(2)}</p>
           </div>
           <div className="border-l pl-4">
-            <p className="text-sm font-medium text-muted-foreground">Filtered Cost</p>
+            <p className="text-sm font-semibold text-muted-foreground">Filtered Cost</p>
             <p className="text-2xl font-bold text-orange-600">${totalCost.toFixed(2)}</p>
           </div>
           <div className="border-l pl-4">
-            <p className="text-sm font-medium text-muted-foreground">Net</p>
+            <p className="text-sm font-semibold text-muted-foreground">Net</p>
             <p className={`text-2xl font-bold ${totalRevenue - totalCost >= 0 ? 'text-primary' : 'text-destructive'}`}>
               ${(totalRevenue - totalCost).toFixed(2)}
             </p>
@@ -615,7 +615,7 @@ export default function Movements() {
         </div>
       )}
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border/60">
         <CardContent className="pt-6">
           {isError ? (
             <QueryError message="Failed to load movements." onRetry={() => refetch()} />
@@ -626,9 +626,9 @@ export default function Movements() {
               ))}
             </div>
           ) : filteredMovements.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <ArrowLeftRight className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No movements found</p>
+            <div className="text-center py-12">
+              <ArrowLeftRight className="mx-auto h-12 w-12 mb-4 opacity-30" />
+              <p className="text-lg font-semibold text-muted-foreground">No movements found</p>
               <Button variant="link" onClick={() => updateFilter('all')}>
                 Clear Filters
               </Button>
@@ -662,7 +662,7 @@ export default function Movements() {
                     transition={{ duration: 0.25, delay: index * 0.04 }}
                   >
                     <Card
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
+                      className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
                       onClick={() => setViewingMovement(movement)}
                     >
                       <CardContent className="p-4">

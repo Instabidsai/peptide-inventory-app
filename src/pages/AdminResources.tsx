@@ -409,9 +409,9 @@ export default function AdminResources() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in slide-in-from-right-4 duration-300">
                     {filteredResources?.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-muted/20 text-center">
-                            <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                            <h3 className="text-lg font-medium">No resources yet</h3>
-                            <p className="text-sm text-muted-foreground mb-4">Add your first video or guide to this theme.</p>
+                            <BookOpen className="h-12 w-12 opacity-30 mb-4" />
+                            <h3 className="text-lg font-semibold text-muted-foreground">No resources yet</h3>
+                            <p className="text-sm text-muted-foreground/70 mb-4">Add your first video or guide to this theme.</p>
                             <Button variant="outline" onClick={handleCreateResource}>Add Resource</Button>
                         </div>
                     ) : (
@@ -640,7 +640,7 @@ export default function AdminResources() {
                                 <input
                                     type="checkbox"
                                     id="is_featured"
-                                    className="h-4 w-4 rounded border-gray-300"
+                                    className="h-4 w-4 rounded border-input accent-primary"
                                     checked={resourceForm.is_featured}
                                     onChange={(e) => setResourceForm({ ...resourceForm, is_featured: e.target.checked })}
                                 />

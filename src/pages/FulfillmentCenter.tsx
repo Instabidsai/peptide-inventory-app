@@ -549,7 +549,7 @@ export default function FulfillmentCenter() {
                         <Card>
                             <CardContent className="py-12 text-center">
                                 <PackageCheck className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-                                <p className="text-lg font-medium text-muted-foreground">All caught up!</p>
+                                <p className="text-lg font-semibold text-muted-foreground">All caught up!</p>
                                 <p className="text-sm text-muted-foreground">No orders waiting to be picked.</p>
                             </CardContent>
                         </Card>
@@ -713,7 +713,7 @@ export default function FulfillmentCenter() {
                         <Card>
                             <CardContent className="py-12 text-center">
                                 <Truck className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-                                <p className="text-lg font-medium text-muted-foreground">Nothing to ship</p>
+                                <p className="text-lg font-semibold text-muted-foreground">Nothing to ship</p>
                                 <p className="text-sm text-muted-foreground">Fulfill orders in the "Pick & Pack" tab first.</p>
                             </CardContent>
                         </Card>
@@ -806,7 +806,7 @@ export default function FulfillmentCenter() {
                                                             href={getTrackingUrl(order.carrier, order.tracking_number)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                                                            className="text-sm font-mono bg-muted/50 px-3 py-1.5 rounded-lg flex-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                                                         >
                                                             {order.tracking_number}
                                                         </a>
@@ -1002,7 +1002,7 @@ export default function FulfillmentCenter() {
                         <Card>
                             <CardContent className="py-12 text-center">
                                 <HandMetal className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-                                <p className="text-lg font-medium text-muted-foreground">No orders waiting for pickup</p>
+                                <p className="text-lg font-semibold text-muted-foreground">No orders waiting for pickup</p>
                                 <p className="text-sm text-muted-foreground">Local pickup orders will appear here after fulfillment.</p>
                             </CardContent>
                         </Card>
@@ -1087,7 +1087,7 @@ export default function FulfillmentCenter() {
                         <Card>
                             <CardContent className="py-12 text-center">
                                 <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/40 mb-3" />
-                                <p className="text-lg font-medium text-muted-foreground">No recent completions</p>
+                                <p className="text-lg font-semibold text-muted-foreground">No recent completions</p>
                                 <p className="text-sm text-muted-foreground">Shipped and picked-up orders from the last 7 days will appear here.</p>
                             </CardContent>
                         </Card>

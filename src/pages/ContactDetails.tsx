@@ -743,7 +743,7 @@ export default function ContactDetails() {
                                     </div>
 
                                     {/* Calc Summary - Simplified */}
-                                    <div className="bg-muted p-3 rounded-lg text-sm space-y-2">
+                                    <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-2 border border-border/40">
                                         <div className="flex items-center gap-2 font-semibold border-b border-border pb-2">
                                             <Calculator className="h-4 w-4" />
                                             <span>Regimen Supply Plan</span>
@@ -855,7 +855,7 @@ export default function ContactDetails() {
             </div>
 
             <Accordion type="single" collapsible defaultValue="financial" className="w-full space-y-4">
-                <AccordionItem value="financial" className="border rounded-lg bg-card px-4">
+                <AccordionItem value="financial" className="border border-border/60 rounded-lg bg-card px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-2">
                             <Calculator className="h-5 w-5 text-muted-foreground" />
@@ -869,7 +869,7 @@ export default function ContactDetails() {
                 </AccordionItem>
 
                 {/* ─── Household Members ─── */}
-                <AccordionItem value="household" className="border rounded-lg bg-card px-4">
+                <AccordionItem value="household" className="border border-border/60 rounded-lg bg-card px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-2">
                             <Users className="h-5 w-5 text-muted-foreground" />
@@ -1028,7 +1028,7 @@ export default function ContactDetails() {
                     </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="regimens" className="border rounded-lg bg-card px-4">
+                <AccordionItem value="regimens" className="border border-border/60 rounded-lg bg-card px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-2">
                             <FlaskConical className="h-5 w-5 text-muted-foreground" />
@@ -1043,10 +1043,10 @@ export default function ContactDetails() {
                                 </div>
                             ) : assignedProtocols?.length === 0 ? (
 
-                                <div className="text-center py-12 border rounded-lg bg-card text-muted-foreground">
-                                    <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                                    <p className="text-lg font-medium">No active regimens</p>
-                                    <p className="text-sm">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
+                                <div className="text-center py-12 border border-border/60 rounded-lg bg-card">
+                                    <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                                    <p className="text-lg font-semibold text-muted-foreground">No active regimens</p>
+                                    <p className="text-sm text-muted-foreground/70">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
                                     <div className="flex justify-center flex-wrap gap-2 mt-4">
                                         <Button variant="outline" onClick={handleAddClick}>
                                             <Plus className="mr-2 h-4 w-4" />
@@ -1088,7 +1088,7 @@ export default function ContactDetails() {
                     </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="notes" className="border rounded-lg bg-card px-4">
+                <AccordionItem value="notes" className="border border-border/60 rounded-lg bg-card px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5 text-muted-foreground" />
@@ -1157,9 +1157,9 @@ export default function ContactDetails() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">
-                                <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                                <p className="text-sm">No notes yet. Add your first note above.</p>
+                            <div className="text-center py-8">
+                                <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                                <p className="text-sm text-muted-foreground/70">No notes yet. Add your first note above.</p>
                             </div>
                         )}
                     </AccordionContent>
@@ -1255,7 +1255,7 @@ export default function ContactDetails() {
                                 <div className="col-span-full mt-2">
                                     <Label>Invite Link {contact.invite_link ? '(Saved)' : '(New)'}</Label>
                                     <div className="flex gap-2 mt-1">
-                                        <code className="flex-1 p-2 bg-muted rounded border text-xs break-all font-mono">
+                                        <code className="flex-1 p-2.5 bg-muted/50 rounded-lg border border-border/40 text-xs break-all font-mono">
                                             {inviteLink || contact.invite_link}
                                         </code>
                                         <Button variant="secondary" size="sm" onClick={() => copyToClipboard(inviteLink || contact.invite_link!)}>
@@ -1482,7 +1482,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     {protocol.protocol_items?.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center p-3 bg-muted rounded-lg md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
+                        <div key={item.id} className="flex justify-between items-center p-3 bg-card/50 rounded-lg border border-border/40 md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
                             <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-2 rounded-full">
                                     <FlaskConical className="h-4 w-4 text-primary" />
@@ -1531,7 +1531,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
 
                     <div className="grid gap-2 sm:grid-cols-2">
                         {protocol.protocol_supplements?.map((supp) => (
-                            <div key={supp.id} className="relative group border border-border/60 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                            <div key={supp.id} className="relative group border border-border/60 rounded-lg p-3 hover:bg-accent/30 hover:shadow-card transition-all">
                                 <div className="flex gap-3">
                                     {supp.supplements?.image_url ? (
                                         <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt={supp.supplements.name} />
@@ -1645,13 +1645,13 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     </div>
 
                     {supplyCalculations.length === 0 || supplyCalculations.every(s => s.supply.bottles.length === 0) ? (
-                        <div className="text-xs text-muted-foreground italic p-2 bg-muted/20 rounded">
+                        <div className="text-xs text-muted-foreground italic p-2.5 bg-muted/20 rounded-lg">
                             No bottles assigned yet. Click "Assign Inventory" above to link bottles to this regimen.
                         </div>
                     ) : (
                         <div className="space-y-2">
                             {supplyCalculations.filter(s => s.supply.bottles.length > 0).map(({ protocolItem, supply }) => (
-                                <div key={protocolItem.id} className="border rounded-lg p-2 bg-muted/10">
+                                <div key={protocolItem.id} className="border border-border/60 rounded-lg p-2 bg-card/50">
                                     <div className="flex justify-between items-center mb-1.5">
                                         <div className="font-medium text-xs">
                                             {peptides?.find(p => p.id === protocolItem.peptide_id)?.name}
@@ -2032,7 +2032,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                 {/* TAB 1: CURRENT STOCK (The "Stockpile" View) */}
                 <TabsContent value="stock" className="space-y-4">
                     {sortedStockKeys.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/10">
+                        <div className="text-center py-8 text-muted-foreground border border-border/60 rounded-lg bg-card/50">
                             <p>No active inventory in stock.</p>
                         </div>
                     ) : (
@@ -2144,7 +2144,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                 const peptideNames = Array.from(new Set(items.map((i) => i.peptide?.name))).filter(Boolean);
 
                                 return (
-                                    <AccordionItem value={key} key={key} className={`border rounded-lg px-4 mb-2 bg-card ${isInactive ? 'opacity-60' : ''}`}>
+                                    <AccordionItem value={key} key={key} className={`border border-border/60 rounded-lg px-4 mb-2 bg-card ${isInactive ? 'opacity-60' : ''}`}>
                                         <AccordionTrigger className="hover:no-underline py-3">
                                             <div className="flex items-center justify-between w-full pr-4">
                                                 <div className="flex items-center overflow-hidden gap-3">
@@ -2170,7 +2170,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                                 {items.map((item) => (
                                                     <Card key={item.id} className="relative overflow-hidden group border border-border/60 shadow-card">
-                                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-gray-400' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-muted-foreground' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
                                                         {/* Action Menu (Same as before) */}
                                                         {movementStatus === 'active' && (

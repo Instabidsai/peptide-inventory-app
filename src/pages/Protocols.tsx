@@ -101,7 +101,7 @@ export default function Protocols() {
                             <Separator className="my-2" />
 
                             <div className="space-y-4">
-                                <h4 className="text-sm font-medium">Protocol Items</h4>
+                                <h4 className="text-sm font-semibold">Protocol Items</h4>
 
                                 {/* Item Builder Input */}
                                 <div className="grid gap-4 border border-border/60 p-4 rounded-lg bg-muted/50">

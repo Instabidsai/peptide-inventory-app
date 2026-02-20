@@ -60,11 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         checks.payments = { status: 'error', error: err.message };
     }
 
-    // 4. Environment config
+    // 4. Environment config (don't leak var names in response)
     const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'PUBLIC_SITE_URL'];
-    const missingVars = requiredVars.filter(v => !process.env[v]);
-    checks.config = missingVars.length
-        ? { status: 'error', error: `Missing: ${missingVars.join(', ')}` }
+    const missingCount = requiredVars.filter(v => !process.env[v]).length;
+    checks.config = missingCount
+        ? { status: 'error', error: `${missingCount} required variable(s) missing` }
         : { status: 'ok' };
 
     // Overall status

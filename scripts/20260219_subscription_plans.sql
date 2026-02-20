@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS tenant_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     plan_id UUID NOT NULL REFERENCES subscription_plans(id),
-    status TEXT NOT NULL DEFAULT 'active',       -- active, past_due, canceled, trialing
-    billing_period TEXT NOT NULL DEFAULT 'monthly', -- monthly, yearly
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'past_due', 'canceled', 'trialing')),
+    billing_period TEXT NOT NULL DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'yearly')),
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
     current_period_start TIMESTAMPTZ,
@@ -125,3 +125,4 @@ CREATE POLICY "billing_events_admin_read" ON billing_events
 
 CREATE INDEX IF NOT EXISTS idx_billing_events_org ON billing_events(org_id);
 CREATE INDEX IF NOT EXISTS idx_billing_events_stripe ON billing_events(stripe_event_id);
+CREATE INDEX IF NOT EXISTS idx_billing_events_created ON billing_events(created_at);

@@ -20,6 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'org_id and plan_id are required' });
         }
 
+        if (!['monthly', 'yearly'].includes(billing_period)) {
+            return res.status(400).json({ error: 'billing_period must be "monthly" or "yearly"' });
+        }
+
         // Auth
         const authHeader = req.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
@@ -43,13 +47,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ error: 'Invalid token' });
         }
 
-        // Check user is admin of this org or super_admin
+        // Check user is admin of this specific org or super_admin
         const { data: role } = await supabase
             .from('user_roles')
             .select('role')
             .eq('user_id', user.id)
-            .in('role', ['admin', 'super_admin'])
-            .single();
+            .or(`and(role.eq.admin,org_id.eq.${org_id}),role.eq.super_admin`)
+            .limit(1)
+            .maybeSingle();
 
         if (!role) {
             return res.status(403).json({ error: 'Admin access required' });
@@ -110,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (existingSub?.stripe_customer_id) {
             params.append('customer', existingSub.stripe_customer_id);
         } else {
-            params.append('customer_email', user.email || '');
+            if (user.email) params.append('customer_email', user.email);
         }
 
         const stripeResponse = await fetch(`${STRIPE_API_BASE}/checkout/sessions`, {

@@ -222,7 +222,7 @@ export default function CommunityForum() {
                             <Card className="bg-card/50">
                                 <CardContent className="py-12 text-center">
                                     <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                                    <h3 className="font-medium mb-2">No discussions yet</h3>
+                                    <h3 className="font-semibold mb-2">No discussions yet</h3>
                                     <p className="text-sm text-muted-foreground mb-4">
                                         Be the first to start a conversation!
                                     </p>
@@ -235,7 +235,7 @@ export default function CommunityForum() {
                             topics?.map((topic) => (
                                 <Card
                                     key={topic.id}
-                                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                                    className="cursor-pointer hover:border-primary/50 hover:shadow-card transition-all"
                                     onClick={() => handleTopicClick(topic)}
                                 >
                                     <CardContent className="p-4">

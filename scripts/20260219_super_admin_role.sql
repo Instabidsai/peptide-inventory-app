@@ -63,3 +63,25 @@ CREATE POLICY IF NOT EXISTS "super_admin_manage_configs" ON tenant_config
     FOR ALL USING (
         EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
     );
+
+-- 5. Super-admin access to profiles, peptides, sales_orders (needed for vendor dashboard counts)
+CREATE POLICY IF NOT EXISTS "super_admin_read_all_profiles" ON profiles
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
+    );
+
+CREATE POLICY IF NOT EXISTS "super_admin_read_all_peptides" ON peptides
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
+    );
+
+CREATE POLICY IF NOT EXISTS "super_admin_read_all_sales_orders" ON sales_orders
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
+    );
+
+-- 6. Super-admin write access to pricing_tiers
+CREATE POLICY IF NOT EXISTS "pricing_tiers_super_admin_write" ON pricing_tiers
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
+    );

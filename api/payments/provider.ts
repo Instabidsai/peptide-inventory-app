@@ -122,15 +122,28 @@ export class PsiFiProvider implements PaymentProvider {
         );
         const expected = crypto.createHmac('sha256', secretBytes).update(toSign).digest('base64');
 
+        const expectedBuf = Buffer.from(expected, 'base64');
         const sigList = svixSignature.split(' ');
-        const valid = sigList.some(sig => {
+        let valid = false;
+        for (const sig of sigList) {
             const [version, value] = sig.split(',');
-            return version === 'v1' && value === expected;
-        });
+            if (version === 'v1' && value) {
+                const sigBuf = Buffer.from(value, 'base64');
+                if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+                    valid = true;
+                    break;
+                }
+            }
+        }
 
         if (!valid) return null;
 
-        const event = JSON.parse(rawBody);
+        let event: any;
+        try {
+            event = JSON.parse(rawBody);
+        } catch {
+            return null;
+        }
         return {
             eventType: event.event || event.type || '',
             status: (event.status || event.order?.status || '').toLowerCase(),

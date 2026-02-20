@@ -251,7 +251,7 @@ export default function Peptides() {
         )}
       </div>
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border/60">
         <CardHeader>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
@@ -307,10 +307,10 @@ export default function Peptides() {
               ))}
             </div>
           ) : filteredPeptides?.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No peptides found</p>
-              <p className="text-sm">Get started by adding your first peptide</p>
+            <div className="text-center py-12">
+              <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-30" />
+              <p className="text-lg font-semibold text-muted-foreground">No peptides found</p>
+              <p className="text-sm text-muted-foreground/70">Get started by adding your first peptide</p>
             </div>
           ) : isMobile ? (
             <div className="space-y-3">
@@ -322,7 +322,7 @@ export default function Peptides() {
                   transition={{ duration: 0.25, delay: index * 0.04 }}
                 >
                   <Card
-                    className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
                     role="button"
                     tabIndex={0}
                     aria-label={`Edit ${peptide.name}`}

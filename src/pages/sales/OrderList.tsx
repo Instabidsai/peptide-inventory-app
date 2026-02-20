@@ -246,7 +246,7 @@ export default function OrderList() {
                             transition={{ duration: 0.25, delay: index * 0.04 }}
                         >
                             <Card
-                                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                                className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
                                 onClick={() => navigate(`/sales/${order.id}`)}
                             >
                                 <CardContent className="p-4">
@@ -276,7 +276,7 @@ export default function OrderList() {
                                     </div>
                                     <div className="flex gap-2 mt-3 pt-3 border-t">
                                         <Button
-                                            className="flex-1 h-10 bg-blue-600 hover:bg-blue-700"
+                                            className="flex-1 h-11 bg-blue-600 hover:bg-blue-700"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/sales/${order.id}`); }}
                                         >
                                             <Pencil className="h-4 w-4 mr-2" />
@@ -432,10 +432,10 @@ export default function OrderList() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={isRep ? 9 : 11} className="h-32 text-center">
-                                        <div className="text-muted-foreground">
-                                            <Truck className="mx-auto h-10 w-10 mb-3 opacity-50" />
-                                            <p className="text-lg font-medium">No orders found</p>
-                                            <p className="text-sm mt-1">
+                                        <div>
+                                            <Truck className="mx-auto h-10 w-10 mb-3 opacity-30" />
+                                            <p className="text-lg font-semibold text-muted-foreground">No orders found</p>
+                                            <p className="text-sm mt-1 text-muted-foreground/70">
                                                 {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all' || searchQuery
                                                     ? 'Try adjusting your filters or search'
                                                     : 'Create your first sales order to get started'}

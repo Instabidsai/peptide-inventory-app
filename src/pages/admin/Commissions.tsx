@@ -150,7 +150,7 @@ export default function Commissions() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Commissions</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Total Commissions</CardTitle>
                         <DollarSign className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -161,7 +161,7 @@ export default function Commissions() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Payout</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Pending Payout</CardTitle>
                         <Clock className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
@@ -172,7 +172,7 @@ export default function Commissions() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Paid Cash</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Paid Cash</CardTitle>
                         <CheckCircle className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -183,7 +183,7 @@ export default function Commissions() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Applied to Balance</CardTitle>
+                        <CardTitle className="text-sm font-semibold">Applied to Balance</CardTitle>
                         <Wallet className="h-4 w-4 text-purple-500" />
                     </CardHeader>
                     <CardContent>
@@ -202,7 +202,7 @@ export default function Commissions() {
                 <CardContent className="flex items-center gap-4 py-4">
                     <TrendingUp className="h-5 w-5 text-emerald-500" />
                     <div>
-                        <p className="text-sm font-medium">Average Commission Rate</p>
+                        <p className="text-sm font-semibold">Average Commission Rate</p>
                         <p className="text-2xl font-bold">{avgRate.toFixed(1)}%</p>
                     </div>
                     <div className="ml-auto text-right">

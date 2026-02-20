@@ -29,8 +29,14 @@ function verifyStripeSignature(payload: string, signature: string, secret: strin
         .update(signedPayload)
         .digest('hex');
 
-    return expected === v1Sig;
+    // Timing-safe comparison to prevent side-channel attacks
+    const a = Buffer.from(expected, 'hex');
+    const b = Buffer.from(v1Sig, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+// Disable Vercel body parser so we get the raw string for signature verification
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -47,8 +53,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
-        // Verify signature
-        const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        // Read raw body from stream (body parser disabled for signature verification)
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+            chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        const rawBody = Buffer.concat(chunks).toString('utf8');
         const signature = req.headers['stripe-signature'] as string;
 
         if (!signature || !verifyStripeSignature(rawBody, signature, webhookSecret)) {
@@ -56,20 +66,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
-        const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        let event: any;
+        try {
+            event = JSON.parse(rawBody);
+        } catch {
+            return res.status(400).json({ error: 'Invalid JSON body' });
+        }
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         console.log(`[Stripe Webhook] Event: ${event.type}, ID: ${event.id}`);
 
         // Log the billing event
         const logEvent = async (orgId: string | null, amountCents?: number) => {
-            await supabase.from('billing_events').insert({
+            const { error: logErr } = await supabase.from('billing_events').insert({
                 org_id: orgId,
                 event_type: event.type,
                 stripe_event_id: event.id,
                 amount_cents: amountCents,
                 metadata: { object_id: event.data?.object?.id },
             });
+            if (logErr) console.error('[Stripe Webhook] Failed to log billing event:', logErr);
         };
 
         switch (event.type) {
@@ -84,15 +100,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 // Update or create tenant subscription
-                await supabase.from('tenant_subscriptions').upsert({
+                const { error: upsertErr } = await supabase.from('tenant_subscriptions').upsert({
                     org_id: orgId,
                     plan_id: session.metadata?.plan_id,
                     status: 'active',
                     billing_period: session.metadata?.billing_period || 'monthly',
                     stripe_customer_id: session.customer,
                     stripe_subscription_id: session.subscription,
-                    current_period_start: new Date().toISOString(),
+                    current_period_start: session.created ? new Date(session.created * 1000).toISOString() : new Date().toISOString(),
                 }, { onConflict: 'org_id' });
+                if (upsertErr) console.error('[Stripe Webhook] Subscription upsert failed:', upsertErr);
 
                 await logEvent(orgId, session.amount_total);
                 console.log(`[Stripe Webhook] Subscription created for org ${orgId}`);

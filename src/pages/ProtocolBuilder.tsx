@@ -171,7 +171,7 @@ export default function ProtocolBuilder() {
                                             <button
                                                 key={p.id}
                                                 onClick={() => builder.addPeptide(p)}
-                                                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors text-left text-sm group"
+                                                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/30 transition-colors text-left text-sm group"
                                             >
                                                 <div className="min-w-0">
                                                     <span className="font-medium">{p.name}</span>

@@ -476,7 +476,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     {/* Shipping Address — editable */}
                     {editing ? (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium flex items-center gap-1.5">
+                            <label className="text-sm font-semibold flex items-center gap-1.5">
                                 <MapPin className="h-3.5 w-3.5" /> Shipping Address
                             </label>
                             <Textarea
@@ -498,7 +498,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     {/* Notes — editable */}
                     {editing ? (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium flex items-center gap-1.5">
+                            <label className="text-sm font-semibold flex items-center gap-1.5">
                                 <FileText className="h-3.5 w-3.5" /> Notes
                             </label>
                             <Textarea
@@ -674,13 +674,13 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                 </div>
                 {/* Action buttons — big and visible */}
                 <div className="flex gap-2 mt-3 pt-3 border-t">
-                    <Button className="flex-1 h-10" onClick={onClick}>
+                    <Button className="flex-1 h-11" onClick={onClick}>
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit Order
                     </Button>
                     {order.contacts?.id && (
                         <Link to={`/protocol-builder?order=${order.id}&contact=${order.contacts.id}`} className="flex-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="outline" className="w-full h-10">
+                            <Button variant="outline" className="w-full h-11">
                                 <Wand2 className="h-4 w-4 mr-2" /> Protocol
                             </Button>
                         </Link>
