@@ -126,7 +126,8 @@ export function AiDemoChat({
   }, [isTyping, typedText, currentIndex, messages, typingSpeed]);
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/80 backdrop-blur-md shadow-card overflow-hidden">
+    <div className="relative rounded-xl bg-card/80 backdrop-blur-md shadow-card overflow-hidden" style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--border) / 0.4) 40%, hsl(142 76% 36% / 0.3))" }}>
+      <div className="rounded-[11px] bg-card/95 overflow-hidden">
       {/* Terminal header */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-background/60">
         <div className="flex gap-1.5">
@@ -137,6 +138,13 @@ export function AiDemoChat({
         <span className="text-xs text-muted-foreground ml-2 font-mono">
           PeptideCRM AI
         </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="text-[10px] text-emerald-400 font-mono">LIVE</span>
+        </div>
       </div>
 
       {/* Messages */}
@@ -306,6 +314,7 @@ export function AiDemoChat({
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
       </div>
     </div>
   );

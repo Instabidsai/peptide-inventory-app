@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -119,13 +119,14 @@ export function PricingCard({
       <Button
         onClick={onSelect}
         className={cn(
-          "w-full",
+          "w-full font-semibold",
           popular
-            ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-btn hover:shadow-btn-hover"
-            : "bg-card border border-border hover:bg-accent text-foreground"
+            ? "bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover"
+            : "bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary"
         )}
       >
         {ctaLabel}
+        <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
     </div>
   );

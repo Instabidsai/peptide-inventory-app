@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   FlaskConical,
@@ -28,10 +28,9 @@ import {
   Users,
   Sparkles,
   Check,
-  Database,
-  Globe,
-  Settings,
-  RefreshCw,
+  Lock,
+  BadgeCheck,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -55,8 +54,16 @@ const fadeInUp = {
   initial: { opacity: 0, y: 30 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-60px" },
-  transition: { duration: 0.5, ease: "easeOut" },
+  transition: { type: "spring", stiffness: 100, damping: 20 },
 };
+
+/* Shimmer animation for premium CTA buttons */
+const shimmerStyle: React.CSSProperties = {
+  backgroundSize: "200% 100%",
+  animation: "shimmer 2.5s ease-in-out infinite",
+};
+
+const shimmerKeyframes = `@keyframes shimmer { 0%,100%{background-position:100% 0} 50%{background-position:0 0} }`;
 
 // ─── Animated Counter ────────────────────────────────────────────
 function AnimatedCounter({
@@ -214,6 +221,10 @@ function Nav() {
 // ─── Hero ─────────────────────────────────────────────────────────
 function Hero() {
   const navigate = useNavigate();
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
   const heroMessages = [
     {
@@ -273,19 +284,24 @@ function Hero() {
 
   return (
     <section
+      ref={heroRef}
       id="hero"
       className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden"
     >
-      {/* Animated gradient background orbs */}
+      {/* Inject shimmer keyframes */}
+      <style>{shimmerKeyframes}</style>
+      {/* Animated gradient background orbs — parallax on scroll */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
       <motion.div
         className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"
-        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+        style={{ y: orbY1 }}
+        animate={{ x: [0, 30, 0] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute bottom-10 left-10 w-72 h-72 bg-emerald-500/8 rounded-full blur-[100px] pointer-events-none"
-        animate={{ x: [0, -20, 0], y: [0, 30, 0] }}
+        style={{ y: orbY2 }}
+        animate={{ x: [0, -20, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
 
@@ -293,12 +309,29 @@ function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left — copy */}
           <motion.div {...fadeInUp}>
-            {/* Social proof badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-medium text-primary">
-                Join 1,200+ peptide companies
-              </span>
+            {/* Avatar social proof group */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex -space-x-2">
+                {["SC", "MR", "EP", "JK"].map((initials, i) => (
+                  <div key={initials} className={`w-8 h-8 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold ${
+                    i === 0 ? "bg-primary/30 text-primary" :
+                    i === 1 ? "bg-emerald-500/30 text-emerald-400" :
+                    i === 2 ? "bg-blue-500/30 text-blue-400" :
+                    "bg-purple-500/30 text-purple-400"
+                  }`}>
+                    {initials}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  ))}
+                  <span className="text-xs text-muted-foreground ml-1">4.9/5</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Trusted by <strong className="text-foreground">1,200+</strong> peptide companies</span>
+              </div>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
@@ -319,7 +352,8 @@ function Hero() {
               <Button
                 size="lg"
                 onClick={() => navigate("/auth?mode=signup&plan=free")}
-                className="shadow-btn hover:shadow-btn-hover"
+                className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
+                style={shimmerStyle}
               >
                 Start Free — No Credit Card
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -328,10 +362,16 @@ function Hero() {
                 variant="outline"
                 size="lg"
                 onClick={() => scrollTo("ai-showcase")}
+                className="text-base px-8 py-3 h-auto border-border/60 hover:border-primary/50"
               >
                 Watch AI Build Live
+                <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
+              <Lock className="w-3 h-3" />
+              14-day free trial. No credit card required.
+            </p>
           </motion.div>
 
           {/* Right — animated chat */}
@@ -392,6 +432,16 @@ function TrustBar() {
   return (
     <section className="py-10 border-y border-border/30 bg-card/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Trusted by logos */}
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mb-8 opacity-40">
+          {["Pacific Compounding", "BioVantage", "NovaPeptide", "PeptideLogix", "ColdChain Rx"].map((name) => (
+            <div key={name} className="flex items-center gap-1.5">
+              <FlaskConical className="w-4 h-4" />
+              <span className="text-xs font-semibold tracking-wide uppercase">{name}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10">
           {stats.map((s) => (
             <div key={s.label} className="text-center">
@@ -440,8 +490,11 @@ function PainPoints() {
     <section className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-foreground">
-            The Problem with Generic CRMs
+          <span className="text-xs font-medium text-destructive uppercase tracking-wider mb-2 block">
+            The Problem
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+            Why Generic CRMs Fail Peptide Companies
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
             Peptide businesses have unique needs that no general-purpose platform
@@ -500,7 +553,10 @@ function HowItWorks() {
     <section className="py-16 sm:py-24 bg-card/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-foreground">How It Works</h2>
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            3 Simple Steps
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">How It Works</h2>
           <p className="mt-3 text-muted-foreground">
             Three steps from idea to live feature.
           </p>
@@ -574,7 +630,7 @@ function TwoAiBrains() {
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
             Dual AI Architecture
           </span>
-          <h2 className="text-3xl font-bold text-foreground">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Two AI Brains. One Powerful Platform.
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
@@ -585,10 +641,13 @@ function TwoAiBrains() {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto relative">
-          {/* Connection line */}
+          {/* Connection line with pulse */}
           <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-primary" />
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2s" }} />
+              <div className="relative w-12 h-12 rounded-full bg-background border-2 border-primary/40 flex items-center justify-center shadow-lg shadow-primary/20">
+                <Brain className="w-5 h-5 text-primary" />
+              </div>
             </div>
           </div>
 
@@ -688,7 +747,10 @@ function FeaturesBento() {
     <section id="features" className="py-16 sm:py-24 bg-card/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-foreground">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            Platform
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Everything Your Peptide Business Needs
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
@@ -705,7 +767,7 @@ function FeaturesBento() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className={`group rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover ${
+              className={`group relative overflow-hidden rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover ${
                 f.hero
                   ? "ring-1 ring-primary/20 hover:ring-primary/40"
                   : "hover:border-primary/30"
@@ -1094,7 +1156,7 @@ function AiShowcase() {
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
             The Differentiator
           </span>
-          <h2 className="text-3xl font-bold text-foreground">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Watch Your AI Control the Entire CRM
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
@@ -1170,7 +1232,10 @@ function Testimonials() {
     <section className="py-16 sm:py-24 bg-card/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-foreground">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            Testimonials
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Trusted by Peptide Leaders
           </h2>
           <p className="mt-3 text-muted-foreground">
@@ -1200,13 +1265,22 @@ function Testimonials() {
               <p className="text-sm text-muted-foreground leading-relaxed flex-1">
                 {t.quote}
               </p>
-              <div className="mt-4 pt-4 border-t border-border/30">
-                <p className="text-sm font-semibold text-foreground">
-                  {t.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t.title}, {t.company}
-                </p>
+              <div className="mt-4 pt-4 border-t border-border/30 flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  i === 0 ? "bg-primary/20 text-primary" :
+                  i === 1 ? "bg-emerald-500/20 text-emerald-400" :
+                  "bg-blue-500/20 text-blue-400"
+                }`}>
+                  {t.name.split(" ").map(n => n[0]).join("")}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {t.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.title}, {t.company}
+                  </p>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -1303,20 +1377,23 @@ function Pricing() {
     <section id="pricing" className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-foreground">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            Pricing
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Simple, Transparent Pricing
           </h2>
-          <p className="mt-3 text-muted-foreground">
-            Start free. Scale as you grow. No hidden fees.
+          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+            Start free. Scale as you grow. No hidden fees. Every plan includes AI.
           </p>
 
-          {/* Toggle */}
-          <div className="mt-6 inline-flex items-center gap-3 bg-card rounded-full p-1 border border-border/40">
+          {/* Premium toggle */}
+          <div className="mt-6 inline-flex items-center gap-1 bg-card/80 rounded-full p-1 border border-border/40 shadow-sm">
             <button
               onClick={() => setPeriod("monthly")}
-              className={`text-sm px-4 py-1.5 rounded-full transition-all ${
+              className={`text-sm px-5 py-2 rounded-full transition-all font-medium ${
                 period === "monthly"
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1324,18 +1401,23 @@ function Pricing() {
             </button>
             <button
               onClick={() => setPeriod("yearly")}
-              className={`text-sm px-4 py-1.5 rounded-full transition-all ${
+              className={`text-sm px-5 py-2 rounded-full transition-all font-medium relative ${
                 period === "yearly"
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Yearly
-              <span className="ml-1.5 text-[10px] font-medium text-emerald-400">
-                Save ~17%
+              <span className="absolute -top-2.5 -right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white">
+                -17%
               </span>
             </button>
           </div>
+          {/* Guarantee */}
+          <p className="mt-4 text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            30-day money-back guarantee. Cancel anytime.
+          </p>
         </motion.div>
 
         <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -1412,9 +1494,15 @@ function Faq() {
     <section id="faq" className="py-16 sm:py-24 bg-card/30">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-foreground">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            FAQ
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Frequently Asked Questions
           </h2>
+          <p className="mt-3 text-muted-foreground">
+            Everything you need to know before getting started.
+          </p>
         </motion.div>
         <motion.div {...fadeInUp}>
           <Accordion type="single" collapsible className="space-y-3">
@@ -1422,12 +1510,17 @@ function Faq() {
               <AccordionItem
                 key={i}
                 value={`faq-${i}`}
-                className="border border-border/40 rounded-lg bg-card px-4"
+                className="border border-border/40 rounded-lg bg-card px-4 data-[state=open]:border-primary/30 transition-colors"
               >
-                <AccordionTrigger className="text-sm font-medium text-foreground hover:text-primary text-left">
-                  {item.q}
+                <AccordionTrigger className="text-sm font-medium text-foreground hover:text-primary text-left gap-3">
+                  <span className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+                      {i + 1}
+                    </span>
+                    {item.q}
+                  </span>
                 </AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground leading-relaxed">
+                <AccordionContent className="text-sm text-muted-foreground leading-relaxed pl-9">
                   {item.a}
                 </AccordionContent>
               </AccordionItem>
@@ -1460,6 +1553,12 @@ function FinalCta() {
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-[60px] pointer-events-none" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+            <span className="text-xs font-medium text-yellow-300">
+              Limited beta — 47 spots remaining
+            </span>
+          </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground relative">
             Ready to Transform Your Peptide Business?
           </h2>
@@ -1516,18 +1615,26 @@ function StickyMobileCta() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  if (!visible) return null;
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-md border-t border-border/40 px-4 py-3">
-      <Button
-        className="w-full shadow-btn"
-        onClick={() => navigate("/auth?mode=signup&plan=free")}
-      >
-        Start Free — No Credit Card
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-md border-t border-border/40 px-4 py-3"
+        >
+          <Button
+            className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
+            onClick={() => navigate("/auth?mode=signup&plan=free")}
+          >
+            Start Free — No Credit Card
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -1599,7 +1706,21 @@ function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 pt-6 border-t border-border/20 text-center text-xs text-muted-foreground">
+        {/* Security badges */}
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          {[
+            { icon: Shield, label: "SOC2 Ready" },
+            { icon: Lock, label: "256-bit Encrypted" },
+            { icon: BadgeCheck, label: "HIPAA Aware" },
+          ].map((badge) => (
+            <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <badge.icon className="w-3.5 h-3.5 text-emerald-400/70" />
+              {badge.label}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-border/20 text-center text-xs text-muted-foreground">
           &copy; {new Date().getFullYear()} PeptideCRM. All rights reserved.
         </div>
       </div>
