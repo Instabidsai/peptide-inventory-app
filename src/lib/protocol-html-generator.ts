@@ -268,7 +268,7 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         <!-- Header -->
         <div style="text-align:center;margin-bottom:32px;">
             <h1 style="margin:0 0 12px;font-size:28px;font-weight:800;color:#111827;letter-spacing:-0.5px;">
-                Next Gen Peptide Protocols
+                ${escapeHtml(orgName)} Peptide Protocols
             </h1>
             <div style="padding:12px 16px;background:#FEF3C7;border-radius:8px;margin-bottom:8px;">
                 <p style="margin:0;font-size:12px;color:#92400E;line-height:1.5;">

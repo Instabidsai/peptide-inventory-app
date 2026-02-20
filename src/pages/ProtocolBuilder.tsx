@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2, Save, Check,
-    ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package, FolderOpen,
+    ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package, FolderOpen, Droplets,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -51,6 +51,8 @@ export default function ProtocolBuilder() {
                 dosage_amount: item.doseAmount,
                 dosage_unit: item.doseUnit,
                 frequency: item.frequency,
+                timing: item.timing,
+                notes: item.notes || undefined,
                 duration_days: 56, // 8 weeks default
             })),
         });
@@ -60,6 +62,7 @@ export default function ProtocolBuilder() {
     };
 
     const SUPPLY_ICONS: Record<string, React.ElementType> = {
+        droplets: Droplets,
         vial: TestTubes,
         syringe: Syringe,
         swab: Package,
@@ -210,7 +213,7 @@ export default function ProtocolBuilder() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {RECOMMENDED_SUPPLIES.map((supply) => {
                             const Icon = SUPPLY_ICONS[supply.icon] || Package;
                             return (

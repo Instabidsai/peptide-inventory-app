@@ -969,6 +969,159 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
             },
         ],
     },
+
+    // ── Sermorelin ──────────────────────────────────────────────
+    'Sermorelin': {
+        description: 'Growth hormone-releasing hormone (GHRH) analog that stimulates the pituitary gland to produce and secrete growth hormone naturally. Promotes deeper sleep, fat loss, lean muscle, and recovery. Works synergistically with GHRP peptides like Ipamorelin.',
+        vialSizeMg: 5,
+        reconstitutionMl: 2,
+        defaultDoseAmount: 300,
+        defaultDoseUnit: 'mcg',
+        defaultFrequency: 'daily',
+        defaultTiming: 'Before bed',
+        administrationRoute: 'subcutaneous',
+        warningText: 'Inject on an empty stomach (no food 2 hours before or 1 hour after). Avoid taking with carbs or fats as insulin and free fatty acids blunt GH release.',
+        cyclePattern: '12 weeks on, 4 weeks off. Some practitioners use ongoing with periodic breaks.',
+        category: 'gh_stack',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg', reason: 'Supports GH release and sleep quality' },
+            { name: 'Zinc', dosage: '30 mg', reason: 'Critical cofactor for GH production' },
+        ],
+        dosingTiers: [
+            {
+                id: 'conservative',
+                label: 'Conservative',
+                doseAmount: 200,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'Before bed',
+                notes: '200 mcg before bed on empty stomach. Good starting dose for GH axis stimulation.',
+                cyclePattern: '12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'standard',
+                label: 'Standard',
+                doseAmount: 300,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'Before bed',
+                notes: '300 mcg before bed on empty stomach. Most common clinical dose for anti-aging and body composition.',
+                cyclePattern: '12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'aggressive',
+                label: 'High Dose / Stack',
+                doseAmount: 500,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'Before bed',
+                notes: '500 mcg before bed. Often stacked with Ipamorelin 200-300 mcg for synergistic GH pulse. Higher dose — monitor for water retention.',
+                cyclePattern: '8-12 weeks on, 4 weeks off.',
+            },
+        ],
+    },
+
+    // ── AOD-9604 ────────────────────────────────────────────────
+    'AOD-9604': {
+        description: 'Fragment of human growth hormone (amino acids 177-191) that stimulates lipolysis (fat breakdown) and inhibits lipogenesis (fat formation) without affecting blood sugar or growth. Originally developed as an anti-obesity drug. No effect on IGF-1 levels.',
+        vialSizeMg: 5,
+        reconstitutionMl: 2,
+        defaultDoseAmount: 300,
+        defaultDoseUnit: 'mcg',
+        defaultFrequency: 'daily',
+        defaultTiming: 'AM',
+        administrationRoute: 'subcutaneous',
+        warningText: 'Inject on an empty stomach — food (especially carbohydrates) reduces efficacy. Best injected into fatty tissue near the target area (abdomen). No fasting required after injection.',
+        cyclePattern: '12 weeks on, 4 weeks off. Can be used longer-term as it does not affect GH or IGF-1.',
+        category: 'weight_loss',
+        supplementNotes: [
+            { name: 'L-Carnitine', dosage: '500-1000 mg', reason: 'Enhances fat transport into mitochondria for burning' },
+            { name: 'CLA', dosage: '3 g', reason: 'Conjugated linoleic acid supports body composition changes' },
+        ],
+        dosingTiers: [
+            {
+                id: 'conservative',
+                label: 'Conservative',
+                doseAmount: 250,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'AM',
+                notes: '250 mcg once daily on empty stomach. Start here for 2 weeks to assess tolerance.',
+                cyclePattern: '12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'standard',
+                label: 'Standard',
+                doseAmount: 300,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'AM',
+                notes: '300 mcg daily, morning on empty stomach. Most common dose in clinical studies. Inject near abdominal fat.',
+                cyclePattern: '12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'aggressive',
+                label: 'High Dose',
+                doseAmount: 500,
+                doseUnit: 'mcg',
+                frequency: 'daily',
+                timing: 'AM',
+                notes: '500 mcg daily fasted. Used in some clinical trials for stubborn fat loss. Split dose (250 mcg AM + 250 mcg PM) is an option.',
+                cyclePattern: '8-12 weeks on, 4 weeks off.',
+            },
+        ],
+    },
+
+    // ── 5-Amino-1MQ ────────────────────────────────────────────
+    '5-Amino-1MQ': {
+        description: 'Small-molecule inhibitor of NNMT (nicotinamide N-methyltransferase), an enzyme overexpressed in fat tissue. Blocking NNMT increases NAD+ and SAM levels in fat cells, boosting energy expenditure and shrinking fat cells. Oral peptide — no injections needed.',
+        vialSizeMg: 0,
+        reconstitutionMl: 0,
+        defaultDoseAmount: 100,
+        defaultDoseUnit: 'mg',
+        defaultFrequency: 'daily',
+        defaultTiming: 'AM',
+        administrationRoute: 'oral',
+        warningText: 'Oral capsule — no reconstitution or injection required. Take on an empty stomach for best absorption. Relatively new compound; long-term human safety data is limited.',
+        cyclePattern: '8-12 weeks on, 4 weeks off. Monitor energy levels and adjust.',
+        category: 'weight_loss',
+        supplementNotes: [
+            { name: 'B-Complex', dosage: '1 cap daily', reason: 'Supports methylation pathways affected by NNMT inhibition' },
+            { name: 'CoQ10', dosage: '200 mg', reason: 'Supports mitochondrial energy production alongside increased NAD+' },
+        ],
+        dosingTiers: [
+            {
+                id: 'conservative',
+                label: 'Conservative',
+                doseAmount: 50,
+                doseUnit: 'mg',
+                frequency: 'daily',
+                timing: 'AM',
+                notes: '50 mg once daily oral. Starting dose for first 1-2 weeks.',
+                cyclePattern: '8-12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'standard',
+                label: 'Standard',
+                doseAmount: 100,
+                doseUnit: 'mg',
+                frequency: 'daily',
+                timing: 'AM',
+                notes: '100 mg once daily oral, morning on empty stomach. Most common research dose.',
+                cyclePattern: '8-12 weeks on, 4 weeks off.',
+            },
+            {
+                id: 'aggressive',
+                label: 'High Dose',
+                doseAmount: 150,
+                doseUnit: 'mg',
+                frequency: 'twice daily',
+                timing: 'AM',
+                notes: '150 mg twice daily (300 mg total). Higher dose used in some research protocols. Take AM and early afternoon.',
+                cyclePattern: '8 weeks on, 4 weeks off.',
+            },
+        ],
+    },
 };
 
 // ── Lookup Helper (case-insensitive, partial match) ────────────
@@ -1106,6 +1259,12 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
 // ── Recommended Supplies ─────────────────────────────────────
 
 export const RECOMMENDED_SUPPLIES = [
+    {
+        name: 'Bacteriostatic Water (30mL)',
+        description: 'Sterile water with 0.9% benzyl alcohol for safely reconstituting lyophilized peptides',
+        link: 'https://a.co/d/4jVfHzR',
+        icon: 'droplets' as const,
+    },
     {
         name: '10mL Glass Mixing Vials (3-Pack)',
         description: 'Sterile glass vials for reconstituting peptides with bacteriostatic water',

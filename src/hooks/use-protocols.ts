@@ -52,7 +52,7 @@ export function useProtocols(contactId?: string) {
     });
 
     const createProtocol = useMutation({
-        mutationFn: async ({ name, description, contact_id, items }: { name: string; description?: string; contact_id?: string, items?: Array<{ peptide_id: string; dosage_amount: number; dosage_unit: string; frequency: string; duration_days?: number; duration_weeks?: number; cost_multiplier?: number }> }) => {
+        mutationFn: async ({ name, description, contact_id, items }: { name: string; description?: string; contact_id?: string, items?: Array<{ peptide_id: string; dosage_amount: number; dosage_unit: string; frequency: string; timing?: string; notes?: string; duration_days?: number; duration_weeks?: number; cost_multiplier?: number }> }) => {
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Not authenticated');
 

@@ -131,10 +131,7 @@ export function useProtocolBuilder() {
     // ── Actions ────────────────────────────────────────────────
 
     const addPeptide = useCallback((peptide: Peptide) => {
-        setItems(prev => {
-            if (prev.some(i => i.peptideId === peptide.id)) return prev;
-            return [...prev, enrichPeptide(peptide)];
-        });
+        setItems(prev => [...prev, enrichPeptide(peptide)]);
     }, [enrichPeptide]);
 
     const addPeptideByName = useCallback((name: string) => {
@@ -342,9 +339,8 @@ export function useProtocolBuilder() {
     // ── Available peptides (not yet added) ─────────────────────
 
     const availablePeptides = useMemo(() => {
-        const addedIds = new Set(items.map(i => i.peptideId));
-        return (peptides || []).filter(p => p.active && !addedIds.has(p.id));
-    }, [peptides, items]);
+        return (peptides || []).filter(p => p.active);
+    }, [peptides]);
 
     // ── Generated Output ───────────────────────────────────────
 
