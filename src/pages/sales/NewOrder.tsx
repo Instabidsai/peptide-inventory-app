@@ -593,23 +593,10 @@ export default function NewOrder() {
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
                                             </div>
 
-                                            <div className="flex-1">
-                                                <div className="relative">
-                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={item.unitPrice}
-                                                        onChange={(e) => {
-                                                            const newPrice = parseFloat(e.target.value) || 0;
-                                                            // Keep current commission rate when typing custom price
-                                                            updatePrice(item.peptide.id, newPrice, item.commissionRate);
-                                                        }}
-                                                        className="pl-5 h-8 text-right"
-                                                        placeholder="Price"
-                                                    />
-                                                </div>
+                                            <div className="flex items-center border border-border/60 rounded-lg">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" onClick={() => updatePrice(item.peptide.id, Math.max(0, Math.round(item.unitPrice) - 1), item.commissionRate)}>-</Button>
+                                                <span className="w-14 text-center text-sm font-medium">${Math.round(item.unitPrice)}</span>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => updatePrice(item.peptide.id, Math.round(item.unitPrice) + 1, item.commissionRate)}>+</Button>
                                             </div>
 
                                             <div className="w-16 text-right font-medium">
