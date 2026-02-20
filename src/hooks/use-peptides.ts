@@ -21,6 +21,7 @@ export interface Peptide {
   default_timing?: string | null;
   default_concentration_mg_ml?: number | null;
   reconstitution_notes?: string | null;
+  visible_to_user_ids?: string[] | null;
 }
 
 export interface CreatePeptideInput {
@@ -91,15 +92,23 @@ export function usePeptides() {
         }
       });
 
-      // 5. Merge
-      return (peptidesData as Peptide[]).map(peptide => {
-        const stats = peptideStats[peptide.id];
-        return {
-          ...peptide,
-          stock_count: stats.totalStock,
-          avg_cost: stats.lotCount > 0 ? stats.totalLotCost / stats.lotCount : 0
-        };
-      });
+      // 5. Merge + filter by visibility
+      const profileId = profile!.id;
+      return (peptidesData as Peptide[])
+        .filter(p => {
+          // If visible_to_user_ids is null/empty, visible to everyone
+          if (!p.visible_to_user_ids || p.visible_to_user_ids.length === 0) return true;
+          // Otherwise, only visible if current user's profile ID is in the list
+          return p.visible_to_user_ids.includes(profileId);
+        })
+        .map(peptide => {
+          const stats = peptideStats[peptide.id];
+          return {
+            ...peptide,
+            stock_count: stats.totalStock,
+            avg_cost: stats.lotCount > 0 ? stats.totalLotCost / stats.lotCount : 0
+          };
+        });
     },
     enabled: !!user && !!profile?.org_id,
   });
