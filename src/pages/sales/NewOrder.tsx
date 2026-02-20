@@ -51,7 +51,7 @@ interface CommissionChainEntry {
     tier: string;
     type: 'direct' | 'second_tier_override' | 'third_tier_override';
     defaultRate: number;
-    mode: 'percentage' | 'flat';
+    mode: 'percentage' | 'flat' | 'none';
     value: number;
 }
 
@@ -344,6 +344,7 @@ export default function NewOrder() {
     const totalCommission = commissionEnabled
         ? (commissionChain.length > 0
             ? commissionChain.reduce((sum, entry) => {
+                if (entry.mode === 'none') return sum;
                 const amount = entry.mode === 'percentage'
                     ? (entry.value / 100) * cartTotal
                     : entry.value;
@@ -359,6 +360,7 @@ export default function NewOrder() {
         // Build manual commission entries when chain is active
         const manualCommissions = commissionEnabled && commissionChain.length > 0
             ? commissionChain.filter(e => {
+                if (e.mode === 'none') return false;
                 const amt = e.mode === 'percentage' ? (e.value / 100) * cartTotal : e.value;
                 return amt > 0;
             }).map(entry => ({
@@ -724,23 +726,33 @@ export default function NewOrder() {
                         <div className="space-y-3 p-3 rounded-lg border border-green-500/20 bg-green-500/5">
                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Commission Breakdown</p>
                             {commissionChain.map((entry, idx) => {
-                                const calcAmount = entry.mode === 'percentage'
-                                    ? Math.round((entry.value / 100) * cartTotal * 100) / 100
-                                    : Math.round(entry.value * 100) / 100;
+                                const isNone = entry.mode === 'none';
+                                const calcAmount = isNone ? 0
+                                    : entry.mode === 'percentage'
+                                        ? Math.round((entry.value / 100) * cartTotal * 100) / 100
+                                        : Math.round(entry.value * 100) / 100;
                                 const calcPct = entry.mode === 'flat' && cartTotal > 0
                                     ? ((entry.value / cartTotal) * 100).toFixed(1)
                                     : null;
 
                                 return (
-                                    <div key={entry.profileId} className="flex flex-col gap-1.5 p-2.5 rounded-md bg-background border border-border/40">
+                                    <div key={entry.profileId} className={cn(
+                                        "flex flex-col gap-1.5 p-2.5 rounded-md border transition-all",
+                                        isNone
+                                            ? "bg-muted/30 border-border/30 opacity-60"
+                                            : "bg-background border-border/40"
+                                    )}>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium">{entry.name}</span>
+                                                <span className={cn("text-sm font-medium", isNone && "line-through")}>{entry.name}</span>
                                                 <Badge variant="outline" className="text-[10px] h-5">
                                                     {entry.type === 'direct' ? 'Direct' : entry.type === 'second_tier_override' ? '2nd Tier' : '3rd Tier'}
                                                 </Badge>
                                             </div>
-                                            <span className="text-sm font-bold text-green-600">${calcAmount.toFixed(2)}</span>
+                                            {isNone
+                                                ? <span className="text-xs font-semibold text-muted-foreground">NONE</span>
+                                                : <span className="text-sm font-bold text-green-600">${calcAmount.toFixed(2)}</span>
+                                            }
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="flex border rounded-md overflow-hidden">
@@ -777,27 +789,50 @@ export default function NewOrder() {
                                                 >
                                                     <DollarSign className="h-3 w-3" />
                                                 </button>
-                                            </div>
-                                            <div className="relative flex-1">
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step={entry.mode === 'percentage' ? '0.5' : '0.01'}
-                                                    value={entry.value}
-                                                    onChange={(e) => {
-                                                        const val = parseFloat(e.target.value) || 0;
-                                                        setCommissionChain(prev => prev.map((e2, i) =>
-                                                            i === idx ? { ...e2, value: val } : e2
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        "px-2 py-1 text-xs transition-colors font-semibold",
+                                                        entry.mode === 'none'
+                                                            ? "bg-destructive text-destructive-foreground"
+                                                            : "bg-muted hover:bg-muted/80"
+                                                    )}
+                                                    onClick={() => {
+                                                        setCommissionChain(prev => prev.map((e, i) =>
+                                                            i === idx ? { ...e, mode: 'none', value: 0 } : e
                                                         ));
                                                     }}
-                                                    className="h-8 text-right pr-8"
-                                                />
-                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                                                    {entry.mode === 'percentage' ? '%' : '$'}
-                                                </span>
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
-                                            {calcPct && (
-                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">({calcPct}%)</span>
+                                            {!isNone && (
+                                                <>
+                                                    <div className="relative flex-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step={entry.mode === 'percentage' ? '0.5' : '0.01'}
+                                                            value={entry.value}
+                                                            onChange={(e) => {
+                                                                const val = parseFloat(e.target.value) || 0;
+                                                                setCommissionChain(prev => prev.map((e2, i) =>
+                                                                    i === idx ? { ...e2, value: val } : e2
+                                                                ));
+                                                            }}
+                                                            className="h-8 text-right pr-8"
+                                                        />
+                                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                                            {entry.mode === 'percentage' ? '%' : '$'}
+                                                        </span>
+                                                    </div>
+                                                    {calcPct && (
+                                                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">({calcPct}%)</span>
+                                                    )}
+                                                </>
+                                            )}
+                                            {isNone && (
+                                                <span className="text-xs text-muted-foreground italic">No commission for this person</span>
                                             )}
                                         </div>
                                     </div>
