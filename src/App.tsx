@@ -59,6 +59,11 @@ const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 // Vendor (super-admin)
 const VendorDashboard = lazyRetry(() => import("./pages/vendor/VendorDashboard"));
 
+// Custom engine
+const Customizations = lazyRetry(() => import("./pages/Customizations"));
+const CustomEntityPage = lazyRetry(() => import("./components/custom/CustomEntityPage"));
+const CustomReportView = lazyRetry(() => import("./components/custom/CustomReportView"));
+
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
 
@@ -186,6 +191,9 @@ const App = () => (
                                 <Route path="/movements" element={<Movements />} />
                                 <Route path="/movements/new" element={<MovementWizard />} />
                                 <Route path="/settings" element={<Settings />} />
+                                <Route path="/customizations" element={<Customizations />} />
+                                <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />
+                                <Route path="/reports/:reportId" element={<CustomReportView />} />
                                 <Route path="/checkout/success" element={<CheckoutSuccess />} />
                                 <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 

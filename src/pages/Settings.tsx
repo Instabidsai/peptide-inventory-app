@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save } from 'lucide-react';
+import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink } from 'lucide-react';
+import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -139,6 +140,79 @@ const API_KEY_SERVICES = [
   { key: 'shippo_api_key', label: 'Shippo API Key', placeholder: 'shippo_live_...' },
   { key: 'openai_api_key', label: 'OpenAI API Key (AI Chat)', placeholder: 'sk-...' },
 ] as const;
+
+const OAUTH_SERVICES = [
+  { id: 'stripe', label: 'Stripe', description: 'Payment processing', icon: '💳' },
+  { id: 'gmail', label: 'Gmail', description: 'Email integration', icon: '📧' },
+  { id: 'sheets', label: 'Google Sheets', description: 'Spreadsheet sync', icon: '📊' },
+  { id: 'shopify', label: 'Shopify', description: 'E-commerce integration', icon: '🛒' },
+  { id: 'drive', label: 'Google Drive', description: 'File storage', icon: '📁' },
+  { id: 'notion', label: 'Notion', description: 'Documentation', icon: '📝' },
+];
+
+function OAuthConnectionsSection() {
+  const { data: connections = [], isLoading } = useTenantConnections();
+  const connectService = useConnectService();
+  const { toast } = useToast();
+
+  const connectionMap = new Map(connections.map(c => [c.service, c]));
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">OAuth Connections</CardTitle>
+        <CardDescription>Connect third-party services with one click</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {OAUTH_SERVICES.map(svc => {
+            const conn = connectionMap.get(svc.id);
+            const isConnected = conn?.status === 'connected';
+            const isPending = conn?.status === 'pending';
+            return (
+              <div key={svc.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/40">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{svc.icon}</span>
+                  <div>
+                    <p className="text-sm font-medium">{svc.label}</p>
+                    <p className="text-xs text-muted-foreground">{svc.description}</p>
+                  </div>
+                </div>
+                {isConnected ? (
+                  <Badge variant="default" className="bg-emerald-600 text-xs gap-1">
+                    <Link2 className="h-3 w-3" /> Connected
+                  </Badge>
+                ) : isPending ? (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Pending
+                  </Badge>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={connectService.isPending}
+                    onClick={() => {
+                      connectService.mutate(svc.id, {
+                        onError: (err: any) => {
+                          toast({ title: 'Connection failed', description: err.message, variant: 'destructive' });
+                        },
+                      });
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Connect
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function IntegrationsTab({ orgId }: { orgId: string }) {
   const { toast } = useToast();
@@ -446,7 +520,8 @@ export default function Settings() {
         )}
 
         {isAdmin && organization?.id && (
-          <TabsContent value="integrations">
+          <TabsContent value="integrations" className="space-y-6">
+            <OAuthConnectionsSection />
             <IntegrationsTab orgId={organization.id} />
           </TabsContent>
         )}

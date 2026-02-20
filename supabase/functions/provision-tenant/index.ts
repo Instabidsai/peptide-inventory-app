@@ -207,6 +207,33 @@ Deno.serve(async (req) => {
             results.sample_peptides_created = true;
         }
 
+        // ── Step 8: Register Composio Entity (optional — if API key set) ──
+        const composioApiKey = Deno.env.get('COMPOSIO_API_KEY');
+        if (composioApiKey) {
+            try {
+                const entityRes = await fetch('https://backend.composio.dev/api/v1/entity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': composioApiKey,
+                    },
+                    body: JSON.stringify({ id: org.id }),
+                });
+
+                if (entityRes.ok) {
+                    results.composio_entity_registered = true;
+                    console.log(`  Registered Composio entity: ${org.id}`);
+                } else {
+                    const errText = await entityRes.text();
+                    console.warn(`  Composio entity registration warning: ${errText}`);
+                    results.composio_entity_registered = false;
+                }
+            } catch (compErr: any) {
+                console.warn(`  Composio entity registration skipped: ${compErr.message}`);
+                results.composio_entity_registered = false;
+            }
+        }
+
         console.log(`[${VERSION}] Tenant provisioned successfully: ${org.id}`);
 
         return new Response(
