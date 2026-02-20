@@ -27,6 +27,8 @@ export function useProtocolBuilder() {
     const [selectedContactId, setSelectedContactId] = useState('');
     const [items, setItems] = useState<EnrichedProtocolItem[]>([]);
     const [initialized, setInitialized] = useState(false);
+    const [includeSupplies, setIncludeSupplies] = useState(true);
+    const [protocolName, setProtocolName] = useState('');
 
     // Contacts list (sales_rep sees only their assigned clients)
     const isSalesRep = profile?.role === 'sales_rep';
@@ -85,6 +87,7 @@ export function useProtocolBuilder() {
             cyclePattern: tier?.cyclePattern ?? knowledge?.cyclePattern ?? null,
             stackLabel: knowledge?.stackLabel ?? null,
             dosageSchedule: tier?.dosageSchedule ?? knowledge?.dosageSchedule ?? null,
+            category: knowledge?.category ?? undefined,
             notes: '',
             supplements: knowledge?.supplementNotes ?? [],
             selectedTierId: tier?.id ?? null,
@@ -180,6 +183,15 @@ export function useProtocolBuilder() {
         }));
     }, []);
 
+    const moveItem = useCallback((fromIdx: number, toIdx: number) => {
+        setItems(prev => {
+            const next = [...prev];
+            const [item] = next.splice(fromIdx, 1);
+            next.splice(toIdx, 0, item);
+            return next;
+        });
+    }, []);
+
     // ── Template Loading ───────────────────────────────────────
 
     const loadTemplate = useCallback((templateName: string) => {
@@ -247,6 +259,15 @@ export function useProtocolBuilder() {
         }
     }, [initialized, peptides, searchParams, loadFromOrder, loadTemplate]);
 
+    // ── Auto-generate Protocol Name ─────────────────────────────
+    useEffect(() => {
+        if (!protocolName || protocolName.includes('Protocol -')) {
+            const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            setProtocolName(clientName ? `${clientName}'s Protocol - ${today}` : `Protocol - ${today}`);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clientName]);
+
     // ── Available peptides (not yet added) ─────────────────────
 
     const availablePeptides = useMemo(() => {
@@ -258,16 +279,16 @@ export function useProtocolBuilder() {
 
     const html = useMemo(() =>
         items.length > 0
-            ? generateProtocolHtml({ items, clientName: clientFullName, orgName })
+            ? generateProtocolHtml({ items, clientName: clientFullName, orgName, includeSupplies })
             : '',
-        [items, clientFullName, orgName]
+        [items, clientFullName, orgName, includeSupplies]
     );
 
     const plainText = useMemo(() =>
         items.length > 0
-            ? generateProtocolPlainText({ items, clientName: clientFullName, orgName })
+            ? generateProtocolPlainText({ items, clientName: clientFullName, orgName, includeSupplies })
             : '',
-        [items, clientFullName, orgName]
+        [items, clientFullName, orgName, includeSupplies]
     );
 
     // ── Delivery Actions ───────────────────────────────────────
@@ -317,15 +338,20 @@ export function useProtocolBuilder() {
         contacts,
         availablePeptides,
         orgName,
+        includeSupplies,
+        protocolName,
 
         // Actions
         setSelectedContactId,
+        setIncludeSupplies,
+        setProtocolName,
         addPeptide,
         addPeptideByName,
         removeItem,
         updateItem,
         selectTier,
         toggleSection,
+        moveItem,
         clearAll,
         loadTemplate,
         loadFromOrder,

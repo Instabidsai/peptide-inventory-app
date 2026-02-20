@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useProtocolBuilder } from '@/hooks/use-protocol-builder';
 import { useProtocols } from '@/hooks/use-protocols';
-import { lookupKnowledge } from '@/data/protocol-knowledge';
+import { lookupKnowledge, RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, CATEGORY_META } from '@/data/protocol-knowledge';
 import { TemplatePicker } from '@/components/protocol-builder/TemplatePicker';
 import { ProtocolItemEditor } from '@/components/protocol-builder/ProtocolItemEditor';
 import { RichProtocolPreview } from '@/components/protocol-builder/RichProtocolPreview';
@@ -10,10 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2, Save, Check,
+    ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package,
 } from 'lucide-react';
 
 export default function ProtocolBuilder() {
@@ -21,16 +24,16 @@ export default function ProtocolBuilder() {
     const { createProtocol } = useProtocols(builder.selectedContactId || undefined);
     const [search, setSearch] = useState('');
     const [saved, setSaved] = useState(false);
+    const previewRef = useRef<HTMLDivElement>(null);
+
+    const scrollToPreview = () => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     const handleSaveProtocol = async () => {
         if (builder.items.length === 0) return;
-        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const name = builder.clientName
-            ? `${builder.clientName}'s Protocol - ${today}`
-            : `Protocol - ${today}`;
-
         await createProtocol.mutateAsync({
-            name,
+            name: builder.protocolName,
             description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
             contact_id: builder.selectedContactId || undefined,
             items: builder.items.map(item => ({
@@ -43,6 +46,12 @@ export default function ProtocolBuilder() {
         });
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+    };
+
+    const SUPPLY_ICONS: Record<string, React.ElementType> = {
+        vial: TestTubes,
+        syringe: Syringe,
+        swab: Package,
     };
 
     // Filter available peptides by search
@@ -67,7 +76,7 @@ export default function ProtocolBuilder() {
                     </p>
                 </div>
                 {builder.items.length > 0 && (
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         <Button
                             variant={saved ? 'outline' : 'default'}
                             size="sm"
@@ -77,6 +86,7 @@ export default function ProtocolBuilder() {
                             {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
                             {saved ? 'Saved!' : 'Save Protocol'}
                         </Button>
+                        <Separator orientation="vertical" className="h-6" />
                         <Button variant="outline" size="sm" onClick={builder.copyHtml}>
                             <Copy className="h-4 w-4 mr-1.5" /> Copy
                         </Button>
@@ -89,6 +99,16 @@ export default function ProtocolBuilder() {
                     </div>
                 )}
             </div>
+
+            {/* Editable Protocol Name */}
+            {builder.items.length > 0 && (
+                <Input
+                    value={builder.protocolName}
+                    onChange={e => builder.setProtocolName(e.target.value)}
+                    className="text-lg font-semibold border-dashed max-w-md"
+                    aria-label="Protocol name"
+                />
+            )}
 
             {/* Client Picker */}
             <Card>
@@ -140,6 +160,63 @@ export default function ProtocolBuilder() {
                 />
             </div>
 
+            {/* Supplies Needed Card */}
+            <Card>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <ShoppingCart className="h-4 w-4" />
+                        Supplies Needed
+                        <span className="text-xs text-muted-foreground font-normal ml-auto">These or something similar</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        {RECOMMENDED_SUPPLIES.map((supply) => {
+                            const Icon = SUPPLY_ICONS[supply.icon] || Package;
+                            return (
+                                <a
+                                    key={supply.name}
+                                    href={supply.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent/30 hover:border-primary/30 transition-all group"
+                                >
+                                    <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-0.5" />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium leading-tight">{supply.name}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{supply.description}</p>
+                                    </div>
+                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-primary flex-shrink-0 mt-0.5" />
+                                </a>
+                            );
+                        })}
+                    </div>
+                    <a
+                        href={RECONSTITUTION_VIDEO_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40 transition-all"
+                    >
+                        <Play className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-medium">How to Reconstitute Peptides</p>
+                            <p className="text-[11px] text-muted-foreground">Step-by-step video guide for mixing and preparing your peptides</p>
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 text-red-500/50 flex-shrink-0 ml-auto" />
+                    </a>
+                    <div className="flex items-center gap-2 pt-1">
+                        <Checkbox
+                            id="include-supplies"
+                            checked={builder.includeSupplies}
+                            onCheckedChange={(checked) => builder.setIncludeSupplies(!!checked)}
+                        />
+                        <Label htmlFor="include-supplies" className="text-xs text-muted-foreground cursor-pointer">
+                            Include supplies & video link in printed/emailed protocol
+                        </Label>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Main Grid */}
             <div className="grid gap-6 lg:grid-cols-5">
                 {/* LEFT: Peptide Picker + Items */}
@@ -153,6 +230,15 @@ export default function ProtocolBuilder() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
+                            {/* Category Legend */}
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+                                {Object.entries(CATEGORY_META).map(([key, meta]) => (
+                                    <span key={key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                        <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                                        {meta.label}
+                                    </span>
+                                ))}
+                            </div>
                             <div className="relative mb-3">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -167,21 +253,23 @@ export default function ProtocolBuilder() {
                                 <div className="space-y-1">
                                     {filteredPeptides.map(p => {
                                         const knowledge = lookupKnowledge(p.name);
+                                        const catDot = knowledge?.category ? CATEGORY_META[knowledge.category]?.dot : '';
                                         return (
                                             <button
                                                 key={p.id}
                                                 onClick={() => builder.addPeptide(p)}
                                                 className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/30 transition-colors text-left text-sm group"
                                             >
-                                                <div className="min-w-0">
+                                                <div className="min-w-0 flex items-center gap-2">
+                                                    {catDot && <span className={`h-2 w-2 rounded-full flex-shrink-0 ${catDot}`} />}
                                                     <span className="font-medium">{p.name}</span>
                                                     {knowledge && (
-                                                        <span className="ml-2 text-xs text-muted-foreground">
-                                                            {knowledge.vialSizeMg}mg \u00B7 {knowledge.reconstitutionMl}mL water \u00B7 {knowledge.defaultDoseAmount}{knowledge.defaultDoseUnit}
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {knowledge.vialSizeMg}mg {'\u00B7'} {knowledge.reconstitutionMl}mL water {'\u00B7'} {knowledge.defaultDoseAmount}{knowledge.defaultDoseUnit}
                                                         </span>
                                                     )}
                                                     {!knowledge && p.default_dose_amount ? (
-                                                        <span className="ml-2 text-xs text-muted-foreground">
+                                                        <span className="text-xs text-muted-foreground">
                                                             {p.default_dose_amount}{p.default_dose_unit} {p.default_frequency}
                                                         </span>
                                                     ) : null}
@@ -200,6 +288,24 @@ export default function ProtocolBuilder() {
                         </CardContent>
                     </Card>
 
+                    {/* Sticky Summary Bar */}
+                    {builder.items.length >= 2 && (
+                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border rounded-lg p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-sm">
+                                <Badge variant="secondary">{builder.items.length} peptides</Badge>
+                                <span className="text-muted-foreground text-xs">
+                                    {builder.items.filter(i => i.frequency === 'daily').length > 0 &&
+                                        `${builder.items.filter(i => i.frequency === 'daily').length} daily`}
+                                    {builder.items.filter(i => i.frequency !== 'daily').length > 0 &&
+                                        ` ${'\u00B7'} ${builder.items.filter(i => i.frequency !== 'daily').length} other schedule`}
+                                </span>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-xs lg:hidden" onClick={scrollToPreview}>
+                                View Preview
+                            </Button>
+                        </div>
+                    )}
+
                     {/* Protocol Items */}
                     {builder.items.length > 0 && (
                         <div className="space-y-3">
@@ -215,20 +321,39 @@ export default function ProtocolBuilder() {
                                     onRemove={builder.removeItem}
                                     onSelectTier={builder.selectTier}
                                     onToggleSection={builder.toggleSection}
+                                    onMoveUp={idx > 0 ? () => builder.moveItem(idx, idx - 1) : undefined}
+                                    onMoveDown={idx < builder.items.length - 1 ? () => builder.moveItem(idx, idx + 1) : undefined}
                                 />
                             ))}
                         </div>
                     )}
 
                     {builder.items.length === 0 && (
-                        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                            Select a template above or click individual peptides to start building.
+                        <div className="text-center py-16 border-2 border-dashed rounded-lg space-y-4">
+                            <Wand2 className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                            <div>
+                                <p className="font-medium text-muted-foreground">Start Building a Protocol</p>
+                                <p className="text-sm text-muted-foreground/70 mt-1">
+                                    Choose a template above, or pick one below to get started.
+                                </p>
+                            </div>
+                            <div className="flex justify-center gap-3 flex-wrap">
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Healing Stack')}>
+                                    Healing Stack
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('GH Stack (Evening)')}>
+                                    GH Stack
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Weight Loss')}>
+                                    Weight Loss
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
 
                 {/* RIGHT: Rich Preview */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2" ref={previewRef}>
                     <RichProtocolPreview
                         html={builder.html}
                         itemCount={builder.items.length}

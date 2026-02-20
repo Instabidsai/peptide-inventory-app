@@ -46,6 +46,7 @@ export interface PeptideKnowledge {
     supplementNotes?: SupplementNote[];
     dosageSchedule?: string;
     dosingTiers?: DosingTier[];
+    category?: 'healing' | 'gh_stack' | 'weight_loss' | 'cognitive' | 'sleep' | 'anti_aging' | 'sexual_health';
 }
 
 export interface ProtocolTemplate {
@@ -61,6 +62,7 @@ export interface ProtocolTemplate {
 
 export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
     'Retatrutide': {
+        category: 'weight_loss',
         description: 'This triple agonist targets GLP-1, GIP, and glucagon receptors to facilitate significant weight loss and metabolic improvements. It primarily functions by suppressing appetite while simultaneously increasing the body\'s energy expenditure and insulin secretion.',
         vialSizeMg: 20,
         reconstitutionMl: 2,
@@ -113,6 +115,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'MOTS-C': {
+        category: 'weight_loss',
         description: 'This mitochondrial peptide regulates metabolic stress responses and significantly enhances insulin sensitivity and exercise capacity. It is often utilized to combat age-related metabolic decline by promoting glucose uptake within muscle tissues.',
         vialSizeMg: 40,
         reconstitutionMl: 2,
@@ -152,6 +155,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'GHK-Cu': {
+        category: 'anti_aging',
         description: 'This naturally occurring copper complex is highly effective at promoting wound healing and stimulating collagen synthesis for skin repair. It also possesses strong anti-inflammatory properties that support tissue regeneration and potential hair growth.',
         vialSizeMg: 100,
         reconstitutionMl: 3,
@@ -202,6 +206,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'NAD+': {
+        category: 'anti_aging',
         description: 'As a vital coenzyme found in every cell, NAD+ is essential for cellular energy production and the repair of damaged DNA. Restoring these levels helps support overall metabolic health and activates pathways associated with longevity.',
         vialSizeMg: 1000,
         reconstitutionMl: 5,
@@ -249,6 +254,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'TB-500': {
+        category: 'healing',
         description: 'This synthetic version of Thymosin Beta-4 is known for its ability to reduce inflammation and accelerate the healing of various tissues. It promotes cell migration to injury sites, making it a staple for recovering from muscle or ligament damage.',
         vialSizeMg: 20,
         reconstitutionMl: 2,
@@ -294,6 +300,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'BPC-157': {
+        category: 'healing',
         description: 'This peptide is derived from protective proteins in the stomach and is renowned for its versatile tissue-healing capabilities. It triggers the formation of new blood vessels and cellular repair to heal tendons, muscles, and even gut tissue.',
         vialSizeMg: 20,
         reconstitutionMl: 2,
@@ -337,6 +344,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Semax': {
+        category: 'cognitive',
         description: 'Derived from ACTH, this peptide provides neuroprotective benefits and is widely recognized for enhancing cognitive function and focus. It modulates neurotransmitters in the brain to promote neurogenesis and help recovery from cognitive stress.',
         vialSizeMg: 10,
         reconstitutionMl: 1,
@@ -381,6 +389,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Tesamorelin': {
+        category: 'gh_stack',
         description: 'This analog increases IGF-1 levels and is specifically utilized for its potent ability to reduce stubborn visceral fat. It works by mimicking growth hormone-releasing hormones to improve overall physical body composition.',
         vialSizeMg: 20,
         reconstitutionMl: 2,
@@ -413,6 +422,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Ipamorelin': {
+        category: 'gh_stack',
         description: 'This selective growth hormone secretagogue stimulates the pituitary gland to release growth hormone without spiking cortisol levels. It is frequently used to support lean muscle growth and improve body composition through fat loss.',
         vialSizeMg: 10,
         reconstitutionMl: 2,
@@ -458,6 +468,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Selank': {
+        category: 'cognitive',
         description: 'This anxiolytic peptide is used to reduce anxiety levels and improve mental clarity without the sedative effects of traditional medications. It influences the immune response and neurotransmitter balance to provide a calming effect on the nervous system.',
         vialSizeMg: 10,
         reconstitutionMl: 1,
@@ -501,6 +512,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'DSIP': {
+        category: 'sleep',
         description: 'This neuropeptide helps regulate the sleep-wake cycle by encouraging deep, restorative delta-wave sleep stages. It also supports the body\'s recovery from stress by helping to normalize cortisol levels during the night.',
         vialSizeMg: 10,
         reconstitutionMl: 3,
@@ -545,6 +557,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
     },
     // ── Additional common peptides ──────────────────────────────
     'Tirzepatide': {
+        category: 'weight_loss',
         description: 'A dual GLP-1/GIP receptor agonist that provides powerful glucose control and weight loss. It improves insulin sensitivity and reduces appetite through complementary incretin pathways.',
         vialSizeMg: 10,
         reconstitutionMl: 2,
@@ -596,6 +609,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Semaglutide': {
+        category: 'weight_loss',
         description: 'A GLP-1 receptor agonist that significantly reduces appetite and promotes weight loss by mimicking the incretin hormone. It slows gastric emptying and signals satiety to the brain.',
         vialSizeMg: 5,
         reconstitutionMl: 2,
@@ -647,6 +661,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'CJC-1295': {
+        category: 'gh_stack',
         description: 'A growth hormone-releasing hormone analog that provides sustained GH elevation without the sharp spikes of direct GH administration. This is the "no DAC" (Modified GRF 1-29) version with a 30-minute half-life that mimics natural GH pulses.',
         vialSizeMg: 5,
         reconstitutionMl: 2,
@@ -692,6 +707,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'PT-141': {
+        category: 'sexual_health',
         description: 'This melanocortin receptor agonist works through the central nervous system to enhance sexual desire and function. Unlike PDE5 inhibitors, it acts on the brain to stimulate natural arousal pathways.',
         vialSizeMg: 10,
         reconstitutionMl: 2,
@@ -723,6 +739,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         ],
     },
     'Epithalon': {
+        category: 'anti_aging',
         description: 'This telomerase-activating peptide supports cellular longevity by promoting the lengthening of telomeres. It has been studied for its potential anti-aging effects including improved sleep quality and immune function.',
         vialSizeMg: 10,
         reconstitutionMl: 2,
@@ -734,6 +751,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '10 days ON, 6 months OFF.',
     },
     'Thymosin Alpha-1': {
+        category: 'healing',
         description: 'A potent immune-modulating peptide that enhances the body\'s T-cell function and overall immune response. It is used to support immune health in chronic infections and as an adjunct to other therapies.',
         vialSizeMg: 5,
         reconstitutionMl: 1,
@@ -744,6 +762,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         administrationRoute: 'subcutaneous',
     },
     'KPV': {
+        category: 'healing',
         description: 'A tripeptide derived from alpha-MSH with potent anti-inflammatory properties, particularly for gut health. It helps reduce intestinal inflammation and supports the healing of the gut lining.',
         vialSizeMg: 10,
         reconstitutionMl: 2,
@@ -754,6 +773,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         administrationRoute: 'subcutaneous',
     },
     'Pentadecapeptide BPC-157 (Oral)': {
+        category: 'healing',
         description: 'An oral formulation of BPC-157 designed to provide systemic healing benefits when taken by mouth. Particularly effective for gut healing and systemic anti-inflammatory support.',
         vialSizeMg: 500,
         reconstitutionMl: 0,
@@ -764,6 +784,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         administrationRoute: 'oral',
     },
     'Hexarelin': {
+        category: 'gh_stack',
         description: 'The most potent growth hormone-releasing peptide (GHRP), Hexarelin stimulates significant GH release from the pituitary. It is highly effective but requires strict cycling due to receptor desensitization.',
         vialSizeMg: 5,
         reconstitutionMl: 2,
@@ -915,3 +936,42 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
         ],
     },
 ];
+
+// ── Recommended Supplies ─────────────────────────────────────
+
+export const RECOMMENDED_SUPPLIES = [
+    {
+        name: '10mL Glass Mixing Vials (3-Pack)',
+        description: 'Sterile glass vials for reconstituting peptides with bacteriostatic water',
+        link: 'https://share.google/DM0zu9Ey5YF2h6pDy',
+        icon: 'vial' as const,
+    },
+    {
+        name: '0.5mL Insulin Syringes — 31G 5/16" Needles',
+        description: 'Compact syringes with fine-gauge needles for subcutaneous injection',
+        link: 'https://a.co/d/0fWf0VEc',
+        icon: 'syringe' as const,
+    },
+    {
+        name: 'CURAD Alcohol Prep Pads (400 Count)',
+        description: 'Individually wrapped isopropyl wipes for sterilizing vial tops and injection sites',
+        link: 'https://share.google/evFqBGOFF3cwWdj4Z',
+        icon: 'swab' as const,
+    },
+];
+
+export const RECONSTITUTION_VIDEO_URL = 'https://www.youtube.com/watch?v=ZX7tQxKYokk';
+
+// ── Category Metadata ────────────────────────────────────────
+
+export type PeptideCategory = PeptideKnowledge['category'];
+
+export const CATEGORY_META: Record<string, { label: string; color: string; dot: string }> = {
+    healing: { label: 'Healing', color: 'border-l-emerald-500', dot: 'bg-emerald-500' },
+    gh_stack: { label: 'GH Stack', color: 'border-l-purple-500', dot: 'bg-purple-500' },
+    weight_loss: { label: 'Weight Loss', color: 'border-l-amber-500', dot: 'bg-amber-500' },
+    cognitive: { label: 'Cognitive', color: 'border-l-blue-500', dot: 'bg-blue-500' },
+    sleep: { label: 'Sleep', color: 'border-l-indigo-500', dot: 'bg-indigo-500' },
+    anti_aging: { label: 'Anti-Aging', color: 'border-l-rose-500', dot: 'bg-rose-500' },
+    sexual_health: { label: 'Sexual Health', color: 'border-l-pink-500', dot: 'bg-pink-500' },
+};

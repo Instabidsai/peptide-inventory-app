@@ -3,6 +3,7 @@
 // for email, print, and clipboard delivery.
 
 import type { SupplementNote, DosingTier } from '@/data/protocol-knowledge';
+import { RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL } from '@/data/protocol-knowledge';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ export interface EnrichedProtocolItem {
     // Dosing tier support
     selectedTierId: string | null;
     availableTiers: DosingTier[];
+    // Category for color-coding
+    category?: string;
     // Section toggles — controls what appears in email output
     includeSections: IncludeSections;
 }
@@ -45,6 +48,7 @@ interface GeneratorOptions {
     items: EnrichedProtocolItem[];
     clientName: string;
     orgName?: string;
+    includeSupplies?: boolean;
 }
 
 // ── Shared Helpers ─────────────────────────────────────────────
@@ -134,7 +138,7 @@ function escapeHtml(str: string): string {
 
 // ── HTML Generator ─────────────────────────────────────────────
 
-export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Admin' }: GeneratorOptions): string {
+export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Admin', includeSupplies = true }: GeneratorOptions): string {
     const itemsHtml = items.map((item, idx) => {
         const ml = calcMl(item);
         const units = calcUnits(ml);
@@ -274,6 +278,23 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         <!-- Protocol Items -->
         ${itemsHtml}
 
+        ${includeSupplies ? `
+        <!-- What You'll Need -->
+        <div style="margin:28px 0;padding:20px 24px;background:#F8FAFC;border:2px solid #E2E8F0;border-radius:12px;">
+            <h3 style="margin:0 0 14px;color:#111827;font-size:16px;font-weight:700;">\uD83D\uDECD\uFE0F What You'll Need</h3>
+            ${RECOMMENDED_SUPPLIES.map(s => `
+                <div style="margin:0 0 10px;padding:10px 14px;background:#ffffff;border:1px solid #E5E7EB;border-radius:8px;">
+                    <a href="${escapeHtml(s.link)}" style="color:#2563EB;font-size:14px;font-weight:600;text-decoration:none;" target="_blank">${escapeHtml(s.name)} \u2192</a>
+                    <p style="margin:4px 0 0;color:#6B7280;font-size:12px;">${escapeHtml(s.description)}</p>
+                </div>
+            `).join('')}
+            <div style="margin:14px 0 0;padding:12px 14px;background:#FEE2E2;border-radius:8px;">
+                <a href="${RECONSTITUTION_VIDEO_URL}" style="color:#DC2626;font-size:14px;font-weight:600;text-decoration:none;" target="_blank">\u25B6\uFE0F Watch: How to Reconstitute Peptides (Video Guide)</a>
+                <p style="margin:4px 0 0;color:#991B1B;font-size:12px;">Step-by-step walkthrough of mixing and preparing your peptides safely.</p>
+            </div>
+        </div>
+        ` : ''}
+
         <!-- Footer -->
         <div style="margin-top:32px;padding-top:20px;border-top:2px solid #E5E7EB;">
             <h3 style="margin:0 0 8px;color:#111827;font-size:15px;">General Guidelines</h3>
@@ -292,7 +313,7 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
 
 // ── Plain Text Generator (for mailto:) ─────────────────────────
 
-export function generateProtocolPlainText({ items, clientName, orgName = 'Peptide Admin' }: GeneratorOptions): string {
+export function generateProtocolPlainText({ items, clientName, orgName = 'Peptide Admin', includeSupplies = true }: GeneratorOptions): string {
     const lines: string[] = [];
     lines.push(`${orgName.toUpperCase()} PEPTIDE PROTOCOLS`);
     lines.push('');
@@ -379,6 +400,20 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'Peptid
 
         lines.push('');
         lines.push('\u2501'.repeat(40));
+    }
+
+    if (includeSupplies) {
+        lines.push('');
+        lines.push('WHAT YOU\'LL NEED');
+        lines.push('\u2501'.repeat(40));
+        for (const s of RECOMMENDED_SUPPLIES) {
+            lines.push(`\u2022 ${s.name}`);
+            lines.push(`  ${s.description}`);
+            lines.push(`  ${s.link}`);
+            lines.push('');
+        }
+        lines.push(`\u25B6 How to Reconstitute Peptides (Video Guide)`);
+        lines.push(`  ${RECONSTITUTION_VIDEO_URL}`);
     }
 
     lines.push('');

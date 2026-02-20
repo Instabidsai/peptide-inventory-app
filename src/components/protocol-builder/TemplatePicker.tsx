@@ -49,7 +49,7 @@ export function TemplatePicker({ onSelect, activeItemCount }: TemplatePickerProp
                             key={template.name}
                             onClick={() => onSelect(template.name)}
                             className={cn(
-                                'flex-shrink-0 flex flex-col items-start gap-1.5 p-3 rounded-xl border bg-card/50 transition-all duration-200 text-left min-w-[160px] max-w-[200px]',
+                                'flex-shrink-0 flex flex-col items-start gap-1.5 p-3 rounded-xl border bg-card/50 transition-all duration-200 text-left min-w-[160px] max-w-[200px] hover:shadow-md hover:scale-[1.02]',
                                 colorClass,
                             )}
                         >

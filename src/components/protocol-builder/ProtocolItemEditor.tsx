@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-    X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Pill, Droplets, Syringe,
+    X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, AlertTriangle, Pill, Droplets, Syringe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CATEGORY_META } from '@/data/protocol-knowledge';
 
 const FREQUENCIES = [
     'daily', 'daily_am_pm', 'twice daily', 'every other day', 'every 3 days', 'every 5 days',
@@ -29,9 +30,11 @@ interface ProtocolItemEditorProps {
     onRemove: (index: number) => void;
     onSelectTier: (index: number, tierId: string) => void;
     onToggleSection: (index: number, section: keyof IncludeSections) => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
 }
 
-export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier, onToggleSection }: ProtocolItemEditorProps) {
+export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier, onToggleSection, onMoveUp, onMoveDown }: ProtocolItemEditorProps) {
     const [expanded, setExpanded] = useState(false);
     const ml = calcMl(item);
     const units = calcUnits(ml);
@@ -48,23 +51,40 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
         item.dosageSchedule,
     ].filter(Boolean).length;
 
+    const borderColor = CATEGORY_META[item.category ?? '']?.color ?? 'border-l-border';
+
     return (
-        <Card className="relative group">
-            {/* Remove button */}
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-7 w-7 opacity-50 group-hover:opacity-100 transition-opacity"
-                onClick={() => onRemove(index)}
-                aria-label={`Remove ${item.peptideName}`}
-            >
-                <X className="h-3.5 w-3.5" />
-            </Button>
+        <Card className={cn('relative group border-l-4', borderColor)}>
+            {/* Action buttons — top right */}
+            <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                {onMoveUp && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onMoveUp} aria-label="Move up">
+                        <ArrowUp className="h-3 w-3" />
+                    </Button>
+                )}
+                {onMoveDown && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onMoveDown} aria-label="Move down">
+                        <ArrowDown className="h-3 w-3" />
+                    </Button>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => onRemove(index)}
+                    aria-label={`Remove ${item.peptideName}`}
+                >
+                    <X className="h-3.5 w-3.5" />
+                </Button>
+            </div>
 
             <CardContent className="pt-4 pb-3">
-                {/* Header row: name + badges */}
-                <div className="flex items-center gap-2 mb-3 pr-8">
-                    <span className="font-semibold text-sm">{item.peptideName}</span>
+                {/* Header row: number + name + badges */}
+                <div className="flex items-center gap-2 mb-3 pr-24">
+                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[11px] font-bold text-muted-foreground flex-shrink-0">
+                        {index + 1}
+                    </span>
+                    <span className="font-bold text-base">{item.peptideName}</span>
                     {item.vialSizeMg != null && (
                         <div className="flex items-center gap-0.5">
                             <Input
