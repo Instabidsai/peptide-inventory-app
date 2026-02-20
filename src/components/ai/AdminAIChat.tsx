@@ -21,6 +21,35 @@ export function AdminAIChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Drag state
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Don't drag if clicking buttons inside header
+    if ((e.target as HTMLElement).closest('button')) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const pos = position ?? { x: rect.left, y: rect.top };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    const newX = Math.max(0, Math.min(window.innerWidth - 200, dragRef.current.origX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 100, dragRef.current.origY + dy));
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = () => {
+    dragRef.current = null;
+  };
+
   // Only show for admin/staff (check both profile.role and user_roles.role)
   const role = userRole?.role || profile?.role;
   if (role !== 'admin' && role !== 'staff') return null;
@@ -64,9 +93,22 @@ export function AdminAIChat() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card border border-border/60 shadow-overlay flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-border/50 bg-card flex items-center justify-between shrink-0">
+        <div
+          ref={panelRef}
+          className={cn(
+            "fixed z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:rounded-2xl bg-card border border-border/60 shadow-overlay flex flex-col overflow-hidden",
+            !position && "bottom-0 right-0 sm:bottom-4 sm:right-4"
+          )}
+          style={position ? { left: position.x, top: position.y } : undefined}
+        >
+          {/* Header — drag handle (double-click to reset position) */}
+          <div
+            className="px-4 py-3 border-b border-border/50 bg-card flex items-center justify-between shrink-0 cursor-grab active:cursor-grabbing select-none touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onDoubleClick={() => setPosition(null)}
+          >
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Bot className="h-4 w-4 text-primary" />
@@ -106,7 +148,7 @@ export function AdminAIChat() {
                 variant="ghost"
                 size="icon"
                 aria-label="Close chat"
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); setPosition(null); }}
                 className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />

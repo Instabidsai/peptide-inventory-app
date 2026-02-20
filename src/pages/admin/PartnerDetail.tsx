@@ -21,6 +21,97 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 
+// Referral Activity Card — shows total referrals, total spend, per-customer breakdown
+function ReferralActivityCard({ repId }: { repId: string }) {
+    const { data: stats, isLoading } = useQuery({
+        queryKey: ['partner-referral-stats', repId],
+        queryFn: async () => {
+            const { data: clients } = await supabase
+                .from('contacts')
+                .select('id, name')
+                .eq('assigned_rep_id', repId);
+
+            const { data: orders } = await supabase
+                .from('sales_orders')
+                .select('id, total_amount, contact_id, created_at, status')
+                .eq('rep_id', repId);
+
+            const customerSpend: Record<string, { name: string; total: number; orderCount: number }> = {};
+            for (const client of (clients || [])) {
+                customerSpend[client.id] = { name: client.name, total: 0, orderCount: 0 };
+            }
+            for (const order of (orders || [])) {
+                if (order.contact_id && customerSpend[order.contact_id]) {
+                    customerSpend[order.contact_id].total += Number(order.total_amount || 0);
+                    customerSpend[order.contact_id].orderCount += 1;
+                }
+            }
+
+            return {
+                totalReferrals: clients?.length || 0,
+                totalVolume: (orders || []).reduce((sum, o) => sum + Number(o.total_amount || 0), 0),
+                totalOrders: orders?.length || 0,
+                customers: Object.values(customerSpend).sort((a, b) => b.total - a.total),
+            };
+        },
+        enabled: !!repId,
+    });
+
+    if (isLoading) return <Skeleton className="h-48 w-full" />;
+    if (!stats) return null;
+
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle>Referral Activity</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <Badge variant="outline" className="text-sm px-3 py-1">
+                        {stats.totalReferrals} Referral{stats.totalReferrals !== 1 ? 's' : ''}
+                    </Badge>
+                    <Badge variant="outline" className="text-sm px-3 py-1">
+                        {stats.totalOrders} Order{stats.totalOrders !== 1 ? 's' : ''}
+                    </Badge>
+                    <Badge variant="outline" className="text-sm px-3 py-1 border-green-500/40 text-green-400">
+                        ${stats.totalVolume.toFixed(2)} Total Volume
+                    </Badge>
+                </div>
+
+                {stats.customers.length > 0 && (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Customer</TableHead>
+                                <TableHead className="text-center">Orders</TableHead>
+                                <TableHead className="text-right">Total Spent</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {stats.customers.map((c) => (
+                                <TableRow key={c.name}>
+                                    <TableCell className="font-medium">{c.name}</TableCell>
+                                    <TableCell className="text-center">{c.orderCount}</TableCell>
+                                    <TableCell className="text-right">${c.total.toFixed(2)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+
+                {stats.customers.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                        No referral activity yet.
+                    </p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 // Helper for the Network Tab
 function NetworkTabContent({ repId }: { repId: string }) {
     const { data: downline, isLoading } = usePartnerDownline(repId);
@@ -191,9 +282,17 @@ export default function PartnerDetail() {
                                 <div>
                                     <span className="font-medium">Bio:</span> {partner.bio || 'N/A'}
                                 </div>
+                                <div>
+                                    <span className="font-medium">Price Multiplier:</span>{' '}
+                                    {partner.price_multiplier != null
+                                        ? `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
+                                        : 'Standard pricing'}
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    <ReferralActivityCard repId={id!} />
                 </TabsContent>
 
                 <TabsContent value="orders">
