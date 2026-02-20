@@ -51,20 +51,24 @@ export default function Join() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-            <Card className="max-w-md w-full shadow-2xl border-slate-700 bg-slate-900/50 text-white backdrop-blur">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+            </div>
+            <Card className="max-w-md w-full shadow-2xl border-border/50 bg-card/70 backdrop-blur-xl relative z-10">
                 <CardHeader className="text-center pb-2">
                     <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-4">
                         <ShieldCheck className="w-8 h-8 text-primary" />
                     </div>
                     <CardTitle className="text-2xl font-bold">Secure Access</CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardDescription className="text-muted-foreground">
                         Click the button below to access your tailored peptide regimen.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                     {error && (
-                        <div className="p-3 text-sm bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center">
+                        <div className="p-3 text-sm bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-center">
                             {error}
                         </div>
                     )}
@@ -86,7 +90,7 @@ export default function Join() {
                             </>
                         )}
                     </Button>
-                    <p className="text-xs text-center text-slate-500 mt-4">
+                    <p className="text-xs text-center text-muted-foreground/50 mt-4">
                         This extra step protects your one-time link from email scanners.
                     </p>
                 </CardContent>

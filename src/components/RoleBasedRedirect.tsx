@@ -69,7 +69,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // super_admin inherits admin access everywhere
         if (allowedRoles && !allowedRoles.includes(roleName)) {
             if (!(roleName === 'super_admin' && allowedRoles.includes('admin'))) {
-                return <Navigate to="/" replace />;
+                // Determine correct redirect based on role type
+                const isClientRole = roleName === 'client' || roleName === 'customer';
+                const target = isClientRole ? '/dashboard' : '/';
+                // Prevent infinite redirect loop: if we'd redirect to the
+                // same path we're already on, bail out to /auth instead
+                if (location.pathname === target) {
+                    return <Navigate to="/auth" replace />;
+                }
+                return <Navigate to={target} replace />;
             }
         }
 

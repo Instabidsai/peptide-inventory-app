@@ -140,7 +140,7 @@ const App = () => (
 
                             <Route element={
                                 <ProtectedRoute>
-                                    <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin']}>
+                                    <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin', 'viewer']}>
                                         <AppLayout />
                                     </RoleBasedRedirect>
                                 </ProtectedRoute>
