@@ -46,6 +46,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { AiDemoChat } from "@/components/crm/AiDemoChat";
+import { LiveBuildPreview, type BuildPreviewVariant } from "@/components/crm/LiveBuildPreview";
 import { PricingCard } from "@/components/crm/PricingCard";
 import { useSubscriptionPlans } from "@/hooks/use-subscription";
 
@@ -448,6 +449,7 @@ function Hero() {
                 "Connecting live data feeds...",
                 "Deploying to your CRM...",
               ]}
+              buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
             />
           </motion.div>
         </div>
@@ -889,11 +891,13 @@ function AiShowcase() {
       messages: { role: "user" | "ai"; text: string }[];
       buildSteps: string[];
       result: React.ReactNode;
+      variant: BuildPreviewVariant;
     }
   > = {
     dashboard: {
       label: "Dashboard",
       icon: BarChart3,
+      variant: "revenue",
       messages: [
         {
           role: "user",
@@ -947,6 +951,7 @@ function AiShowcase() {
     inventory: {
       label: "Inventory",
       icon: Package,
+      variant: "inventory",
       messages: [
         {
           role: "user",
@@ -1006,6 +1011,7 @@ function AiShowcase() {
     orders: {
       label: "Orders",
       icon: Truck,
+      variant: "order",
       messages: [
         {
           role: "user",
@@ -1064,6 +1070,7 @@ function AiShowcase() {
     automate: {
       label: "Automate",
       icon: Bell,
+      variant: "automation",
       messages: [
         {
           role: "user",
@@ -1110,6 +1117,7 @@ function AiShowcase() {
     build: {
       label: "Build",
       icon: Blocks,
+      variant: "module",
       messages: [
         {
           role: "user",
@@ -1173,6 +1181,7 @@ function AiShowcase() {
     reports: {
       label: "Reports",
       icon: FileText,
+      variant: "report",
       messages: [
         {
           role: "user",
@@ -1262,6 +1271,7 @@ function AiShowcase() {
                     messages={demo.messages}
                     resultElement={demo.result}
                     buildSteps={demo.buildSteps}
+                    buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
                   />
                 </div>
               </TabsContent>

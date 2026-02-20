@@ -12,8 +12,10 @@ interface AiDemoChatProps {
   resultElement?: React.ReactNode;
   loop?: boolean;
   typingSpeed?: number;
-  /** Optional build progress steps shown during AI thinking (e.g. ["Analyzing...", "Building...", "Deploying..."]) */
+  /** Optional build progress steps shown during AI thinking */
   buildSteps?: string[];
+  /** Render function that receives the current build phase (0..N-1) and returns a live preview */
+  buildPreview?: (phase: number) => React.ReactNode;
 }
 
 export function AiDemoChat({
@@ -22,6 +24,7 @@ export function AiDemoChat({
   loop = false,
   typingSpeed = 30,
   buildSteps,
+  buildPreview,
 }: AiDemoChatProps) {
   const [visibleMessages, setVisibleMessages] = useState<
     { role: "user" | "ai"; text: string; complete: boolean }[]
@@ -32,6 +35,8 @@ export function AiDemoChat({
   const [isTyping, setIsTyping] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
   const [buildStep, setBuildStep] = useState(-1);
+  // Keep the final build phase visible while AI types its response
+  const [buildPhaseForPreview, setBuildPhaseForPreview] = useState(-1);
 
   const reset = useCallback(() => {
     setVisibleMessages([]);
@@ -41,13 +46,17 @@ export function AiDemoChat({
     setIsTyping(false);
     setShowThinking(false);
     setBuildStep(-1);
+    setBuildPhaseForPreview(-1);
   }, []);
 
   // Drive the message sequence
   useEffect(() => {
     if (currentIndex >= messages.length) {
       // All messages shown — show result then optionally loop
-      const timer = setTimeout(() => setShowResult(true), 400);
+      const timer = setTimeout(() => {
+        setBuildPhaseForPreview(-1); // Hide preview, show final result
+        setShowResult(true);
+      }, 400);
       let loopTimer: ReturnType<typeof setTimeout>;
       if (loop) {
         loopTimer = setTimeout(reset, 6000);
@@ -62,19 +71,26 @@ export function AiDemoChat({
 
     if (msg.role === "ai") {
       if (buildSteps && buildSteps.length > 0) {
-        // Show step-by-step build progress instead of simple dots
+        // Show step-by-step build progress
         setBuildStep(0);
+        setBuildPhaseForPreview(0);
         setShowThinking(true);
         const stepTimers: ReturnType<typeof setTimeout>[] = [];
         buildSteps.forEach((_, i) => {
           if (i > 0) {
-            stepTimers.push(setTimeout(() => setBuildStep(i), i * 800));
+            stepTimers.push(setTimeout(() => {
+              setBuildStep(i);
+              setBuildPhaseForPreview(i);
+            }, i * 800));
           }
         });
         // After all build steps complete, start typing the AI response
+        // Keep buildPhaseForPreview at final step so preview stays visible
         const finalTimer = setTimeout(() => {
           setShowThinking(false);
           setBuildStep(-1);
+          // Keep buildPhaseForPreview at last step
+          setBuildPhaseForPreview(buildSteps.length - 1);
           setIsTyping(true);
           setTypedText("");
         }, buildSteps.length * 800 + 400);
@@ -125,6 +141,8 @@ export function AiDemoChat({
     return () => clearTimeout(next);
   }, [isTyping, typedText, currentIndex, messages, typingSpeed]);
 
+  const showBuildPreview = buildPreview && buildPhaseForPreview >= 0 && !showResult;
+
   return (
     <div className="relative rounded-xl bg-card/80 backdrop-blur-md shadow-card overflow-hidden" style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--border) / 0.4) 40%, hsl(142 76% 36% / 0.3))" }}>
       <div className="rounded-[11px] bg-card/95 overflow-hidden">
@@ -147,8 +165,8 @@ export function AiDemoChat({
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="p-4 space-y-3 min-h-[200px] max-h-[340px] overflow-y-auto">
+      {/* Messages + Build Preview */}
+      <div className={`p-4 space-y-3 min-h-[200px] overflow-y-auto ${showBuildPreview ? "max-h-[480px]" : "max-h-[340px]"}`}>
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div
@@ -217,7 +235,7 @@ export function AiDemoChat({
             </motion.div>
           )}
 
-          {/* Build progress indicator (replaces dots when buildSteps provided) */}
+          {/* Build progress indicator */}
           {showThinking && buildSteps && buildStep >= 0 && (
             <motion.div
               key="build-progress"
@@ -301,7 +319,22 @@ export function AiDemoChat({
           )}
         </AnimatePresence>
 
-        {/* Result element */}
+        {/* ── Live Build Preview (shown during build + while AI types) ── */}
+        <AnimatePresence>
+          {showBuildPreview && (
+            <motion.div
+              key="build-preview"
+              initial={{ opacity: 0, y: 15, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.97 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              {buildPreview(buildPhaseForPreview)}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Result element (replaces preview after AI finishes typing) */}
         <AnimatePresence>
           {showResult && resultElement && (
             <motion.div
