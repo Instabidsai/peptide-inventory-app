@@ -37,11 +37,16 @@ interface GeneratorOptions {
 
 // ── Shared Helpers ─────────────────────────────────────────────
 
-export function calcMl(item: { doseAmount: number; doseUnit: string; concentrationMgMl: number }): number | null {
-    if (!item.concentrationMgMl || item.concentrationMgMl <= 0) return null;
+export function calcMl(item: { doseAmount: number; doseUnit: string; concentrationMgMl: number; vialSizeMg?: number | null; reconstitutionMl?: number }): number | null {
+    // Always derive concentration from vial/water when available (never stale)
+    let concentration = item.concentrationMgMl;
+    if (item.vialSizeMg != null && item.vialSizeMg > 0 && item.reconstitutionMl != null && item.reconstitutionMl > 0) {
+        concentration = item.vialSizeMg / item.reconstitutionMl;
+    }
+    if (!concentration || concentration <= 0) return null;
     if (item.doseUnit === 'iu') return null;
     const doseMg = item.doseUnit === 'mcg' ? item.doseAmount / 1000 : item.doseAmount;
-    return doseMg / item.concentrationMgMl;
+    return doseMg / concentration;
 }
 
 export function calcUnits(ml: number | null): number | null {

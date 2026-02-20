@@ -118,9 +118,13 @@ export function useProtocolBuilder() {
         setItems(prev => prev.map((item, i) => {
             if (i !== idx) return item;
             const updated = { ...item, [field]: value };
-            // Recalculate concentration if reconstitution or vial size changed
-            if ((field === 'reconstitutionMl' || field === 'vialSizeMg') && updated.vialSizeMg && updated.reconstitutionMl > 0) {
-                updated.concentrationMgMl = updated.vialSizeMg / updated.reconstitutionMl;
+            // Always recalculate concentration when vial size or water changes
+            if (field === 'reconstitutionMl' || field === 'vialSizeMg') {
+                const vial = updated.vialSizeMg;
+                const water = updated.reconstitutionMl;
+                if (vial != null && vial > 0 && water != null && water > 0) {
+                    updated.concentrationMgMl = vial / water;
+                }
             }
             return updated;
         }));
@@ -146,7 +150,7 @@ export function useProtocolBuilder() {
                 cyclePattern: tier.cyclePattern ?? item.cyclePattern,
             };
             // Recalculate concentration
-            if (updated.vialSizeMg && updated.reconstitutionMl > 0) {
+            if (updated.vialSizeMg != null && updated.vialSizeMg > 0 && updated.reconstitutionMl > 0) {
                 updated.concentrationMgMl = updated.vialSizeMg / updated.reconstitutionMl;
             }
             return updated;
