@@ -28,6 +28,7 @@ export interface DosingTier {
     notes?: string;
     dosageSchedule?: string;
     cyclePattern?: string;
+    cyclePatternOptions?: string[];
 }
 
 export interface PeptideKnowledge {
@@ -41,6 +42,7 @@ export interface PeptideKnowledge {
     administrationRoute: string;
     warningText?: string;
     cyclePattern?: string;
+    cyclePatternOptions?: string[];
     stackGroup?: string;
     stackLabel?: string;
     supplementNotes?: SupplementNote[];
@@ -486,7 +488,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 frequency: 'daily',
                 timing: 'AM',
                 notes: '250\u2013400 mcg intranasal once daily. Anxiolytic effect comparable to low-dose benzodiazepines WITHOUT the sedation/addiction profile.',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
             {
                 id: 'standard',
@@ -497,7 +500,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 timing: 'AM',
                 notes: '600\u2013750 mcg/day split into 2\u20133 doses. Clinical trials have used up to 2700 mcg/day intranasally for 21 days.',
                 dosageSchedule: 'Morning: 250\u2013400 mcg intranasal\nAfternoon: 250\u2013400 mcg intranasal',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
             {
                 id: 'aggressive',
@@ -507,7 +511,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 frequency: 'twice daily',
                 timing: 'AM',
                 notes: '750\u20131000 mcg/day split into 2\u20133 doses. Up to 21 days continuous use. Subcutaneous route (250\u2013500 mcg) has better dose consistency than intranasal.',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
         ],
     },
@@ -681,7 +686,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 frequency: 'daily',
                 timing: 'Before bed',
                 notes: 'Starter dose. Fasted 2+ hours. For CJC-1295 WITH DAC, use 2 mg once weekly instead (8-day half-life).',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
             {
                 id: 'standard',
@@ -691,7 +697,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 frequency: 'daily',
                 timing: 'Before bed',
                 notes: 'Most common no-DAC protocol. Fasted, before bed. Dr. Bachmeyer: Administer Ipamorelin first, wait 15\u201320 min, then CJC-1295. Food (especially carbs) blunts GH response.',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
             {
                 id: 'aggressive',
@@ -702,7 +709,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 timing: 'AM',
                 notes: '200\u2013300 mcg AM (fasted) + 200\u2013300 mcg pre-bed (fasted) for enhanced GH pulsatility. Combined with Ipamorelin is the most popular GH secretagogue stack.',
                 dosageSchedule: 'AM (fasted): 200 mcg subcutaneous\nPre-bed (fasted): 200 mcg subcutaneous',
-                cyclePattern: '10\u201314 days on, 7 days off. Alternatively: 5 days on, 2 days off.',
+                cyclePattern: '10\u201314 days on, 7 days off',
+                cyclePatternOptions: ['10\u201314 days on, 7 days off', '5 days on, 2 days off'],
             },
         ],
     },

@@ -85,6 +85,7 @@ export function useProtocolBuilder() {
             concentrationMgMl,
             warningText: knowledge?.warningText ?? null,
             cyclePattern: tier?.cyclePattern ?? knowledge?.cyclePattern ?? null,
+            cyclePatternOptions: tier?.cyclePatternOptions ?? knowledge?.cyclePatternOptions ?? [],
             stackLabel: knowledge?.stackLabel ?? null,
             dosageSchedule: tier?.dosageSchedule ?? knowledge?.dosageSchedule ?? null,
             category: knowledge?.category ?? undefined,
@@ -161,6 +162,7 @@ export function useProtocolBuilder() {
                 timing: tier.timing,
                 dosageSchedule: tier.dosageSchedule ?? item.dosageSchedule,
                 cyclePattern: tier.cyclePattern ?? item.cyclePattern,
+                cyclePatternOptions: tier.cyclePatternOptions ?? item.cyclePatternOptions,
             };
             // Recalculate concentration
             if (updated.vialSizeMg != null && updated.vialSizeMg > 0 && updated.reconstitutionMl > 0) {

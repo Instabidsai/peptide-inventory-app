@@ -31,6 +31,7 @@ export interface EnrichedProtocolItem {
     concentrationMgMl: number;
     warningText: string | null;
     cyclePattern: string | null;
+    cyclePatternOptions: string[];
     stackLabel: string | null;
     dosageSchedule: string | null;
     notes: string;

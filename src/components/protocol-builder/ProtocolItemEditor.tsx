@@ -341,7 +341,7 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                         )}
 
                         {/* Cycle pattern */}
-                        {item.cyclePattern && (
+                        {(item.cyclePattern || item.cyclePatternOptions.length > 0) && (
                             <div className={cn('flex gap-2.5 transition-opacity', !inc.cyclePattern && 'opacity-40')}>
                                 <Checkbox
                                     checked={inc.cyclePattern}
@@ -350,7 +350,26 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                                 />
                                 <div className="flex-1 min-w-0">
                                     <Label className="text-xs text-muted-foreground">Cycle Pattern</Label>
-                                    <p className="text-xs mt-0.5">{item.cyclePattern}</p>
+                                    {item.cyclePatternOptions.length > 1 ? (
+                                        <div className="flex gap-1.5 flex-wrap mt-1">
+                                            {item.cyclePatternOptions.map(option => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => onUpdate(index, 'cyclePattern', option)}
+                                                    className={cn(
+                                                        'px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors',
+                                                        item.cyclePattern === option
+                                                            ? 'bg-primary text-primary-foreground border-primary'
+                                                            : 'bg-background border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                                                    )}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs mt-0.5">{item.cyclePattern}</p>
+                                    )}
                                 </div>
                             </div>
                         )}
