@@ -832,17 +832,20 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
 // ── Lookup Helper (case-insensitive, partial match) ────────────
 
 export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
-    // Exact match first (case-insensitive)
-    const normalizedName = peptideName.trim();
+    // Normalize: strip mg suffix, hyphens, extra spaces, lowercase
+    const normalize = (s: string) =>
+        s.replace(/\s*\d+\s*mg\s*$/i, '').replace(/[-\s]+/g, '').toLowerCase().trim();
+
+    const input = normalize(peptideName);
+
+    // Exact normalized match first
     for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
-        if (key.toLowerCase() === normalizedName.toLowerCase()) return value;
+        if (normalize(key) === input) return value;
     }
-    // Partial match (name contains key or key contains name)
+    // Partial match (normalized)
     for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
-        if (
-            key.toLowerCase().includes(normalizedName.toLowerCase()) ||
-            normalizedName.toLowerCase().includes(key.toLowerCase())
-        ) {
+        const nKey = normalize(key);
+        if (nKey.includes(input) || input.includes(nKey)) {
             return value;
         }
     }
