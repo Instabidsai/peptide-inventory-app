@@ -2,12 +2,12 @@ import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from '@/data/protocol-knowl
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
-    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
+    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP: Record<string, React.ElementType> = {
-    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
+    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield,
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
