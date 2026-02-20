@@ -131,7 +131,7 @@ export default function ContactDetails() {
 
     // Edit Details State
     const [isEditingDetails, setIsEditingDetails] = useState(false);
-    const [editForm, setEditForm] = useState({ email: '', phone: '', company: '', address: '' });
+    const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', address: '' });
 
     // Confirm dialog state (replaces browser confirm())
     const [confirmDialog, setConfirmDialog] = useState<{
@@ -552,6 +552,7 @@ export default function ContactDetails() {
                                     <Button size="sm" onClick={() => {
                                         updateContact.mutate({
                                             id: id!,
+                                            name: editForm.name,
                                             email: editForm.email,
                                             phone: editForm.phone,
                                             company: editForm.company,
@@ -563,6 +564,7 @@ export default function ContactDetails() {
                             ) : (
                                 <Button variant="ghost" size="icon" aria-label="Edit contact details" onClick={() => {
                                     setEditForm({
+                                        name: contact.name || '',
                                         email: contact.email || '',
                                         phone: contact.phone || '',
                                         company: contact.company || '',
@@ -578,6 +580,10 @@ export default function ContactDetails() {
                     <CardContent className="space-y-4">
                         {isEditingDetails ? (
                             <div className="space-y-3">
+                                <div className="grid gap-1">
+                                    <Label>Name</Label>
+                                    <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                                </div>
                                 <div className="grid gap-1">
                                     <Label>Email</Label>
                                     <Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />

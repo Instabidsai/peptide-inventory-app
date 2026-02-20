@@ -17,7 +17,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -68,6 +68,7 @@ export default function NewOrder() {
     const [shippingAddress, setShippingAddress] = useState('');
     const [deliveryMethod, setDeliveryMethod] = useState<'ship' | 'local_pickup'>('ship');
     const [openCombobox, setOpenCombobox] = useState(false);
+    const [commissionEnabled, setCommissionEnabled] = useState(true);
 
     const location = useLocation();
 
@@ -118,9 +119,9 @@ export default function NewOrder() {
             { label: 'Cost', price: baseCost, commRate: 0.00, variant: 'outline' as const },
             // Partner tier: 2x raw avg cost, 0% commission — only shown for partner contacts
             ...(isPartner ? [{ label: 'Partner', price: partnerPrice, commRate: 0.00, variant: 'outline' as const }] : []),
-            { label: '2x', price: baseCost * 2, commRate: 0.05, variant: 'secondary' as const },
+            { label: '2x', price: baseCost * 2, commRate: 0.00, variant: 'secondary' as const },
             { label: '3x', price: baseCost * 3, commRate: 0.10, variant: 'secondary' as const },
-            { label: 'MSRP', price: retail, commRate: 0.15, variant: 'default' as const },
+            { label: 'MSRP', price: retail, commRate: 0.10, variant: 'default' as const },
         ];
 
         // Filter: Hide any tier where Price > MSRP (unless it IS the MSRP tier or Partner)
@@ -240,8 +241,10 @@ export default function NewOrder() {
     const cartTotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
     // Calculate total commission based on line items
-    // Comm = UnitPrice * CommRate * Qty
-    const totalCommission = cart.reduce((sum, item) => sum + (item.unitPrice * item.commissionRate * item.quantity), 0);
+    // Comm = UnitPrice * CommRate * Qty — zeroed when commission is disabled
+    const totalCommission = commissionEnabled
+        ? cart.reduce((sum, item) => sum + (item.unitPrice * item.commissionRate * item.quantity), 0)
+        : 0;
 
     const handleSubmit = async () => {
         if (!selectedContactId || cart.length === 0) return;
@@ -473,11 +476,8 @@ export default function NewOrder() {
                                                         value={item.unitPrice}
                                                         onChange={(e) => {
                                                             const newPrice = parseFloat(e.target.value) || 0;
-                                                            // Find closest tier to preserve commission rate
-                                                            const closestTier = tiers.reduce((best, t) =>
-                                                                Math.abs(t.price - newPrice) < Math.abs(best.price - newPrice) ? t : best
-                                                            , tiers[0]);
-                                                            updatePrice(item.peptide.id, newPrice, closestTier.commRate);
+                                                            // Keep current commission rate when typing custom price
+                                                            updatePrice(item.peptide.id, newPrice, item.commissionRate);
                                                         }}
                                                         className="pl-5 h-8 text-right"
                                                         placeholder="Price"
@@ -491,9 +491,11 @@ export default function NewOrder() {
                                         </div>
 
                                         {/* Calculated commission display */}
-                                        <div className="text-right text-xs text-muted-foreground">
-                                            Comm: ${(item.unitPrice * item.commissionRate * item.quantity).toFixed(2)} ({item.commissionRate * 100}%)
-                                        </div>
+                                        {commissionEnabled && (
+                                            <div className="text-right text-xs text-muted-foreground">
+                                                Comm: ${(item.unitPrice * item.commissionRate * item.quantity).toFixed(2)} ({(item.commissionRate * 100).toFixed(0)}%)
+                                            </div>
+                                        )}
 
                                         {/* Suggested Pricing Badges */}
                                         <div className="flex flex-wrap gap-2 mt-1 justify-end">
@@ -567,6 +569,29 @@ export default function NewOrder() {
                                 className="min-h-[60px]"
                             />
                         </div>
+                    </div>
+
+                    <Separator />
+
+                    <div
+                        className={cn(
+                            "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors",
+                            commissionEnabled
+                                ? "bg-green-500/10 border-green-500/30"
+                                : "bg-muted/50 border-border/60"
+                        )}
+                        onClick={() => setCommissionEnabled(!commissionEnabled)}
+                    >
+                        <div>
+                            <p className="text-sm font-semibold">Commission</p>
+                            <p className="text-xs text-muted-foreground">
+                                {commissionEnabled ? "Commissions will be paid on this order" : "No commissions on this order"}
+                            </p>
+                        </div>
+                        {commissionEnabled
+                            ? <ToggleRight className="h-6 w-6 text-green-500" />
+                            : <ToggleLeft className="h-6 w-6 text-muted-foreground" />
+                        }
                     </div>
 
                 </CardContent>

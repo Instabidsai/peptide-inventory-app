@@ -251,9 +251,11 @@ export function useCreateSalesOrder() {
                 totalAmount += Math.round(item.quantity * item.unit_price * 100) / 100;
             }
 
-            const totalCommission = Math.round(totalAmount * repCommissionRate * 100) / 100;
-
-            const commissionAmount = Math.max(0, totalCommission); // Ensure non-negative
+            // Use frontend-calculated commission when explicitly provided (per-tier pricing),
+            // otherwise fall back to flat rate calculation from rep profile
+            const commissionAmount = (input.commission_amount != null)
+                ? Math.max(0, Math.round(input.commission_amount * 100) / 100)
+                : Math.max(0, Math.round(totalAmount * repCommissionRate * 100) / 100);
 
             // 1. Create Order (attributed to the actual rep, not the admin)
             const { data: order, error: orderError } = await supabase
@@ -290,11 +292,13 @@ export function useCreateSalesOrder() {
             if (itemsError) throw itemsError;
 
             // Process commission records (direct + override for upline)
-            const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
-            if (rpcError) {
-                console.error("Commission processing failed:", rpcError);
-                // Don't throw -- order is already created, but notify user
-                toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+            // Skip commission processing entirely for 2x / zero-commission orders
+            if (commissionAmount > 0) {
+                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
+                if (rpcError) {
+                    console.error("Commission processing failed:", rpcError);
+                    toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                }
             }
 
             // Auto-fulfill: deduct inventory + create movement (only when explicitly requested)
@@ -456,12 +460,20 @@ export function useUpdateSalesOrder() {
             if (error) throw error;
 
             // Check if we should trigger commission processing
+            // Skip for zero-commission orders (e.g. 2x / internal partner pricing)
             if (updates.status === 'fulfilled' || updates.payment_status === 'paid') {
-                // We call the RPC. Ideally it handles idempotency.
-                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
-                if (rpcError) {
-                    console.error("Commission processing failed:", rpcError);
-                    toast({ title: "Warning", description: "Order updated but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                const { data: orderCheck } = await supabase
+                    .from('sales_orders')
+                    .select('commission_amount')
+                    .eq('id', id)
+                    .single();
+
+                if (orderCheck && (orderCheck.commission_amount ?? 0) > 0) {
+                    const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
+                    if (rpcError) {
+                        console.error("Commission processing failed:", rpcError);
+                        toast({ title: "Warning", description: "Order updated but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                    }
                 }
             }
 
@@ -663,10 +675,13 @@ export function useFulfillOrder() {
             }
 
             // 5. Process commission records (idempotent — skips if already created)
-            const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
-            if (rpcError) {
-                console.error("Commission processing on fulfill failed:", rpcError);
-                toast({ title: "Warning", description: "Order fulfilled but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+            // Skip for zero-commission orders (e.g. 2x / internal partner pricing)
+            if ((order.commission_amount ?? 0) > 0) {
+                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
+                if (rpcError) {
+                    console.error("Commission processing on fulfill failed:", rpcError);
+                    toast({ title: "Warning", description: "Order fulfilled but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                }
             }
 
             // 6. Recalculate COGS + profit with current data
