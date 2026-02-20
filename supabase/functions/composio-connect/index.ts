@@ -78,6 +78,9 @@ Deno.serve(async (req) => {
         // user_id in Composio = org_id in our system (tenant isolation)
         const entityId = body.org_id;
 
+        // Generate state token for callback validation (CSRF protection)
+        const stateToken = crypto.randomUUID();
+
         // Request OAuth redirect URL from Composio
         const connectRes = await fetch('https://backend.composio.dev/api/v1/connectedAccounts', {
             method: 'POST',
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
                 integrationId: appName,
                 userUuid: entityId,
-                redirectUri: `${sbUrl}/functions/v1/composio-callback?org_id=${body.org_id}&service=${body.service}`,
+                redirectUri: `${sbUrl}/functions/v1/composio-callback?org_id=${body.org_id}&service=${body.service}&state=${stateToken}`,
             }),
         });
 
@@ -99,13 +102,14 @@ Deno.serve(async (req) => {
 
         const connectData = await connectRes.json();
 
-        // Store pending connection
+        // Store pending connection with state token
         await supabase
             .from('tenant_connections')
             .upsert({
                 org_id: body.org_id,
                 service: body.service,
                 status: 'pending',
+                state_token: stateToken,
                 composio_connection_id: connectData.connectedAccountId || null,
                 metadata: { initiated_by: user.id, initiated_at: new Date().toISOString() },
             }, { onConflict: 'org_id,service' });

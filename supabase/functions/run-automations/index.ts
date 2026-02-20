@@ -97,7 +97,29 @@ async function executeAction(
         }
 
         case "webhook": {
-            const webhookRes = await fetch(action_config.url, {
+            // SSRF protection: block private/internal URLs
+            const webhookUrl = action_config.url || '';
+            try {
+                const parsed = new URL(webhookUrl);
+                const hostname = parsed.hostname.toLowerCase();
+                if (
+                    hostname === 'localhost' ||
+                    hostname === '127.0.0.1' ||
+                    hostname === '0.0.0.0' ||
+                    hostname.startsWith('10.') ||
+                    hostname.startsWith('192.168.') ||
+                    hostname.startsWith('172.') ||
+                    hostname.endsWith('.local') ||
+                    hostname.endsWith('.internal') ||
+                    parsed.protocol !== 'https:'
+                ) {
+                    return { success: false, message: `Blocked webhook URL: must be public HTTPS endpoint` };
+                }
+            } catch {
+                return { success: false, message: `Invalid webhook URL: ${webhookUrl}` };
+            }
+
+            const webhookRes = await fetch(webhookUrl, {
                 method: action_config.method || "POST",
                 headers: {
                     "Content-Type": "application/json",

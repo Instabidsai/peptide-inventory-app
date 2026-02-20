@@ -120,6 +120,17 @@ export function CustomFieldsSection({ entity, recordId, editable = true }: Custo
                   disabled={!editable}
                 />
               )}
+
+              {field.field_type === 'textarea' && (
+                <textarea
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={String(currentValue)}
+                  onChange={e => handleChange(field.id, field.field_name, e.target.value)}
+                  disabled={!editable}
+                  placeholder={field.label}
+                  rows={3}
+                />
+              )}
             </div>
           );
         })}

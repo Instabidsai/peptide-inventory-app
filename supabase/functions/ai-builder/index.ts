@@ -33,10 +33,10 @@ CAPABILITIES:
 RULES:
 1. Always confirm before making changes. Show what you'll do and ask to proceed.
 2. Use clear field names (snake_case, no spaces).
-3. For select fields, always define the options.
-4. Dashboard widgets should have sensible default positions.
+3. For select fields, always define the options in the "options" config as { choices: ["Option1", "Option2"] }.
+4. Dashboard widgets should have sensible default positions and sizes.
 5. Automation conditions must always be scoped to the tenant's org_id.
-6. Reports use parameterized SQL — always include org_id filter.
+6. Reports use parameterized SQL — always include $org_id placeholder for org_id filtering.
 7. Keep suggestions practical and focused on peptide business needs.
 8. If a request is too complex for config (needs new API endpoints, complex UI, external integrations), use request_code_builder.`;
 
@@ -49,14 +49,14 @@ const tools = [
             parameters: {
                 type: "object",
                 properties: {
-                    entity_type: { type: "string", enum: ["peptides", "contacts", "sales_orders", "lots", "bottles"] },
+                    entity: { type: "string", enum: ["peptides", "contacts", "sales_orders", "lots", "bottles"] },
                     field_name: { type: "string", description: "snake_case name, e.g. 'priority_level'" },
-                    field_label: { type: "string", description: "Display label, e.g. 'Priority Level'" },
+                    label: { type: "string", description: "Display label, e.g. 'Priority Level'" },
                     field_type: { type: "string", enum: ["text", "number", "date", "boolean", "select", "url", "email", "textarea"] },
                     required: { type: "boolean" },
-                    field_config: { type: "object", description: "Config object. For select: { options: ['High','Medium','Low'] }. For number: { min: 0, max: 100 }." },
+                    options: { type: "object", description: "Config object. For select: { choices: ['High','Medium','Low'] }. For number: { min: 0, max: 100 }." },
                 },
-                required: ["entity_type", "field_name", "field_label", "field_type"],
+                required: ["entity", "field_name", "label", "field_type"],
             },
         },
     },
@@ -103,18 +103,10 @@ const tools = [
                     widget_type: { type: "string", enum: ["table", "chart", "stat", "list"] },
                     config: {
                         type: "object",
-                        description: "Widget config. For stat: { query: 'SELECT count(*) ...', label: 'Total' }. For chart: { query: '...', chart_type: 'bar', x_key: 'name', y_key: 'count' }. For table: { query: '...', columns: ['name','value'] }.",
+                        description: "Widget config. For stat: { query: 'SELECT count(*) as value FROM peptides WHERE org_id = $org_id', subtitle: 'Total Peptides' }. For table: { query: 'SELECT name, status FROM lots WHERE org_id = $org_id LIMIT 10' }. For list: { query: '...', label_field: 'name', value_field: 'count' }.",
                     },
-                    position: {
-                        type: "object",
-                        description: "Grid position: { row, col, width, height }. Grid is 12 cols.",
-                        properties: {
-                            row: { type: "number" },
-                            col: { type: "number" },
-                            width: { type: "number" },
-                            height: { type: "number" },
-                        },
-                    },
+                    size: { type: "string", enum: ["sm", "md", "lg", "full"], description: "Widget size. sm=1col, md=2col, lg=3col, full=full width. Default: md." },
+                    position: { type: "number", description: "Sort order (0 = first). Default: 0." },
                     page: { type: "string", description: "Which page to show on. Default: 'dashboard'." },
                 },
                 required: ["title", "widget_type", "config"],
@@ -157,12 +149,12 @@ const tools = [
                 properties: {
                     name: { type: "string" },
                     description: { type: "string" },
-                    query_template: { type: "string", description: "SELECT query. Use $org_id placeholder. Must be SELECT only." },
-                    params: { type: "object", description: "Default parameter values, e.g. { date_range: '30d' }." },
+                    query_sql: { type: "string", description: "SELECT query. Use $org_id placeholder for org_id. Must be SELECT only." },
+                    parameters: { type: "object", description: "Default parameter values, e.g. { date_range: '30d' }." },
                     chart_type: { type: "string", enum: ["table", "bar", "line", "pie", "stat", "area"] },
                     chart_config: { type: "object", description: "For charts: { x_key: 'name', y_key: 'count', colors: ['#10b981'] }." },
                 },
-                required: ["name", "query_template", "chart_type"],
+                required: ["name", "query_sql", "chart_type"],
             },
         },
     },
@@ -178,7 +170,7 @@ const tools = [
         type: "function" as const,
         function: {
             name: "query_data",
-            description: "Run a read-only query on tenant data. Only SELECT statements allowed. Results are scoped to the tenant's org_id.",
+            description: "Run a read-only query on tenant data. Only SELECT statements allowed. Use $org_id as placeholder for the tenant's organization ID.",
             parameters: {
                 type: "object",
                 properties: {
@@ -219,42 +211,43 @@ async function executeTool(
                     .from("custom_fields")
                     .select("id")
                     .eq("org_id", orgId)
-                    .eq("entity_type", args.entity_type)
+                    .eq("entity", args.entity)
                     .eq("field_name", args.field_name)
                     .single();
 
                 if (existing) {
-                    return `Field '${args.field_name}' already exists on ${args.entity_type}. Use a different name.`;
+                    return `Field '${args.field_name}' already exists on ${args.entity}. Use a different name.`;
                 }
 
-                // Get next display order
+                // Get next sort order
                 const { data: fields } = await supabase
                     .from("custom_fields")
-                    .select("display_order")
+                    .select("sort_order")
                     .eq("org_id", orgId)
-                    .eq("entity_type", args.entity_type)
-                    .order("display_order", { ascending: false })
+                    .eq("entity", args.entity)
+                    .order("sort_order", { ascending: false })
                     .limit(1);
 
-                const nextOrder = (fields?.[0]?.display_order ?? -1) + 1;
+                const nextOrder = (fields?.[0]?.sort_order ?? -1) + 1;
 
-                const { data: field, error } = await supabase
+                const { error } = await supabase
                     .from("custom_fields")
                     .insert({
                         org_id: orgId,
-                        entity_type: args.entity_type,
+                        entity: args.entity,
                         field_name: args.field_name,
-                        field_label: args.field_label,
+                        label: args.label,
                         field_type: args.field_type,
-                        field_config: args.field_config || {},
+                        options: args.options || {},
                         required: args.required || false,
-                        display_order: nextOrder,
+                        sort_order: nextOrder,
+                        active: true,
                     })
                     .select()
                     .single();
 
                 if (error) return `Error adding field: ${error.message}`;
-                return `Custom field added: "${args.field_label}" (${args.field_type}) on ${args.entity_type}. It will appear on all ${args.entity_type} forms immediately.`;
+                return `Custom field added: "${args.label}" (${args.field_type}) on ${args.entity}. It will appear on all ${args.entity} forms immediately.`;
             }
 
             case "create_custom_entity": {
@@ -266,7 +259,7 @@ async function executeTool(
                     config: f.config || {},
                 }));
 
-                const { data: entity, error } = await supabase
+                const { error } = await supabase
                     .from("custom_entities")
                     .insert({
                         org_id: orgId,
@@ -275,6 +268,7 @@ async function executeTool(
                         icon: args.icon || "Box",
                         description: args.description || "",
                         schema,
+                        active: true,
                     })
                     .select()
                     .single();
@@ -284,14 +278,15 @@ async function executeTool(
             }
 
             case "add_dashboard_widget": {
-                const { data: widget, error } = await supabase
+                const { error } = await supabase
                     .from("custom_dashboard_widgets")
                     .insert({
                         org_id: orgId,
                         title: args.title,
                         widget_type: args.widget_type,
                         config: args.config,
-                        position: args.position || { row: 0, col: 0, width: 6, height: 4 },
+                        position: args.position ?? 0,
+                        size: args.size || "md",
                         page: args.page || "dashboard",
                         active: true,
                     })
@@ -299,11 +294,11 @@ async function executeTool(
                     .single();
 
                 if (error) return `Error adding widget: ${error.message}`;
-                return `Dashboard widget "${args.title}" (${args.widget_type}) added to ${args.page || "dashboard"} page. It will render on your next page load.`;
+                return `Dashboard widget "${args.title}" (${args.widget_type}, size: ${args.size || "md"}) added to ${args.page || "dashboard"} page. It will render on your next page load.`;
             }
 
             case "create_automation": {
-                const { data: automation, error } = await supabase
+                const { error } = await supabase
                     .from("custom_automations")
                     .insert({
                         org_id: orgId,
@@ -325,19 +320,19 @@ async function executeTool(
 
             case "create_report": {
                 // Validate SELECT only
-                const trimmed = args.query_template.trim().toUpperCase();
+                const trimmed = args.query_sql.trim().toUpperCase();
                 if (!trimmed.startsWith("SELECT")) {
                     return "Error: Reports only support SELECT queries. No INSERT, UPDATE, or DELETE allowed.";
                 }
 
-                const { data: report, error } = await supabase
+                const { error } = await supabase
                     .from("custom_reports")
                     .insert({
                         org_id: orgId,
                         name: args.name,
                         description: args.description || "",
-                        query_template: args.query_template,
-                        params: args.params || {},
+                        query_sql: args.query_sql,
+                        parameters: args.parameters || {},
                         chart_type: args.chart_type,
                         chart_config: args.chart_config || {},
                         created_by: userId,
@@ -356,16 +351,18 @@ async function executeTool(
                 // Custom fields per entity
                 const { data: customFields } = await supabase
                     .from("custom_fields")
-                    .select("entity_type, field_name, field_label, field_type, required")
+                    .select("entity, field_name, label, field_type, required")
                     .eq("org_id", orgId)
-                    .order("entity_type")
-                    .order("display_order");
+                    .eq("active", true)
+                    .order("entity")
+                    .order("sort_order");
 
                 // Custom entities
                 const { data: customEntities } = await supabase
                     .from("custom_entities")
                     .select("name, slug, icon, schema")
-                    .eq("org_id", orgId);
+                    .eq("org_id", orgId)
+                    .eq("active", true);
 
                 // Dashboard widgets
                 const { data: widgets } = await supabase
@@ -389,10 +386,10 @@ async function executeTool(
 
                 result += "CORE ENTITIES:\n";
                 for (const entity of coreEntities) {
-                    const fields = customFields?.filter((f: any) => f.entity_type === entity) || [];
+                    const fields = customFields?.filter((f: any) => f.entity === entity) || [];
                     result += `  ${entity}${fields.length ? ` (+${fields.length} custom fields)` : ""}\n`;
                     for (const f of fields) {
-                        result += `    - ${f.field_label} (${f.field_type})${f.required ? " *required" : ""}\n`;
+                        result += `    - ${f.label} (${f.field_type})${f.required ? " *required" : ""}\n`;
                     }
                 }
 
@@ -438,16 +435,13 @@ async function executeTool(
                     return "Error: Only SELECT queries are allowed.";
                 }
 
-                // Replace $org_id placeholder
-                const safeQuery = query.replace(/\$org_id/g, `'${orgId}'`);
-
-                // Use Supabase's rpc or raw query — edge functions can use service role
-                const { data, error } = await supabase.rpc("execute_readonly_query", {
-                    query_text: safeQuery,
+                // Use the run_readonly_query RPC which handles $org_id replacement safely
+                const { data, error } = await supabase.rpc("run_readonly_query", {
+                    query_text: query,
+                    p_org_id: orgId,
                 });
 
                 if (error) {
-                    // Fallback: try direct query via REST
                     return `Query error: ${error.message}. Make sure the table exists and the query syntax is correct.`;
                 }
 
@@ -469,7 +463,7 @@ async function executeTool(
             }
 
             case "request_code_builder": {
-                const { data: task, error } = await supabase
+                const { error } = await supabase
                     .from("ai_builder_tasks")
                     .insert({
                         org_id: orgId,
@@ -482,7 +476,7 @@ async function executeTool(
                     .single();
 
                 if (error) return `Error submitting build request: ${error.message}`;
-                return `Build request submitted (Task #${task.id.slice(0, 8)}). This has been queued for the code builder. You'll be notified when it's ready. The code builder can create custom API endpoints, complex UI components, and external integrations.`;
+                return `Build request submitted. This has been queued for the code builder. You'll be notified when it's ready. The code builder can create custom API endpoints, complex UI components, and external integrations.`;
             }
 
             default:
@@ -520,7 +514,7 @@ Deno.serve(async (req) => {
         const { data: profile } = await supabase
             .from("profiles")
             .select("org_id, role")
-            .eq("id", user.id)
+            .eq("user_id", user.id)
             .single();
 
         if (!profile?.org_id) return json({ error: "No organization" }, 400);

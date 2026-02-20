@@ -10,6 +10,7 @@ Deno.serve(async (req) => {
         const url = new URL(req.url);
         const orgId = url.searchParams.get('org_id');
         const service = url.searchParams.get('service');
+        const stateParam = url.searchParams.get('state');
         const connectedAccountId = url.searchParams.get('connectedAccountId');
         const status = url.searchParams.get('status');
 
@@ -19,28 +20,46 @@ Deno.serve(async (req) => {
 
         const supabase = createClient(sbUrl, sbServiceKey);
 
+        // Validate state token — must match a pending connection to prevent forgery
+        const { data: pendingConn } = await supabase
+            .from('tenant_connections')
+            .select('state_token, status')
+            .eq('org_id', orgId)
+            .eq('service', service)
+            .single();
+
+        if (!pendingConn || pendingConn.status !== 'pending') {
+            throw new Error('No pending connection found for this org/service');
+        }
+
+        if (!stateParam || pendingConn.state_token !== stateParam) {
+            throw new Error('Invalid state token — possible CSRF attack');
+        }
+
         if (status === 'failed') {
             // OAuth failed — update status
             await supabase
                 .from('tenant_connections')
-                .upsert({
-                    org_id: orgId,
-                    service: service,
+                .update({
                     status: 'disconnected',
+                    state_token: null,
                     metadata: { error: 'OAuth flow failed', failed_at: new Date().toISOString() },
-                }, { onConflict: 'org_id,service' });
+                })
+                .eq('org_id', orgId)
+                .eq('service', service);
         } else {
-            // OAuth succeeded — store connection
+            // OAuth succeeded — store connection, clear state token (one-time use)
             await supabase
                 .from('tenant_connections')
-                .upsert({
-                    org_id: orgId,
-                    service: service,
+                .update({
                     status: 'connected',
+                    state_token: null,
                     composio_connection_id: connectedAccountId || null,
                     connected_at: new Date().toISOString(),
                     metadata: { connected_at: new Date().toISOString() },
-                }, { onConflict: 'org_id,service' });
+                })
+                .eq('org_id', orgId)
+                .eq('service', service);
         }
 
         console.log(`[composio-callback] ${service} for org ${orgId}: ${status || 'connected'}`);

@@ -98,7 +98,7 @@ function EntitiesList() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {(e.schema?.fields?.length || 0)} fields defined
+              {(Array.isArray(e.schema) ? e.schema.length : (e.schema?.fields?.length || 0))} fields defined
             </p>
           </CardContent>
         </Card>

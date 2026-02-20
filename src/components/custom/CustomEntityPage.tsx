@@ -34,7 +34,7 @@ export default function CustomEntityPage() {
     );
   }
 
-  const schemaFields = entity.schema?.fields || [];
+  const schemaFields = Array.isArray(entity.schema) ? entity.schema : (entity.schema?.fields || []);
 
   const handleCreate = async () => {
     try {
@@ -61,7 +61,8 @@ export default function CustomEntityPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{entity.name}</h2>
-          <p className="text-sm text-muted-foreground">{records.length} records</p>
+          {entity.description && <p className="text-sm text-muted-foreground">{entity.description}</p>}
+          <p className="text-xs text-muted-foreground">{records.length} records</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

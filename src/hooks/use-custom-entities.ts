@@ -8,6 +8,7 @@ export interface CustomEntity {
   name: string;
   slug: string;
   icon: string;
+  description: string;
   schema: Record<string, any>;
   active: boolean;
   created_at: string;
