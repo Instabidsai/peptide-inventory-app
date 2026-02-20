@@ -179,6 +179,7 @@ export function useMovements(contactId?: string) {
 
       return result as Movement[];
     },
+    enabled: !!orgId,
   });
 }
 
