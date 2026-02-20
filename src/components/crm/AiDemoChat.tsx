@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, User, Check } from "lucide-react";
 
@@ -37,6 +37,7 @@ export function AiDemoChat({
   const [buildStep, setBuildStep] = useState(-1);
   // Keep the final build phase visible while AI types its response
   const [buildPhaseForPreview, setBuildPhaseForPreview] = useState(-1);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const reset = useCallback(() => {
     setVisibleMessages([]);
@@ -48,6 +49,11 @@ export function AiDemoChat({
     setBuildStep(-1);
     setBuildPhaseForPreview(-1);
   }, []);
+
+  // Auto-scroll chat area when new content appears
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [visibleMessages, typedText, buildStep, showThinking]);
 
   // Drive the message sequence
   useEffect(() => {
@@ -165,8 +171,8 @@ export function AiDemoChat({
         </div>
       </div>
 
-      {/* Messages + Build Preview */}
-      <div className={`p-4 space-y-3 min-h-[200px] overflow-y-auto ${showBuildPreview ? "max-h-[480px]" : "max-h-[340px]"}`}>
+      {/* ── Chat messages area (scrollable, compact) ── */}
+      <div className="p-4 space-y-3 min-h-[80px] max-h-[200px] overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div
@@ -318,36 +324,48 @@ export function AiDemoChat({
             </motion.div>
           )}
         </AnimatePresence>
+        <div ref={chatEndRef} />
+      </div>
 
-        {/* ── Live Build Preview (shown during build + while AI types) ── */}
-        <AnimatePresence>
-          {showBuildPreview && (
-            <motion.div
-              key="build-preview"
-              initial={{ opacity: 0, y: 15, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.97 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
+      {/* ── Live Build Preview (OUTSIDE scroll area — always visible) ── */}
+      <AnimatePresence mode="wait">
+        {showBuildPreview && (
+          <motion.div
+            key="build-preview"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="border-t border-border/30 overflow-hidden"
+          >
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Building Live</span>
+              </div>
               {buildPreview(buildPhaseForPreview)}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
 
         {/* Result element (replaces preview after AI finishes typing) */}
-        <AnimatePresence>
-          {showResult && resultElement && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="mt-4"
-            >
+        {showResult && resultElement && (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="border-t border-border/30 overflow-hidden"
+          >
+            <div className="p-4">
               {resultElement}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     </div>
   );
