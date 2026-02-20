@@ -164,7 +164,11 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
 
         // Reconstitution
         if (item.reconstitutionMl > 0 && item.vialSizeMg && inc.reconstitution) {
-            sections += `<p style="margin:4px 0;color:#374151;"><strong>Reconstitution:</strong> Add ${item.reconstitutionMl} mL of bacteriostatic water to a ${item.vialSizeMg} mg vial.</p>`;
+            sections += `
+                <div style="margin:10px 0;padding:10px 14px;background:#EFF6FF;border:2px solid #93C5FD;border-radius:8px;">
+                    <p style="margin:0;color:#1E40AF;font-size:15px;font-weight:700;">💧 Reconstitution</p>
+                    <p style="margin:4px 0 0;color:#1E3A5F;font-size:14px;font-weight:600;">Add <span style="color:#DC2626;font-size:16px;font-weight:800;">${item.reconstitutionMl} mL</span> of bacteriostatic water to a <span style="font-weight:800;">${item.vialSizeMg} mg</span> vial.</p>
+                </div>`;
         }
 
         // Dosage — ALWAYS included, prominent styling
