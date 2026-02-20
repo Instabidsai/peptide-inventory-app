@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Check } from "lucide-react";
 
 interface Message {
   role: "user" | "ai";
@@ -12,6 +12,8 @@ interface AiDemoChatProps {
   resultElement?: React.ReactNode;
   loop?: boolean;
   typingSpeed?: number;
+  /** Optional build progress steps shown during AI thinking (e.g. ["Analyzing...", "Building...", "Deploying..."]) */
+  buildSteps?: string[];
 }
 
 export function AiDemoChat({
@@ -19,6 +21,7 @@ export function AiDemoChat({
   resultElement,
   loop = false,
   typingSpeed = 30,
+  buildSteps,
 }: AiDemoChatProps) {
   const [visibleMessages, setVisibleMessages] = useState<
     { role: "user" | "ai"; text: string; complete: boolean }[]
@@ -28,6 +31,7 @@ export function AiDemoChat({
   const [typedText, setTypedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
+  const [buildStep, setBuildStep] = useState(-1);
 
   const reset = useCallback(() => {
     setVisibleMessages([]);
@@ -36,6 +40,7 @@ export function AiDemoChat({
     setTypedText("");
     setIsTyping(false);
     setShowThinking(false);
+    setBuildStep(-1);
   }, []);
 
   // Drive the message sequence
@@ -56,14 +61,37 @@ export function AiDemoChat({
     const msg = messages[currentIndex];
 
     if (msg.role === "ai") {
-      // Show thinking dots first
-      setShowThinking(true);
-      const thinkTimer = setTimeout(() => {
-        setShowThinking(false);
-        setIsTyping(true);
-        setTypedText("");
-      }, 1200);
-      return () => clearTimeout(thinkTimer);
+      if (buildSteps && buildSteps.length > 0) {
+        // Show step-by-step build progress instead of simple dots
+        setBuildStep(0);
+        setShowThinking(true);
+        const stepTimers: ReturnType<typeof setTimeout>[] = [];
+        buildSteps.forEach((_, i) => {
+          if (i > 0) {
+            stepTimers.push(setTimeout(() => setBuildStep(i), i * 800));
+          }
+        });
+        // After all build steps complete, start typing the AI response
+        const finalTimer = setTimeout(() => {
+          setShowThinking(false);
+          setBuildStep(-1);
+          setIsTyping(true);
+          setTypedText("");
+        }, buildSteps.length * 800 + 400);
+        return () => {
+          stepTimers.forEach(clearTimeout);
+          clearTimeout(finalTimer);
+        };
+      } else {
+        // Simple thinking dots
+        setShowThinking(true);
+        const thinkTimer = setTimeout(() => {
+          setShowThinking(false);
+          setIsTyping(true);
+          setTypedText("");
+        }, 1200);
+        return () => clearTimeout(thinkTimer);
+      }
     } else {
       // User messages appear with a slight delay then type out
       const delay = setTimeout(() => {
@@ -72,7 +100,7 @@ export function AiDemoChat({
       }, 500);
       return () => clearTimeout(delay);
     }
-  }, [currentIndex, messages, loop, reset]);
+  }, [currentIndex, messages, loop, reset, buildSteps]);
 
   // Character-by-character typing
   useEffect(() => {
@@ -112,7 +140,7 @@ export function AiDemoChat({
       </div>
 
       {/* Messages */}
-      <div className="p-4 space-y-3 min-h-[200px] max-h-[320px] overflow-y-auto">
+      <div className="p-4 space-y-3 min-h-[200px] max-h-[340px] overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div
@@ -120,7 +148,7 @@ export function AiDemoChat({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className={`flex gap-2.5 ${msg.role === "user" ? "" : ""}`}
+              className="flex gap-2.5"
             >
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
@@ -181,8 +209,62 @@ export function AiDemoChat({
             </motion.div>
           )}
 
-          {/* Thinking indicator */}
-          {showThinking && (
+          {/* Build progress indicator (replaces dots when buildSteps provided) */}
+          {showThinking && buildSteps && buildStep >= 0 && (
+            <motion.div
+              key="build-progress"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex gap-2.5"
+            >
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+                <Bot className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex-1 space-y-1.5 pt-1">
+                {buildSteps.map((step, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{
+                      opacity: i <= buildStep ? 1 : 0.3,
+                      x: 0,
+                    }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    {i < buildStep ? (
+                      <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                    ) : i === buildStep ? (
+                      <motion.div
+                        className="w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent shrink-0"
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      />
+                    ) : (
+                      <div className="w-3 h-3 rounded-full border border-muted-foreground/30 shrink-0" />
+                    )}
+                    <span
+                      className={
+                        i <= buildStep
+                          ? "text-emerald-300/90"
+                          : "text-muted-foreground/50"
+                      }
+                    >
+                      {step}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Simple thinking dots (fallback when no buildSteps) */}
+          {showThinking && !buildSteps && (
             <motion.div
               key="thinking"
               initial={{ opacity: 0 }}

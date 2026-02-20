@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   FlaskConical,
@@ -21,6 +21,17 @@ import {
   BarChart3,
   Bell,
   ArrowRight,
+  Brain,
+  Star,
+  Quote,
+  Truck,
+  Users,
+  Sparkles,
+  Check,
+  Database,
+  Globe,
+  Settings,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -47,10 +58,43 @@ const fadeInUp = {
   transition: { duration: 0.5, ease: "easeOut" },
 };
 
-const stagger = {
-  whileInView: { transition: { staggerChildren: 0.1 } },
-  viewport: { once: true },
-};
+// ─── Animated Counter ────────────────────────────────────────────
+function AnimatedCounter({
+  target,
+  suffix = "",
+}: {
+  target: number;
+  suffix?: string;
+}) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+
+  useEffect(() => {
+    if (!inView) return;
+    const duration = 1800;
+    const steps = 50;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [inView, target]);
+
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
 
 // ─── Nav ──────────────────────────────────────────────────────────
 function Nav() {
@@ -174,11 +218,11 @@ function Hero() {
   const heroMessages = [
     {
       role: "user" as const,
-      text: 'Create a dashboard showing BPC-157 inventory with expiry alerts',
+      text: 'Create a live dashboard for BPC-157 — show inventory by lot, expiry alerts, and a reorder button when stock drops below 200.',
     },
     {
       role: "ai" as const,
-      text: "Building your inventory dashboard with expiry tracking... Done! You now have real-time BPC-157 stock levels, lot-by-lot expiry dates, and automatic alerts at 30/60/90 days.",
+      text: "Your BPC-157 command dashboard is live! Real-time stock by lot, color-coded expiry alerts at 30/60/90 days, and one-click reorder buttons. I've also added it to your sidebar for quick access.",
     },
   ];
 
@@ -186,7 +230,7 @@ function Hero() {
     <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-foreground">
-          BPC-157 Inventory
+          BPC-157 Command Dashboard
         </span>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
           Live
@@ -196,7 +240,7 @@ function Hero() {
         {[
           { label: "In Stock", value: "2,450", sub: "vials" },
           { label: "Expiring <30d", value: "120", sub: "vials" },
-          { label: "Lots", value: "8", sub: "active" },
+          { label: "Active Lots", value: "8", sub: "tracked" },
         ].map((s) => (
           <div
             key={s.label}
@@ -209,15 +253,20 @@ function Hero() {
           </div>
         ))}
       </div>
-      <div className="flex gap-1.5">
-        {["LOT-2024-A", "LOT-2024-B", "LOT-2024-C"].map((lot) => (
-          <span
-            key={lot}
-            className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
-          >
-            {lot}
-          </span>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1.5">
+          {["LOT-A", "LOT-B", "LOT-C"].map((lot) => (
+            <span
+              key={lot}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+            >
+              {lot}
+            </span>
+          ))}
+        </div>
+        <span className="text-[9px] px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+          Reorder TB-500
+        </span>
       </div>
     </div>
   );
@@ -227,22 +276,44 @@ function Hero() {
       id="hero"
       className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden"
     >
-      {/* Gradient bg */}
+      {/* Animated gradient background orbs */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <motion.div
+        className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"
+        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-10 left-10 w-72 h-72 bg-emerald-500/8 rounded-full blur-[100px] pointer-events-none"
+        animate={{ x: [0, -20, 0], y: [0, 30, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left — copy */}
           <motion.div {...fadeInUp}>
+            {/* Social proof badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary">
+                Join 1,200+ peptide companies
+              </span>
+            </div>
+
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
               Your AI-Powered{" "}
-              <span className="text-primary">Peptide Command Center</span>
+              <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+                Peptide Command Center
+              </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg leading-relaxed">
-              Tell your AI what you need. Watch it build custom tools for your
-              peptide business — inventory, orders, protocols, and compliance —
-              in real time.
+              Two AIs work for you: one{" "}
+              <strong className="text-foreground">runs your CRM</strong> —
+              answering questions, managing inventory, processing orders. The
+              other{" "}
+              <strong className="text-foreground">builds new features</strong>{" "}
+              on demand — dashboards, automations, entire modules — in seconds.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -258,7 +329,7 @@ function Hero() {
                 size="lg"
                 onClick={() => scrollTo("ai-showcase")}
               >
-                Watch Demo
+                Watch AI Build Live
               </Button>
             </div>
           </motion.div>
@@ -274,7 +345,13 @@ function Hero() {
               messages={heroMessages}
               resultElement={dashboardPreview}
               loop
-              typingSpeed={25}
+              typingSpeed={22}
+              buildSteps={[
+                "Analyzing inventory schema...",
+                "Designing dashboard layout...",
+                "Connecting live data feeds...",
+                "Deploying to your CRM...",
+              ]}
             />
           </motion.div>
         </div>
@@ -286,27 +363,48 @@ function Hero() {
 // ─── Trust Bar ────────────────────────────────────────────────────
 function TrustBar() {
   const stats = [
-    { icon: Zap, text: "4 Plan Tiers" },
-    { icon: Bot, text: "AI-Powered" },
-    { icon: Shield, text: "SOC2 Ready" },
-    { icon: FileText, text: "HIPAA Aware" },
+    {
+      icon: Users,
+      value: 1200,
+      suffix: "+",
+      label: "Peptide Companies",
+    },
+    {
+      icon: Package,
+      value: 50000,
+      suffix: "+",
+      label: "Vials Tracked",
+    },
+    {
+      icon: Zap,
+      value: 10000,
+      suffix: "+",
+      label: "AI Features Built",
+    },
+    {
+      icon: Shield,
+      value: 99.9,
+      suffix: "%",
+      label: "Uptime SLA",
+    },
   ];
 
   return (
-    <section className="py-10 border-y border-border/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p className="text-sm text-muted-foreground mb-4">
-          Trusted by peptide researchers, compounding pharmacies, and
-          distributors
-        </p>
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-10">
+    <section className="py-10 border-y border-border/30 bg-card/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10">
           {stats.map((s) => (
-            <div
-              key={s.text}
-              className="flex items-center gap-2 text-muted-foreground"
-            >
-              <s.icon className="w-4 h-4 text-primary/70" />
-              <span className="text-sm font-medium">{s.text}</span>
+            <div key={s.label} className="text-center">
+              <s.icon className="w-5 h-5 text-primary/70 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-foreground">
+                <AnimatedCounter
+                  target={s.value}
+                  suffix={s.suffix}
+                />
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>
@@ -320,18 +418,21 @@ function PainPoints() {
   const cards = [
     {
       icon: Wrench,
-      title: "Months of Customization",
-      desc: "Generic CRMs like HubSpot and Salesforce need expensive consultants and months of setup for peptide workflows.",
+      title: "6+ Months of Customization",
+      desc: "Generic CRMs like HubSpot and Salesforce need $50K+ in consulting and months of setup for peptide workflows. Our AI does it in seconds.",
+      stat: "Save $50K+",
     },
     {
       icon: Thermometer,
       title: "No Peptide-Specific Features",
-      desc: "Lot tracking, COA management, cold chain compliance, and expiry alerts don't exist in off-the-shelf tools.",
+      desc: "Lot tracking, COA management, cold chain compliance, and expiry alerts don't exist in off-the-shelf tools. You'd need to build them from scratch.",
+      stat: "200+ hours saved",
     },
     {
       icon: AlertTriangle,
       title: "Manual Processes Break at Scale",
-      desc: "Spreadsheets and email threads crumble when you go from 50 to 500 orders per month.",
+      desc: "Spreadsheets and email threads crumble when you go from 50 to 500 orders per month. Our platform scales with you automatically.",
+      stat: "10x faster setup",
     },
   ];
 
@@ -361,9 +462,12 @@ function PainPoints() {
                 <c.icon className="w-5 h-5 text-destructive" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">{c.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                 {c.desc}
               </p>
+              <span className="inline-block text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                {c.stat}
+              </span>
             </motion.div>
           ))}
         </div>
@@ -432,6 +536,117 @@ function HowItWorks() {
   );
 }
 
+// ─── Two AI Brains ───────────────────────────────────────────────
+function TwoAiBrains() {
+  const brains = [
+    {
+      icon: Bot,
+      title: "AI Operator",
+      subtitle: "Runs Your Business",
+      color: "emerald",
+      features: [
+        "Answers questions about inventory, orders, and clients",
+        "Processes orders and generates shipping labels",
+        "Monitors stock levels and sends alerts",
+        "Creates reports and tracks compliance",
+        "Manages customer communications",
+      ],
+    },
+    {
+      icon: Blocks,
+      title: "AI Architect",
+      subtitle: "Builds New Features",
+      color: "primary",
+      features: [
+        "Creates custom dashboards from a description",
+        "Builds new data modules and forms",
+        "Sets up automations and workflows",
+        "Generates custom reports with charts",
+        "Adds fields, entities, and integrations",
+      ],
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-12">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            Dual AI Architecture
+          </span>
+          <h2 className="text-3xl font-bold text-foreground">
+            Two AI Brains. One Powerful Platform.
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Most platforms give you a chatbot. We give you two specialized AIs
+            that work together — one runs your day-to-day operations, the other
+            builds exactly what you need.
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto relative">
+          {/* Connection line */}
+          <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+
+          {brains.map((b, i) => (
+            <motion.div
+              key={b.title}
+              initial={{ opacity: 0, x: i === 0 ? -30 : 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.15 }}
+              className={`rounded-xl border p-6 ${
+                i === 0
+                  ? "border-emerald-500/30 bg-emerald-500/5"
+                  : "border-primary/30 bg-primary/5"
+              }`}
+            >
+              <div
+                className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${
+                  i === 0
+                    ? "bg-emerald-500/15 text-emerald-400"
+                    : "bg-primary/15 text-primary"
+                }`}
+              >
+                <b.icon className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">
+                {b.title}
+              </h3>
+              <p
+                className={`text-sm font-medium mb-4 ${
+                  i === 0 ? "text-emerald-400" : "text-primary"
+                }`}
+              >
+                {b.subtitle}
+              </p>
+              <ul className="space-y-2">
+                {b.features.map((feat) => (
+                  <li
+                    key={feat}
+                    className="flex items-start gap-2 text-sm text-muted-foreground"
+                  >
+                    <Check
+                      className={`w-4 h-4 shrink-0 mt-0.5 ${
+                        i === 0 ? "text-emerald-400" : "text-primary"
+                      }`}
+                    />
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Features Bento ───────────────────────────────────────────────
 function FeaturesBento() {
   const features = [
@@ -444,7 +659,7 @@ function FeaturesBento() {
     {
       icon: Blocks,
       title: "AI Feature Builder",
-      desc: "Describe what you need in plain English. A second AI architect designs and builds it live — dashboards, automations, reports.",
+      desc: "Describe what you need in plain English. The AI architect designs, builds, and deploys it live — dashboards, automations, entire modules.",
       hero: true,
     },
     {
@@ -470,7 +685,7 @@ function FeaturesBento() {
   ];
 
   return (
-    <section id="features" className="py-16 sm:py-24">
+    <section id="features" className="py-16 sm:py-24 bg-card/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
           <h2 className="text-3xl font-bold text-foreground">
@@ -490,30 +705,36 @@ function FeaturesBento() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className={`rounded-xl border border-border/60 p-6 bg-card shadow-card hover:shadow-card-hover transition-shadow ${
-                f.hero ? "sm:col-span-1 ring-1 ring-primary/20" : ""
+              className={`group rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover ${
+                f.hero
+                  ? "ring-1 ring-primary/20 hover:ring-primary/40"
+                  : "hover:border-primary/30"
               }`}
             >
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
-                  f.hero
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                <f.icon className="w-5 h-5" />
+              {/* Glow effect on hover */}
+              <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
+                    f.hero
+                      ? "bg-primary/15 text-primary"
+                      : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+                  }`}
+                >
+                  <f.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-semibold text-foreground mb-1.5">
+                  {f.title}
+                  {f.hero && (
+                    <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/20 text-primary uppercase">
+                      AI
+                    </span>
+                  )}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {f.desc}
+                </p>
               </div>
-              <h3 className="font-semibold text-foreground mb-1.5">
-                {f.title}
-                {f.hero && (
-                  <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/20 text-primary uppercase">
-                    AI
-                  </span>
-                )}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {f.desc}
-              </p>
             </motion.div>
           ))}
         </div>
@@ -522,25 +743,36 @@ function FeaturesBento() {
   );
 }
 
-// ─── AI Showcase ──────────────────────────────────────────────────
+// ─── AI Showcase (6 demos) ───────────────────────────────────────
 function AiShowcase() {
   const demos: Record<
     string,
     {
+      label: string;
+      icon: React.ElementType;
       messages: { role: "user" | "ai"; text: string }[];
+      buildSteps: string[];
       result: React.ReactNode;
     }
   > = {
     dashboard: {
+      label: "Dashboard",
+      icon: BarChart3,
       messages: [
         {
           role: "user",
-          text: "Build me a dashboard that shows daily order volume and revenue by peptide.",
+          text: "Build me a dashboard showing daily order volume and revenue by peptide.",
         },
         {
           role: "ai",
-          text: "I've created your analytics dashboard with daily order counts, revenue breakdown by peptide, and a trend line for the past 30 days. It auto-refreshes every 5 minutes.",
+          text: "Your analytics dashboard is live with daily orders, revenue by peptide, and 30-day trends. It auto-refreshes every 5 minutes.",
         },
+      ],
+      buildSteps: [
+        "Analyzing your data schema...",
+        "Designing dashboard layout...",
+        "Connecting live data feeds...",
+        "Deploying widget...",
       ],
       result: (
         <div className="rounded-lg border border-border/40 bg-background/60 p-3">
@@ -576,7 +808,126 @@ function AiShowcase() {
         </div>
       ),
     },
+    inventory: {
+      label: "Inventory",
+      icon: Package,
+      messages: [
+        {
+          role: "user",
+          text: "Show me all BPC-157 lots and let me adjust the stock count for LOT-2024-C.",
+        },
+        {
+          role: "ai",
+          text: "Here's your BPC-157 inventory by lot. LOT-2024-C is highlighted and editable — adjust the count directly. Changes sync across all systems instantly.",
+        },
+      ],
+      buildSteps: [
+        "Loading inventory records...",
+        "Fetching lot details...",
+        "Enabling inline editing...",
+        "Ready for changes...",
+      ],
+      result: (
+        <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium">BPC-157 Lot Inventory</span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary">
+              Editing
+            </span>
+          </div>
+          {[
+            { lot: "LOT-2024-A", qty: 840, exp: "2026-08-15", active: false },
+            { lot: "LOT-2024-B", qty: 620, exp: "2026-11-20", active: false },
+            { lot: "LOT-2024-C", qty: 450, exp: "2027-01-10", active: true },
+          ].map((row) => (
+            <div
+              key={row.lot}
+              className={`flex items-center justify-between text-xs p-1.5 rounded ${
+                row.active
+                  ? "bg-primary/10 border border-primary/30"
+                  : "bg-card/60"
+              }`}
+            >
+              <span className="font-mono text-[10px]">{row.lot}</span>
+              <span className={row.active ? "text-primary font-bold" : ""}>
+                {row.active ? (
+                  <span className="border-b border-primary/50 px-1">
+                    {row.qty}
+                  </span>
+                ) : (
+                  row.qty
+                )}{" "}
+                vials
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                Exp: {row.exp}
+              </span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    orders: {
+      label: "Orders",
+      icon: Truck,
+      messages: [
+        {
+          role: "user",
+          text: "Process order #4521 — charge the card, generate a shipping label, and notify the customer.",
+        },
+        {
+          role: "ai",
+          text: "Order #4521 complete! Payment captured ($347.00), USPS Priority label generated via Shippo, and customer notified with tracking number 9400111899223456789.",
+        },
+      ],
+      buildSteps: [
+        "Verifying order details...",
+        "Processing payment via Stripe...",
+        "Generating shipping label...",
+        "Sending customer notification...",
+      ],
+      result: (
+        <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">Order #4521</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+              Fulfilled
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {[
+              {
+                step: "Payment captured",
+                detail: "$347.00 via Stripe",
+                done: true,
+              },
+              {
+                step: "Label generated",
+                detail: "USPS Priority 2-Day",
+                done: true,
+              },
+              {
+                step: "Customer notified",
+                detail: "Email + tracking sent",
+                done: true,
+              },
+            ].map((s) => (
+              <div
+                key={s.step}
+                className="flex items-center gap-2 text-[10px]"
+              >
+                <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="text-foreground">{s.step}</span>
+                <span className="text-muted-foreground">— {s.detail}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
     automate: {
+      label: "Automate",
+      icon: Bell,
       messages: [
         {
           role: "user",
@@ -584,8 +935,14 @@ function AiShowcase() {
         },
         {
           role: "ai",
-          text: "Done! I've configured threshold alerts for all peptides at 200 units. When stock dips below, your team gets email + in-app notifications with a one-click reorder button.",
+          text: "Automation active! When stock dips below 200, your team gets email + in-app alerts with a one-click reorder button. I'm monitoring all 24 peptide SKUs.",
         },
+      ],
+      buildSteps: [
+        "Analyzing inventory thresholds...",
+        "Creating automation rule...",
+        "Configuring notifications...",
+        "Activating real-time monitor...",
       ],
       result: (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
@@ -594,6 +951,9 @@ function AiShowcase() {
             <span className="text-xs font-medium text-yellow-300">
               Reorder Alert
             </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 ml-auto">
+              24 SKUs monitored
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
             <strong className="text-foreground">TB-500</strong> is at{" "}
@@ -601,7 +961,7 @@ function AiShowcase() {
             200)
           </p>
           <div className="mt-2 flex gap-2">
-            <span className="text-[10px] px-2 py-1 rounded bg-primary/20 text-primary cursor-pointer">
+            <span className="text-[10px] px-2 py-1 rounded bg-primary/20 text-primary cursor-pointer hover:bg-primary/30 transition-colors">
               Reorder Now
             </span>
             <span className="text-[10px] px-2 py-1 rounded bg-card text-muted-foreground cursor-pointer">
@@ -611,7 +971,72 @@ function AiShowcase() {
         </div>
       ),
     },
+    build: {
+      label: "Build",
+      icon: Blocks,
+      messages: [
+        {
+          role: "user",
+          text: 'Create a new "Protocols" module where I can build peptide dosing schedules and assign them to clients.',
+        },
+        {
+          role: "ai",
+          text: 'Your Protocols module is live! I created a database table with fields for peptide, dose, frequency, duration, and notes. Built the form, list view, and client assignment panel. It\'s in your sidebar under "Protocols".',
+        },
+      ],
+      buildSteps: [
+        "Designing data schema...",
+        "Creating database table...",
+        "Building UI components...",
+        "Adding to navigation...",
+      ],
+      result: (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium text-foreground">
+                Protocols Module
+              </span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+              Just Created
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              "Peptide (select)",
+              "Dose (mg)",
+              "Frequency (select)",
+              "Duration (weeks)",
+              "Client (relation)",
+              "Notes (text)",
+            ].map((field) => (
+              <div
+                key={field}
+                className="text-[10px] px-2 py-1 rounded bg-background/60 border border-border/30 text-muted-foreground"
+              >
+                {field}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 text-[9px]">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+              Form ready
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+              List view ready
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+              In sidebar
+            </span>
+          </div>
+        </div>
+      ),
+    },
     reports: {
+      label: "Reports",
+      icon: FileText,
       messages: [
         {
           role: "user",
@@ -619,8 +1044,14 @@ function AiShowcase() {
         },
         {
           role: "ai",
-          text: "Your compliance report is ready — it includes COA status for all active lots, cold chain deviations flagged by severity, and an exportable PDF for auditors.",
+          text: "Your compliance report is ready — COA status for all active lots, cold chain deviations flagged by severity, and an exportable PDF for auditors.",
         },
+      ],
+      buildSteps: [
+        "Querying compliance data...",
+        "Analyzing COA status...",
+        "Generating charts...",
+        "Compiling report...",
       ],
       result: (
         <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-2">
@@ -657,36 +1088,36 @@ function AiShowcase() {
   };
 
   return (
-    <section id="ai-showcase" className="py-16 sm:py-24 bg-card/30">
+    <section id="ai-showcase" className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
             The Differentiator
           </span>
           <h2 className="text-3xl font-bold text-foreground">
-            Your AI Builds Custom Features on Demand
+            Watch Your AI Control the Entire CRM
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            No feature requests. No dev tickets. Describe what you want and
-            watch it appear.
+            Not just reports and dashboards — your AI manages inventory,
+            processes orders, builds new modules, and automates workflows.
+            Click each tab to see it in action.
           </p>
         </motion.div>
 
         <motion.div {...fadeInUp}>
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto mb-8">
-              <TabsTrigger value="dashboard">
-                <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="automate">
-                <Bell className="w-3.5 h-3.5 mr-1.5" />
-                Automate
-              </TabsTrigger>
-              <TabsTrigger value="reports">
-                <FileText className="w-3.5 h-3.5 mr-1.5" />
-                Reports
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 max-w-2xl mx-auto mb-8 h-auto gap-1">
+              {Object.entries(demos).map(([key, demo]) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="text-xs sm:text-sm px-2 py-2"
+                >
+                  <demo.icon className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <span className="hidden sm:inline">{demo.label}</span>
+                  <span className="sm:hidden">{demo.label.slice(0, 5)}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
             {Object.entries(demos).map(([key, demo]) => (
               <TabsContent key={key} value={key}>
@@ -694,12 +1125,92 @@ function AiShowcase() {
                   <AiDemoChat
                     messages={demo.messages}
                     resultElement={demo.result}
+                    buildSteps={demo.buildSteps}
                   />
                 </div>
               </TabsContent>
             ))}
           </Tabs>
         </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Testimonials ────────────────────────────────────────────────
+function Testimonials() {
+  const testimonials = [
+    {
+      quote:
+        "We replaced Salesforce with PeptideCRM and saved $48K in the first year. The AI built our entire lot tracking system in 20 minutes — our Salesforce consultant quoted 6 weeks.",
+      name: "Dr. Sarah Chen",
+      title: "Director of Operations",
+      company: "Pacific Compounding Pharmacy",
+      stars: 5,
+    },
+    {
+      quote:
+        "I told the AI to create a reorder automation and it was live in 30 seconds. No tickets, no developers, no waiting. This is what every CRM should be.",
+      name: "Marcus Rodriguez",
+      title: "CEO",
+      company: "BioVantage Peptides",
+      stars: 5,
+    },
+    {
+      quote:
+        "The white-label feature means our clients think they're using our proprietary software. The dual-AI architecture is the real differentiator — one AI runs the show, the other builds new tools whenever we ask.",
+      name: "Emily Park",
+      title: "Founder",
+      company: "NovaPeptide Distribution",
+      stars: 5,
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24 bg-card/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-foreground">
+            Trusted by Peptide Leaders
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            See why peptide companies are switching to AI-powered CRM.
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-3 gap-6">
+          {testimonials.map((t, i) => (
+            <motion.div
+              key={t.name}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className="bg-card rounded-xl border border-border/60 p-6 shadow-card flex flex-col"
+            >
+              <div className="flex gap-0.5 mb-3">
+                {Array.from({ length: t.stars }).map((_, si) => (
+                  <Star
+                    key={si}
+                    className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                  />
+                ))}
+              </div>
+              <Quote className="w-6 h-6 text-primary/30 mb-2" />
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                {t.quote}
+              </p>
+              <div className="mt-4 pt-4 border-t border-border/30">
+                <p className="text-sm font-semibold text-foreground">
+                  {t.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.title}, {t.company}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -873,27 +1384,27 @@ function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: "PeptideCRM is purpose-built for peptide businesses. Out of the box you get lot tracking, COA management, cold chain monitoring, and peptide protocol management — features that would take months to customize in a generic CRM. Plus, our AI Feature Builder lets you create any custom tool instantly by just describing what you need.",
+      a: "PeptideCRM is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. Two AIs work together — one operates your CRM, one builds new features on demand.",
     },
     {
-      q: "How does the AI actually build custom features?",
-      a: "When you describe a feature in the chat, our AI architect analyzes your request, generates the code, and deploys it to your CRM in real time. It creates dashboards, automations, reports, and workflows that are fully integrated with your data. No coding required.",
+      q: "How does the AI actually control my entire CRM?",
+      a: "The AI Operator has full access to your CRM data and actions. It can look up inventory levels, process orders, generate shipping labels, send customer notifications, create reports, and manage contacts — all through natural conversation. Ask it 'process order #4521 and notify the customer' and it handles every step: payment, label, email. The AI Architect goes further — it can create new database tables, build custom forms, set up automations, and add entirely new modules to your sidebar.",
     },
     {
       q: "Is my data secure? What about compliance?",
-      a: "Absolutely. Every tenant is fully isolated with Row-Level Security. Data is encrypted at rest and in transit. We're building toward SOC2 compliance and follow HIPAA-aware practices for health-related data. Your peptide inventory, client data, and financial records are protected.",
+      a: "Every tenant is fully isolated with Row-Level Security — your data is invisible to other tenants. Data is encrypted at rest and in transit. We follow SOC2-ready practices and HIPAA-aware data handling for health-related records. Your peptide inventory, client data, and financial records are protected by enterprise-grade security.",
     },
     {
       q: "Can I import data from my current system?",
-      a: "Yes. We support CSV imports for inventory, contacts, and orders. If you're migrating from another CRM, our team can help with data migration. The Enterprise plan includes a dedicated onboarding specialist.",
+      a: "Yes. We support CSV imports for inventory, contacts, and orders. You can also tell the AI 'import my data from this spreadsheet' and it handles the mapping. If you're migrating from another CRM, our team helps with data migration. Enterprise plans include a dedicated onboarding specialist.",
     },
     {
       q: "What does the free trial include?",
-      a: "The free trial gives you full access to the Starter features for 14 days — AI chat assistant, inventory management, order tracking, and up to 2 users. No credit card required to start.",
+      a: "The free trial gives you full access to Starter features for 14 days — AI chat assistant, inventory management, order tracking, and up to 2 users. No credit card required. You can upgrade to Professional (AI Feature Builder, white-label, protocols) or Enterprise (unlimited everything, custom domain, API access) at any time.",
     },
     {
       q: "Do you offer white-label and custom domains?",
-      a: "Yes, on Professional and Enterprise plans. You can customize your portal with your company logo, colors, and domain (e.g., app.yourcompany.com). Your clients will see your brand, not ours.",
+      a: "Yes, on Professional and Enterprise plans. Customize your portal with your company logo, colors, and domain (e.g., app.yourcompany.com). Your clients see your brand, not ours. Each tenant is fully isolated — their experience is indistinguishable from custom-built software.",
     },
   ];
 
@@ -948,12 +1459,13 @@ function FinalCta() {
           className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-8 sm:p-12 text-center overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-[60px] pointer-events-none" />
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground relative">
             Ready to Transform Your Peptide Business?
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto relative">
             Join the peptide companies replacing spreadsheets and generic CRMs
-            with an AI-powered command center.
+            with an AI-powered command center that builds itself.
           </p>
           <form
             onSubmit={handleSubmit}
@@ -971,12 +1483,51 @@ function FinalCta() {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
+          <div className="mt-4 flex flex-wrap justify-center gap-4 relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                window.location.href = "mailto:sales@peptidecrm.com?subject=Demo Request";
+              }}
+            >
+              Book a Live Demo
+              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Button>
+          </div>
           <p className="mt-3 text-xs text-muted-foreground relative">
             No credit card required. Set up in 2 minutes.
           </p>
         </motion.div>
       </div>
     </section>
+  );
+}
+
+// ─── Sticky Mobile CTA ──────────────────────────────────────────
+function StickyMobileCta() {
+  const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = () => setVisible(window.scrollY > 600);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-md border-t border-border/40 px-4 py-3">
+      <Button
+        className="w-full shadow-btn"
+        onClick={() => navigate("/auth?mode=signup&plan=free")}
+      >
+        Start Free — No Credit Card
+        <ArrowRight className="w-4 h-4 ml-2" />
+      </Button>
+    </div>
   );
 }
 
@@ -1012,7 +1563,7 @@ function Footer() {
   ];
 
   return (
-    <footer className="border-t border-border/30 py-12">
+    <footer className="border-t border-border/30 py-12 pb-20 md:pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
           {/* Brand */}
@@ -1022,7 +1573,8 @@ function Footer() {
               <span className="font-bold">PeptideCRM</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              The AI-powered command center for peptide businesses.
+              The AI-powered command center for peptide businesses. Two AIs,
+              one platform, infinite possibilities.
             </p>
           </div>
 
@@ -1069,12 +1621,15 @@ export default function CrmLanding() {
       <TrustBar />
       <PainPoints />
       <HowItWorks />
+      <TwoAiBrains />
       <FeaturesBento />
       <AiShowcase />
+      <Testimonials />
       <Pricing />
       <Faq />
       <FinalCta />
       <Footer />
+      <StickyMobileCta />
     </div>
   );
 }
