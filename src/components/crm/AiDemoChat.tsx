@@ -16,6 +16,8 @@ interface AiDemoChatProps {
   buildSteps?: string[];
   /** Render function that receives the current build phase (0..N-1) and returns a live preview */
   buildPreview?: (phase: number) => React.ReactNode;
+  /** Called when the demo finishes playing all messages and shows the result */
+  onComplete?: () => void;
 }
 
 export function AiDemoChat({
@@ -25,6 +27,7 @@ export function AiDemoChat({
   typingSpeed = 30,
   buildSteps,
   buildPreview,
+  onComplete,
 }: AiDemoChatProps) {
   const [visibleMessages, setVisibleMessages] = useState<
     { role: "user" | "ai"; text: string; complete: boolean }[]
@@ -62,6 +65,7 @@ export function AiDemoChat({
       const timer = setTimeout(() => {
         setBuildPhaseForPreview(-1); // Hide preview, show final result
         setShowResult(true);
+        onComplete?.();
       }, 400);
       let loopTimer: ReturnType<typeof setTimeout>;
       if (loop) {
@@ -344,7 +348,7 @@ export function AiDemoChat({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Building Live</span>
+                <span className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Building — Step {buildPhaseForPreview + 1}/{buildSteps?.length ?? 0}</span>
               </div>
               {buildPreview(buildPhaseForPreview)}
             </div>

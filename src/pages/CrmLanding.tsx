@@ -883,6 +883,10 @@ function FeaturesBento() {
 
 // ─── AI Showcase (6 demos) ───────────────────────────────────────
 function AiShowcase() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const autoPlayRef = useRef(true);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const demos: Record<
     string,
     {
@@ -1232,6 +1236,31 @@ function AiShowcase() {
     },
   };
 
+  const tabKeys = Object.keys(demos);
+
+  const handleDemoComplete = () => {
+    if (!autoPlayRef.current) return;
+    advanceTimerRef.current = setTimeout(() => {
+      setActiveTab((prev) => {
+        const idx = tabKeys.indexOf(prev);
+        return tabKeys[(idx + 1) % tabKeys.length];
+      });
+    }, 3000);
+  };
+
+  const handleTabChange = (value: string) => {
+    autoPlayRef.current = false;
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    setActiveTab(value);
+  };
+
+  // Cleanup advance timer on unmount
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
+
   return (
     <section id="ai-showcase" className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1250,7 +1279,7 @@ function AiShowcase() {
         </motion.div>
 
         <motion.div {...fadeInUp}>
-          <Tabs defaultValue="dashboard" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 max-w-2xl mx-auto mb-8 h-auto gap-1">
               {Object.entries(demos).map(([key, demo]) => (
                 <TabsTrigger
@@ -1258,9 +1287,8 @@ function AiShowcase() {
                   value={key}
                   className="text-xs sm:text-sm px-2 py-2"
                 >
-                  <demo.icon className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <demo.icon className="w-3.5 h-3.5 sm:mr-1.5 shrink-0" />
                   <span className="hidden sm:inline">{demo.label}</span>
-                  <span className="sm:hidden">{demo.label.slice(0, 5)}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1272,6 +1300,7 @@ function AiShowcase() {
                     resultElement={demo.result}
                     buildSteps={demo.buildSteps}
                     buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
+                    onComplete={handleDemoComplete}
                   />
                 </div>
               </TabsContent>
@@ -1741,18 +1770,18 @@ function Footer() {
     {
       title: "Company",
       links: [
-        { label: "About", action: () => {} },
-        { label: "Blog", action: () => {} },
-        { label: "Careers", action: () => {} },
+        { label: "About", action: () => scrollTo("hero") },
+        { label: "Blog", action: () => scrollTo("ai-showcase") },
+        { label: "Careers", action: () => scrollTo("final-cta") },
         { label: "Contact", action: () => scrollTo("final-cta") },
       ],
     },
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", action: () => {} },
-        { label: "Terms of Service", action: () => {} },
-        { label: "Cookie Policy", action: () => {} },
+        { label: "Privacy Policy", action: () => scrollTo("faq") },
+        { label: "Terms of Service", action: () => scrollTo("faq") },
+        { label: "Cookie Policy", action: () => scrollTo("faq") },
       ],
     },
   ];
@@ -1833,6 +1862,32 @@ function Footer() {
   );
 }
 
+// ─── Back to Top ──────────────────────────────────────────────────
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const handler = () => setShow(window.scrollY > 800);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-20 md:bottom-8 right-4 z-40 w-10 h-10 rounded-full bg-card/90 backdrop-blur border border-border/40 shadow-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+          aria-label="Back to top"
+        >
+          <ChevronRight className="w-4 h-4 -rotate-90" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────
 export default function CrmLanding() {
   // Scroll to top on mount
@@ -1856,6 +1911,7 @@ export default function CrmLanding() {
       <Faq />
       <FinalCta />
       <Footer />
+      <BackToTop />
       <StickyMobileCta />
     </div>
   );
