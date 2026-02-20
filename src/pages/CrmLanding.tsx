@@ -1292,19 +1292,21 @@ function AiShowcase() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            {Object.entries(demos).map(([key, demo]) => (
-              <TabsContent key={key} value={key}>
-                <div className="max-w-2xl mx-auto">
-                  <AiDemoChat
-                    messages={demo.messages}
-                    resultElement={demo.result}
-                    buildSteps={demo.buildSteps}
-                    buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
-                    onComplete={handleDemoComplete}
-                  />
-                </div>
-              </TabsContent>
-            ))}
+            <div className="min-h-[440px]">
+              {Object.entries(demos).map(([key, demo]) => (
+                <TabsContent key={key} value={key}>
+                  <div className="max-w-2xl mx-auto">
+                    <AiDemoChat
+                      messages={demo.messages}
+                      resultElement={demo.result}
+                      buildSteps={demo.buildSteps}
+                      buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
+                      onComplete={handleDemoComplete}
+                    />
+                  </div>
+                </TabsContent>
+              ))}
+            </div>
           </Tabs>
         </motion.div>
       </div>

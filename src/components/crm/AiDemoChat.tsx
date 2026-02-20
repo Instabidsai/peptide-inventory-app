@@ -340,15 +340,17 @@ export function AiDemoChat({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="border-t border-border/30 overflow-hidden"
+            className="border-t border-emerald-500/30 overflow-hidden bg-gradient-to-b from-emerald-500/[0.03] to-transparent"
           >
             <div className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="relative flex h-1.5 w-1.5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-wider">Building — Step {buildPhaseForPreview + 1}/{buildSteps?.length ?? 0}</span>
+                <span className="text-[11px] font-mono text-emerald-400 uppercase tracking-wider font-medium">
+                  Live Preview — Step {buildPhaseForPreview + 1} of {buildSteps?.length ?? 0}
+                </span>
               </div>
               {buildPreview(buildPhaseForPreview)}
             </div>
@@ -362,9 +364,13 @@ export function AiDemoChat({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="border-t border-border/30 overflow-hidden"
+            className="border-t border-emerald-500/20 overflow-hidden"
           >
             <div className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[11px] font-mono text-emerald-400/80 uppercase tracking-wider">Built & Deployed</span>
+              </div>
               {resultElement}
             </div>
           </motion.div>
