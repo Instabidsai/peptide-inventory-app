@@ -17,7 +17,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight, DollarSign, Percent } from 'lucide-react';
+import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -42,6 +43,16 @@ interface CartItem {
     unitPrice: number;
     basePrice: number;
     commissionRate: number; // Added
+}
+
+interface CommissionChainEntry {
+    profileId: string;
+    name: string;
+    tier: string;
+    type: 'direct' | 'second_tier_override' | 'third_tier_override';
+    defaultRate: number;
+    mode: 'percentage' | 'flat';
+    value: number;
 }
 
 export default function NewOrder() {
@@ -69,6 +80,7 @@ export default function NewOrder() {
     const [deliveryMethod, setDeliveryMethod] = useState<'ship' | 'local_pickup'>('ship');
     const [openCombobox, setOpenCombobox] = useState(false);
     const [commissionEnabled, setCommissionEnabled] = useState(true);
+    const [commissionChain, setCommissionChain] = useState<CommissionChainEntry[]>([]);
 
     const location = useLocation();
 
@@ -196,6 +208,94 @@ export default function NewOrder() {
         }
     }, [isPartnerOrder]);
 
+    // Fetch commission chain when contact changes
+    useEffect(() => {
+        if (!selectedContactId) {
+            setCommissionChain([]);
+            return;
+        }
+
+        const fetchChain = async () => {
+            const { data: contact } = await supabase
+                .from('contacts')
+                .select('assigned_rep_id')
+                .eq('id', selectedContactId)
+                .single();
+
+            if (!contact?.assigned_rep_id) {
+                setCommissionChain([]);
+                return;
+            }
+
+            const chain: CommissionChainEntry[] = [];
+
+            const { data: rep } = await supabase
+                .from('profiles')
+                .select('id, full_name, commission_rate, parent_rep_id, partner_tier')
+                .eq('id', contact.assigned_rep_id)
+                .single();
+
+            if (rep) {
+                const rate = rep.commission_rate != null ? Number(rep.commission_rate) : 0.10;
+                chain.push({
+                    profileId: rep.id,
+                    name: rep.full_name || 'Unknown Rep',
+                    tier: rep.partner_tier || 'standard',
+                    type: 'direct',
+                    defaultRate: rate,
+                    mode: 'percentage',
+                    value: rate * 100,
+                });
+
+                if (rep.parent_rep_id) {
+                    const { data: parent } = await supabase
+                        .from('profiles')
+                        .select('id, full_name, commission_rate, parent_rep_id, partner_tier')
+                        .eq('id', rep.parent_rep_id)
+                        .single();
+
+                    if (parent) {
+                        const parentRate = parent.commission_rate != null ? Number(parent.commission_rate) : 0.05;
+                        chain.push({
+                            profileId: parent.id,
+                            name: parent.full_name || 'Unknown',
+                            tier: parent.partner_tier || 'standard',
+                            type: 'second_tier_override',
+                            defaultRate: parentRate,
+                            mode: 'percentage',
+                            value: parentRate * 100,
+                        });
+
+                        if (parent.parent_rep_id) {
+                            const { data: gp } = await supabase
+                                .from('profiles')
+                                .select('id, full_name, commission_rate, partner_tier')
+                                .eq('id', parent.parent_rep_id)
+                                .single();
+
+                            if (gp) {
+                                const gpRate = gp.commission_rate != null ? Number(gp.commission_rate) : 0.03;
+                                chain.push({
+                                    profileId: gp.id,
+                                    name: gp.full_name || 'Unknown',
+                                    tier: gp.partner_tier || 'standard',
+                                    type: 'third_tier_override',
+                                    defaultRate: gpRate,
+                                    mode: 'percentage',
+                                    value: gpRate * 100,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            setCommissionChain(chain);
+        };
+
+        fetchChain();
+    }, [selectedContactId]);
+
     // Handle adding to cart
     const addToCart = (peptide: Peptide) => {
         const baseCost = getBaseCost(peptide, activeProfile);
@@ -240,14 +340,38 @@ export default function NewOrder() {
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
-    // Calculate total commission based on line items
-    // Comm = UnitPrice * CommRate * Qty — zeroed when commission is disabled
+    // Calculate total commission — chain-based when chain exists, per-item rates otherwise
     const totalCommission = commissionEnabled
-        ? cart.reduce((sum, item) => sum + (item.unitPrice * item.commissionRate * item.quantity), 0)
+        ? (commissionChain.length > 0
+            ? commissionChain.reduce((sum, entry) => {
+                const amount = entry.mode === 'percentage'
+                    ? (entry.value / 100) * cartTotal
+                    : entry.value;
+                return sum + Math.max(0, Math.round(amount * 100) / 100);
+            }, 0)
+            : cart.reduce((sum, item) => sum + (item.unitPrice * item.commissionRate * item.quantity), 0)
+        )
         : 0;
 
     const handleSubmit = async () => {
         if (!selectedContactId || cart.length === 0) return;
+
+        // Build manual commission entries when chain is active
+        const manualCommissions = commissionEnabled && commissionChain.length > 0
+            ? commissionChain.filter(e => {
+                const amt = e.mode === 'percentage' ? (e.value / 100) * cartTotal : e.value;
+                return amt > 0;
+            }).map(entry => ({
+                profile_id: entry.profileId,
+                amount: Math.round(
+                    (entry.mode === 'percentage' ? (entry.value / 100) * cartTotal : entry.value) * 100
+                ) / 100,
+                commission_rate: entry.mode === 'percentage'
+                    ? entry.value / 100
+                    : (cartTotal > 0 ? entry.value / cartTotal : 0),
+                type: entry.type,
+            }))
+            : undefined;
 
         try {
             await createOrder.mutateAsync({
@@ -261,7 +385,8 @@ export default function NewOrder() {
                     quantity: item.quantity,
                     unit_price: item.unitPrice
                 })),
-                commission_amount: totalCommission // Send calculated commission
+                commission_amount: totalCommission,
+                manual_commissions: manualCommissions,
             });
             navigate('/sales');
         } catch (error) {
@@ -490,8 +615,8 @@ export default function NewOrder() {
                                             </div>
                                         </div>
 
-                                        {/* Calculated commission display */}
-                                        {commissionEnabled && (
+                                        {/* Calculated commission display — hidden when chain-based */}
+                                        {commissionEnabled && commissionChain.length === 0 && (
                                             <div className="text-right text-xs text-muted-foreground">
                                                 Comm: ${(item.unitPrice * item.commissionRate * item.quantity).toFixed(2)} ({(item.commissionRate * 100).toFixed(0)}%)
                                             </div>
@@ -593,6 +718,97 @@ export default function NewOrder() {
                             : <ToggleLeft className="h-6 w-6 text-muted-foreground" />
                         }
                     </div>
+
+                    {/* Commission Chain — who gets paid */}
+                    {commissionEnabled && commissionChain.length > 0 && (
+                        <div className="space-y-3 p-3 rounded-lg border border-green-500/20 bg-green-500/5">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Commission Breakdown</p>
+                            {commissionChain.map((entry, idx) => {
+                                const calcAmount = entry.mode === 'percentage'
+                                    ? Math.round((entry.value / 100) * cartTotal * 100) / 100
+                                    : Math.round(entry.value * 100) / 100;
+                                const calcPct = entry.mode === 'flat' && cartTotal > 0
+                                    ? ((entry.value / cartTotal) * 100).toFixed(1)
+                                    : null;
+
+                                return (
+                                    <div key={entry.profileId} className="flex flex-col gap-1.5 p-2.5 rounded-md bg-background border border-border/40">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium">{entry.name}</span>
+                                                <Badge variant="outline" className="text-[10px] h-5">
+                                                    {entry.type === 'direct' ? 'Direct' : entry.type === 'second_tier_override' ? '2nd Tier' : '3rd Tier'}
+                                                </Badge>
+                                            </div>
+                                            <span className="text-sm font-bold text-green-600">${calcAmount.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex border rounded-md overflow-hidden">
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        "px-2 py-1 text-xs transition-colors",
+                                                        entry.mode === 'percentage'
+                                                            ? "bg-primary text-primary-foreground"
+                                                            : "bg-muted hover:bg-muted/80"
+                                                    )}
+                                                    onClick={() => {
+                                                        setCommissionChain(prev => prev.map((e, i) =>
+                                                            i === idx ? { ...e, mode: 'percentage', value: e.defaultRate * 100 } : e
+                                                        ));
+                                                    }}
+                                                >
+                                                    <Percent className="h-3 w-3" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        "px-2 py-1 text-xs transition-colors",
+                                                        entry.mode === 'flat'
+                                                            ? "bg-primary text-primary-foreground"
+                                                            : "bg-muted hover:bg-muted/80"
+                                                    )}
+                                                    onClick={() => {
+                                                        const flatDefault = Math.round(entry.defaultRate * cartTotal * 100) / 100;
+                                                        setCommissionChain(prev => prev.map((e, i) =>
+                                                            i === idx ? { ...e, mode: 'flat', value: flatDefault } : e
+                                                        ));
+                                                    }}
+                                                >
+                                                    <DollarSign className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                            <div className="relative flex-1">
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    step={entry.mode === 'percentage' ? '0.5' : '0.01'}
+                                                    value={entry.value}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value) || 0;
+                                                        setCommissionChain(prev => prev.map((e2, i) =>
+                                                            i === idx ? { ...e2, value: val } : e2
+                                                        ));
+                                                    }}
+                                                    className="h-8 text-right pr-8"
+                                                />
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                                    {entry.mode === 'percentage' ? '%' : '$'}
+                                                </span>
+                                            </div>
+                                            {calcPct && (
+                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">({calcPct}%)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <div className="flex justify-between text-sm font-bold pt-1 border-t border-green-500/20">
+                                <span>Total Commission</span>
+                                <span className="text-green-600">${totalCommission.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
 
                 </CardContent>
 

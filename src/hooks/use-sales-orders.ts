@@ -105,6 +105,12 @@ export interface CreateSalesOrderInput {
     delivery_method?: string;
     commission_amount?: number;
     auto_fulfill?: boolean; // default false — set true only for admin inline fulfillment
+    manual_commissions?: {
+        profile_id: string;
+        amount: number;
+        commission_rate: number;
+        type: 'direct' | 'second_tier_override' | 'third_tier_override';
+    }[];
 }
 
 export function useSalesOrders(status?: SalesOrderStatus) {
@@ -291,13 +297,32 @@ export function useCreateSalesOrder() {
 
             if (itemsError) throw itemsError;
 
-            // Process commission records (direct + override for upline)
-            // Skip commission processing entirely for 2x / zero-commission orders
+            // Process commission records
             if (commissionAmount > 0) {
-                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
-                if (rpcError) {
-                    console.error("Commission processing failed:", rpcError);
-                    toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                if (input.manual_commissions && input.manual_commissions.length > 0) {
+                    // Manual commission entries — insert directly, skip RPC
+                    const commEntries = input.manual_commissions.map(mc => ({
+                        sale_id: order.id,
+                        partner_id: mc.profile_id,
+                        amount: mc.amount,
+                        commission_rate: mc.commission_rate,
+                        type: mc.type,
+                        status: 'pending' as const,
+                    }));
+                    const { error: commError } = await supabase
+                        .from('commissions')
+                        .insert(commEntries);
+                    if (commError) {
+                        console.error("Manual commission insert failed:", commError);
+                        toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
+                    }
+                } else {
+                    // Auto commission via RPC (existing behavior)
+                    const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
+                    if (rpcError) {
+                        console.error("Commission processing failed:", rpcError);
+                        toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                    }
                 }
             }
 
