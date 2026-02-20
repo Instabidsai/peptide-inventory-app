@@ -18,6 +18,8 @@ export interface IncludeSections {
 }
 
 export interface EnrichedProtocolItem {
+    /** Unique instance key — allows same peptide to appear multiple times */
+    instanceId: string;
     peptideId: string;
     peptideName: string;
     vialSizeMg: number | null;

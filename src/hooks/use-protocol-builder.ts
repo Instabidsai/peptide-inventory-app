@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +50,28 @@ export function useProtocolBuilder() {
         enabled: !!profile?.org_id,
     });
 
+    // Saved protocols (for "Load Saved" dropdown)
+    const queryClient = useQueryClient();
+    const { data: savedProtocols } = useQuery({
+        queryKey: ['saved-protocols-list', profile?.org_id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('protocols')
+                .select('id, name, created_at, contact_id, protocol_items(count)')
+                .eq('org_id', profile!.org_id!)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            return (data || []).map(p => ({
+                id: p.id,
+                name: p.name,
+                createdAt: p.created_at,
+                contactId: p.contact_id,
+                itemCount: (p.protocol_items as any)?.[0]?.count ?? 0,
+            }));
+        },
+        enabled: !!profile?.org_id,
+    });
+
     const selectedContact = contacts?.find(c => c.id === selectedContactId);
     const clientName = selectedContact?.name?.split(' ')[0] || '';
     const clientFullName = selectedContact?.name || '';
@@ -72,6 +94,7 @@ export function useProtocolBuilder() {
             ?? (tiers.length > 0 ? tiers[0] : null);
 
         return {
+            instanceId: crypto.randomUUID(),
             peptideId: peptide.id,
             peptideName: peptide.name,
             vialSizeMg: knowledge?.vialSizeMg ?? null,
@@ -240,6 +263,52 @@ export function useProtocolBuilder() {
         setItems(newItems);
     }, [peptides, enrichPeptide]);
 
+    // ── Saved Protocol Loading ───────────────────────────────────
+
+    const loadSavedProtocol = useCallback(async (protocolId: string) => {
+        if (!peptides) return;
+
+        const { data: protocol, error: pErr } = await supabase
+            .from('protocols')
+            .select('name, contact_id')
+            .eq('id', protocolId)
+            .single();
+
+        const { data: savedItems, error } = await supabase
+            .from('protocol_items')
+            .select('peptide_id, dosage_amount, dosage_unit, frequency, timing, notes')
+            .eq('protocol_id', protocolId);
+
+        if (error || pErr) {
+            toast.error('Failed to load saved protocol');
+            return;
+        }
+
+        if (protocol?.contact_id) {
+            setSelectedContactId(protocol.contact_id);
+        }
+        if (protocol?.name) {
+            setProtocolName(protocol.name);
+        }
+
+        const newItems: EnrichedProtocolItem[] = [];
+        for (const si of (savedItems || [])) {
+            const peptide = peptides.find(p => p.id === si.peptide_id);
+            if (peptide) {
+                const item = enrichPeptide(peptide);
+                // Override with saved values
+                if (si.dosage_amount) item.doseAmount = si.dosage_amount;
+                if (si.dosage_unit) item.doseUnit = si.dosage_unit;
+                if (si.frequency) item.frequency = si.frequency;
+                if (si.timing) item.timing = si.timing;
+                if (si.notes) item.notes = si.notes;
+                newItems.push(item);
+            }
+        }
+        setItems(newItems);
+        toast.success(`Loaded "${protocol?.name || 'protocol'}"`);
+    }, [peptides, enrichPeptide]);
+
     // ── URL Search Params ──────────────────────────────────────
 
     useEffect(() => {
@@ -342,6 +411,7 @@ export function useProtocolBuilder() {
         orgName,
         includeSupplies,
         protocolName,
+        savedProtocols,
 
         // Actions
         setSelectedContactId,
@@ -357,6 +427,7 @@ export function useProtocolBuilder() {
         clearAll,
         loadTemplate,
         loadFromOrder,
+        loadSavedProtocol,
 
         // Output
         html,

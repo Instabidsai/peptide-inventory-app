@@ -32,10 +32,11 @@ interface ProtocolItemEditorProps {
     onToggleSection: (index: number, section: keyof IncludeSections) => void;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
+    defaultExpanded?: boolean;
 }
 
-export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier, onToggleSection, onMoveUp, onMoveDown }: ProtocolItemEditorProps) {
-    const [expanded, setExpanded] = useState(false);
+export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier, onToggleSection, onMoveUp, onMoveDown, defaultExpanded = false }: ProtocolItemEditorProps) {
+    const [expanded, setExpanded] = useState(defaultExpanded);
     const ml = calcMl(item);
     const units = calcUnits(ml);
     const inc = item.includeSections;

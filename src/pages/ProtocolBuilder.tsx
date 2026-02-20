@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProtocolBuilder } from '@/hooks/use-protocol-builder';
 import { useProtocols } from '@/hooks/use-protocols';
 import { lookupKnowledge, RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, CATEGORY_META } from '@/data/protocol-knowledge';
@@ -16,12 +17,21 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2, Save, Check,
-    ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package,
+    ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package, FolderOpen,
 } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 
 export default function ProtocolBuilder() {
     const builder = useProtocolBuilder();
     const { createProtocol } = useProtocols(builder.selectedContactId || undefined);
+    const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [saved, setSaved] = useState(false);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -44,6 +54,7 @@ export default function ProtocolBuilder() {
                 duration_days: 56, // 8 weeks default
             })),
         });
+        queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
     };
@@ -148,11 +159,40 @@ export default function ProtocolBuilder() {
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                         Quick Templates
                     </h3>
-                    {builder.items.length > 0 && (
-                        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={builder.clearAll}>
-                            <Trash2 className="h-3 w-3 mr-1" /> Clear All
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                        {builder.savedProtocols && builder.savedProtocols.length > 0 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                                        <FolderOpen className="h-3 w-3 mr-1" /> Load Saved
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-72">
+                                    <DropdownMenuLabel className="text-xs">Recent Protocols</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {builder.savedProtocols.map(p => (
+                                        <DropdownMenuItem
+                                            key={p.id}
+                                            onClick={() => builder.loadSavedProtocol(p.id)}
+                                            className="flex flex-col items-start gap-0.5 cursor-pointer"
+                                        >
+                                            <span className="text-sm font-medium truncate w-full">{p.name}</span>
+                                            <span className="text-[11px] text-muted-foreground">
+                                                {p.itemCount} peptide{p.itemCount !== 1 ? 's' : ''}
+                                                {' \u00B7 '}
+                                                {new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                        {builder.items.length > 0 && (
+                            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={builder.clearAll}>
+                                <Trash2 className="h-3 w-3 mr-1" /> Clear All
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <TemplatePicker
                     onSelect={builder.loadTemplate}
@@ -289,22 +329,31 @@ export default function ProtocolBuilder() {
                     </Card>
 
                     {/* Sticky Summary Bar */}
-                    {builder.items.length >= 2 && (
-                        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border rounded-lg p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3 text-sm">
-                                <Badge variant="secondary">{builder.items.length} peptides</Badge>
-                                <span className="text-muted-foreground text-xs">
-                                    {builder.items.filter(i => i.frequency === 'daily').length > 0 &&
-                                        `${builder.items.filter(i => i.frequency === 'daily').length} daily`}
-                                    {builder.items.filter(i => i.frequency !== 'daily').length > 0 &&
-                                        ` ${'\u00B7'} ${builder.items.filter(i => i.frequency !== 'daily').length} other schedule`}
-                                </span>
+                    {builder.items.length >= 2 && (() => {
+                        const injectable = builder.items.filter(i => i.administrationRoute !== 'oral' && i.administrationRoute !== 'topical');
+                        const oral = builder.items.filter(i => i.administrationRoute === 'oral');
+                        return (
+                            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border rounded-lg p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-sm flex-wrap">
+                                    <Badge variant="secondary">{builder.items.length} peptides</Badge>
+                                    {injectable.length > 0 && (
+                                        <Badge variant="outline" className="text-[11px]">
+                                            <Syringe className="h-3 w-3 mr-1" />
+                                            {injectable.length} injectable
+                                        </Badge>
+                                    )}
+                                    {oral.length > 0 && (
+                                        <Badge variant="outline" className="text-[11px]">
+                                            {oral.length} oral
+                                        </Badge>
+                                    )}
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-xs lg:hidden" onClick={scrollToPreview}>
+                                    View Preview
+                                </Button>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-xs lg:hidden" onClick={scrollToPreview}>
-                                View Preview
-                            </Button>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Protocol Items */}
                     {builder.items.length > 0 && (
@@ -314,7 +363,7 @@ export default function ProtocolBuilder() {
                             </h3>
                             {builder.items.map((item, idx) => (
                                 <ProtocolItemEditor
-                                    key={item.peptideId}
+                                    key={item.instanceId}
                                     item={item}
                                     index={idx}
                                     onUpdate={builder.updateItem}
@@ -323,6 +372,7 @@ export default function ProtocolBuilder() {
                                     onToggleSection={builder.toggleSection}
                                     onMoveUp={idx > 0 ? () => builder.moveItem(idx, idx - 1) : undefined}
                                     onMoveDown={idx < builder.items.length - 1 ? () => builder.moveItem(idx, idx + 1) : undefined}
+                                    defaultExpanded={builder.items.length === 1 && idx === 0}
                                 />
                             ))}
                         </div>
