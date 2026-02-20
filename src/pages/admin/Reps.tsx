@@ -343,7 +343,12 @@ export default function Reps() {
                                                     <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
                                                     <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
                                                     <TableCell className="capitalize">
-                                                        <Badge variant="secondary" className={rep.partner_tier === 'referral' ? 'bg-sky-900/20 text-sky-400 border-sky-500/40' : ''}>{rep.partner_tier || 'Standard'}</Badge>
+                                                        <Badge
+                                                            variant={rep.partner_tier === 'referral' ? 'outline' : 'secondary'}
+                                                            className={rep.partner_tier === 'referral' ? 'bg-sky-900/30 text-sky-400 border-sky-500/50' : ''}
+                                                        >
+                                                            {rep.partner_tier || 'Standard'}
+                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">
                                                         ${(repStats?.get(rep.id)?.volume || 0).toFixed(2)}
@@ -659,7 +664,12 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                     >
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-sm">{rep.full_name || 'Unnamed'}</p>
-                                            <Badge variant="secondary" className="text-xs capitalize">{rep.partner_tier || 'standard'}</Badge>
+                                            <Badge
+                                                variant={rep.partner_tier === 'referral' ? 'outline' : 'secondary'}
+                                                className={`text-xs capitalize ${rep.partner_tier === 'referral' ? 'bg-sky-900/30 text-sky-400 border-sky-500/50' : ''}`}
+                                            >
+                                                {rep.partner_tier || 'standard'}
+                                            </Badge>
                                             <span className="text-xs text-muted-foreground ml-auto">{rep.email}</span>
                                         </div>
                                         <div className="flex items-center gap-2">

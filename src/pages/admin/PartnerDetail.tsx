@@ -240,7 +240,7 @@ export default function PartnerDetail() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold capitalize">{partner.partner_tier || 'Standard'}</div>
+                        <div className={`text-2xl font-bold capitalize ${partner.partner_tier === 'referral' ? 'text-sky-400' : ''}`}>{partner.partner_tier || 'Standard'}</div>
                     </CardContent>
                 </Card>
                 <Card>
