@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import type { EnrichedProtocolItem } from '@/lib/protocol-html-generator';
+import type { EnrichedProtocolItem, IncludeSections } from '@/lib/protocol-html-generator';
 import { calcMl, calcUnits, formatMl, formatFrequencyShort } from '@/lib/protocol-html-generator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-    X, ChevronDown, ChevronUp, Calculator, ChevronRight, AlertTriangle, Pill, Droplets,
+    X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Pill, Droplets, Syringe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,12 +28,25 @@ interface ProtocolItemEditorProps {
     onUpdate: (index: number, field: keyof EnrichedProtocolItem, value: string | number | null) => void;
     onRemove: (index: number) => void;
     onSelectTier: (index: number, tierId: string) => void;
+    onToggleSection: (index: number, section: keyof IncludeSections) => void;
 }
 
-export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier }: ProtocolItemEditorProps) {
+export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTier, onToggleSection }: ProtocolItemEditorProps) {
     const [expanded, setExpanded] = useState(false);
     const ml = calcMl(item);
     const units = calcUnits(ml);
+    const inc = item.includeSections;
+
+    // Count how many optional sections exist for this peptide
+    const sectionCount = [
+        item.protocolDescription,
+        item.reconstitutionMl > 0 && item.vialSizeMg,
+        item.warningText,
+        item.cyclePattern,
+        item.selectedTierId && item.availableTiers.find(t => t.id === item.selectedTierId)?.notes,
+        item.supplements.length > 0,
+        item.dosageSchedule,
+    ].filter(Boolean).length;
 
     return (
         <Card className="relative group">
@@ -175,20 +189,36 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                     </div>
                 </div>
 
-                {/* Calc display */}
-                <div className="flex items-center justify-between mt-2.5">
-                    <div className="flex items-center gap-2">
-                        {ml !== null && units !== null ? (
-                            <Badge variant="secondary" className="text-xs font-mono gap-1">
-                                <ChevronRight className="h-3 w-3" />
-                                {formatMl(ml)} mL / {units} units
+                {/* Calc display — PROMINENT */}
+                {ml !== null && units !== null ? (
+                    <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border-2 border-emerald-500/25">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Syringe className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                <div>
+                                    <div className="text-lg font-bold font-mono text-emerald-700 dark:text-emerald-300">
+                                        {formatMl(ml)} mL
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        = {units} units on insulin syringe
+                                    </div>
+                                </div>
+                            </div>
+                            <Badge variant="outline" className="text-xs font-mono">
+                                {item.doseAmount} {item.doseUnit} dose
                             </Badge>
-                        ) : (
-                            <span className="text-[11px] text-muted-foreground">
-                                {item.administrationRoute === 'oral' ? 'Oral — no injection calc' : 'Set vial size + water for draw calc'}
-                            </span>
-                        )}
+                        </div>
                     </div>
+                ) : (
+                    <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border">
+                        <span className="text-sm text-muted-foreground">
+                            {item.administrationRoute === 'oral' ? 'Oral — no injection calc' : 'Set vial size + water for draw calc'}
+                        </span>
+                    </div>
+                )}
+
+                {/* Expand toggle */}
+                <div className="flex items-center justify-end mt-2">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -196,87 +226,150 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                         onClick={() => setExpanded(!expanded)}
                     >
                         {expanded ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
-                        {expanded ? 'Less' : 'More'}
+                        {expanded ? 'Less' : `More${sectionCount > 0 ? ` (${sectionCount})` : ''}`}
                     </Button>
                 </div>
 
-                {/* Expanded section */}
+                {/* Expanded section — each section has a toggle checkbox */}
                 {expanded && (
-                    <div className="mt-3 pt-3 border-t space-y-3">
+                    <div className="mt-2 pt-3 border-t space-y-3">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                            Toggle sections to include in email
+                        </p>
+
                         {/* Description */}
                         {item.protocolDescription && (
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Description</Label>
-                                <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
-                                    {item.protocolDescription}
-                                </p>
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.description && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.description}
+                                    onCheckedChange={() => onToggleSection(index, 'description')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <Label className="text-xs text-muted-foreground">Description</Label>
+                                    <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
+                                        {item.protocolDescription}
+                                    </p>
+                                </div>
                             </div>
                         )}
 
-                        {/* Tier notes */}
-                        {item.selectedTierId && item.availableTiers.find(t => t.id === item.selectedTierId)?.notes && (
-                            <div className="p-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
-                                <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                                    <span className="font-medium">Protocol Notes:</span>{' '}
-                                    {item.availableTiers.find(t => t.id === item.selectedTierId)!.notes}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Warning */}
-                        {item.warningText && (
-                            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
-                                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                                    {item.warningText}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Cycle pattern */}
-                        {item.cyclePattern && (
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Cycle Pattern</Label>
-                                <p className="text-xs mt-0.5">{item.cyclePattern}</p>
+                        {/* Reconstitution */}
+                        {item.reconstitutionMl > 0 && item.vialSizeMg != null && (
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.reconstitution && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.reconstitution}
+                                    onCheckedChange={() => onToggleSection(index, 'reconstitution')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <Label className="text-xs text-muted-foreground">Reconstitution Instructions</Label>
+                                    <p className="text-xs mt-0.5">
+                                        Add {item.reconstitutionMl} mL of bacteriostatic water to a {item.vialSizeMg} mg vial.
+                                    </p>
+                                </div>
                             </div>
                         )}
 
                         {/* Dosage schedule */}
                         {item.dosageSchedule && (
-                            <div>
-                                <Label className="text-xs text-muted-foreground">Dosage Schedule</Label>
-                                <p className="text-xs mt-0.5 whitespace-pre-line">{item.dosageSchedule}</p>
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.dosageSchedule && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.dosageSchedule}
+                                    onCheckedChange={() => onToggleSection(index, 'dosageSchedule')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <Label className="text-xs text-muted-foreground">Dosage Schedule</Label>
+                                    <p className="text-xs mt-0.5 whitespace-pre-line">{item.dosageSchedule}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tier notes */}
+                        {item.selectedTierId && item.availableTiers.find(t => t.id === item.selectedTierId)?.notes && (
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.tierNotes && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.tierNotes}
+                                    onCheckedChange={() => onToggleSection(index, 'tierNotes')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0 p-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+                                    <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                                        <span className="font-medium">Protocol Notes:</span>{' '}
+                                        {item.availableTiers.find(t => t.id === item.selectedTierId)!.notes}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Warning */}
+                        {item.warningText && (
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.warning && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.warning}
+                                    onCheckedChange={() => onToggleSection(index, 'warning')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                        {item.warningText}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Cycle pattern */}
+                        {item.cyclePattern && (
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.cyclePattern && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.cyclePattern}
+                                    onCheckedChange={() => onToggleSection(index, 'cyclePattern')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <Label className="text-xs text-muted-foreground">Cycle Pattern</Label>
+                                    <p className="text-xs mt-0.5">{item.cyclePattern}</p>
+                                </div>
                             </div>
                         )}
 
                         {/* Supplements */}
                         {item.supplements.length > 0 && (
-                            <div>
-                                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Pill className="h-3 w-3" /> Recommended Supplements
-                                </Label>
-                                <div className="space-y-1.5 mt-1">
-                                    {item.supplements.map((supp, sIdx) => (
-                                        <div key={sIdx} className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs">
-                                            <span className="font-medium">{supp.name}</span>
-                                            <span className="text-muted-foreground"> — {supp.dosage}</span>
-                                            {supp.productName && (
-                                                <span className="block text-muted-foreground mt-0.5">
-                                                    Product: {supp.productName}
-                                                    {supp.productLink && (
-                                                        <a
-                                                            href={supp.productLink}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="ml-1 text-blue-500 underline"
-                                                        >
-                                                            (Amazon)
-                                                        </a>
-                                                    )}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
+                            <div className={cn('flex gap-2.5 transition-opacity', !inc.supplements && 'opacity-40')}>
+                                <Checkbox
+                                    checked={inc.supplements}
+                                    onCheckedChange={() => onToggleSection(index, 'supplements')}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Pill className="h-3 w-3" /> Recommended Supplements
+                                    </Label>
+                                    <div className="space-y-1.5 mt-1">
+                                        {item.supplements.map((supp, sIdx) => (
+                                            <div key={sIdx} className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs">
+                                                <span className="font-medium">{supp.name}</span>
+                                                <span className="text-muted-foreground"> — {supp.dosage}</span>
+                                                {supp.productName && (
+                                                    <span className="block text-muted-foreground mt-0.5">
+                                                        Product: {supp.productName}
+                                                        {supp.productLink && (
+                                                            <a
+                                                                href={supp.productLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="ml-1 text-blue-500 underline"
+                                                            >
+                                                                (Amazon)
+                                                            </a>
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}

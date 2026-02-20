@@ -6,6 +6,16 @@ import type { SupplementNote, DosingTier } from '@/data/protocol-knowledge';
 
 // ── Types ──────────────────────────────────────────────────────
 
+export interface IncludeSections {
+    description: boolean;
+    reconstitution: boolean;
+    warning: boolean;
+    cyclePattern: boolean;
+    tierNotes: boolean;
+    supplements: boolean;
+    dosageSchedule: boolean;
+}
+
 export interface EnrichedProtocolItem {
     peptideId: string;
     peptideName: string;
@@ -27,6 +37,8 @@ export interface EnrichedProtocolItem {
     // Dosing tier support
     selectedTierId: string | null;
     availableTiers: DosingTier[];
+    // Section toggles — controls what appears in email output
+    includeSections: IncludeSections;
 }
 
 interface GeneratorOptions {
@@ -38,6 +50,7 @@ interface GeneratorOptions {
 // ── Shared Helpers ─────────────────────────────────────────────
 
 export function calcMl(item: { doseAmount: number; doseUnit: string; concentrationMgMl: number; vialSizeMg?: number | null; reconstitutionMl?: number }): number | null {
+    if (!item.doseAmount || item.doseAmount <= 0) return null;
     // Always derive concentration from vial/water when available (never stale)
     let concentration = item.concentrationMgMl;
     if (item.vialSizeMg != null && item.vialSizeMg > 0 && item.reconstitutionMl != null && item.reconstitutionMl > 0) {
@@ -130,6 +143,7 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         const selectedTier = item.availableTiers?.find(t => t.id === item.selectedTierId);
 
         let sections = '';
+        const inc = item.includeSections;
 
         // Tier badge
         if (selectedTier) {
@@ -137,46 +151,60 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         }
 
         // Description
-        if (item.protocolDescription) {
+        if (item.protocolDescription && inc.description) {
             sections += `<p style="margin:8px 0 12px;color:#374151;line-height:1.6;">${escapeHtml(item.protocolDescription)}</p>`;
         }
 
         // Reconstitution
-        if (item.reconstitutionMl > 0 && item.vialSizeMg) {
+        if (item.reconstitutionMl > 0 && item.vialSizeMg && inc.reconstitution) {
             sections += `<p style="margin:4px 0;color:#374151;"><strong>Reconstitution:</strong> Add ${item.reconstitutionMl} mL of bacteriostatic water to a ${item.vialSizeMg} mg vial.</p>`;
         }
 
-        // Dosage
-        if (item.dosageSchedule) {
+        // Dosage — ALWAYS included, prominent styling
+        if (item.dosageSchedule && inc.dosageSchedule) {
             const scheduleLines = item.dosageSchedule.split('\n').map(l => escapeHtml(l)).join('<br/>');
-            sections += `<p style="margin:4px 0;color:#374151;"><strong>Dosage Schedule:</strong><br/>${scheduleLines}</p>`;
+            sections += `
+                <div style="margin:12px 0;padding:14px 18px;background:#F0FDF4;border:2px solid #86EFAC;border-radius:8px;">
+                    <p style="margin:0;color:#166534;font-size:16px;font-weight:700;">\uD83D\uDC89 Dosage Schedule</p>
+                    <p style="margin:6px 0 0;color:#166534;font-size:14px;line-height:1.7;">${scheduleLines}</p>
+                </div>`;
         } else {
             const doseLabel = formatDoseLabel(item);
             const route = formatRoute(item.administrationRoute);
             const freq = formatFrequency(item.frequency);
-            sections += `<p style="margin:4px 0;color:#374151;"><strong>Dosage:</strong> ${escapeHtml(doseLabel)} administered ${route} ${freq}.</p>`;
+            sections += `
+                <div style="margin:12px 0;padding:14px 18px;background:#F0FDF4;border:2px solid #86EFAC;border-radius:8px;">
+                    <p style="margin:0;color:#166534;font-size:18px;font-weight:700;">
+                        \uD83D\uDC89 ${escapeHtml(doseLabel)} \u2014 ${route}, ${freq}
+                    </p>
+                </div>`;
         }
 
         // Timing
-        sections += `<p style="margin:4px 0;color:#374151;"><strong>Timing:</strong> ${escapeHtml(item.timing === 'none' ? 'No specific preference' : item.timing)}${item.stackLabel && item.stackLabel.includes('Part 2') ? ' (Take this shot 30 minutes AFTER the previous).' : item.stackLabel && item.stackLabel.includes('Part 1') ? ' (Take this shot 1st, on an empty stomach).' : '.'}</p>`;
+        sections += `<p style="margin:8px 0;color:#374151;font-size:14px;"><strong>Timing:</strong> ${escapeHtml(item.timing === 'none' ? 'No specific preference' : item.timing)}${item.stackLabel && item.stackLabel.includes('Part 2') ? ' (Take this shot 30 minutes AFTER the previous).' : item.stackLabel && item.stackLabel.includes('Part 1') ? ' (Take this shot 1st, on an empty stomach).' : '.'}</p>`;
 
-        // Draw
-        if (units !== null) {
-            sections += `<p style="margin:4px 0;color:#374151;"><strong>Draw:</strong> ${units} units on a U-100 insulin syringe.</p>`;
+        // Draw — ALWAYS included when available, prominent styling
+        if (units !== null && ml !== null) {
+            sections += `
+                <div style="margin:8px 0 12px;padding:12px 18px;background:#EFF6FF;border:2px solid #93C5FD;border-radius:8px;">
+                    <p style="margin:0;color:#1E40AF;font-size:16px;font-weight:700;">
+                        \uD83D\uDD35 Draw: ${units} units (${formatMl(ml)} mL) on a U-100 insulin syringe
+                    </p>
+                </div>`;
         }
 
         // Cycle pattern
-        if (item.cyclePattern) {
+        if (item.cyclePattern && inc.cyclePattern) {
             sections += `<p style="margin:4px 0;color:#374151;"><strong>Cycle:</strong> ${escapeHtml(item.cyclePattern)}</p>`;
         }
 
         // Tier notes
-        if (selectedTier?.notes) {
+        if (selectedTier?.notes && inc.tierNotes) {
             sections += `<p style="margin:4px 0;color:#4B5563;font-size:13px;font-style:italic;"><strong>Protocol Notes:</strong> ${escapeHtml(selectedTier.notes)}</p>`;
         }
 
         // Warning
-        if (item.warningText) {
+        if (item.warningText && inc.warning) {
             sections += `
                 <div style="margin:10px 0;padding:10px 14px;background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:4px;">
                     <p style="margin:0;color:#92400E;font-size:13px;"><strong>\u26A0\uFE0F Warning:</strong> ${escapeHtml(item.warningText)}</p>
@@ -184,7 +212,7 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         }
 
         // Supplement notes
-        if (item.supplements.length > 0) {
+        if (item.supplements.length > 0 && inc.supplements) {
             for (const supp of item.supplements) {
                 let suppHtml = `<div style="margin:10px 0;padding:10px 14px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:4px;">`;
                 suppHtml += `<p style="margin:0 0 4px;color:#1E40AF;font-size:13px;"><strong>\uD83D\uDC8A Supplement Note:</strong> ${escapeHtml(supp.reason)}</p>`;
@@ -284,6 +312,7 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'Peptid
         const units = calcUnits(ml);
         const vialLabel = item.vialSizeMg ? ` (${item.vialSizeMg} mg Vial)` : '';
         const stackLabel = item.stackLabel ? ` - ${item.stackLabel}` : '';
+        const inc = item.includeSections;
 
         const selectedTierTxt = item.availableTiers?.find(t => t.id === item.selectedTierId);
 
@@ -294,51 +323,53 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'Peptid
         }
         lines.push('');
 
-        if (item.protocolDescription) {
+        if (item.protocolDescription && inc.description) {
             lines.push(`Description: ${item.protocolDescription}`);
             lines.push('');
         }
 
-        if (item.reconstitutionMl > 0 && item.vialSizeMg) {
+        if (item.reconstitutionMl > 0 && item.vialSizeMg && inc.reconstitution) {
             lines.push(`Reconstitution: Add ${item.reconstitutionMl} mL of bacteriostatic water to a ${item.vialSizeMg} mg vial.`);
         }
 
-        if (item.dosageSchedule) {
+        if (item.dosageSchedule && inc.dosageSchedule) {
             lines.push(`Dosage Schedule:`);
             item.dosageSchedule.split('\n').forEach(l => lines.push(`  ${l}`));
         } else {
             const doseLabel = formatDoseLabel(item);
             const route = formatRoute(item.administrationRoute);
             const freq = formatFrequency(item.frequency);
-            lines.push(`Dosage: ${doseLabel} administered ${route} ${freq}.`);
+            lines.push(`>>> DOSAGE: ${doseLabel} administered ${route} ${freq}.`);
         }
 
         const timingText = item.timing === 'none' ? 'No specific preference' : item.timing;
         lines.push(`Timing: ${timingText}.`);
 
-        if (units !== null) {
-            lines.push(`Draw: ${units} units on a U-100 insulin syringe.`);
+        if (units !== null && ml !== null) {
+            lines.push(`>>> DRAW: ${units} units (${formatMl(ml)} mL) on a U-100 insulin syringe.`);
         }
 
-        if (item.cyclePattern) {
+        if (item.cyclePattern && inc.cyclePattern) {
             lines.push(`Cycle: ${item.cyclePattern}`);
         }
 
-        if (selectedTierTxt?.notes) {
+        if (selectedTierTxt?.notes && inc.tierNotes) {
             lines.push(`Protocol Notes: ${selectedTierTxt.notes}`);
         }
 
-        if (item.warningText) {
+        if (item.warningText && inc.warning) {
             lines.push('');
             lines.push(`\u26A0 Warning: ${item.warningText}`);
         }
 
-        for (const supp of item.supplements) {
-            lines.push('');
-            lines.push(`Supplement Note: ${supp.reason}`);
-            lines.push(`  Dosage: ${supp.dosage}`);
-            if (supp.productName) {
-                lines.push(`  Recommended Product: ${supp.productName}${supp.productLink ? ` (${supp.productLink})` : ''}`);
+        if (item.supplements.length > 0 && inc.supplements) {
+            for (const supp of item.supplements) {
+                lines.push('');
+                lines.push(`Supplement Note: ${supp.reason}`);
+                lines.push(`  Dosage: ${supp.dosage}`);
+                if (supp.productName) {
+                    lines.push(`  Recommended Product: ${supp.productName}${supp.productLink ? ` (${supp.productLink})` : ''}`);
+                }
             }
         }
 

@@ -7,6 +7,7 @@ import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 import { lookupKnowledge, PROTOCOL_TEMPLATES, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 import {
     type EnrichedProtocolItem,
+    type IncludeSections,
     generateProtocolHtml,
     generateProtocolPlainText,
     calcMl,
@@ -88,6 +89,15 @@ export function useProtocolBuilder() {
             supplements: knowledge?.supplementNotes ?? [],
             selectedTierId: tier?.id ?? null,
             availableTiers: tiers,
+            includeSections: {
+                description: true,
+                reconstitution: true,
+                warning: true,
+                cyclePattern: true,
+                tierNotes: true,
+                supplements: true,
+                dosageSchedule: true,
+            },
         };
     }, []);
 
@@ -154,6 +164,19 @@ export function useProtocolBuilder() {
                 updated.concentrationMgMl = updated.vialSizeMg / updated.reconstitutionMl;
             }
             return updated;
+        }));
+    }, []);
+
+    const toggleSection = useCallback((idx: number, section: keyof IncludeSections) => {
+        setItems(prev => prev.map((item, i) => {
+            if (i !== idx) return item;
+            return {
+                ...item,
+                includeSections: {
+                    ...item.includeSections,
+                    [section]: !item.includeSections[section],
+                },
+            };
         }));
     }, []);
 
@@ -302,6 +325,7 @@ export function useProtocolBuilder() {
         removeItem,
         updateItem,
         selectTier,
+        toggleSection,
         clearAll,
         loadTemplate,
         loadFromOrder,

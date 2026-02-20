@@ -214,6 +214,7 @@ export default function ProtocolBuilder() {
                                     onUpdate={builder.updateItem}
                                     onRemove={builder.removeItem}
                                     onSelectTier={builder.selectTier}
+                                    onToggleSection={builder.toggleSection}
                                 />
                             ))}
                         </div>
