@@ -25,10 +25,20 @@ const tierColors: Record<string, { bg: string; text: string; border: string }> =
         text: 'text-rose-400',
         border: 'border-rose-500/40',
     },
+    referral: {
+        bg: 'bg-sky-900/20',
+        text: 'text-sky-400',
+        border: 'border-sky-500/40',
+    },
     standard: {
         bg: 'bg-slate-800/50',
         text: 'text-slate-300',
         border: 'border-slate-600/40',
+    },
+    preferred: {
+        bg: 'bg-sky-900/20',
+        text: 'text-sky-400',
+        border: 'border-sky-500/40',
     },
     client: {
         bg: 'bg-blue-900/20',
@@ -51,8 +61,8 @@ interface TreeNodeProps {
 const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
     const [isExpanded, setIsExpanded] = React.useState(true);
     const navigate = useNavigate();
-    const style = getTierStyle(node.partner_tier);
     const isClient = node.isClient === true;
+    const style = getTierStyle(isClient && node.contactType === 'preferred' ? 'preferred' : node.partner_tier);
 
     // Find direct children — clients (blue) listed first, then partner downline
     const children = allNodes

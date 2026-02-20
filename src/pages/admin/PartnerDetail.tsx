@@ -300,7 +300,7 @@ export default function PartnerDetail() {
                 </TabsContent>
 
                 <TabsContent value="clients">
-                    <AssignedClientsTabContent repId={id!} />
+                    <AssignedClientsTabContent repId={id!} partnerTier={partner.partner_tier} />
                 </TabsContent>
 
                 <TabsContent value="network" className="space-y-4">
@@ -683,7 +683,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 }
 
 
-function AssignedClientsTabContent({ repId }: { repId: string }) {
+function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; partnerTier?: string }) {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [promoteOpen, setPromoteOpen] = useState(false);
@@ -759,7 +759,7 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                     phone: newClient.phone.trim() || null,
                     address: newClient.address.trim() || null,
                     notes: newClient.notes.trim() || null,
-                    type: 'customer',
+                    type: partnerTier === 'referral' ? 'preferred' : 'customer',
                     assigned_rep_id: repId,
                     org_id: repProfile?.org_id || null,
                 })
@@ -861,9 +861,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Assigned Clients</CardTitle>
+                            <CardTitle>{partnerTier === 'referral' ? 'Preferred Clients' : 'Assigned Clients'}</CardTitle>
                             <CardDescription>
-                                Customers and Partners explicitly assigned to this Rep.
+                                {partnerTier === 'referral'
+                                    ? 'Preferred clients referred by this partner.'
+                                    : 'Customers and Partners explicitly assigned to this Rep.'}
                             </CardDescription>
                         </div>
                         <Button onClick={() => setAddClientOpen(true)} size="sm">
@@ -900,8 +902,11 @@ function AssignedClientsTabContent({ repId }: { repId: string }) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={client.type === 'partner' ? 'secondary' : 'default'} className="capitalize">
-                                            {client.type}
+                                        <Badge
+                                            variant={client.type === 'partner' ? 'secondary' : 'default'}
+                                            className={`capitalize ${client.type === 'preferred' ? 'bg-sky-900/20 text-sky-400 border-sky-500/40' : ''}`}
+                                        >
+                                            {client.type === 'preferred' ? 'preferred client' : client.type}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{client.email || '-'}</TableCell>

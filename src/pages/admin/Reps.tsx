@@ -343,7 +343,7 @@ export default function Reps() {
                                                     <TableCell className="text-muted-foreground text-sm">{rep.email || 'No email'}</TableCell>
                                                     <TableCell>{((rep.commission_rate || 0) * 100).toFixed(0)}%</TableCell>
                                                     <TableCell className="capitalize">
-                                                        <Badge variant="secondary">{rep.partner_tier || 'Standard'}</Badge>
+                                                        <Badge variant="secondary" className={rep.partner_tier === 'referral' ? 'bg-sky-900/20 text-sky-400 border-sky-500/40' : ''}>{rep.partner_tier || 'Standard'}</Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">
                                                         ${(repStats?.get(rep.id)?.volume || 0).toFixed(2)}
@@ -893,6 +893,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
         standard: { commission: 7.5, multiplier: 0.65, label: '35% off retail · 7.5% commission' },
         associate: { commission: 7.5, multiplier: 0.75, label: '25% off retail · 7.5% commission' },
         executive: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },
+        referral: { commission: 0, multiplier: 0.50, label: '50% off retail · 0% commission (referral only)' },
     };
 
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
@@ -925,6 +926,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                         <SelectItem value="standard">🥈 Standard Partner</SelectItem>
                         <SelectItem value="associate">🥉 Associate Partner</SelectItem>
                         <SelectItem value="executive">⭐ Executive</SelectItem>
+                        <SelectItem value="referral">🔗 Referral Partner</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
