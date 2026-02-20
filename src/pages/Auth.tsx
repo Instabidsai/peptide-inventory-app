@@ -126,14 +126,16 @@ function LoginForm({
 
 function SignupForm({
   onSubmit,
-  isLoading
+  isLoading,
+  defaultEmail,
 }: {
   onSubmit: (data: SignupFormData) => void;
   isLoading: boolean;
+  defaultEmail?: string;
 }) {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', fullName: '' },
+    defaultValues: { email: defaultEmail || '', password: '', confirmPassword: '', fullName: '' },
   });
 
   return (
@@ -243,6 +245,17 @@ export default function Auth() {
   const roleParam = (searchParams.get('role') || sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
   const isPartnerInvite = roleParam === 'partner';
 
+  // Plan selection from CRM landing page (e.g. /auth?mode=signup&plan=starter)
+  const planParam = searchParams.get('plan');
+  const emailParam = searchParams.get('email');
+
+  // Auto-switch to signup when plan param present
+  useEffect(() => {
+    if (planParam && mode === 'login') {
+      setMode('signup');
+    }
+  }, [planParam]);
+
   // Show OAuth error if redirected back with one (see main.tsx interceptor)
   useEffect(() => {
     const oauthError = sessionStorage.getItem('sb_oauth_error');
@@ -349,6 +362,10 @@ export default function Auth() {
 
   const handleSignup = async (data: SignupFormData) => {
     setIsLoading(true);
+    // Persist selected plan for onboarding to pick up
+    if (planParam) {
+      sessionStorage.setItem('selected_plan', planParam);
+    }
     const { error } = await signUp(data.email, data.password, data.fullName);
 
     if (error) {
@@ -567,7 +584,7 @@ export default function Auth() {
                 {mode === 'login' ? (
                   <LoginForm onSubmit={handleLogin} onForgotPassword={handleForgotPassword} isLoading={isLoading} />
                 ) : (
-                  <SignupForm onSubmit={handleSignup} isLoading={isLoading} />
+                  <SignupForm onSubmit={handleSignup} isLoading={isLoading} defaultEmail={emailParam || undefined} />
                 )}
               </motion.div>
             </AnimatePresence>

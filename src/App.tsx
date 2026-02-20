@@ -59,6 +59,9 @@ const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 // Vendor (super-admin)
 const VendorDashboard = lazyRetry(() => import("./pages/vendor/VendorDashboard"));
 
+// Public marketing
+const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
+
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
 const ClientDashboard = lazyRetry(() => import("./pages/client/ClientDashboard"));
@@ -110,6 +113,7 @@ const App = () => (
                 <AuthProvider>
                     <Suspense fallback={<PageLoader />}>
                         <Routes>
+                            <Route path="/crm" element={<CrmLanding />} />
                             <Route path="/auth" element={<Auth />} />
                             <Route path="/join" element={<Join />} />
                             <Route path="/onboarding" element={<Onboarding />} />
