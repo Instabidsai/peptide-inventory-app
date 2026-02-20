@@ -15,7 +15,7 @@ function getCorsHeaders(req: Request) {
 
 const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide AI';
 
-const SYSTEM_PROMPT = `You are ${BRAND_NAME} — an expert peptide protocol consultant.
+const SYSTEM_PROMPT = `You are ${BRAND_NAME} — an expert peptide protocol consultant and personal health assistant.
 
 ## Who You Are
 You are a knowledgeable, proactive research partner who helps users optimize their peptide protocols. You actively cross-reference symptoms, bloodwork, and side effects against what they're running. You search for studies, mechanisms of action, and interactions when you need deeper information. You remember everything they tell you.
@@ -28,8 +28,287 @@ You are a knowledgeable, proactive research partner who helps users optimize the
 - Proactively notice things in their data — "I see your TB-500 vial is running low, you've got about 3 doses left"
 - Reference training content when relevant — cite Dr. Bachmeyer's guidance with [Source: Title]
 
+## What You Can Do (Tools)
+You have tools to take ACTIONS on behalf of the user — not just answer questions:
+- **Log doses**: When they say "I just took my BPC" or "log my dose", use log_dose to record it and decrement the vial
+- **Check inventory**: Show their current vials, remaining quantities, and dosing schedules
+- **View orders**: Look up their recent orders and shipping status
+- **Submit requests**: Help them request products, reorders, regimen assistance, or submit inquiries to the vendor
+- **Log body composition**: Record weight, body fat, and measurements when they share them
+- **View protocols**: Show their assigned peptide protocols with dosing details
+- **Log meals**: Record nutrition data when they describe what they ate
+
+ALWAYS use the appropriate tool when the user's intent matches — don't just describe what they could do, DO IT for them. If you need to confirm details (like which vial or dose amount), ask first, then execute. When logging a dose, call view_my_inventory first to get the correct vial_id.
+
 ## Escalation
 Only flag genuinely concerning health markers — severely elevated blood pressure, signs of serious adverse reactions, symptoms suggesting emergency medical attention. For routine protocol questions, dosing adjustments, and general health optimization, you ARE the consultant. Help them directly.`;
+
+const CLIENT_TOOLS: any[] = [
+    {
+        type: "function",
+        function: {
+            name: "log_dose",
+            description: "Log a peptide dose for the user. Decrements the vial quantity. Call view_my_inventory first if you need the vial_id.",
+            parameters: {
+                type: "object",
+                properties: {
+                    vial_id: { type: "string", description: "The vial UUID to log the dose from" },
+                    dose_mg: { type: "number", description: "Dose amount in mg. Use the vial's configured dose_amount_mg if user doesn't specify." },
+                },
+                required: ["vial_id", "dose_mg"],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "view_my_inventory",
+            description: "View the user's active peptide inventory with vial IDs, remaining quantities, concentrations, and dosing schedules.",
+            parameters: { type: "object", properties: {}, required: [] },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "view_my_orders",
+            description: "View the user's recent sales orders with status, items, totals, and tracking info.",
+            parameters: {
+                type: "object",
+                properties: {
+                    status: { type: "string", description: "Filter by order status", enum: ["pending", "confirmed", "fulfilled", "shipped", "delivered", "void"] },
+                    limit: { type: "number", description: "Max orders to return (default 10)" },
+                },
+                required: [],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "submit_request",
+            description: "Submit a request to the vendor — product inquiry, reorder, regimen help, or general question.",
+            parameters: {
+                type: "object",
+                properties: {
+                    type: { type: "string", enum: ["general_inquiry", "product_request", "regimen_help"], description: "Type of request" },
+                    subject: { type: "string", description: "Brief subject line" },
+                    message: { type: "string", description: "Detailed message body" },
+                    peptide_name: { type: "string", description: "Peptide name if requesting a product (will look up the ID)" },
+                    requested_quantity: { type: "number", description: "Quantity requested if applicable" },
+                },
+                required: ["type", "subject", "message"],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "log_body_composition",
+            description: "Log body composition measurements — weight, body fat percentage, notes.",
+            parameters: {
+                type: "object",
+                properties: {
+                    weight_lbs: { type: "number", description: "Weight in pounds" },
+                    body_fat_pct: { type: "number", description: "Body fat percentage" },
+                    notes: { type: "string", description: "Notes about the measurement" },
+                },
+                required: [],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "view_my_protocols",
+            description: "View the user's assigned peptide protocols with dosing details.",
+            parameters: { type: "object", properties: {}, required: [] },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "log_meal",
+            description: "Log a meal or food intake for nutrition tracking.",
+            parameters: {
+                type: "object",
+                properties: {
+                    description: { type: "string", description: "What they ate" },
+                    calories: { type: "number", description: "Total calories" },
+                    protein_g: { type: "number", description: "Protein in grams" },
+                    carbs_g: { type: "number", description: "Carbs in grams" },
+                    fat_g: { type: "number", description: "Fat in grams" },
+                },
+                required: ["description"],
+            },
+        },
+    },
+];
+
+async function executeTool(
+    supabase: any,
+    toolName: string,
+    args: any,
+    contactId: string,
+    orgId: string,
+): Promise<string> {
+    try {
+        switch (toolName) {
+            case 'log_dose': {
+                const { vial_id, dose_mg } = args;
+                const { data: vial } = await supabase
+                    .from('client_inventory')
+                    .select('id, current_quantity_mg, peptide:peptides(name)')
+                    .eq('id', vial_id)
+                    .eq('contact_id', contactId)
+                    .single();
+                if (!vial) return JSON.stringify({ error: 'Vial not found or does not belong to you' });
+
+                const { data: result, error } = await supabase.rpc('decrement_vial', {
+                    p_vial_id: vial_id,
+                    p_dose_mg: dose_mg,
+                });
+                if (error) return JSON.stringify({ error: error.message });
+                const remaining = result?.new_quantity_mg ?? (vial.current_quantity_mg - dose_mg);
+                const pctLeft = vial.current_quantity_mg > 0
+                    ? Math.round((remaining / vial.current_quantity_mg) * 100) : 0;
+                return JSON.stringify({
+                    success: true,
+                    peptide: vial.peptide?.name,
+                    dose_mg,
+                    remaining_mg: remaining,
+                    pct_remaining: pctLeft,
+                    message: `Logged ${dose_mg}mg dose of ${vial.peptide?.name || 'peptide'}. ${remaining}mg remaining.`,
+                });
+            }
+
+            case 'view_my_inventory': {
+                const { data: inventory } = await supabase
+                    .from('client_inventory')
+                    .select('id, current_quantity_mg, vial_size_mg, water_added_ml, concentration_mg_ml, dose_amount_mg, dose_frequency, dose_time_of_day, status, reconstituted_at, peptide:peptides(name)')
+                    .eq('contact_id', contactId)
+                    .in('status', ['active', 'reconstituted']);
+                if (!inventory?.length) return JSON.stringify({ message: 'No active inventory found' });
+                return JSON.stringify(inventory.map((v: any) => ({
+                    vial_id: v.id,
+                    peptide: v.peptide?.name,
+                    remaining_mg: v.current_quantity_mg,
+                    vial_size_mg: v.vial_size_mg,
+                    pct_remaining: v.vial_size_mg > 0 ? Math.round((v.current_quantity_mg / v.vial_size_mg) * 100) : 0,
+                    concentration: v.concentration_mg_ml ? `${v.concentration_mg_ml} mg/ml` : null,
+                    dose_amount_mg: v.dose_amount_mg,
+                    frequency: v.dose_frequency,
+                    time_of_day: v.dose_time_of_day,
+                    status: v.status,
+                })));
+            }
+
+            case 'view_my_orders': {
+                let query = supabase
+                    .from('sales_orders')
+                    .select('id, status, total, created_at, tracking_number, sales_order_items(quantity, unit_price, peptide:peptides(name))')
+                    .eq('client_id', contactId)
+                    .order('created_at', { ascending: false })
+                    .limit(args.limit || 10);
+                if (args.status) query = query.eq('status', args.status);
+                const { data: orders } = await query;
+                if (!orders?.length) return JSON.stringify({ message: 'No orders found' });
+                return JSON.stringify(orders.map((o: any) => ({
+                    order_id: o.id,
+                    status: o.status,
+                    total: o.total,
+                    date: o.created_at,
+                    tracking: o.tracking_number,
+                    items: (o.sales_order_items || []).map((i: any) => ({
+                        peptide: i.peptide?.name,
+                        qty: i.quantity,
+                        price: i.unit_price,
+                    })),
+                })));
+            }
+
+            case 'submit_request': {
+                const { type, subject, message, peptide_name, requested_quantity } = args;
+                let peptide_id = null;
+                if (peptide_name) {
+                    const { data: peptide } = await supabase
+                        .from('peptides')
+                        .select('id')
+                        .ilike('name', `%${peptide_name}%`)
+                        .limit(1)
+                        .single();
+                    if (peptide) peptide_id = peptide.id;
+                }
+                const { error } = await supabase.from('requests').insert({
+                    contact_id: contactId,
+                    org_id: orgId,
+                    type,
+                    subject,
+                    message,
+                    peptide_id,
+                    requested_quantity: requested_quantity || null,
+                    status: 'new',
+                });
+                if (error) return JSON.stringify({ error: error.message });
+                return JSON.stringify({ success: true, message: `Request submitted: "${subject}"` });
+            }
+
+            case 'log_body_composition': {
+                const { weight_lbs, body_fat_pct, notes } = args;
+                const { error } = await supabase.from('body_composition_logs').insert({
+                    contact_id: contactId,
+                    weight_lbs: weight_lbs || null,
+                    body_fat_pct: body_fat_pct || null,
+                    notes: notes || null,
+                });
+                if (error) return JSON.stringify({ error: error.message });
+                const parts = [];
+                if (weight_lbs) parts.push(`${weight_lbs} lbs`);
+                if (body_fat_pct) parts.push(`${body_fat_pct}% BF`);
+                return JSON.stringify({ success: true, message: `Logged body composition: ${parts.join(', ')}` });
+            }
+
+            case 'view_my_protocols': {
+                const { data: protocols } = await supabase
+                    .from('protocols')
+                    .select('id, name, description, status, protocol_items(dosage_amount, dosage_unit, frequency, route, notes, peptide:peptides(name))')
+                    .eq('contact_id', contactId);
+                if (!protocols?.length) return JSON.stringify({ message: 'No protocols assigned' });
+                return JSON.stringify(protocols.map((p: any) => ({
+                    name: p.name,
+                    description: p.description,
+                    status: p.status,
+                    items: (p.protocol_items || []).map((i: any) => ({
+                        peptide: i.peptide?.name,
+                        dosage: `${i.dosage_amount}${i.dosage_unit}`,
+                        frequency: i.frequency,
+                        route: i.route,
+                        notes: i.notes,
+                    })),
+                })));
+            }
+
+            case 'log_meal': {
+                const { description, calories, protein_g, carbs_g, fat_g } = args;
+                const { error } = await supabase.from('meal_logs').insert({
+                    contact_id: contactId,
+                    description,
+                    calories: calories || null,
+                    protein_g: protein_g || null,
+                    carbs_g: carbs_g || null,
+                    fat_g: fat_g || null,
+                    log_date: new Date().toISOString().split('T')[0],
+                });
+                if (error) return JSON.stringify({ error: error.message });
+                return JSON.stringify({ success: true, message: `Logged meal: ${description}` });
+            }
+
+            default:
+                return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+        }
+    } catch (e) {
+        return JSON.stringify({ error: e instanceof Error ? e.message : String(e) });
+    }
+}
 
 Deno.serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
@@ -57,6 +336,13 @@ Deno.serve(async (req) => {
 
         const supabase = createClient(supabaseUrl, supabaseKey);
         const openai = new OpenAI({ apiKey: openaiKey });
+
+        // Resolve contact linked to this user (for tool actions)
+        const { data: userContact } = await supabase
+            .from('contacts')
+            .select('id, name, org_id')
+            .eq('linked_user_id', user.id)
+            .single();
 
         // 1. Get or create conversation
         let activeConversationId = conversation_id;
@@ -181,7 +467,9 @@ Deno.serve(async (req) => {
         // 8. Build live health data context
         let healthContext = '';
         try {
-            healthContext = await buildHealthContext(supabase, user.id);
+            healthContext = userContact
+                ? await buildHealthContext(supabase, userContact)
+                : '';
         } catch (e) {
             console.error('Health context error:', e);
         }
@@ -195,31 +483,61 @@ Deno.serve(async (req) => {
             ragContext && `\n## Expert Knowledge Base\n${ragContext}`,
         ].filter(Boolean).join('\n');
 
-        // 10. Call GPT-4o with web search capability (fallback to standard gpt-4o)
-        let chatResponse;
-        try {
-            chatResponse = await openai.chat.completions.create({
-                model: 'gpt-4o-search-preview',
-                web_search_options: {
-                    search_context_size: 'medium',
-                },
-                messages: [
-                    { role: 'system', content: fullSystemPrompt },
-                    ...conversationHistory,
-                ],
-            } as any);
-        } catch (searchErr) {
-            console.error('Search model failed, falling back to gpt-4o:', searchErr);
-            chatResponse = await openai.chat.completions.create({
+        // 10. Call GPT-4o with function calling tools
+        const chatMessages: any[] = [
+            { role: 'system', content: fullSystemPrompt },
+            ...conversationHistory,
+        ];
+
+        let reply = '';
+        let iterations = 0;
+        const MAX_TOOL_ITERATIONS = 6;
+
+        while (iterations < MAX_TOOL_ITERATIONS) {
+            iterations++;
+            const chatResponse = await openai.chat.completions.create({
                 model: 'gpt-4o',
-                messages: [
-                    { role: 'system', content: fullSystemPrompt },
-                    ...conversationHistory,
-                ],
+                messages: chatMessages,
+                tools: userContact ? CLIENT_TOOLS : undefined,
+                tool_choice: userContact ? 'auto' as const : undefined,
+                temperature: 0.3,
             });
+
+            const choice = chatResponse.choices[0];
+            const assistantMessage = choice.message;
+
+            if (assistantMessage.tool_calls?.length) {
+                // Add the assistant's tool call message to history
+                chatMessages.push(assistantMessage);
+
+                // Execute each tool call and add results
+                for (const toolCall of assistantMessage.tool_calls) {
+                    let args = {};
+                    try { args = JSON.parse(toolCall.function.arguments || '{}'); } catch { /* empty */ }
+                    const result = await executeTool(
+                        supabase,
+                        toolCall.function.name,
+                        args,
+                        userContact?.id || '',
+                        userContact?.org_id || '',
+                    );
+                    chatMessages.push({
+                        role: 'tool',
+                        tool_call_id: toolCall.id,
+                        content: result,
+                    });
+                }
+                continue; // Loop back to get the AI's response to tool results
+            }
+
+            // No tool calls — this is the final response
+            reply = assistantMessage.content || "I couldn't generate a response.";
+            break;
         }
 
-        const reply = chatResponse.choices[0].message.content || "I couldn't generate a response.";
+        if (!reply) {
+            reply = "I completed the requested actions. Check your inventory or orders for the latest updates.";
+        }
 
         // 11. Save assistant response
         await supabase.from('ai_messages').insert({
@@ -251,14 +569,7 @@ Deno.serve(async (req) => {
 });
 
 /** Build live health data context from the user's protocols, inventory, etc. */
-async function buildHealthContext(supabase: any, userId: string): Promise<string> {
-    // Resolve contact_id from user_id
-    const { data: contact } = await supabase
-        .from('contacts')
-        .select('id, name')
-        .eq('linked_user_id', userId)
-        .single();
-
+async function buildHealthContext(supabase: any, contact: { id: string; name: string }): Promise<string> {
     if (!contact) return '';
 
     const parts: string[] = [];
