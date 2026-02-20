@@ -51,10 +51,17 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                 {/* Header row: name + badges */}
                 <div className="flex items-center gap-2 mb-3 pr-8">
                     <span className="font-semibold text-sm">{item.peptideName}</span>
-                    {item.vialSizeMg && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
-                            {item.vialSizeMg}mg
-                        </Badge>
+                    {item.vialSizeMg != null && (
+                        <div className="flex items-center gap-0.5">
+                            <Input
+                                type="number"
+                                value={item.vialSizeMg || ''}
+                                onChange={e => onUpdate(index, 'vialSizeMg', parseFloat(e.target.value) || 0)}
+                                className="h-6 w-16 text-[11px] font-mono px-1.5 text-center"
+                                step="1"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-mono">mg</span>
+                        </div>
                     )}
                     {item.stackLabel && (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
