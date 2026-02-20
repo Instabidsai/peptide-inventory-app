@@ -43,7 +43,7 @@ export function calcMl(item: { doseAmount: number; doseUnit: string; concentrati
     if (item.vialSizeMg != null && item.vialSizeMg > 0 && item.reconstitutionMl != null && item.reconstitutionMl > 0) {
         concentration = item.vialSizeMg / item.reconstitutionMl;
     }
-    if (!concentration || concentration <= 0) return null;
+    if (!concentration || concentration <= 0 || !isFinite(concentration)) return null;
     if (item.doseUnit === 'iu') return null;
     const doseMg = item.doseUnit === 'mcg' ? item.doseAmount / 1000 : item.doseAmount;
     return doseMg / concentration;

@@ -60,7 +60,7 @@ export function useProtocolBuilder() {
         const knowledge = lookupKnowledge(peptide.name);
         const tiers = knowledge?.dosingTiers ?? [];
         const concentrationMgMl = knowledge
-            ? (knowledge.vialSizeMg / knowledge.reconstitutionMl)
+            ? (knowledge.reconstitutionMl > 0 ? knowledge.vialSizeMg / knowledge.reconstitutionMl : 0)
             : (peptide.default_concentration_mg_ml || 0);
 
         // Select tier: preferred > 'standard' > first available > null
