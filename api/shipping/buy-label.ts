@@ -78,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Purchase label via Shippo
         const transaction = await shippoPost('/transactions', shippoApiKey, {
             rate: rateId,
-            label_file_type: 'PDF_4x6',
+            label_file_type: 'PNG',
             async: false,
         });
 
