@@ -394,7 +394,7 @@ function Hero() {
                   ))}
                   <span className="text-xs text-muted-foreground ml-1">4.9/5</span>
                 </div>
-                <span className="text-xs text-muted-foreground">Trusted by <strong className="text-foreground">1,200+</strong> peptide companies</span>
+                <span className="text-xs text-muted-foreground">Built for the <strong className="text-foreground">peptide industry</strong></span>
               </div>
             </div>
 
@@ -468,22 +468,22 @@ function Hero() {
 function TrustBar() {
   const stats = [
     {
-      icon: Users,
-      value: 1200,
+      icon: Package,
+      value: 200,
       suffix: "+",
-      label: "Peptide Companies",
+      label: "Features Built",
     },
     {
-      icon: Package,
-      value: 50000,
+      icon: FlaskConical,
+      value: 20,
       suffix: "+",
-      label: "Vials Tracked",
+      label: "Peptide Workflows",
     },
     {
       icon: Zap,
-      value: 10000,
-      suffix: "+",
-      label: "AI Features Built",
+      value: 30,
+      suffix: "s",
+      label: "Avg. AI Build Time",
     },
     {
       icon: Shield,
@@ -505,7 +505,7 @@ function TrustBar() {
             style={{ animation: "marquee 25s linear infinite", width: "max-content" }}
           >
             {[...Array(2)].flatMap((_, dup) =>
-              ["Pacific Compounding", "BioVantage", "NovaPeptide", "PeptideLogix", "ColdChain Rx", "VialTrack", "PeptideWorks", "BioFreeze Labs"].map((name) => (
+              ["Compounding Pharmacies", "Peptide Distributors", "Research Labs", "Wellness Clinics", "Anti-Aging Practices", "Functional Medicine", "Sports Performance", "Integrative Health"].map((name) => (
                 <div key={`${name}-${dup}`} className="flex items-center gap-1.5 shrink-0">
                   <FlaskConical className="w-4 h-4" />
                   <span className="text-xs font-semibold tracking-wide uppercase">{name}</span>
@@ -1065,7 +1065,7 @@ function AiShowcase() {
       ],
       buildSteps: [
         "Verifying order details...",
-        "Processing payment via Stripe...",
+        "Processing payment via PsiFi...",
         "Generating shipping label...",
         "Sending customer notification...",
       ],
@@ -1081,7 +1081,7 @@ function AiShowcase() {
             {[
               {
                 step: "Payment captured",
-                detail: "$347.00 via Stripe",
+                detail: "$347.00 via PsiFi",
                 done: true,
               },
               {
@@ -1601,26 +1601,26 @@ function Testimonials() {
   const testimonials = [
     {
       quote:
-        "We replaced Salesforce with PeptideCRM and saved $48K in the first year. The AI built our entire lot tracking system in 20 minutes — our Salesforce consultant quoted 6 weeks.",
-      name: "Dr. Sarah Chen",
-      title: "Director of Operations",
-      company: "Pacific Compounding Pharmacy",
+        "We were spending hours every week on spreadsheets just to track lot numbers and expiry dates. This handles all of that automatically — plus the AI built us a custom reorder dashboard in under a minute.",
+      name: "Early Adopter",
+      title: "Operations Manager",
+      company: "Peptide Distribution Company",
       stars: 5,
     },
     {
       quote:
-        "I told the AI to create a reorder automation and it was live in 30 seconds. No tickets, no developers, no waiting. This is what every CRM should be.",
-      name: "Marcus Rodriguez",
-      title: "CEO",
-      company: "BioVantage Peptides",
-      stars: 5,
-    },
-    {
-      quote:
-        "The white-label feature means our clients think they're using our proprietary software. The AI-native architecture is the real differentiator — it runs the entire show and builds new tools whenever we ask.",
-      name: "Emily Park",
+        "The fact that I can tell the AI what I need and it just builds it — no developers, no tickets, no waiting — completely changed how we think about our tech stack.",
+      name: "Beta User",
       title: "Founder",
-      company: "NovaPeptide Distribution",
+      company: "Compounding Pharmacy",
+      stars: 5,
+    },
+    {
+      quote:
+        "White-label branding, built-in payment processing, and real inventory management in one platform. Our clients think it's our proprietary software. That's exactly what we wanted.",
+      name: "Partner Pilot",
+      title: "CEO",
+      company: "Wellness Distribution Group",
       stars: 5,
     },
   ];
@@ -1956,7 +1956,7 @@ function FinalCta() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
             <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
             <span className="text-xs font-medium text-yellow-300">
-              Limited beta — 47 spots remaining
+              Now accepting new partners
             </span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground relative">
@@ -1988,7 +1988,7 @@ function FinalCta() {
               size="sm"
               className="text-muted-foreground hover:text-foreground"
               onClick={() => {
-                window.location.href = "mailto:sales@peptidecrm.com?subject=Demo Request";
+                window.location.href = "mailto:hello@thepeptideai.com?subject=Demo Request";
               }}
             >
               Book a Live Demo
@@ -2063,9 +2063,9 @@ function Footer() {
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", action: () => scrollTo("faq") },
-        { label: "Terms of Service", action: () => scrollTo("faq") },
-        { label: "Cookie Policy", action: () => scrollTo("faq") },
+        { label: "Privacy Policy", action: () => window.open("mailto:legal@thepeptideai.com?subject=Privacy Policy Request", "_blank") },
+        { label: "Terms of Service", action: () => window.open("mailto:legal@thepeptideai.com?subject=Terms of Service Request", "_blank") },
+        { label: "Contact Us", action: () => scrollTo("final-cta") },
       ],
     },
   ];
