@@ -13,7 +13,8 @@ import {
   PieChart,
   Network,
   Wand2,
-  Leaf
+  Leaf,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
+  { name: 'Automations', href: '/admin/automations', icon: Zap, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package, roles: ['admin', 'staff'] },
   { name: 'Bottles', href: '/bottles', icon: Pill, roles: ['admin', 'staff'] },
   { name: 'Supplements', href: '/admin/supplements', icon: Leaf, roles: ['admin', 'staff'] },
