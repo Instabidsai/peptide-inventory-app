@@ -34,8 +34,13 @@ const SENDER_PATTERNS: SenderPattern[] = [
     },
     {
         method: 'zelle',
-        fromAddresses: ['no-reply@zellepay.com', 'alerts@notify.zelle.com'],
-        gmailFrom: 'no-reply@zellepay.com OR alerts@notify.zelle.com',
+        fromAddresses: ['no-reply@zellepay.com', 'alerts@notify.zelle.com', 'alerts@notify.wellsfargo.com'],
+        gmailFrom: 'no-reply@zellepay.com OR alerts@notify.zelle.com OR alerts@notify.wellsfargo.com',
+    },
+    {
+        method: 'psifi',
+        fromAddresses: ['no-reply@psifi.app', 'payments@psifi.app'],
+        gmailFrom: 'no-reply@psifi.app OR payments@psifi.app',
     },
 ];
 
@@ -60,12 +65,11 @@ function extractSenderName(text: string, method: string): string | null {
     const cleaned = text.replace(/\s+/g, ' ').trim();
 
     if (method === 'venmo') {
-        // "John Smith paid you $150.00" or "You were paid $150.00 by John Smith"
+        // "John Smith paid you $150.00"
         let m = cleaned.match(/^(.+?)\s+paid you/i);
         if (m) return m[1].trim();
         m = cleaned.match(/paid .+? by\s+(.+?)(?:\s+on|\s+\$|$)/i);
         if (m) return m[1].trim();
-        // Subject: "John Smith paid you $150.00"
         m = cleaned.match(/(.+?)\s+paid\s+you/i);
         if (m) return m[1].trim();
     }
@@ -79,13 +83,28 @@ function extractSenderName(text: string, method: string): string | null {
     }
 
     if (method === 'zelle') {
-        // "You received $Y from X" or "X sent you $Y"
-        let m = cleaned.match(/received .+? from\s+(.+?)(?:\s+on|\.|$)/i);
+        // Wells Fargo format: subject "You received money with Zelle(R)" + body "Wells Fargo home page NAME sent you $X.XX"
+        // Strip both prefixes from combined subject+snippet text
+        const wfCleaned = cleaned
+            .replace(/You received money with Zelle\s*\(R\)\s*/i, '')
+            .replace(/Wells Fargo home page\s*/i, '');
+        let m = wfCleaned.match(/^(.+?)\s+sent you\s+\$/i);
+        if (m) return m[1].trim();
+        // Generic: "You received $Y from X" or "X sent you $Y"
+        m = cleaned.match(/received .+? from\s+(.+?)(?:\s+on|\.|$)/i);
         if (m) return m[1].trim();
         m = cleaned.match(/(.+?)\s+sent you/i);
         if (m) return m[1].trim();
-        // "Payment from X"
         m = cleaned.match(/payment from\s+(.+?)(?:\s+on|\.|$)/i);
+        if (m) return m[1].trim();
+    }
+
+    if (method === 'psifi') {
+        // Subject: "You received $47.79 from @username"
+        // Body: "You've received a payment from @username"
+        let m = cleaned.match(/from\s+(@\S+)/i);
+        if (m) return m[1].trim();
+        m = cleaned.match(/payment from\s+(.+?)(?:\s+|\.|\!|$)/i);
         if (m) return m[1].trim();
     }
 
@@ -235,7 +254,7 @@ Deno.serve(async (req) => {
             // Build Gmail search query
             const allFromAddresses = SENDER_PATTERNS.flatMap(sp => sp.fromAddresses);
             const fromFilter = allFromAddresses.map(a => `from:${a}`).join(' OR ');
-            const gmailQuery = `(${fromFilter}) newer_than:1h`;
+            const gmailQuery = `(${fromFilter}) newer_than:7d`;
 
             // Call Composio to search Gmail
             let emails: any[] = [];
@@ -293,7 +312,7 @@ Deno.serve(async (req) => {
             let skipped = 0;
 
             for (const email of emails) {
-                const messageId = email.id || email.messageId || email.message_id;
+                const messageId = email.messageId || email.id || email.message_id;
                 if (!messageId) continue;
 
                 // Deduplicate
@@ -309,20 +328,26 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
-                // Extract email fields
-                const from = email.from || email.sender || '';
+                // Extract email fields — Composio returns preview.body with text, messageTimestamp
+                const from = email.sender || email.from || '';
                 const subject = email.subject || '';
-                const snippet = email.snippet || email.body || email.text || '';
-                const emailDate = email.date || email.internalDate
-                    ? new Date(Number(email.internalDate) || email.date).toISOString()
-                    : new Date().toISOString();
+                const previewBody = typeof email.preview === 'object' ? (email.preview?.body || '') : (email.preview || '');
+                const snippet = previewBody || email.snippet || email.body || email.text || '';
+                const emailDate = email.messageTimestamp
+                    || (email.internalDate ? new Date(Number(email.internalDate)).toISOString() : null)
+                    || email.date
+                    || new Date().toISOString();
 
                 // Detect payment method
                 const method = detectMethod(from);
                 if (!method) { skipped++; continue; }
 
+                // Skip outgoing payments (we only want received)
+                const combinedText = `${subject} ${snippet}`;
+                if (method === 'zelle' && /You sent money/i.test(subject)) { skipped++; continue; }
+
                 // Extract amount
-                const searchText = `${subject} ${snippet}`;
+                const searchText = combinedText;
                 const amount = extractAmount(searchText);
                 if (!amount || amount <= 0) { skipped++; continue; }
 

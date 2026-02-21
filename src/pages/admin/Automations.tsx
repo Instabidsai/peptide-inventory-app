@@ -33,6 +33,7 @@ const METHOD_LABELS: Record<string, string> = {
     venmo: 'Venmo',
     cashapp: 'CashApp',
     zelle: 'Zelle',
+    psifi: 'PsiFi',
 };
 
 const CONFIDENCE_BADGE: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
@@ -399,6 +400,7 @@ function PendingReviewSection() {
                                             <SelectItem value="venmo">Venmo</SelectItem>
                                             <SelectItem value="cashapp">CashApp</SelectItem>
                                             <SelectItem value="zelle">Zelle</SelectItem>
+                                            <SelectItem value="psifi">PsiFi</SelectItem>
                                             <SelectItem value="cash">Cash</SelectItem>
                                             <SelectItem value="card">Card</SelectItem>
                                             <SelectItem value="other">Other</SelectItem>
