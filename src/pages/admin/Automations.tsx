@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,10 +17,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import {
     Mail, Scan, CheckCircle2, XCircle, Clock, AlertTriangle,
     Zap, Bot, Megaphone, Activity, ChevronDown, ChevronUp,
-    SkipForward, Search, Sparkles, UserCheck,
+    SkipForward, Search, Sparkles, UserCheck, Lightbulb, Bug, HelpCircle, MessageCircle,
 } from 'lucide-react';
 import {
     useAutomationModules,
@@ -69,6 +71,7 @@ export default function Automations() {
 
     const [historyFilter, setHistoryFilter] = useState<string>('all');
     const [showHistory, setShowHistory] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     const paymentScanner = modules?.find(m => m.module_type === 'payment_scanner');
 
@@ -217,6 +220,24 @@ export default function Automations() {
                     </div>
                 </CardHeader>
                 {showHistory && <HistoryTable statusFilter={historyFilter} />}
+            </Card>
+
+            {/* Partner Suggestions */}
+            <Card>
+                <CardHeader
+                    className="cursor-pointer"
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Lightbulb className="h-5 w-5 text-amber-400" />
+                            <CardTitle className="text-lg">Partner Suggestions</CardTitle>
+                        </div>
+                        {showSuggestions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                    <CardDescription>Feature requests and issue reports from partners via AI chat.</CardDescription>
+                </CardHeader>
+                {showSuggestions && <PartnerSuggestionsTable />}
             </Card>
         </div>
     );
@@ -667,5 +688,214 @@ function HistoryTable({ statusFilter }: { statusFilter: string }) {
                 </TableBody>
             </Table>
         </CardContent>
+    );
+}
+
+// ── Partner Suggestions Sub-Component ─────────────────────────────
+
+const CATEGORY_CONFIG: Record<string, { icon: typeof Lightbulb; label: string; color: string }> = {
+    feature: { icon: Lightbulb, label: 'Feature', color: 'text-amber-400' },
+    bug: { icon: Bug, label: 'Bug', color: 'text-red-400' },
+    question: { icon: HelpCircle, label: 'Question', color: 'text-blue-400' },
+    other: { icon: MessageCircle, label: 'Other', color: 'text-muted-foreground' },
+};
+
+const SUGGESTION_STATUS: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+    new: { variant: 'outline', label: 'New' },
+    reviewed: { variant: 'secondary', label: 'Reviewed' },
+    implemented: { variant: 'default', label: 'Implemented' },
+    dismissed: { variant: 'destructive', label: 'Dismissed' },
+};
+
+interface PartnerSuggestion {
+    id: string;
+    org_id: string;
+    partner_id: string;
+    suggestion_text: string;
+    category: string;
+    status: string;
+    admin_notes: string | null;
+    created_at: string;
+    profiles?: { full_name: string | null } | null;
+}
+
+function PartnerSuggestionsTable() {
+    const { organization } = useAuth();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [editingSuggestion, setEditingSuggestion] = useState<PartnerSuggestion | null>(null);
+    const [editStatus, setEditStatus] = useState('');
+    const [editNotes, setEditNotes] = useState('');
+
+    const { data: suggestions, isLoading, isError, refetch } = useQuery({
+        queryKey: ['partner_suggestions', organization?.id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('partner_suggestions')
+                .select('*, profiles:partner_id(full_name)')
+                .eq('org_id', organization!.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) throw error;
+            return data as PartnerSuggestion[];
+        },
+        enabled: !!organization?.id,
+    });
+
+    const updateSuggestion = useMutation({
+        mutationFn: async ({ id, status, admin_notes }: { id: string; status: string; admin_notes: string }) => {
+            const { error } = await supabase
+                .from('partner_suggestions')
+                .update({ status, admin_notes })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partner_suggestions'] });
+            toast({ title: 'Suggestion updated' });
+            setEditingSuggestion(null);
+        },
+        onError: (err: Error) => {
+            toast({ variant: 'destructive', title: 'Update failed', description: err.message });
+        },
+    });
+
+    if (isLoading) return (
+        <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+    );
+
+    if (isError) return (
+        <CardContent><QueryError message="Failed to load suggestions." onRetry={() => refetch()} /></CardContent>
+    );
+
+    if (!suggestions?.length) return (
+        <CardContent>
+            <p className="text-sm text-muted-foreground text-center py-4">
+                No partner suggestions yet. Partners can submit ideas through their AI chat.
+            </p>
+        </CardContent>
+    );
+
+    return (
+        <>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Partner</TableHead>
+                            <TableHead className="max-w-[300px]">Suggestion</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {suggestions.map(s => {
+                            const cat = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.other;
+                            const st = SUGGESTION_STATUS[s.status] || SUGGESTION_STATUS.new;
+                            const CatIcon = cat.icon;
+                            return (
+                                <TableRow key={s.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-1.5">
+                                            <CatIcon className={`h-3.5 w-3.5 ${cat.color}`} />
+                                            <span className="text-xs">{cat.label}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        {s.profiles?.full_name || 'Unknown'}
+                                    </TableCell>
+                                    <TableCell className="max-w-[300px]">
+                                        <p className="text-sm truncate" title={s.suggestion_text}>
+                                            {s.suggestion_text}
+                                        </p>
+                                        {s.admin_notes && (
+                                            <p className="text-xs text-muted-foreground mt-0.5 truncate" title={s.admin_notes}>
+                                                Note: {s.admin_notes}
+                                            </p>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={st.variant}>{st.label}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                        {format(new Date(s.created_at), 'MMM d, h:mm a')}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                                setEditingSuggestion(s);
+                                                setEditStatus(s.status);
+                                                setEditNotes(s.admin_notes || '');
+                                            }}
+                                        >
+                                            Review
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </CardContent>
+
+            {/* Edit Suggestion Dialog */}
+            <Dialog open={!!editingSuggestion} onOpenChange={(open) => { if (!open) setEditingSuggestion(null); }}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Review Suggestion</DialogTitle>
+                    </DialogHeader>
+                    {editingSuggestion && (
+                        <div className="space-y-4 py-2">
+                            <div className="p-3 bg-muted rounded-lg text-sm">
+                                <p className="font-medium">{editingSuggestion.profiles?.full_name || 'Unknown Partner'}</p>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    {format(new Date(editingSuggestion.created_at), 'MMM d, yyyy h:mm a')}
+                                </p>
+                                <p className="whitespace-pre-wrap">{editingSuggestion.suggestion_text}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Status</Label>
+                                <Select value={editStatus} onValueChange={setEditStatus}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="new">New</SelectItem>
+                                        <SelectItem value="reviewed">Reviewed</SelectItem>
+                                        <SelectItem value="implemented">Implemented</SelectItem>
+                                        <SelectItem value="dismissed">Dismissed</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Admin Notes</Label>
+                                <Textarea
+                                    value={editNotes}
+                                    onChange={e => setEditNotes(e.target.value)}
+                                    placeholder="Add internal notes about this suggestion..."
+                                    rows={3}
+                                />
+                            </div>
+
+                            <Button
+                                className="w-full"
+                                onClick={() => updateSuggestion.mutate({
+                                    id: editingSuggestion.id,
+                                    status: editStatus,
+                                    admin_notes: editNotes,
+                                })}
+                                disabled={updateSuggestion.isPending}
+                            >
+                                {updateSuggestion.isPending ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

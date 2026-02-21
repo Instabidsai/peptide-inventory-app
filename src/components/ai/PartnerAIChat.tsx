@@ -1,0 +1,255 @@
+import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { usePartnerAI, type PartnerMessage } from '@/hooks/use-partner-ai';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+import { MessageSquare, X, Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
+
+export function PartnerAIChat() {
+  const { profile, userRole } = useAuth();
+  const { messages, sendMessage, clearChat, isLoading, isLoadingHistory } = usePartnerAI();
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Drag state
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const pos = position ?? { x: rect.left, y: rect.top };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    const newX = Math.max(0, Math.min(window.innerWidth - 200, dragRef.current.origX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 100, dragRef.current.origY + dy));
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = () => {
+    dragRef.current = null;
+  };
+
+  // Only show for sales_rep (partners)
+  const role = userRole?.role || profile?.role;
+  if (role !== 'sales_rep') return null;
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, open]);
+
+  const handleSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage(input);
+    setInput('');
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const welcomeMessage: PartnerMessage = {
+    id: 'welcome',
+    role: 'assistant',
+    content: "Hey! I'm your partner assistant. I can help you with:\n\n- **Product info** — peptides, protocols, dosing\n- **Your commissions** — check earnings and status\n- **Your clients** — view your assigned contacts\n- **Stock levels** — what's available to sell\n- **Resources** — educational materials\n- **Suggestions** — submit ideas or report issues\n\nWhat can I help with?",
+    created_at: new Date().toISOString(),
+  };
+
+  const displayMessages = messages.length > 0 ? messages : [welcomeMessage];
+
+  return (
+    <>
+      {/* Floating button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-emerald-600 text-white shadow-overlay hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-105 transition-all flex items-center justify-center"
+          aria-label="Open partner AI chat"
+        >
+          <MessageSquare className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Chat panel */}
+      {open && (
+        <div
+          ref={panelRef}
+          className={cn(
+            "fixed z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:rounded-2xl bg-card border border-border/60 shadow-overlay flex flex-col overflow-hidden",
+            !position && "bottom-0 right-0 sm:bottom-4 sm:right-4"
+          )}
+          style={position ? { left: position.x, top: position.y } : undefined}
+        >
+          {/* Header — drag handle */}
+          <div
+            className="px-4 py-3 border-b border-border/50 bg-card flex items-center justify-between shrink-0 cursor-grab active:cursor-grabbing select-none touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onDoubleClick={() => setPosition(null)}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-emerald-600/15 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">Partner Assistant</h3>
+                <p className="text-[10px] text-muted-foreground">Protocols, stock, commissions</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Clear chat"
+                    className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+                    title="Clear chat"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all messages in this conversation. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearChat}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close chat"
+                onClick={() => { setOpen(false); setPosition(null); }}
+                className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 px-4 py-3">
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex w-full gap-2",
+                      msg.role === 'user' ? "justify-end" : "justify-start",
+                      msg.id.startsWith('opt-') && "opacity-70"
+                    )}
+                  >
+                    {msg.role === 'assistant' && (
+                      <div className="h-7 w-7 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0 mt-1">
+                        <Bot className="h-3.5 w-3.5 text-emerald-500" />
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
+                        msg.role === 'user'
+                          ? "bg-emerald-600 text-white rounded-tr-sm"
+                          : "bg-muted/50 border border-border/50 text-foreground rounded-tl-sm"
+                      )}
+                    >
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      )}
+                      <div className={cn(
+                        "text-[10px] mt-1.5 opacity-50",
+                        msg.role === 'user' ? "text-white" : "text-muted-foreground"
+                      )}>
+                        {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    {msg.role === 'user' && (
+                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 mt-1">
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isLoading && (
+                  <div className="flex justify-start gap-2">
+                    <div className="h-7 w-7 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0">
+                      <Bot className="h-3.5 w-3.5 text-emerald-500" />
+                    </div>
+                    <div className="bg-muted/50 border border-border/50 p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 animate-pulse" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 animate-pulse [animation-delay:150ms]" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 animate-pulse [animation-delay:300ms]" />
+                      </div>
+                      <span className="text-muted-foreground/50 text-xs">Working on it...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={scrollRef} />
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Input */}
+          <form onSubmit={handleSend} className="p-3 border-t border-border/50 bg-card flex gap-2 shrink-0">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about protocols, check stock, suggest features..."
+              className="flex-1 h-10 rounded-xl text-sm"
+              disabled={isLoading}
+              autoFocus
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isLoading || !input.trim()}
+              className="h-10 w-10 rounded-xl shrink-0 bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <span className="sr-only">Send</span>
+            </Button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}

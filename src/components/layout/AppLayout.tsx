@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
+import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
 // Note: framer-motion transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,8 +52,10 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* Admin AI Chat */}
+      {/* Admin AI Chat (admin/staff only) */}
       <AdminAIChat />
+      {/* Partner AI Chat (sales_rep only) */}
+      <PartnerAIChat />
 
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (
