@@ -74,8 +74,7 @@ import {
 
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
-// Zelle email loaded from tenant config in component
-const VENMO_HANDLE = 'PureUSPeptide';
+// Zelle + Venmo loaded from tenant config in component
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
     Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
@@ -202,7 +201,7 @@ export default function ClientStore() {
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
     const navigate = useNavigate();
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');

@@ -10,6 +10,8 @@ export interface TenantConfig {
     logo_url: string;
     primary_color: string;
     zelle_email: string;
+    venmo_handle: string;
+    cashapp_handle: string;
     session_timeout_minutes: number;
 }
 
@@ -21,6 +23,8 @@ const DEFAULTS: TenantConfig = {
     logo_url: '',
     primary_color: '#7c3aed',
     zelle_email: '',
+    venmo_handle: '',
+    cashapp_handle: '',
     session_timeout_minutes: 60,
 };
 
@@ -43,7 +47,7 @@ export function useTenantConfig(): TenantConfig {
 
         supabase
             .from('tenant_config')
-            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, zelle_email, session_timeout_minutes')
+            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes')
             .eq('org_id', orgId)
             .single()
             .then(({ data }) => {

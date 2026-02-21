@@ -50,15 +50,14 @@ interface CartItem {
 //   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
 type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
-// Zelle email loaded from tenant config in component
-const VENMO_HANDLE = 'PureUSPeptide';
+// Zelle + Venmo loaded from tenant config in component
 
 export default function PartnerStore() {
     const { user, profile } = useAuth();
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
     const storageKey = `partner_cart_${user?.id || 'anon'}`;
 
     const [cart, setCart] = useState<CartItem[]>(() => {

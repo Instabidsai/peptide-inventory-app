@@ -1,1 +1,2 @@
-project_id = "mckkegmkpqdicudnfhor"
+# Replace with your Supabase project ID (found in Settings → General)
+project_id = "YOUR_PROJECT_ID"
