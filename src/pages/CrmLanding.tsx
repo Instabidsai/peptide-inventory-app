@@ -35,6 +35,13 @@ import {
   Linkedin,
   Github,
   ExternalLink,
+  Heart,
+  CreditCard,
+  Palette,
+  Activity,
+  TrendingUp,
+  UserPlus,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -398,12 +405,11 @@ function Hero() {
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg leading-relaxed">
-              Two AIs work for you: one{" "}
-              <strong className="text-foreground">runs your CRM</strong> —
-              answering questions, managing inventory, processing orders. The
-              other{" "}
-              <strong className="text-foreground">builds new features</strong>{" "}
-              on demand — dashboards, automations, entire modules — in seconds.
+              One AI that{" "}
+              <strong className="text-foreground">runs your entire business</strong> —
+              inventory, orders, fulfillment, client health, commissions — and{" "}
+              <strong className="text-foreground">builds new features on demand</strong>.
+              Dashboards, automations, entire modules — in seconds, not months.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -670,33 +676,31 @@ function HowItWorks() {
 
 // ─── Two AI Brains ───────────────────────────────────────────────
 function TwoAiBrains() {
-  const brains = [
+  const capabilities = [
     {
       icon: Bot,
-      title: "AI Operator",
-      subtitle: "Runs Your Business",
-      color: "emerald",
-      features: [
-        "Answers questions about inventory, orders, and clients",
-        "Processes orders and generates shipping labels",
-        "Monitors stock levels and sends alerts",
-        "Creates reports and tracks compliance",
-        "Manages customer communications",
-      ],
+      title: "Runs Your Operations",
+      desc: "Manages inventory, processes orders, handles customer chat, generates shipping labels, and monitors your entire business in real time.",
+    },
+    {
+      icon: Wand2,
+      title: "Builds Itself Continuously",
+      desc: "Describe what you need in plain English. The AI creates custom dashboards, data modules, automations, and reports — then deploys them instantly.",
     },
     {
       icon: Blocks,
-      title: "AI Architect",
-      subtitle: "Builds New Features",
-      color: "primary",
-      features: [
-        "Creates custom dashboards from a description",
-        "Builds new data modules and forms",
-        "Sets up automations and workflows",
-        "Generates custom reports with charts",
-        "Adds fields, entities, and integrations",
-      ],
+      title: "Adds Agentic Capabilities",
+      desc: "Powered by the Jarvis SDK, new AI agents are added to your CRM as your business grows — each one specialized for a specific task.",
     },
+  ];
+
+  const sdkFeatures = [
+    "Autonomous order processing & fulfillment",
+    "Intelligent client health monitoring",
+    "Protocol optimization from real-time data",
+    "Automated compliance & reporting",
+    "Smart restock alerts & supplier management",
+    "Custom workflow agents built on demand",
   ];
 
   return (
@@ -704,118 +708,150 @@ function TwoAiBrains() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
-            Dual AI Architecture
+            AI-Native Architecture
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Two AI Brains. One Powerful Platform.
+            One AI. Infinite Capabilities.
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Most platforms give you a chatbot. We give you two specialized AIs
-            that work together — one runs your day-to-day operations, the other
-            builds exactly what you need.
+            Other platforms bolt on a chatbot. Ours is different — a single AI
+            controls your entire CRM, continuously builds new features, and
+            deploys specialized agents through our Jarvis SDK as your business evolves.
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto relative">
-          {/* Connection line with pulse */}
-          <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        {/* Central brain visual + 3 capability cards */}
+        <div className="max-w-4xl mx-auto">
+          {/* Brain hub */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center mb-8"
+          >
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2s" }} />
-              <div className="relative w-12 h-12 rounded-full bg-background border-2 border-primary/40 flex items-center justify-center shadow-lg shadow-primary/20">
-                <Brain className="w-5 h-5 text-primary" />
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2.5s" }} />
+              <div className="absolute -inset-4 rounded-full bg-primary/5 animate-pulse" style={{ animationDuration: "3s" }} />
+              <div className="relative w-16 h-16 rounded-full bg-background border-2 border-primary/50 flex items-center justify-center shadow-lg shadow-primary/25">
+                <Brain className="w-7 h-7 text-primary" />
               </div>
             </div>
+          </motion.div>
+
+          {/* 3 capability cards */}
+          <div className="grid sm:grid-cols-3 gap-5 mb-10">
+            {capabilities.map((cap, i) => (
+              <motion.div
+                key={cap.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.12 }}
+                className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center"
+              >
+                <div className="w-11 h-11 rounded-lg bg-primary/15 text-primary flex items-center justify-center mx-auto mb-3">
+                  <cap.icon className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground mb-2">
+                  {cap.title}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {cap.desc}
+                </p>
+              </motion.div>
+            ))}
           </div>
 
-          {brains.map((b, i) => (
-            <motion.div
-              key={b.title}
-              initial={{ opacity: 0, x: i === 0 ? -30 : 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
-              className={`rounded-xl border p-6 ${
-                i === 0
-                  ? "border-emerald-500/30 bg-emerald-500/5"
-                  : "border-primary/30 bg-primary/5"
-              }`}
-            >
-              <div
-                className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${
-                  i === 0
-                    ? "bg-emerald-500/15 text-emerald-400"
-                    : "bg-primary/15 text-primary"
-                }`}
-              >
-                <b.icon className="w-6 h-6" />
+          {/* Jarvis SDK feature list */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Sparkles className="w-4.5 h-4.5 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground">
-                {b.title}
-              </h3>
-              <p
-                className={`text-sm font-medium mb-4 ${
-                  i === 0 ? "text-emerald-400" : "text-primary"
-                }`}
-              >
-                {b.subtitle}
-              </p>
-              <ul className="space-y-2">
-                {b.features.map((feat) => (
-                  <li
-                    key={feat}
-                    className="flex items-start gap-2 text-sm text-muted-foreground"
-                  >
-                    <Check
-                      className={`w-4 h-4 shrink-0 mt-0.5 ${
-                        i === 0 ? "text-emerald-400" : "text-primary"
-                      }`}
-                    />
-                    {feat}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Jarvis SDK</h4>
+                <p className="text-xs text-muted-foreground">Agentic capabilities that grow with your business</p>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {sdkFeatures.map((feat) => (
+                <div key={feat} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Check className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                  {feat}
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
 
-// ─── Features Bento ───────────────────────────────────────────────
-function FeaturesBento() {
-  const features = [
+// ─── Platform Features (Comprehensive) ───────────────────────────
+function PlatformFeatures() {
+  const categories = [
     {
-      icon: Bot,
-      title: "AI Chat Assistant",
-      desc: "Ask anything about your peptides, protocols, or business metrics. Get instant, accurate answers.",
-      hero: true,
+      id: "ai",
+      label: "AI & Automation",
+      icon: Brain,
+      features: [
+        { icon: Bot, title: "AI Chat Assistant", desc: "GPT-4o powered chat with RAG knowledge base. Ask about inventory, protocols, client health — get instant answers with citations." },
+        { icon: Wand2, title: "AI Feature Builder", desc: "Describe what you need in plain English. The AI creates custom dashboards, data fields, entities, and automations — deployed instantly." },
+        { icon: Zap, title: "Smart Automations", desc: "Automated payment matching, email scanning, restock alerts, and custom workflow triggers. Set rules once, the AI handles the rest." },
+        { icon: Sparkles, title: "Jarvis SDK Agents", desc: "Extensible AI agent framework. New specialized agents deploy as your business grows — each one built for a specific task." },
+      ],
     },
     {
-      icon: Blocks,
-      title: "AI Feature Builder",
-      desc: "Describe what you need in plain English. The AI architect designs, builds, and deploys it live — dashboards, automations, entire modules.",
-      hero: true,
-    },
-    {
+      id: "inventory",
+      label: "Inventory & Fulfillment",
       icon: Package,
-      title: "Inventory & Lot Tracking",
-      desc: "COA management, cold chain monitoring, expiry alerts, and multi-location stock levels.",
+      features: [
+        { icon: FlaskConical, title: "Peptide Catalog", desc: "Full catalog with SKU management, retail pricing, active/inactive status, search, CSV export, and AI-powered restock suggestions." },
+        { icon: Package, title: "Lot & Bottle Tracking", desc: "Track every vial from receipt to sale. 7 bottle statuses, lot expiry alerts, COA management, and cost-per-unit tracking." },
+        { icon: Truck, title: "Fulfillment Center", desc: "Integrated Shippo shipping — compare carrier rates, generate labels, print, and track deliveries. Full order pipeline with daily hours logging." },
+        { icon: ShoppingCart, title: "Supplier Orders", desc: "Purchase order creation, receiving workflow with actual-vs-expected quantities, automatic lot generation on receive." },
+      ],
     },
     {
-      icon: ShoppingCart,
-      title: "Order & Fulfillment",
-      desc: "Client portal, Stripe checkout, shipping label generation, and real-time delivery tracking.",
+      id: "client",
+      label: "Client Experience",
+      icon: Heart,
+      features: [
+        { icon: Heart, title: "Digital Fridge & Protocols", desc: "Gamified client portal with Digital Fridge, PeptideRings, dose tracking, compliance heatmaps, and protocol assignment." },
+        { icon: Activity, title: "Health & Wellness Hub", desc: "Photo-based macro tracking with AI analysis, body composition logging, water tracker, weekly compliance trends, and barcode scanning." },
+        { icon: ShoppingCart, title: "Client & Partner Stores", desc: "Tiered pricing stores with multiple payment methods — card, Zelle, CashApp, Venmo. Protocol-guided product discovery." },
+        { icon: Users, title: "Community & Resources", desc: "Discussion forums, resource library with videos and articles, client messaging system, households, and in-app notifications." },
+      ],
     },
     {
-      icon: FileText,
-      title: "Protocol Management",
-      desc: "Build, assign, and track peptide protocols for clients. Dosing schedules and progress monitoring.",
+      id: "revenue",
+      label: "Sales & Revenue",
+      icon: TrendingUp,
+      features: [
+        { icon: Users, title: "4-Tier Partner Program", desc: "Senior (50% off), Standard (35%), Associate (25%), Executive (50%). Automated tier management and partner onboarding." },
+        { icon: TrendingUp, title: "Commission Engine", desc: "3-level deep commission tracking across partners and reps. Automated calculations, payout management, and reporting." },
+        { icon: CreditCard, title: "Flexible Payments", desc: "Accept card (with merchant fee), Zelle, CashApp, Venmo (no fee). Automated payment email scanning and confidence-based matching." },
+        { icon: BarChart3, title: "Financial Dashboard", desc: "Revenue tracking, expense management by category, financial metrics charts, bulk payment processing, and profit analysis." },
+      ],
     },
     {
-      icon: Building2,
-      title: "Multi-Tenant White Label",
-      desc: "Your brand, your domain, your portal. Each tenant is fully isolated with custom branding.",
+      id: "platform",
+      label: "White-Label Platform",
+      icon: Palette,
+      features: [
+        { icon: Palette, title: "Custom Branding", desc: "Your logo, colors, company name, and domain. Clients see your brand — not ours. Fully customizable per tenant." },
+        { icon: Building2, title: "Multi-Tenant Architecture", desc: "Complete data isolation with Row-Level Security on 15+ tables. Each tenant gets their own universe — invisible to others." },
+        { icon: UserPlus, title: "Self-Service Onboarding", desc: "Invite links, referral tracking, self-service signup with plan selection. Clients go from signup to operational in minutes." },
+        { icon: Shield, title: "Vendor Dashboard", desc: "Super admin control panel for managing all tenants. Provision new accounts, monitor subscriptions, and track platform health." },
+      ],
     },
   ];
 
@@ -830,52 +866,53 @@ function FeaturesBento() {
             Everything Your Peptide Business Needs
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Purpose-built features for peptide companies — plus an AI that
-            builds whatever else you need.
+            200+ purpose-built features across inventory, client experience,
+            sales, fulfillment — plus an AI that builds whatever else you need.
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 gap-5">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
-              className={`group relative overflow-hidden rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.01] ${
-                f.hero
-                  ? "sm:col-span-1 ring-1 ring-primary/20 hover:ring-primary/40 bg-gradient-to-br from-card to-primary/[0.03]"
-                  : "hover:border-primary/30"
-              }`}
-            >
-              {/* Glow effect on hover */}
-              <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              <div className="relative">
-                <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
-                    f.hero
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors"
-                  }`}
-                >
-                  <f.icon className="w-5 h-5" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1.5">
-                  {f.title}
-                  {f.hero && (
-                    <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/20 text-primary uppercase">
-                      AI
-                    </span>
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {f.desc}
-                </p>
+        <Tabs defaultValue="ai" className="w-full">
+          <TabsList className="flex w-full max-w-3xl mx-auto mb-8 h-auto gap-1 flex-wrap justify-center">
+            {categories.map((cat) => (
+              <TabsTrigger key={cat.id} value={cat.id} className="text-xs sm:text-sm px-3 py-2.5 gap-1.5">
+                <cat.icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{cat.label}</span>
+                <span className="sm:hidden">{cat.label.split(" & ")[0].split(" ")[0]}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {categories.map((cat) => (
+            <TabsContent key={cat.id} value={cat.id}>
+              <div className="grid sm:grid-cols-2 gap-5">
+                {cat.features.map((f, i) => (
+                  <motion.div
+                    key={f.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.08 }}
+                    className="group relative overflow-hidden rounded-xl border border-border/60 p-6 bg-card shadow-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.01] hover:border-primary/30"
+                  >
+                    <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
+                        <f.icon className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-semibold text-foreground mb-1.5">{f.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
-            </motion.div>
+            </TabsContent>
           ))}
-        </div>
+        </Tabs>
+
+        <motion.div {...fadeInUp} className="text-center mt-10">
+          <p className="text-sm text-muted-foreground">
+            <span className="text-primary font-semibold">200+ features</span> across 20 categories — and the AI builds more every day.
+          </p>
+        </motion.div>
       </div>
     </section>
   );
@@ -1314,6 +1351,251 @@ function AiShowcase() {
   );
 }
 
+// ─── Payment Integration ─────────────────────────────────────────
+function PaymentIntegration() {
+  const methods = [
+    { icon: CreditCard, name: "Credit & Debit Cards", desc: "Seamless card processing through your payment processor's gateway", badge: "Primary" },
+    { icon: Wallet, name: "Zelle", desc: "Direct bank transfers with automated reconciliation", badge: "No Fee" },
+    { icon: Wallet, name: "CashApp", desc: "Mobile-first payments your clients already use", badge: "No Fee" },
+    { icon: Wallet, name: "Venmo", desc: "Social payments with instant confirmation", badge: "No Fee" },
+  ];
+
+  const automations = [
+    "Automated payment email scanning & matching",
+    "Confidence-based auto-reconciliation (high / medium / low)",
+    "Real-time payment status tracking per order",
+    "Merchant fee calculation per payment method",
+    "Commission auto-calculation on every sale",
+    "Bulk payment processing for supplier orders",
+  ];
+
+  return (
+    <section className="py-16 sm:py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-12">
+          <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2 block">
+            Integrated Payments
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+            Payment Processing, Already Live
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Credit card processing is already integrated and accepting payments today.
+            Your gateway, your rates, your relationship — we handle the rest.
+          </p>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-10 items-start">
+          {/* Left: Payment methods */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-6">
+              Accept Every Way Your Clients Pay
+            </h3>
+            {methods.map((m, i) => (
+              <motion.div
+                key={m.name}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-card hover:border-emerald-500/30 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                  <m.icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-foreground">{m.name}</h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+                      {m.badge}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{m.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Right: Automation features */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-emerald-500/5 p-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Payment Automation</h3>
+                <p className="text-xs text-muted-foreground">Set it once — the AI handles the rest</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {automations.map((feat) => (
+                <div key={feat} className="flex items-start gap-3 text-sm text-muted-foreground">
+                  <Check className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                  {feat}
+                </div>
+              ))}
+            </div>
+
+            {/* Revenue flow visual */}
+            <div className="mt-8 pt-6 border-t border-primary/10">
+              <p className="text-xs text-muted-foreground mb-3">Revenue Flow</p>
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                {["Client Pays", "Auto-Matched", "Commission Split", "Revenue Tracked"].map((step, i) => (
+                  <div key={step} className="flex items-center gap-2">
+                    {i > 0 && <ArrowRight className="w-3 h-3 text-primary/40 shrink-0" />}
+                    <span className="px-2.5 py-1 rounded-lg bg-background/60 border border-border/30 text-foreground whitespace-nowrap">
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Partner CTA */}
+        <motion.div
+          {...fadeInUp}
+          className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-emerald-500/10 border border-emerald-500/20"
+        >
+          <h3 className="text-xl font-bold text-foreground mb-2">
+            Distribution Partners
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-lg mx-auto mb-4">
+            Your clients get the platform, you keep the payment processing revenue,
+            and wholesale peptide sourcing flows directly through the CRM.
+            One partnership, three revenue streams.
+          </p>
+          <Button
+            onClick={() => scrollTo("final-cta")}
+            className="bg-gradient-to-r from-emerald-500 to-primary text-white border-0 hover:opacity-90"
+          >
+            Become a Distribution Partner
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Supply Chain ────────────────────────────────────────────────
+function SupplyChain() {
+  const benefits = [
+    {
+      icon: FlaskConical,
+      title: "Wholesale Peptide Sourcing",
+      desc: "Access verified wholesale peptide supply directly through the platform. No middlemen, no separate ordering systems.",
+    },
+    {
+      icon: Truck,
+      title: "Direct Supply Chain Integration",
+      desc: "Orders placed in the CRM flow straight to fulfillment. Your clients' inventory replenishes automatically from our wholesale pipeline.",
+    },
+    {
+      icon: Package,
+      title: "Lot Tracking from Source",
+      desc: "Every vial tracked from supplier to client. COA documentation, expiry management, and cold chain compliance built in from day one.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Margin & Cost Analysis",
+      desc: "Real-time cost-per-unit tracking, supplier price comparison, and margin analysis — so your clients always know their numbers.",
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24 bg-card/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-12">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            Supply Chain
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+            Wholesale Peptide Sourcing, Built Into the CRM
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Your clients don't just manage their peptide business — they source product directly
+            through the platform. Our wholesale supply chain back-channels into every tenant.
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          {benefits.map((b, i) => (
+            <motion.div
+              key={b.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+              className="rounded-xl border border-border/60 bg-card p-6 hover:border-primary/30 transition-all hover:shadow-card-hover"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <b.icon className="w-5 h-5" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-1.5">{b.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Supply chain flow */}
+        <motion.div
+          {...fadeInUp}
+          className="mt-10 max-w-3xl mx-auto"
+        >
+          <div className="rounded-xl border border-primary/15 bg-gradient-to-r from-primary/5 via-emerald-500/5 to-primary/5 p-6">
+            <p className="text-xs text-muted-foreground text-center mb-4 font-medium uppercase tracking-wider">How It Works for Your Clients</p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              {[
+                { step: "Client Orders in CRM", icon: ShoppingCart },
+                { step: "Wholesale Sourced", icon: FlaskConical },
+                { step: "Direct to Client", icon: Truck },
+                { step: "Auto-Tracked", icon: Package },
+              ].map((s, i) => (
+                <div key={s.step} className="flex items-center gap-2">
+                  {i > 0 && <ArrowRight className="w-4 h-4 text-primary/40 shrink-0 hidden sm:block" />}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/80 border border-border/40">
+                    <s.icon className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs text-foreground font-medium whitespace-nowrap">{s.step}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Three revenue streams callout */}
+        <motion.div {...fadeInUp} className="mt-10 text-center">
+          <div className="inline-flex flex-wrap items-center justify-center gap-4 sm:gap-8">
+            {[
+              { label: "CRM Subscriptions", icon: BarChart3 },
+              { label: "Payment Processing", icon: CreditCard },
+              { label: "Wholesale Supply", icon: FlaskConical },
+            ].map((stream) => (
+              <div key={stream.label} className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <stream.icon className="w-4 h-4 text-emerald-400" />
+                </div>
+                <span className="text-sm font-medium text-foreground">{stream.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Three revenue streams from one partnership.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Testimonials ────────────────────────────────────────────────
 function Testimonials() {
   const testimonials = [
@@ -1335,7 +1617,7 @@ function Testimonials() {
     },
     {
       quote:
-        "The white-label feature means our clients think they're using our proprietary software. The dual-AI architecture is the real differentiator — one AI runs the show, the other builds new tools whenever we ask.",
+        "The white-label feature means our clients think they're using our proprietary software. The AI-native architecture is the real differentiator — it runs the entire show and builds new tools whenever we ask.",
       name: "Emily Park",
       title: "Founder",
       company: "NovaPeptide Distribution",
@@ -1582,11 +1864,11 @@ function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: "PeptideCRM is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. Two AIs work together — one operates your CRM, one builds new features on demand.",
+      a: "PeptideCRM is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.",
     },
     {
       q: "How does the AI actually control my entire CRM?",
-      a: "The AI Operator has full access to your CRM data and actions. It can look up inventory levels, process orders, generate shipping labels, send customer notifications, create reports, and manage contacts — all through natural conversation. Ask it 'process order #4521 and notify the customer' and it handles every step: payment, label, email. The AI Architect goes further — it can create new database tables, build custom forms, set up automations, and add entirely new modules to your sidebar.",
+      a: "The AI has full access to your CRM data and actions. It can look up inventory levels, process orders, generate shipping labels, send customer notifications, create reports, and manage contacts — all through natural conversation. Ask it 'process order #4521 and notify the customer' and it handles every step: payment, label, email. It goes further — creating new database tables, building custom forms, setting up automations, and adding entirely new modules to your sidebar.",
     },
     {
       q: "Is my data secure? What about compliance?",
@@ -1799,8 +2081,8 @@ function Footer() {
               <span className="font-bold">PeptideCRM</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              The AI-powered command center for peptide businesses. Two AIs,
-              one platform, infinite possibilities.
+              The AI-powered command center for peptide businesses. One AI,
+              infinite possibilities.
             </p>
           </div>
 
@@ -1906,8 +2188,10 @@ export default function CrmLanding() {
       <PainPoints />
       <HowItWorks />
       <TwoAiBrains />
-      <FeaturesBento />
+      <PlatformFeatures />
       <AiShowcase />
+      <PaymentIntegration />
+      <SupplyChain />
       <Testimonials />
       <Pricing />
       <Faq />
