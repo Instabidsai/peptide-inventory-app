@@ -391,9 +391,9 @@ function MovementDetailsDialog({
 }
 
 export default function Movements() {
-  const { userRole } = useAuth();
+  const { userRole, profile, user, authError, session } = useAuth();
   const isMobile = useIsMobile();
-  const { data: movements, isLoading, isError, refetch } = useMovements();
+  const { data: movements, isLoading, isError, error: queryError, refetch } = useMovements();
   const deleteMovement = useDeleteMovement();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -615,10 +615,31 @@ export default function Movements() {
         </div>
       )}
 
+      {/* Diagnostic banner — shows when data is unexpectedly missing */}
+      {!isLoading && !movements && (
+        <Card className="mb-4 border-amber-500/50 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">Data Loading Issue Detected</p>
+            <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5 font-mono">
+              <li>Session: {session ? 'active' : 'MISSING'}</li>
+              <li>User: {user ? user.id.slice(0,8) + '...' : 'MISSING'}</li>
+              <li>Profile: {profile ? 'loaded' : 'MISSING'}</li>
+              <li>Org ID: {profile?.org_id ? profile.org_id.slice(0,8) + '...' : 'MISSING'}</li>
+              <li>Query enabled: {profile?.org_id ? 'yes' : 'NO — org_id is null, all queries disabled'}</li>
+              <li>Auth error: {authError || 'none'}</li>
+              <li>Query error: {queryError ? String(queryError) : 'none'}</li>
+            </ul>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+              Try: Sign out → clear browser cache → sign back in. If this persists, screenshot this box.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="bg-card border-border/60">
         <CardContent className="pt-6">
           {isError ? (
-            <QueryError message="Failed to load movements." onRetry={() => refetch()} />
+            <QueryError message={`Failed to load movements. ${queryError ? String(queryError) : ''}`} onRetry={() => refetch()} />
           ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
