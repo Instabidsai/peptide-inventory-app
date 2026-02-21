@@ -118,23 +118,24 @@ async function executeTool(
   supabase: any,
   orgId: string,
   userId: string,
+  profileId: string,
 ): Promise<string> {
   try {
     switch (name) {
       case "view_my_commissions": {
         const limit = args.limit || 20;
+        // commissions.partner_id references profiles.id (not auth.users.id)
         const { data, error } = await supabase
           .from("commissions")
-          .select("id, amount, status, order_id, created_at, sales_orders(total_amount, contacts(name))")
-          .eq("partner_id", userId)
+          .select("id, amount, status, sale_id, created_at, sales_orders(total_amount)")
+          .eq("partner_id", profileId)
           .order("created_at", { ascending: false })
           .limit(limit);
         if (error) return "Error: " + error.message;
         if (!data?.length) return "No commissions found yet. Start selling to earn commissions!";
         const lines = data.map((c: any) =>
           "$" + Number(c.amount).toFixed(2) + " | " + c.status +
-          " | Client: " + (c.sales_orders?.contacts?.name || "Unknown") +
-          " | Order: $" + Number(c.sales_orders?.total_amount || 0).toFixed(2) +
+          " | Order total: $" + Number(c.sales_orders?.total_amount || 0).toFixed(2) +
           " | " + new Date(c.created_at).toLocaleDateString()
         );
         const total = data.reduce((s: number, c: any) => s + Number(c.amount), 0);
@@ -145,10 +146,11 @@ async function executeTool(
       }
 
       case "view_my_clients": {
+        // contacts.assigned_rep_id references profiles.id
         let query = supabase
           .from("contacts")
           .select("id, name, email, phone, type, created_at")
-          .eq("assigned_rep_id", userId)
+          .eq("assigned_rep_id", profileId)
           .order("name");
         if (args.search) {
           query = query.ilike("name", "%" + args.search + "%");
@@ -164,17 +166,19 @@ async function executeTool(
 
       case "view_my_orders": {
         const limit = args.limit || 10;
+        // sales_orders.rep_id references profiles.id; client FK is client_id not contact_id
+        // Only select safe fields — NOT cogs_amount, profit_amount, merchant_fee, commission_amount
         const { data, error } = await supabase
           .from("sales_orders")
-          .select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))")
-          .eq("rep_id", userId)
+          .select("id, status, payment_status, total_amount, created_at, sales_order_items(quantity, peptides(name))")
+          .eq("rep_id", profileId)
           .order("created_at", { ascending: false })
           .limit(limit);
         if (error) return "Error: " + error.message;
         if (!data?.length) return "No orders found. Visit the Partner Store to place orders.";
         const lines = data.map((o: any) => {
           const items = o.sales_order_items?.map((i: any) => i.quantity + "x " + (i.peptides?.name || "?")).join(", ") || "no items";
-          return "#" + o.id.slice(0, 8) + " | " + (o.contacts?.name || "?") +
+          return "#" + o.id.slice(0, 8) +
             " | " + o.status + "/" + o.payment_status +
             " | $" + Number(o.total_amount).toFixed(2) +
             " | " + items +
@@ -205,16 +209,18 @@ async function executeTool(
         }
         if (!data?.length) return "No peptides matching '" + name_query + "'. Try a different name.";
 
-        // Get stock counts for found peptides
+        // Get stock counts for found peptides via bottles → lots → peptides
         const ids = data.map((p: any) => p.id);
         const { data: bottles } = await supabase
           .from("bottles")
-          .select("peptide_id")
-          .in("peptide_id", ids)
+          .select("lot_id, lots!inner(peptide_id)")
           .eq("status", "in_stock");
 
         const stockMap: Record<string, number> = {};
-        bottles?.forEach((b: any) => { stockMap[b.peptide_id] = (stockMap[b.peptide_id] || 0) + 1; });
+        bottles?.forEach((b: any) => {
+          const pid = b.lots?.peptide_id;
+          if (pid && ids.includes(pid)) stockMap[pid] = (stockMap[pid] || 0) + 1;
+        });
 
         const lines = data.map((p: any) =>
           p.name + " | " + (stockMap[p.id] || 0) + " in stock" + (p.active === false ? " | INACTIVE" : "")
@@ -223,10 +229,10 @@ async function executeTool(
       }
 
       case "search_resources": {
+        // resources table has no org_id — search all resources
         const { data, error } = await supabase
           .from("resources")
           .select("id, title, description, type, url")
-          .eq("org_id", orgId)
           .or("title.ilike.%" + args.query + "%,description.ilike.%" + args.query + "%")
           .limit(10);
         if (error) return "Error: " + error.message;
@@ -238,9 +244,11 @@ async function executeTool(
       }
 
       case "lookup_protocol": {
+        // protocol_items columns: dosage_amount, dosage_unit, frequency, duration_weeks
+        // Exclude price_tier and cost_multiplier (financial data)
         const { data, error } = await supabase
           .from("protocols")
-          .select("id, name, description, protocol_items(peptides(name), dosage, frequency, duration)")
+          .select("id, name, description, protocol_items(peptides(name), dosage_amount, dosage_unit, frequency, duration_weeks)")
           .eq("org_id", orgId)
           .ilike("name", "%" + args.query + "%")
           .limit(5);
@@ -248,7 +256,7 @@ async function executeTool(
         if (!data?.length) return "No protocols matching '" + args.query + "'.";
         const lines = data.map((p: any) => {
           const items = p.protocol_items?.map((i: any) =>
-            "  - " + (i.peptides?.name || "?") + " | " + (i.dosage || "—") + " | " + (i.frequency || "—") + " | " + (i.duration || "—")
+            "  - " + (i.peptides?.name || "?") + " | " + (i.dosage_amount || "—") + " " + (i.dosage_unit || "") + " | " + (i.frequency || "—") + " | " + (i.duration_weeks ? i.duration_weeks + " weeks" : "—")
           ).join("\n") || "  (no items)";
           return p.name + (p.description ? " — " + p.description : "") + "\n" + items;
         });
@@ -305,8 +313,9 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return json({ error: "Invalid token" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("org_id, role").eq("user_id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("id, org_id, role").eq("user_id", user.id).single();
     if (!profile?.org_id) return json({ error: "No organization" }, 400);
+    const profileId = profile.id; // profiles.id — used by commissions, contacts, sales_orders FKs
 
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
@@ -330,14 +339,17 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       supabase.from("partner_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30),
       supabase.from("peptides").select("id, name, active").eq("org_id", profile.org_id).eq("active", true).order("name"),
-      supabase.from("bottles").select("peptide_id").eq("status", "in_stock"),
-      supabase.from("contacts").select("id, name").eq("assigned_rep_id", user.id).limit(5),
-      supabase.from("commissions").select("amount, status").eq("partner_id", user.id),
+      supabase.from("bottles").select("lot_id, lots!inner(peptide_id)").eq("status", "in_stock"),
+      supabase.from("contacts").select("id, name").eq("assigned_rep_id", profileId).limit(5),
+      supabase.from("commissions").select("amount, status").eq("partner_id", profileId),
     ]);
 
-    // Stock counts (no pricing!)
+    // Stock counts (no pricing!) — bottles → lots → peptides
     const stockMap: Record<string, number> = {};
-    stockBottles?.forEach((b: any) => { stockMap[b.peptide_id] = (stockMap[b.peptide_id] || 0) + 1; });
+    stockBottles?.forEach((b: any) => {
+      const pid = b.lots?.peptide_id;
+      if (pid) stockMap[pid] = (stockMap[pid] || 0) + 1;
+    });
 
     const catalogLines = (allPeptides || []).map((p: any) =>
       p.name + " | " + (stockMap[p.id] || 0) + " in stock"
@@ -378,7 +390,7 @@ Deno.serve(async (req) => {
         messages.push(choice.message);
         for (const tc of choice.message.tool_calls) {
           const tcArgs = JSON.parse(tc.function.arguments);
-          const result = await executeTool(tc.function.name, tcArgs, supabase, profile.org_id, user.id);
+          const result = await executeTool(tc.function.name, tcArgs, supabase, profile.org_id, user.id, profileId);
           messages.push({ role: "tool", tool_call_id: tc.id, content: result });
         }
         continue;
