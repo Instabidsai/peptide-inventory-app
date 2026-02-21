@@ -86,14 +86,14 @@
 ## PHASE 2: Remove Hardcoded Values (Priority: CRITICAL)
 
 ### 2.1 — Supabase credentials in source code
-- [ ] `src/integrations/sb_client/client.ts` lines 5-6: Remove hardcoded URL + anon key fallback
-  - Change to: throw error if env vars are missing (fail-fast, not fail-silently-to-wrong-DB)
-  - Current: `|| "https://mckkegmkpqdicudnfhor.supabase.co"` — every misconfigured deploy hits OUR database
+- [x] `src/integrations/sb_client/client.ts` — DONE: Removed hardcoded URL + anon key fallback, fail-fast error on missing env vars
 
 ### 2.2 — Venmo handle
-- [ ] `src/pages/client/ClientStore.tsx:78` — `VENMO_HANDLE = 'PureUSPeptide'` hardcoded
-- [ ] `src/pages/partner/PartnerStore.tsx:54` — same thing
-- [ ] Fix: Pull from `tenant_config` (add `venmo_handle` column) or remove Venmo entirely and use Stripe/PsiFi
+- [x] `src/pages/client/ClientStore.tsx` — DONE: Pulls from `useTenantConfig()`
+- [x] `src/pages/partner/PartnerStore.tsx` — DONE: Pulls from `useTenantConfig()`
+- [x] Added `venmo_handle` + `cashapp_handle` to tenant_config table + TypeScript interface
+- [x] DB migration: `supabase/migrations/20260221_tenant_config_payment_handles.sql`
+- [x] Production seeded: `venmo_handle = 'PureUSPeptide'` for existing org
 
 ### 2.3 — Brand references in landing page
 - [ ] `src/pages/CrmLanding.tsx` — "ThePeptideAI" appears 6+ times
@@ -103,13 +103,12 @@
 - [ ] Email addresses: `hello@thepeptideai.com`, `legal@thepeptideai.com` — templatize or keep as platform emails
 
 ### 2.4 — Supabase project ID in config
-- [ ] `supabase/config.toml` — `project_id = "mckkegmkpqdicudnfhor"`
-- [ ] Templatize or document "replace this"
+- [x] `supabase/config.toml` — DONE: Templatized to `YOUR_PROJECT_ID` with comment
 
 ### 2.5 — Audit edge functions for hardcoded values
-- [ ] Check all 15 edge functions for hardcoded API keys, URLs, org IDs
-- [ ] Edge functions that need env vars: `chat-with-ai` (OpenAI key), `admin-ai-chat`, `partner-ai-chat`, `analyze-food`, `ai-builder`, `check-payment-emails`, `composio-connect/callback`
-- [ ] Document required Supabase Edge Function secrets
+- [x] All 15 edge functions audited — ALL use `Deno.env.get()` for secrets (no hardcoded keys)
+- [x] Fixed `partner-ai-chat`: BRAND_NAME default was 'PureUS Peptides' → changed to 'Peptide Partner'
+- [x] Required Supabase Edge Function secrets documented (see table below)
 
 ---
 
@@ -328,23 +327,23 @@ For each function:
 
 ## Quick Reference: Edge Functions (15 total)
 
-| Function | Purpose | Env Secrets Needed |
-|----------|---------|-------------------|
-| `admin-ai-chat` | Admin AI assistant | OPENAI_API_KEY |
-| `ai-builder` | AI feature builder | OPENAI_API_KEY |
-| `analyze-food` | Photo macro analysis | OPENAI_API_KEY |
-| `chat-with-ai` | Client AI chat (RAG) | OPENAI_API_KEY |
-| `check-payment-emails` | Payment email scanner | OPENAI_API_KEY? TBD |
-| `composio-callback` | OAuth callback | COMPOSIO_API_KEY? TBD |
-| `composio-connect` | Connect 3rd-party | COMPOSIO_API_KEY? TBD |
-| `exchange-token` | Invite token exchange | SUPABASE_SERVICE_ROLE_KEY |
-| `invite-user` | Send invites | SUPABASE_SERVICE_ROLE_KEY |
-| `partner-ai-chat` | Partner AI assistant | OPENAI_API_KEY |
-| `process-health-document` | Process health docs | OPENAI_API_KEY |
-| `promote-contact` | Contact → Partner | SUPABASE_SERVICE_ROLE_KEY |
-| `provision-tenant` | Create new tenant | SUPABASE_SERVICE_ROLE_KEY |
-| `run-automations` | Execute automations | SUPABASE_SERVICE_ROLE_KEY |
-| `self-signup` | Self-service signup | SUPABASE_SERVICE_ROLE_KEY |
+| Function | Purpose | Env Secrets Needed | Audit Status |
+|----------|---------|-------------------|--------------|
+| `admin-ai-chat` | Admin AI assistant | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS, BRAND_NAME | CLEAN |
+| `ai-builder` | AI feature builder | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS | CLEAN |
+| `analyze-food` | Photo macro analysis | OPENAI_API_KEY, SUPABASE_ANON_KEY, ALLOWED_ORIGINS | CLEAN |
+| `chat-with-ai` | Client AI chat (RAG) | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, BRAND_NAME | CLEAN |
+| `check-payment-emails` | Payment email scanner | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, COMPOSIO_API_KEY, ALLOWED_ORIGINS | CLEAN |
+| `composio-callback` | OAuth callback | SUPABASE_SERVICE_ROLE_KEY, APP_URL | CLEAN |
+| `composio-connect` | Connect 3rd-party | SUPABASE_SERVICE_ROLE_KEY, COMPOSIO_API_KEY, ALLOWED_ORIGINS | CLEAN |
+| `exchange-token` | Invite token exchange | SUPABASE_SERVICE_ROLE_KEY, PUBLIC_SITE_URL, ALLOWED_ORIGINS | CLEAN |
+| `invite-user` | Send invites | SUPABASE_SERVICE_ROLE_KEY, PUBLIC_SITE_URL, ALLOWED_ORIGINS | CLEAN |
+| `partner-ai-chat` | Partner AI assistant | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS, BRAND_NAME | FIXED |
+| `process-health-document` | Process health docs | OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, ALLOWED_ORIGINS | CLEAN |
+| `promote-contact` | Contact → Partner | SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS | CLEAN |
+| `provision-tenant` | Create new tenant | SUPABASE_SERVICE_ROLE_KEY, COMPOSIO_API_KEY, ALLOWED_ORIGINS | CLEAN |
+| `run-automations` | Execute automations | SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, ALLOWED_ORIGINS | CLEAN |
+| `self-signup` | Self-service signup | SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS | CLEAN |
 
 ---
 
@@ -353,8 +352,8 @@ For each function:
 | Phase | Description | Status | Completion |
 |-------|------------|--------|------------|
 | 1 | Schema & Database | NOT STARTED | 0% |
-| 2 | Remove Hardcoded Values | NOT STARTED | 0% |
-| 3 | Edge Functions Audit | NOT STARTED | 0% |
+| 2 | Remove Hardcoded Values | IN PROGRESS | 80% |
+| 3 | Edge Functions Audit | DONE | 100% |
 | 4 | Stripe Integration | NOT STARTED | 0% |
 | 5 | Security & Secrets | NOT STARTED | 0% |
 | 6 | Documentation | NOT STARTED | 0% |

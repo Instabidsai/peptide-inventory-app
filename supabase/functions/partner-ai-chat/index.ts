@@ -15,7 +15,7 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'PureUS Peptides';
+const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide Partner';
 
 const SYSTEM_PROMPT = `You are the partner assistant for ${BRAND_NAME}. You help sales partners (reps) with product knowledge, their commissions, their clients, and stock availability.
 
