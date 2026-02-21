@@ -31,9 +31,6 @@ import {
   Lock,
   BadgeCheck,
   ChevronRight,
-  Twitter,
-  Linkedin,
-  Github,
   ExternalLink,
   Heart,
   CreditCard,
@@ -189,7 +186,7 @@ function Nav() {
             className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
           >
             <FlaskConical className="w-6 h-6 text-primary" />
-            <span className="font-bold text-lg">PeptideCRM</span>
+            <span className="font-bold text-lg">ThePeptideAI</span>
           </button>
 
           {/* Desktop links */}
@@ -373,28 +370,11 @@ function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left — copy */}
           <motion.div {...fadeInUp}>
-            {/* Avatar social proof group */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex -space-x-2">
-                {["SC", "MR", "EP", "JK"].map((initials, i) => (
-                  <div key={initials} className={`w-8 h-8 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold ${
-                    i === 0 ? "bg-primary/30 text-primary" :
-                    i === 1 ? "bg-emerald-500/30 text-emerald-400" :
-                    i === 2 ? "bg-blue-500/30 text-blue-400" :
-                    "bg-purple-500/30 text-purple-400"
-                  }`}>
-                    {initials}
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  ))}
-                  <span className="text-xs text-muted-foreground ml-1">4.9/5</span>
-                </div>
-                <span className="text-xs text-muted-foreground">Built for the <strong className="text-foreground">peptide industry</strong></span>
+            {/* Industry badge */}
+            <div className="flex items-center gap-2 mb-6">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <FlaskConical className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-primary">Purpose-Built for the Peptide Industry</span>
               </div>
             </div>
 
@@ -543,19 +523,19 @@ function PainPoints() {
       icon: Wrench,
       title: "6+ Months of Customization",
       desc: "Generic CRMs like HubSpot and Salesforce need $50K+ in consulting and months of setup for peptide workflows. Our AI does it in seconds.",
-      stat: "Save $50K+",
+      stat: "Solved on day one",
     },
     {
       icon: Thermometer,
       title: "No Peptide-Specific Features",
       desc: "Lot tracking, COA management, cold chain compliance, and expiry alerts don't exist in off-the-shelf tools. You'd need to build them from scratch.",
-      stat: "200+ hours saved",
+      stat: "20+ built-in workflows",
     },
     {
       icon: AlertTriangle,
       title: "Manual Processes Break at Scale",
       desc: "Spreadsheets and email threads crumble when you go from 50 to 500 orders per month. Our platform scales with you automatically.",
-      stat: "10x faster setup",
+      stat: "Built to scale",
     },
   ];
 
@@ -1243,7 +1223,7 @@ function AiShowcase() {
         <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium">
-              Compliance Report — Feb 2026
+              Compliance Report — {new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })}
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
               Passed
@@ -1864,7 +1844,7 @@ function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: "PeptideCRM is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.",
+      a: "ThePeptideAI is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.",
     },
     {
       q: "How does the AI actually control my entire CRM?",
@@ -2054,10 +2034,9 @@ function Footer() {
     {
       title: "Company",
       links: [
-        { label: "About", action: () => scrollTo("hero") },
-        { label: "Blog", action: () => scrollTo("ai-showcase") },
-        { label: "Careers", action: () => scrollTo("final-cta") },
-        { label: "Contact", action: () => scrollTo("final-cta") },
+        { label: "How It Works", action: () => scrollTo("ai-showcase") },
+        { label: "Partnerships", action: () => scrollTo("final-cta") },
+        { label: "Contact Us", action: () => window.open("mailto:hello@thepeptideai.com", "_blank") },
       ],
     },
     {
@@ -2078,7 +2057,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <FlaskConical className="w-5 h-5 text-primary" />
-              <span className="font-bold">PeptideCRM</span>
+              <span className="font-bold">ThePeptideAI</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               The AI-powered command center for peptide businesses. One AI,
@@ -2123,23 +2102,14 @@ function Footer() {
 
         <div className="mt-6 pt-6 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} PeptideCRM. All rights reserved.
+            &copy; {new Date().getFullYear()} ThePeptideAI. All rights reserved.
           </p>
-          <div className="flex items-center gap-3">
-            {[
-              { icon: Twitter, label: "Twitter" },
-              { icon: Linkedin, label: "LinkedIn" },
-              { icon: Github, label: "GitHub" },
-            ].map((social) => (
-              <button
-                key={social.label}
-                className="w-8 h-8 rounded-full bg-card border border-border/40 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
-                aria-label={social.label}
-              >
-                <social.icon className="w-3.5 h-3.5" />
-              </button>
-            ))}
-          </div>
+          <a
+            href="mailto:hello@thepeptideai.com"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            hello@thepeptideai.com
+          </a>
         </div>
       </div>
     </footer>

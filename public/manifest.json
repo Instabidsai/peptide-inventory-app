@@ -1,0 +1,21 @@
+{
+  "name": "ThePeptideAI",
+  "short_name": "PeptideAI",
+  "description": "The AI-powered command center for peptide businesses.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
