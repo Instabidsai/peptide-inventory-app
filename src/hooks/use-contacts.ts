@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export type ContactType = 'customer' | 'partner' | 'internal';
 
+export type ContactSource = 'manual' | 'woocommerce' | 'import';
+
 export interface Contact {
   id: string;
   org_id: string;
@@ -15,6 +17,8 @@ export interface Contact {
   company: string | null;
   address: string | null;
   notes: string | null;
+  source: ContactSource;
+  woo_customer_id?: number | null;
   created_at: string;
   updated_at: string;
   linked_user_id?: string | null;

@@ -73,31 +73,70 @@ async function findOrCreateContact(
     const shipping = woo.shipping || {};
     const name = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'WooCommerce Customer';
     const email = billing.email || null;
-
-    if (email) {
-        const { data: existing } = await supabase
-            .from('contacts')
-            .select('id')
-            .eq('email', email)
-            .eq('org_id', orgId)
-            .limit(1)
-            .maybeSingle();
-        if (existing) return existing.id;
-    }
-
+    const wooCustomerId = woo.customer_id && woo.customer_id !== 0 ? woo.customer_id : null;
+    const company = billing.company || null;
+    const phone = billing.phone || null;
     const address = shipping.address_1
         ? `${shipping.address_1}, ${shipping.city}, ${shipping.state} ${shipping.postcode}`
         : null;
 
+    // 1. Match by WooCommerce customer ID first (most reliable)
+    let existing: { id: string } | null = null;
+    if (wooCustomerId) {
+        const { data } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('woo_customer_id', wooCustomerId)
+            .eq('org_id', orgId)
+            .maybeSingle();
+        existing = data;
+    }
+
+    // 2. Fall back to email match
+    if (!existing && email) {
+        const { data } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('email', email)
+            .eq('org_id', orgId)
+            .maybeSingle();
+        existing = data;
+    }
+
+    // 3. If found, update with latest data from WooCommerce
+    if (existing) {
+        const updates: Record<string, any> = {
+            source: 'woocommerce',
+            assigned_rep_id: null,
+        };
+        if (wooCustomerId) updates.woo_customer_id = wooCustomerId;
+        if (address) updates.address = address;
+        if (phone) updates.phone = phone;
+        if (company) updates.company = company;
+        if (name && name !== 'WooCommerce Customer') updates.name = name;
+
+        await supabase
+            .from('contacts')
+            .update(updates)
+            .eq('id', existing.id);
+
+        return existing.id;
+    }
+
+    // 4. Create new contact — tagged as website, no rep
     const { data: newContact, error } = await supabase
         .from('contacts')
         .insert({
             org_id: orgId,
             name,
             email,
-            phone: billing.phone || null,
+            phone,
             type: 'customer',
+            company,
             address,
+            source: 'woocommerce',
+            woo_customer_id: wooCustomerId,
+            assigned_rep_id: null,
             notes: `Auto-created from WooCommerce order #${woo.number}`,
         })
         .select('id')

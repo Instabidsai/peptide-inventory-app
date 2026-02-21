@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact, type ContactType } from '@/hooks/use-contacts';
+import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact, type ContactType, type ContactSource } from '@/hooks/use-contacts';
 import { useReps } from '@/hooks/use-profiles'; // NEW: Import useReps
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -73,6 +73,7 @@ export default function Contacts() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [repFilter, setRepFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
@@ -100,7 +101,10 @@ export default function Contacts() {
     const matchesRep = repFilter === 'all' ||
       (repFilter === 'unassigned' ? !c.assigned_rep_id : c.assigned_rep_id === repFilter);
 
-    return matchesSearch && matchesRep;
+    // Source filter
+    const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
+
+    return matchesSearch && matchesRep && matchesSource;
   });
 
   const handleCreate = async (data: ContactFormData) => {
@@ -399,6 +403,19 @@ export default function Contacts() {
                 <SelectItem value="internal">Internal</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={sourceFilter}
+              onValueChange={setSourceFilter}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Sources" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="woocommerce">Website</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
             {isAdmin && reps && reps.length > 0 && (
               <Select
                 value={repFilter}
@@ -455,7 +472,12 @@ export default function Contacts() {
                           <p className="font-medium">{contact.name}</p>
                           <p className="text-xs text-muted-foreground">{contact.email || contact.phone || 'No contact info'}</p>
                         </div>
-                        <Badge variant={typeColors[contact.type]} className="text-xs">{typeLabels[contact.type]}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          {contact.source === 'woocommerce' && (
+                            <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Website</Badge>
+                          )}
+                          <Badge variant={typeColors[contact.type]} className="text-xs">{typeLabels[contact.type]}</Badge>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {contact.company && <span>{contact.company}</span>}
@@ -478,6 +500,7 @@ export default function Contacts() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Assigned Rep</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
@@ -502,6 +525,19 @@ export default function Contacts() {
                       <Badge variant={typeColors[contact.type]}>
                         {typeLabels[contact.type]}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {contact.source === 'woocommerce' ? (
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          Website
+                        </Badge>
+                      ) : contact.source === 'import' ? (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          Import
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Manual</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {contact.assigned_rep?.full_name ? (

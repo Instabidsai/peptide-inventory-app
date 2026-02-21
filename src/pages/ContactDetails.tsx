@@ -502,9 +502,16 @@ export default function ContactDetails() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{contact.name}</h1>
-                    <Badge variant={contact.type === 'customer' ? 'default' : 'secondary'} className="mt-2 text-md px-3 py-1 capitalize">
-                        {contact.type}
-                    </Badge>
+                    <div className="flex items-center gap-2 mt-2">
+                        <Badge variant={contact.type === 'customer' ? 'default' : 'secondary'} className="text-md px-3 py-1 capitalize">
+                            {contact.type}
+                        </Badge>
+                        {contact.source === 'woocommerce' && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                Website Customer
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             </div>
 
