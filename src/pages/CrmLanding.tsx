@@ -1354,7 +1354,7 @@ function AiShowcase() {
 // ─── Payment Integration ─────────────────────────────────────────
 function PaymentIntegration() {
   const methods = [
-    { icon: CreditCard, name: "Credit & Debit Cards", desc: "Seamless card processing through your payment processor's gateway", badge: "Primary" },
+    { icon: CreditCard, name: "PsiFi Credit Card Processing", desc: "Full credit & debit card processing powered by PsiFi — already live and accepting payments today", badge: "Live" },
     { icon: Wallet, name: "Zelle", desc: "Direct bank transfers with automated reconciliation", badge: "No Fee" },
     { icon: Wallet, name: "CashApp", desc: "Mobile-first payments your clients already use", badge: "No Fee" },
     { icon: Wallet, name: "Venmo", desc: "Social payments with instant confirmation", badge: "No Fee" },
@@ -1377,11 +1377,11 @@ function PaymentIntegration() {
             Integrated Payments
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Payment Processing, Already Live
+            PsiFi Payment Processing, Built In
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Credit card processing is already integrated and accepting payments today.
-            Your gateway, your rates, your relationship — we handle the rest.
+            Real credit card processing powered by PsiFi — already live and taking payments.
+            Your merchant account, your rates, your revenue. Plus Zelle, CashApp, and Venmo built right in.
           </p>
         </motion.div>
 
