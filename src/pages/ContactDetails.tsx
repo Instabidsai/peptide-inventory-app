@@ -1358,6 +1358,7 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             if (latest.payment_status === 'paid') color = 'bg-green-500/15 text-green-500 border-green-500/30';
             if (latest.payment_status === 'unpaid') color = 'bg-amber-500/15 text-amber-500 border-amber-500/30';
             if (latest.payment_status === 'partial') color = 'bg-blue-500/15 text-blue-500 border-blue-500/30';
+            if (latest.payment_status === 'commission_offset') { color = 'bg-violet-500/15 text-violet-500 border-violet-500/30'; label = 'Product Offset'; }
         }
 
         return { latestMovement: latest, statusColor: color, statusLabel: label };

@@ -351,8 +351,8 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     const totalPaid = txns.reduce((s, t) => s + t.amount_paid, 0);
     const totalOutstanding = txns.reduce((s, t) => s + Math.max(t.balance, 0), 0);
     const totalDiscount = txns.reduce((s, t) => s + t.discount_amt, 0);
-    const paidCount = txns.filter((t) => t.payment_status === "paid").length;
-    const unpaidCount = txns.filter((t) => t.payment_status !== "paid").length;
+    const paidCount = txns.filter((t) => t.payment_status === "paid" || t.payment_status === "commission_offset").length;
+    const unpaidCount = txns.filter((t) => t.payment_status !== "paid" && t.payment_status !== "commission_offset").length;
 
     // Commission stats
     const commEarned = commissions.reduce((s, c) => s + c.amount, 0);
@@ -466,7 +466,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     /* -------------------------------------------------------------- */
 
     const handleMarkAllPaid = async () => {
-        const unpaid = txns.filter((t) => t.payment_status !== "paid");
+        const unpaid = txns.filter((t) => t.payment_status !== "paid" && t.payment_status !== "commission_offset");
         if (unpaid.length === 0) return;
         try {
             setLoading(true);
@@ -532,6 +532,8 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">Paid</Badge>;
         if (t.payment_status === "partial")
             return <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Partial</Badge>;
+        if (t.payment_status === "commission_offset")
+            return <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px] px-1.5 py-0">Product Offset</Badge>;
         return <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0">Unpaid</Badge>;
     };
 
@@ -771,7 +773,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                     <div
                                         className={cn(
                                             "grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_2fr_80px_80px_80px_70px_28px] gap-1 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/20 transition-colors items-center",
-                                            t.payment_status === "paid" && "opacity-70",
+                                            (t.payment_status === "paid" || t.payment_status === "commission_offset") && "opacity-70",
                                         )}
                                         onClick={() => setExpandedId(isExpanded ? null : t.id)}
                                     >
@@ -894,7 +896,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                                 )}
 
                                                 {/* Per-order payment button */}
-                                                {t.payment_status !== "paid" && (
+                                                {t.payment_status !== "paid" && t.payment_status !== "commission_offset" && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"

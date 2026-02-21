@@ -8,7 +8,7 @@ import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import { parseVialSize } from '@/lib/supply-calculations';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded';
+export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded' | 'commission_offset';
 
 export interface ShippingRate {
     object_id: string;
@@ -104,6 +104,7 @@ export interface CreateSalesOrderInput {
     payment_method?: string;
     delivery_method?: string;
     commission_amount?: number;
+    payment_status?: PaymentStatus;
     auto_fulfill?: boolean; // default false — set true only for admin inline fulfillment
     manual_commissions?: {
         profile_id: string;
@@ -276,6 +277,7 @@ export function useCreateSalesOrder() {
                     shipping_address: input.shipping_address,
                     notes: input.notes,
                     payment_method: input.payment_method || null,
+                    payment_status: input.payment_status || 'unpaid',
                     delivery_method: input.delivery_method || 'ship',
                 })
                 .select()
@@ -339,7 +341,8 @@ export function useCreateSalesOrder() {
                         movement_date: format(new Date(), 'yyyy-MM-dd'),
                         notes: `[SO:${order.id}] Sales Order #${order.id.slice(0, 8)}`,
                         created_by: repId || profile.id,
-                        payment_status: 'unpaid',
+                        payment_status: input.payment_status || 'unpaid',
+                        payment_method: input.payment_method || null,
                         amount_paid: 0,
                     })
                     .select()

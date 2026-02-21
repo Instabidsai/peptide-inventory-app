@@ -397,8 +397,8 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     {/* Payment + Shipping Status */}
                     <div className="flex gap-2 flex-wrap">
                         {order.payment_status && (
-                            <Badge variant="outline" className={`text-xs ${order.payment_status === 'paid' ? 'bg-green-500/10 text-green-500 border-green-500/20' : order.payment_status === 'partial' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-gray-500/10 text-gray-500'}`}>
-                                Payment: {order.payment_status}
+                            <Badge variant="outline" className={`text-xs ${order.payment_status === 'paid' ? 'bg-green-500/10 text-green-500 border-green-500/20' : order.payment_status === 'partial' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : order.payment_status === 'commission_offset' ? 'bg-violet-500/10 text-violet-500 border-violet-500/20' : 'bg-gray-500/10 text-gray-500'}`}>
+                                Payment: {order.payment_status === 'commission_offset' ? 'Product Offset' : order.payment_status}
                             </Badge>
                         )}
                         {order.shipping_status && order.shipping_status !== 'pending' && (

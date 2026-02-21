@@ -138,7 +138,15 @@ export default function OrderList() {
             case 'paid': return 'bg-green-500/15 text-green-500 hover:bg-green-500/15 border-green-500/30';
             case 'partial': return 'bg-amber-500/15 text-amber-500 hover:bg-amber-500/15 border-amber-500/30';
             case 'unpaid': return 'bg-red-500/15 text-red-500 hover:bg-red-500/15 border-red-500/30';
+            case 'commission_offset': return 'bg-violet-500/15 text-violet-500 hover:bg-violet-500/15 border-violet-500/30';
             default: return 'secondary';
+        }
+    };
+
+    const getPaymentLabel = (status: string) => {
+        switch (status) {
+            case 'commission_offset': return 'Product Offset';
+            default: return status;
         }
     };
 
@@ -259,7 +267,7 @@ export default function OrderList() {
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant={getStatusColor(order.status)} className="text-xs">{order.status}</Badge>
-                                        <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{order.payment_status}</Badge>
+                                        <Badge variant="outline" className={`text-xs ${getPaymentColor(order.payment_status)}`}>{getPaymentLabel(order.payment_status)}</Badge>
                                         {order.delivery_method === 'local_pickup' && (
                                             <Badge variant="outline" className="text-xs bg-orange-500/15 text-orange-400 border-orange-500/30">
                                                 <MapPin className="h-2.5 w-2.5 mr-0.5" /> Pickup

@@ -30,7 +30,7 @@ interface LotCostRow {
 export const MERCHANT_FEE_RATE = 0.05; // 5%
 
 // Payment methods that are exempt from merchant fee
-const FEE_EXEMPT_METHODS = ['credit', 'cash', 'wire', 'store_credit'];
+const FEE_EXEMPT_METHODS = ['credit', 'cash', 'wire', 'store_credit', 'commission_offset'];
 
 export async function recalculateOrderProfit(orderId: string): Promise<void> {
     // 1. Fetch the order

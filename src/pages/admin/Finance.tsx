@@ -421,6 +421,25 @@ export default function Finance() {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Commissions Paid in Product */}
+                {(financials?.commissionsInProduct ?? 0) > 0 && (
+                    <Card className="border-l-4 border-l-violet-500">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-semibold">Commissions in Product</CardTitle>
+                            <CreditCard className="h-4 w-4 text-violet-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">${(financials?.commissionsInProduct ?? 0).toFixed(2)}</div>
+                            <p className="text-xs text-muted-foreground">
+                                Product value paid to partners
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Actual cost: ${(financials?.commissionProductCost ?? 0).toFixed(2)} · Markup: ${(financials?.commissionProductMarkup ?? 0).toFixed(2)}
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             {/* Expense Charts */}
@@ -501,7 +520,7 @@ export default function Finance() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-semibold">Commissions Total</CardTitle>
+                                <CardTitle className="text-sm font-semibold">Commissions (Cash)</CardTitle>
                                 <Users className="h-4 w-4 text-purple-500" />
                             </CardHeader>
                             <CardContent>
@@ -528,6 +547,41 @@ export default function Finance() {
                             </CardContent>
                         </Card>
                     </div>
+                    {/* Product Commissions breakdown */}
+                    {(financials.commissionsInProduct > 0) && (
+                        <div className="grid gap-4 md:grid-cols-3 mt-4">
+                            <Card className="border-violet-500/30">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-semibold">Commissions (Product)</CardTitle>
+                                    <CreditCard className="h-4 w-4 text-violet-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">${financials.commissionsInProduct.toFixed(2)}</div>
+                                    <p className="text-xs text-muted-foreground">Billed value of partner product</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="border-violet-500/30">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-semibold">Product COGS (Actual Cost)</CardTitle>
+                                    <Receipt className="h-4 w-4 text-violet-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">${financials.commissionProductCost.toFixed(2)}</div>
+                                    <p className="text-xs text-muted-foreground">Real cash outlay for partner product</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="border-violet-500/30">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-semibold">Markup Savings</CardTitle>
+                                    <TrendingUp className="h-4 w-4 text-violet-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-green-600">${financials.commissionProductMarkup.toFixed(2)}</div>
+                                    <p className="text-xs text-muted-foreground">Billed - actual cost (retained value)</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             )}
 

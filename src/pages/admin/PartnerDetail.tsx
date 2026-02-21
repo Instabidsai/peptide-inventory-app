@@ -470,6 +470,35 @@ function PayoutsTabContent({ repId }: { repId: string }) {
         }
     });
 
+    // Query product orders (commission_offset) for this partner
+    const { data: productOrders } = useQuery({
+        queryKey: ['partner-product-orders', repId],
+        queryFn: async () => {
+            // Find the partner's contact record via email match
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', repId)
+                .single();
+            if (!profile?.email) return [];
+            const { data: contact } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('email', profile.email)
+                .single();
+            if (!contact) return [];
+            // Fetch movements where this contact is the buyer with commission_offset payment
+            const { data } = await supabase
+                .from('movements')
+                .select('id, movement_date, amount_paid, payment_status, notes, movement_items(price_at_sale)')
+                .eq('contact_id', contact.id)
+                .eq('payment_status', 'commission_offset')
+                .eq('type', 'sale')
+                .order('movement_date', { ascending: false });
+            return data || [];
+        }
+    });
+
     const handlePay = (id: string) => {
         payCommission.mutate(id, {
             onSuccess: () => {
@@ -581,8 +610,52 @@ function PayoutsTabContent({ repId }: { repId: string }) {
         }
     };
 
+    // Compute commission vs product ledger
+    const totalCommissionsEarned = commissions?.reduce((s, c) => s + (Number(c.amount) || 0), 0) || 0;
+    const totalProductReceived = productOrders?.reduce((s, m) => {
+        type MItem = { price_at_sale: number };
+        const items = m.movement_items as MItem[] | undefined;
+        return s + (items?.reduce((sum: number, i: MItem) => sum + (i.price_at_sale || 0), 0) || 0);
+    }, 0) || 0;
+    const netBalance = Math.round((totalCommissionsEarned - totalProductReceived) * 100) / 100;
+
     return (
         <div className="space-y-6">
+            {/* Commission vs Product Ledger */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-l-4 border-l-green-500">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-semibold">Commissions Earned</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-500">${totalCommissionsEarned.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">{commissions?.length || 0} commission records</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-violet-500">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-semibold">Product Received</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-violet-500">${totalProductReceived.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">{productOrders?.length || 0} product orders</p>
+                    </CardContent>
+                </Card>
+                <Card className={`border-l-4 ${netBalance >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-semibold">Net Balance</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${netBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            ${netBalance.toFixed(2)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {netBalance >= 0 ? 'Commissions exceed product taken' : 'Product exceeds commissions earned'}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Pending Payouts</CardTitle>

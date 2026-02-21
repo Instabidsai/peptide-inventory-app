@@ -389,6 +389,8 @@ export default function NewOrder() {
                 })),
                 commission_amount: totalCommission,
                 manual_commissions: manualCommissions,
+                payment_status: isPartnerOrder ? 'commission_offset' : undefined,
+                payment_method: isPartnerOrder ? 'commission_offset' : undefined,
             });
             navigate('/sales');
         } catch (error) {

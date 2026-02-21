@@ -595,9 +595,10 @@ export default function FulfillmentCenter() {
                                                     <Badge variant="outline" className={
                                                         order.payment_status === 'paid' ? "bg-green-500/15 text-green-500 border-green-500/30" :
                                                         order.payment_status === 'partial' ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                                                        order.payment_status === 'commission_offset' ? "bg-violet-500/15 text-violet-400 border-violet-500/30" :
                                                         "bg-red-500/15 text-red-400 border-red-500/30"
                                                     }>
-                                                        {order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'partial' ? 'Partial' : 'Unpaid'}
+                                                        {order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'partial' ? 'Partial' : order.payment_status === 'commission_offset' ? 'Product Offset' : 'Unpaid'}
                                                     </Badge>
                                                     {order.delivery_method === 'local_pickup' ? (
                                                         <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/30">

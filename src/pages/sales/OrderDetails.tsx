@@ -120,9 +120,9 @@ export default function OrderDetails() {
     };
 
     const attemptFulfill = () => {
-        if (order.payment_status !== 'paid') {
+        if (order.payment_status !== 'paid' && order.payment_status !== 'commission_offset') {
             toast({ title: "Warning", description: "This order is not marked as PAID yet.", variant: "destructive" });
-            return; // Or allow it with override? Let's block for safety.
+            return;
         }
         fulfillOrder.mutate(order.id);
     };
@@ -268,12 +268,12 @@ export default function OrderDetails() {
                         <div className="flex items-center justify-between">
                             {(order.delivery_method === 'local_pickup' ? [
                                 { label: 'Created', done: true, icon: CircleDot },
-                                { label: 'Paid', done: order.payment_status === 'paid', icon: CreditCard },
+                                { label: order.payment_status === 'commission_offset' ? 'Offset' : 'Paid', done: order.payment_status === 'paid' || order.payment_status === 'commission_offset', icon: CreditCard },
                                 { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
                                 { label: 'Picked Up', done: order.shipping_status === 'delivered', icon: MapPin },
                             ] : [
                                 { label: 'Created', done: true, icon: CircleDot },
-                                { label: 'Paid', done: order.payment_status === 'paid', icon: CreditCard },
+                                { label: order.payment_status === 'commission_offset' ? 'Offset' : 'Paid', done: order.payment_status === 'paid' || order.payment_status === 'commission_offset', icon: CreditCard },
                                 { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
                                 { label: 'Label', done: !!order.tracking_number, icon: Truck },
                                 { label: 'Printed', done: ['printed','in_transit','delivered'].includes(order.shipping_status), icon: Printer },
@@ -490,7 +490,7 @@ export default function OrderDetails() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between">
-                                            <span className="capitalize">{order.payment_status}</span>
+                                            <span className="capitalize">{order.payment_status === 'commission_offset' ? 'Product Offset' : order.payment_status}</span>
                                             <CreditCard className="h-4 w-4 opacity-50" />
                                         </Button>
                                     </DropdownMenuTrigger>

@@ -16,6 +16,10 @@ export interface FinancialMetrics {
     commissionsOwed: number;    // Pending — not yet paid
     commissionsApplied: number; // Applied to partner balance
     commissionsTotal: number;   // Sum of all commissions ever
+    // Commission-in-product metrics
+    commissionsInProduct: number;    // Total billed amount of partner product orders
+    commissionProductCost: number;   // Actual COGS of partner product orders
+    commissionProductMarkup: number; // commissionsInProduct - commissionProductCost (the "savings")
     // Per-order aggregates
     merchantFees: number;       // Total merchant fees across all orders
     orderBasedProfit: number;   // SUM of per-order profit_amount
@@ -37,6 +41,7 @@ export function useFinancialMetrics() {
                     expensesResult,
                     commissionsResult,
                     orderAggResult,
+                    commOffsetResult,
                 ] = await Promise.all([
                     supabase.rpc('get_inventory_valuation'),
                     supabase.from('movements').select('id, amount_paid').eq('org_id', orgId!).eq('type', 'sale'),
@@ -44,6 +49,7 @@ export function useFinancialMetrics() {
                     supabase.from('expenses').select('amount, category').eq('org_id', orgId!),
                     supabase.from('commissions').select('amount, status, sales_orders!inner(org_id)').eq('sales_orders.org_id', orgId!),
                     supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').eq('org_id', orgId!).neq('status', 'cancelled'),
+                    supabase.from('sales_orders').select('total_amount, cogs_amount').eq('org_id', orgId!).eq('payment_status', 'commission_offset').neq('status', 'cancelled'),
                 ]);
 
                 if (valuationResult.error) console.error("Valuation RPC failed:", valuationResult.error);
@@ -146,6 +152,18 @@ export function useFinancialMetrics() {
                 const orderBasedProfit = Math.round((orderAgg?.reduce((s, o) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
                 const orderBasedCogs = Math.round((orderAgg?.reduce((s, o) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
 
+                // --- Commission-in-Product ---
+                const commOffsetOrders = commOffsetResult.data || [];
+                const commissionsInProduct = Math.round(
+                    commOffsetOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0) * 100
+                ) / 100;
+                const commissionProductCost = Math.round(
+                    commOffsetOrders.reduce((s, o) => s + Number(o.cogs_amount || 0), 0) * 100
+                ) / 100;
+                const commissionProductMarkup = Math.round(
+                    (commissionsInProduct - commissionProductCost) * 100
+                ) / 100;
+
                 return {
                     inventoryValue,
                     salesRevenue,
@@ -158,6 +176,9 @@ export function useFinancialMetrics() {
                     commissionsOwed: Math.round(commissionsOwed * 100) / 100,
                     commissionsApplied: Math.round(commissionsApplied * 100) / 100,
                     commissionsTotal,
+                    commissionsInProduct,
+                    commissionProductCost,
+                    commissionProductMarkup,
                     merchantFees,
                     orderBasedProfit,
                     orderBasedCogs,
@@ -176,6 +197,9 @@ export function useFinancialMetrics() {
                     commissionsOwed: 0,
                     commissionsApplied: 0,
                     commissionsTotal: 0,
+                    commissionsInProduct: 0,
+                    commissionProductCost: 0,
+                    commissionProductMarkup: 0,
                     merchantFees: 0,
                     orderBasedProfit: 0,
                     orderBasedCogs: 0,

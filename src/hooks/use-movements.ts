@@ -28,7 +28,7 @@ export interface Movement {
     id: string;
     full_name: string | null;
   } | null;
-  payment_status: 'paid' | 'unpaid' | 'partial' | 'refunded';
+  payment_status: 'paid' | 'unpaid' | 'partial' | 'refunded' | 'commission_offset';
   amount_paid: number;
   payment_method: string | null;
   payment_date: string | null;
@@ -88,7 +88,7 @@ export interface CreateMovementInput {
     price_at_sale?: number;
     protocol_item_id?: string; // NEW: Link bottle to specific protocol item
   }[];
-  payment_status?: 'paid' | 'unpaid' | 'partial' | 'refunded';
+  payment_status?: 'paid' | 'unpaid' | 'partial' | 'refunded' | 'commission_offset';
   amount_paid?: number;
   payment_method?: string;
   payment_date?: string;

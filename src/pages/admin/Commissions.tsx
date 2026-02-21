@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
-import { DollarSign, Users, TrendingUp, Clock, CheckCircle, Wallet } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Clock, CheckCircle, Wallet, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
+import { useFinancialMetrics } from '@/hooks/use-financials';
 
 interface CommissionRow {
     id: string;
@@ -24,6 +25,8 @@ interface CommissionRow {
 }
 
 export default function Commissions() {
+    const { data: financials } = useFinancialMetrics();
+
     // Fetch ALL commissions — NO joins (Supabase FK resolution is unreliable)
     const { data: commissions, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin_commissions_full'],
@@ -119,6 +122,8 @@ export default function Commissions() {
                 return <Badge variant="outline" className="gap-1 text-green-500 border-green-500"><CheckCircle className="h-3 w-3" />Paid Cash</Badge>;
             case 'applied_to_debt':
                 return <Badge variant="outline" className="gap-1 text-purple-500 border-purple-500"><DollarSign className="h-3 w-3" />Applied to Debt</Badge>;
+            case 'commission_offset':
+                return <Badge variant="outline" className="gap-1 text-violet-500 border-violet-500"><CreditCard className="h-3 w-3" />Product Offset</Badge>;
             default:
                 return <Badge variant="outline">{status || 'Unknown'}</Badge>;
         }
@@ -147,7 +152,7 @@ export default function Commissions() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-semibold">Total Commissions</CardTitle>
@@ -178,6 +183,21 @@ export default function Commissions() {
                     <CardContent>
                         <div className="text-2xl font-bold text-green-500">${stats.paid.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground">{stats.paidCount} paid out</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-semibold">Paid in Product</CardTitle>
+                        <CreditCard className="h-4 w-4 text-violet-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-violet-500">
+                            ${(financials?.commissionsInProduct ?? 0).toFixed(2)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Actual cost: ${(financials?.commissionProductCost ?? 0).toFixed(2)}
+                        </p>
                     </CardContent>
                 </Card>
 

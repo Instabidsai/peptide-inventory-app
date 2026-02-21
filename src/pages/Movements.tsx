@@ -56,6 +56,15 @@ const paymentStatusColors: Record<string, 'default' | 'secondary' | 'destructive
   unpaid: 'destructive',
   partial: 'secondary',
   refunded: 'outline',
+  commission_offset: 'secondary',
+};
+
+const paymentStatusLabel: Record<string, string> = {
+  paid: 'Paid',
+  unpaid: 'Unpaid',
+  partial: 'Partial',
+  refunded: 'Refunded',
+  commission_offset: 'Product Offset',
 };
 
 function MovementDetailsDialog({
@@ -188,8 +197,8 @@ function MovementDetailsDialog({
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Payment Status</p>
-              <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className="capitalize">
-                {movement.payment_status}
+              <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className={movement.payment_status === 'commission_offset' ? 'text-violet-600' : 'capitalize'}>
+                {paymentStatusLabel[movement.payment_status] || movement.payment_status}
               </Badge>
             </div>
           </div>
@@ -702,8 +711,8 @@ export default function Movements() {
                             {mobileOwed > 0 && (
                               <p className="text-xs text-red-500">Owes ${mobileOwed.toFixed(2)}</p>
                             )}
-                            <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className="text-xs capitalize mt-1">
-                              {movement.payment_status}
+                            <Badge variant={paymentStatusColors[movement.payment_status] || 'outline'} className={`text-xs mt-1 ${movement.payment_status === 'commission_offset' ? 'text-violet-600' : 'capitalize'}`}>
+                              {paymentStatusLabel[movement.payment_status] || movement.payment_status}
                             </Badge>
                           </div>
                         </div>
