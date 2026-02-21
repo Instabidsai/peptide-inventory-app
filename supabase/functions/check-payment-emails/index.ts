@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import OpenAI from "https://esm.sh/openai@4.86.1";
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
@@ -209,6 +210,156 @@ async function matchUnpaidMovement(
     return null;
 }
 
+// ── Alias lookup ──────────────────────────────────────────────────
+
+async function matchAlias(
+    supabase: any,
+    senderName: string | null,
+    orgId: string
+): Promise<MatchResult> {
+    if (!senderName) return { contactId: null, confidence: 'low' };
+
+    const { data: alias } = await supabase
+        .from('sender_aliases')
+        .select('contact_id')
+        .eq('org_id', orgId)
+        .ilike('sender_name', senderName.trim())
+        .limit(1);
+
+    if (alias?.length) {
+        return { contactId: alias[0].contact_id, confidence: 'high' };
+    }
+    return { contactId: null, confidence: 'low' };
+}
+
+// ── Improved fuzzy matching ───────────────────────────────────────
+
+function normalizeName(name: string): string {
+    return name
+        .replace(/,?\s*(LLC|INC|CORP|LTD|CO)\b\.?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+async function fuzzyMatchContact(
+    supabase: any,
+    senderName: string | null,
+    orgId: string
+): Promise<MatchResult> {
+    if (!senderName) return { contactId: null, confidence: 'low' };
+
+    const normalized = normalizeName(senderName);
+    const parts = normalized.split(/\s+/);
+
+    // Try company field match
+    const { data: companyMatch } = await supabase
+        .from('contacts')
+        .select('id, name, company')
+        .eq('org_id', orgId)
+        .ilike('company', `%${normalized}%`)
+        .limit(3);
+
+    if (companyMatch?.length === 1) {
+        return { contactId: companyMatch[0].id, confidence: 'high' };
+    }
+
+    // Try starts-with on first 4 chars of first name (catches Rock→Rocky, etc.)
+    if (parts.length >= 1 && parts[0].length >= 4) {
+        const prefix = parts[0].substring(0, 4);
+        const lastName = parts.length >= 2 ? parts[parts.length - 1] : null;
+
+        let query = supabase
+            .from('contacts')
+            .select('id, name')
+            .eq('org_id', orgId)
+            .ilike('name', `${prefix}%`);
+
+        if (lastName) {
+            query = query.ilike('name', `%${lastName}%`);
+        }
+
+        const { data: prefixMatch } = await query.limit(3);
+
+        if (prefixMatch?.length === 1) {
+            return { contactId: prefixMatch[0].id, confidence: 'high' };
+        }
+        if (prefixMatch?.length && prefixMatch.length <= 3) {
+            return { contactId: prefixMatch[0].id, confidence: 'medium' };
+        }
+    }
+
+    return { contactId: null, confidence: 'low' };
+}
+
+// ── AI matching (GPT-4o-mini) ─────────────────────────────────────
+
+interface AiMatchResult {
+    contactId: string | null;
+    confidence: 'high' | 'medium' | 'low';
+    reasoning: string;
+}
+
+async function aiMatchContact(
+    senderName: string | null,
+    amount: number,
+    method: string,
+    contacts: { id: string; name: string; company: string | null }[]
+): Promise<AiMatchResult> {
+    if (!senderName || !contacts.length) {
+        return { contactId: null, confidence: 'low', reasoning: 'No sender name or no contacts' };
+    }
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiKey) {
+        return { contactId: null, confidence: 'low', reasoning: 'OPENAI_API_KEY not set' };
+    }
+
+    try {
+        const openai = new OpenAI({ apiKey: openaiKey });
+        const contactList = contacts.map(c => ({
+            id: c.id,
+            name: c.name,
+            company: c.company || undefined,
+        }));
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You match payment email sender names to a list of known contacts. Sender names may be ALL CAPS, have nicknames (e.g. "ROCK" = "Rocky"), or be company names. Return JSON: {"contact_id": "the-uuid-or-null", "confidence": "high|medium|low", "reasoning": "one sentence why"}. Return null if no reasonable match.`,
+                },
+                {
+                    role: 'user',
+                    content: `Payment sender: "${senderName}" ($${amount} via ${method})\n\nKnown contacts:\n${JSON.stringify(contactList)}`,
+                },
+            ],
+            response_format: { type: 'json_object' },
+            max_tokens: 150,
+            temperature: 0,
+        });
+
+        const content = completion.choices?.[0]?.message?.content;
+        if (!content) return { contactId: null, confidence: 'low', reasoning: 'Empty AI response' };
+
+        const parsed = JSON.parse(content);
+        const matchedId = parsed.contact_id || null;
+        const conf = (['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'low') as 'high' | 'medium' | 'low';
+        const reasoning = parsed.reasoning || '';
+
+        // Validate the contact_id actually exists in our list
+        if (matchedId && !contacts.some(c => c.id === matchedId)) {
+            return { contactId: null, confidence: 'low', reasoning: 'AI returned invalid contact ID' };
+        }
+
+        return { contactId: matchedId, confidence: conf, reasoning };
+    } catch (err: any) {
+        console.error('[check-payment-emails] AI match error:', err.message);
+        return { contactId: null, confidence: 'low', reasoning: `AI error: ${err.message}` };
+    }
+}
+
 // ── Main handler ───────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -354,8 +505,47 @@ Deno.serve(async (req) => {
                 // Extract sender name
                 const senderName = extractSenderName(searchText, method);
 
-                // Match contact
-                const contactMatch = await matchContact(supabase, senderName, orgId);
+                // ── Matching pipeline: alias → exact → fuzzy → AI ──
+
+                // Step 1: Check learned aliases (instant match from past approvals)
+                let contactMatch = await matchAlias(supabase, senderName, orgId);
+
+                // Step 2: Exact name match
+                if (!contactMatch.contactId) {
+                    contactMatch = await matchContact(supabase, senderName, orgId);
+                }
+
+                // Step 3: Fuzzy match (company name, name prefix)
+                if (!contactMatch.contactId || contactMatch.confidence === 'low') {
+                    const fuzzy = await fuzzyMatchContact(supabase, senderName, orgId);
+                    if (fuzzy.contactId && (!contactMatch.contactId || fuzzy.confidence !== 'low')) {
+                        contactMatch = fuzzy;
+                    }
+                }
+
+                // Step 4: AI match (GPT-4o-mini) for remaining unmatched
+                let aiSuggestedContactId: string | null = null;
+                let aiReasoning: string | null = null;
+
+                if (!contactMatch.contactId || contactMatch.confidence === 'low') {
+                    // Fetch all contacts once per org (cached above the email loop would be better,
+                    // but typically <100 contacts so this is fine)
+                    const { data: allContacts } = await supabase
+                        .from('contacts')
+                        .select('id, name, company')
+                        .eq('org_id', orgId);
+
+                    if (allContacts?.length) {
+                        const aiResult = await aiMatchContact(senderName, amount, method, allContacts);
+                        aiSuggestedContactId = aiResult.contactId;
+                        aiReasoning = aiResult.reasoning;
+
+                        // If AI is highly confident and we had no match, use it
+                        if (aiResult.contactId && aiResult.confidence === 'high' && !contactMatch.contactId) {
+                            contactMatch = { contactId: aiResult.contactId, confidence: 'high' };
+                        }
+                    }
+                }
 
                 // Match unpaid movement
                 let movementId: string | null = null;
@@ -366,16 +556,15 @@ Deno.serve(async (req) => {
                 // Determine final confidence
                 let confidence = contactMatch.confidence;
                 if (confidence === 'high' && movementId) {
-                    confidence = 'high'; // Name + amount match on unpaid movement
+                    confidence = 'high';
                 } else if (confidence === 'high' && !movementId) {
-                    confidence = 'medium'; // Name matches but no matching unpaid movement
+                    confidence = 'medium';
                 }
 
                 // Auto-post if high confidence + movement match
                 const shouldAutoPost = confidence === 'high' && movementId;
 
                 if (shouldAutoPost && movementId) {
-                    // Update movement payment fields
                     const { error: updateErr } = await supabase
                         .from('movements')
                         .update({
@@ -390,7 +579,6 @@ Deno.serve(async (req) => {
                         console.error(`[check-payment-emails] Failed to update movement ${movementId}:`, updateErr.message);
                     }
 
-                    // Insert queue record as auto_posted
                     await supabase.from('payment_email_queue').insert({
                         org_id: orgId,
                         gmail_message_id: messageId,
@@ -405,11 +593,12 @@ Deno.serve(async (req) => {
                         status: 'auto_posted',
                         confidence,
                         auto_posted_at: new Date().toISOString(),
+                        ai_suggested_contact_id: aiSuggestedContactId,
+                        ai_reasoning: aiReasoning,
                     });
 
                     autoPosted++;
                 } else {
-                    // Queue for review
                     await supabase.from('payment_email_queue').insert({
                         org_id: orgId,
                         gmail_message_id: messageId,
@@ -423,6 +612,8 @@ Deno.serve(async (req) => {
                         matched_movement_id: movementId,
                         status: 'pending',
                         confidence,
+                        ai_suggested_contact_id: aiSuggestedContactId,
+                        ai_reasoning: aiReasoning,
                     });
 
                     queued++;

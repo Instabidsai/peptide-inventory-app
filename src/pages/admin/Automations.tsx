@@ -1,6 +1,9 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/sb_client/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,12 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
     Mail, Scan, CheckCircle2, XCircle, Clock, AlertTriangle,
     Zap, Bot, Megaphone, Activity, ChevronDown, ChevronUp,
+    SkipForward, Search, Sparkles, UserCheck,
 } from 'lucide-react';
 import {
     useAutomationModules,
@@ -22,6 +28,9 @@ import {
     usePendingPaymentCount,
     useApprovePayment,
     useRejectPayment,
+    useSkipPayment,
+    useReassignContact,
+    useAcceptAiSuggestion,
     useTriggerScan,
     useToggleAutomation,
     type PaymentQueueItem,
@@ -199,6 +208,7 @@ export default function Automations() {
                                         <SelectItem value="auto_posted">Auto-posted</SelectItem>
                                         <SelectItem value="approved">Approved</SelectItem>
                                         <SelectItem value="rejected">Rejected</SelectItem>
+                                        <SelectItem value="skipped">Skipped</SelectItem>
                                     </SelectContent>
                                 </Select>
                             )}
@@ -215,12 +225,34 @@ export default function Automations() {
 // ── Pending Review Sub-Component ──────────────────────────────────
 
 function PendingReviewSection() {
+    const { organization } = useAuth();
+    const orgId = organization?.id;
     const { data: pending, isLoading, isError, refetch } = usePaymentQueue('pending');
     const approvePayment = useApprovePayment();
     const rejectPayment = useRejectPayment();
+    const skipPayment = useSkipPayment();
+    const reassignContact = useReassignContact();
+    const acceptAiSuggestion = useAcceptAiSuggestion();
     const [editItem, setEditItem] = useState<PaymentQueueItem | null>(null);
     const [editAmount, setEditAmount] = useState('');
     const [editMethod, setEditMethod] = useState('');
+    const [contactSearchOpen, setContactSearchOpen] = useState(false);
+    const [contactSearch, setContactSearch] = useState('');
+
+    // Contact search query for the combobox
+    const { data: searchResults } = useQuery({
+        queryKey: ['contact_search_automations', contactSearch, orgId],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('contacts')
+                .select('id, name, company')
+                .eq('org_id', orgId!)
+                .ilike('name', `%${contactSearch}%`)
+                .limit(10);
+            return data || [];
+        },
+        enabled: contactSearch.length >= 2 && !!orgId,
+    });
 
     if (isLoading) return (
         <Card>
@@ -251,7 +283,6 @@ function PendingReviewSection() {
 
     const handleApprove = (item: PaymentQueueItem) => {
         if (!item.matched_movement_id) {
-            // If no movement matched, open edit dialog
             setEditItem(item);
             setEditAmount(String(item.amount));
             setEditMethod(item.payment_method);
@@ -276,6 +307,27 @@ function PendingReviewSection() {
             paymentDate: editItem.email_date || new Date().toISOString(),
         });
         setEditItem(null);
+    };
+
+    const handleContactSelect = (contactId: string, contactName: string) => {
+        if (!editItem?.sender_name) return;
+        reassignContact.mutate({
+            queueItemId: editItem.id,
+            contactId,
+            senderName: editItem.sender_name,
+        });
+        setContactSearchOpen(false);
+        setContactSearch('');
+        // Keep dialog open — it will refresh with the new contact match
+    };
+
+    const handleAcceptAi = (item: PaymentQueueItem) => {
+        if (!item.ai_suggested_contact_id || !item.sender_name) return;
+        acceptAiSuggestion.mutate({
+            queueItemId: item.id,
+            aiContactId: item.ai_suggested_contact_id,
+            senderName: item.sender_name,
+        });
     };
 
     return (
@@ -319,48 +371,92 @@ function PendingReviewSection() {
                                         <TableCell>
                                             {item.contacts?.name ? (
                                                 <span className="text-emerald-500">{item.contacts.name}</span>
+                                            ) : item.ai_contact?.name ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                                                    <span className="text-blue-400">{item.ai_contact.name}</span>
+                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-400 border-blue-400/30">AI</Badge>
+                                                </div>
                                             ) : (
                                                 <span className="text-muted-foreground italic">No match</span>
+                                            )}
+                                            {item.ai_reasoning && !item.contacts?.name && (
+                                                <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px] truncate" title={item.ai_reasoning}>
+                                                    {item.ai_reasoning}
+                                                </p>
                                             )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={conf.variant}>{conf.label}</Badge>
                                         </TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            {item.matched_movement_id ? (
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                {/* Accept AI suggestion (one-click) */}
+                                                {!item.contacts?.name && item.ai_contact?.name && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-blue-400 border-blue-400/30 hover:bg-blue-400/10"
+                                                        onClick={() => handleAcceptAi(item)}
+                                                        disabled={acceptAiSuggestion.isPending}
+                                                        title={`Accept AI match: ${item.ai_contact.name}`}
+                                                    >
+                                                        <UserCheck className="mr-1 h-3.5 w-3.5" />
+                                                        Accept AI
+                                                    </Button>
+                                                )}
+
+                                                {/* Approve (if movement matched) or Edit & Match */}
+                                                {item.matched_movement_id ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="default"
+                                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                                        onClick={() => handleApprove(item)}
+                                                        disabled={approvePayment.isPending}
+                                                    >
+                                                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                                                        Approve
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setEditItem(item);
+                                                            setEditAmount(String(item.amount));
+                                                            setEditMethod(item.payment_method);
+                                                        }}
+                                                    >
+                                                        <Search className="mr-1 h-3.5 w-3.5" />
+                                                        Match
+                                                    </Button>
+                                                )}
+
+                                                {/* Skip button */}
                                                 <Button
                                                     size="sm"
-                                                    variant="default"
-                                                    className="bg-emerald-600 hover:bg-emerald-700"
-                                                    onClick={() => handleApprove(item)}
-                                                    disabled={approvePayment.isPending}
+                                                    variant="ghost"
+                                                    className="text-muted-foreground hover:text-foreground"
+                                                    onClick={() => skipPayment.mutate({ queueItemId: item.id })}
+                                                    disabled={skipPayment.isPending}
+                                                    title="Skip — not a real payment"
                                                 >
-                                                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                                                    Approve
+                                                    <SkipForward className="h-3.5 w-3.5" />
                                                 </Button>
-                                            ) : (
+
+                                                {/* Reject button */}
                                                 <Button
                                                     size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setEditItem(item);
-                                                        setEditAmount(String(item.amount));
-                                                        setEditMethod(item.payment_method);
-                                                    }}
+                                                    variant="ghost"
+                                                    className="text-destructive"
+                                                    onClick={() => rejectPayment.mutate({ queueItemId: item.id })}
+                                                    disabled={rejectPayment.isPending}
+                                                    title="Reject"
                                                 >
-                                                    Edit & Match
+                                                    <XCircle className="h-3.5 w-3.5" />
                                                 </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="text-destructive"
-                                                onClick={() => rejectPayment.mutate({ queueItemId: item.id })}
-                                                disabled={rejectPayment.isPending}
-                                            >
-                                                <XCircle className="mr-1 h-3.5 w-3.5" />
-                                                Reject
-                                            </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -370,19 +466,90 @@ function PendingReviewSection() {
                 </CardContent>
             </Card>
 
-            {/* Edit & Approve Dialog */}
-            <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
-                <DialogContent>
+            {/* Edit & Match Dialog — with contact search */}
+            <Dialog open={!!editItem} onOpenChange={(open) => { if (!open) { setEditItem(null); setContactSearch(''); setContactSearchOpen(false); } }}>
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Edit Payment Details</DialogTitle>
+                        <DialogTitle>Match Payment to Contact</DialogTitle>
                     </DialogHeader>
                     {editItem && (
                         <div className="space-y-4 py-2">
+                            {/* Email info */}
                             <div className="p-3 bg-muted rounded-lg text-sm">
                                 <p><strong>From:</strong> {editItem.sender_name || 'Unknown'}</p>
                                 <p><strong>Subject:</strong> {editItem.email_subject}</p>
                                 <p className="text-muted-foreground mt-1 text-xs">{editItem.email_snippet}</p>
                             </div>
+
+                            {/* AI suggestion banner */}
+                            {editItem.ai_contact?.name && !editItem.contacts?.name && (
+                                <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-blue-400" />
+                                        <div>
+                                            <p className="text-sm font-medium text-blue-400">AI suggests: {editItem.ai_contact.name}</p>
+                                            {editItem.ai_reasoning && (
+                                                <p className="text-xs text-muted-foreground">{editItem.ai_reasoning}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-blue-400 border-blue-400/30"
+                                        onClick={() => { handleAcceptAi(editItem); setEditItem(null); }}
+                                        disabled={acceptAiSuggestion.isPending}
+                                    >
+                                        <UserCheck className="mr-1 h-3.5 w-3.5" />
+                                        Accept
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Contact search combobox */}
+                            <div className="space-y-2">
+                                <Label>Search Contact</Label>
+                                <Popover open={contactSearchOpen} onOpenChange={setContactSearchOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-start text-muted-foreground">
+                                            <Search className="mr-2 h-4 w-4" />
+                                            {editItem.contacts?.name || 'Search by name...'}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[400px] p-0" align="start">
+                                        <Command shouldFilter={false}>
+                                            <CommandInput
+                                                placeholder="Type a name..."
+                                                value={contactSearch}
+                                                onValueChange={setContactSearch}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    {contactSearch.length < 2 ? 'Type at least 2 characters...' : 'No contacts found.'}
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {searchResults?.map(c => (
+                                                        <CommandItem
+                                                            key={c.id}
+                                                            value={c.id}
+                                                            onSelect={() => handleContactSelect(c.id, c.name)}
+                                                        >
+                                                            <div>
+                                                                <span className="font-medium">{c.name}</span>
+                                                                {c.company && (
+                                                                    <span className="text-xs text-muted-foreground ml-2">{c.company}</span>
+                                                                )}
+                                                            </div>
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            {/* Amount + method */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Amount ($)</Label>
@@ -408,13 +575,19 @@ function PendingReviewSection() {
                                     </Select>
                                 </div>
                             </div>
+
+                            {/* Approve or no-movement message */}
                             {editItem.matched_movement_id ? (
                                 <Button className="w-full" onClick={handleEditApprove} disabled={approvePayment.isPending}>
                                     {approvePayment.isPending ? 'Posting...' : 'Approve & Post Payment'}
                                 </Button>
+                            ) : editItem.contacts?.name ? (
+                                <div className="text-center text-sm text-amber-500 p-3 border border-amber-500/20 rounded-lg">
+                                    Contact matched but no unpaid movement found. Create a movement for this contact first.
+                                </div>
                             ) : (
                                 <div className="text-center text-sm text-muted-foreground p-3 border border-dashed rounded-lg">
-                                    No matching movement found. Go to Movements to manually create one, then come back to approve.
+                                    Search for a contact above to match this payment.
                                 </div>
                             )}
                         </div>

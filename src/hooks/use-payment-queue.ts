@@ -25,8 +25,11 @@ export interface PaymentQueueItem {
     reviewed_at: string | null;
     notes: string | null;
     created_at: string;
+    ai_suggested_contact_id: string | null;
+    ai_reasoning: string | null;
     contacts?: { id: string; name: string } | null;
     movements?: { id: string; movement_date: string; contact_id: string | null } | null;
+    ai_contact?: { id: string; name: string } | null;
 }
 
 export interface AutomationModule {
@@ -71,7 +74,7 @@ export function usePaymentQueue(statusFilter?: string) {
         queryFn: async () => {
             let query = supabase
                 .from('payment_email_queue')
-                .select('*, contacts:matched_contact_id(id, name), movements:matched_movement_id(id, movement_date, contact_id)')
+                .select('*, contacts:matched_contact_id(id, name), movements:matched_movement_id(id, movement_date, contact_id), ai_contact:ai_suggested_contact_id(id, name)')
                 .eq('org_id', orgId!)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -247,6 +250,187 @@ export function useToggleAutomation() {
         },
         onError: (err: Error) => {
             toast({ variant: 'destructive', title: 'Failed to update', description: err.message });
+        },
+    });
+}
+
+export function useSkipPayment() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { user } = useAuth();
+
+    return useMutation({
+        mutationFn: async ({ queueItemId }: { queueItemId: string }) => {
+            const { error } = await supabase
+                .from('payment_email_queue')
+                .update({
+                    status: 'skipped',
+                    reviewed_by: user?.id,
+                    reviewed_at: new Date().toISOString(),
+                })
+                .eq('id', queueItemId);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payment_queue'] });
+            queryClient.invalidateQueries({ queryKey: ['payment_queue_pending_count'] });
+            toast({ title: 'Payment skipped' });
+        },
+        onError: (err: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to skip', description: err.message });
+        },
+    });
+}
+
+export function useReassignContact() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { user, organization } = useAuth();
+
+    return useMutation({
+        mutationFn: async ({
+            queueItemId,
+            contactId,
+            senderName,
+        }: {
+            queueItemId: string;
+            contactId: string;
+            senderName: string;
+        }) => {
+            const orgId = organization?.id;
+            if (!orgId) throw new Error('No organization');
+
+            // 1. Update queue item with new contact
+            const { error: queueErr } = await supabase
+                .from('payment_email_queue')
+                .update({ matched_contact_id: contactId })
+                .eq('id', queueItemId);
+
+            if (queueErr) throw queueErr;
+
+            // 2. Save sender alias so future scans auto-match
+            const { error: aliasErr } = await supabase
+                .from('sender_aliases')
+                .upsert(
+                    {
+                        org_id: orgId,
+                        sender_name: senderName.toUpperCase().trim(),
+                        contact_id: contactId,
+                        created_by: user?.id,
+                    },
+                    { onConflict: 'org_id,sender_name' }
+                );
+
+            if (aliasErr) throw aliasErr;
+
+            // 3. Find an unpaid movement for this contact
+            const { data: movements } = await supabase
+                .from('movements')
+                .select('id, movement_date')
+                .eq('contact_id', contactId)
+                .neq('payment_status', 'paid')
+                .order('movement_date', { ascending: false })
+                .limit(1);
+
+            const movementId = movements?.[0]?.id || null;
+
+            if (movementId) {
+                await supabase
+                    .from('payment_email_queue')
+                    .update({ matched_movement_id: movementId })
+                    .eq('id', queueItemId);
+            }
+
+            return { movementId };
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['payment_queue'] });
+            toast({
+                title: 'Contact reassigned',
+                description: data.movementId
+                    ? 'Matching movement found — ready to approve.'
+                    : 'No unpaid movement found for this contact.',
+            });
+        },
+        onError: (err: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to reassign', description: err.message });
+        },
+    });
+}
+
+export function useAcceptAiSuggestion() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { user, organization } = useAuth();
+
+    return useMutation({
+        mutationFn: async ({
+            queueItemId,
+            aiContactId,
+            senderName,
+        }: {
+            queueItemId: string;
+            aiContactId: string;
+            senderName: string;
+        }) => {
+            const orgId = organization?.id;
+            if (!orgId) throw new Error('No organization');
+
+            // 1. Accept the AI suggestion — set matched_contact_id
+            const { error: queueErr } = await supabase
+                .from('payment_email_queue')
+                .update({ matched_contact_id: aiContactId })
+                .eq('id', queueItemId);
+
+            if (queueErr) throw queueErr;
+
+            // 2. Save alias for future auto-matching
+            const { error: aliasErr } = await supabase
+                .from('sender_aliases')
+                .upsert(
+                    {
+                        org_id: orgId,
+                        sender_name: senderName.toUpperCase().trim(),
+                        contact_id: aiContactId,
+                        created_by: user?.id,
+                    },
+                    { onConflict: 'org_id,sender_name' }
+                );
+
+            if (aliasErr) throw aliasErr;
+
+            // 3. Find unpaid movement for this contact
+            const { data: movements } = await supabase
+                .from('movements')
+                .select('id, movement_date')
+                .eq('contact_id', aiContactId)
+                .neq('payment_status', 'paid')
+                .order('movement_date', { ascending: false })
+                .limit(1);
+
+            const movementId = movements?.[0]?.id || null;
+
+            if (movementId) {
+                await supabase
+                    .from('payment_email_queue')
+                    .update({ matched_movement_id: movementId })
+                    .eq('id', queueItemId);
+            }
+
+            return { movementId };
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['payment_queue'] });
+            toast({
+                title: 'AI suggestion accepted',
+                description: data.movementId
+                    ? 'Movement matched — ready to approve.'
+                    : 'No unpaid movement found for this contact.',
+            });
+        },
+        onError: (err: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to accept suggestion', description: err.message });
         },
     });
 }
