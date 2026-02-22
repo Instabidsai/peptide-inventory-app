@@ -186,7 +186,7 @@ export function PartnerAIChat() {
                       )}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (

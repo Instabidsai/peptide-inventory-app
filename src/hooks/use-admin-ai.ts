@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { friendlyError } from '@/lib/ai-utils';
 
 export type AdminMessage = {
   id: string;
@@ -16,22 +17,6 @@ const ADMIN_DATA_KEYS = [
   'bottles', 'movements', 'commissions', 'expenses', 'protocols',
   'requests', 'financial-metrics',
 ];
-
-function friendlyError(error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  const lower = msg.toLowerCase();
-  if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed'))
-    return "Looks like you're offline or the server is unreachable. Check your connection and try again.";
-  if (lower.includes('timeout') || lower.includes('timed out'))
-    return "The AI took too long to respond. Try a simpler request or try again shortly.";
-  if (lower.includes('rate limit') || lower.includes('429'))
-    return "Too many requests — please wait a few seconds and try again.";
-  if (lower.includes('500') || lower.includes('internal server'))
-    return "The AI service hit an internal error. This is usually temporary — try again shortly.";
-  if (lower.includes('401') || lower.includes('unauthorized'))
-    return "Your session may have expired. Try refreshing the page and signing in again.";
-  return `Something went wrong: ${msg}. Please try again.`;
-}
 
 export function useAdminAI() {
   const { user } = useAuth();

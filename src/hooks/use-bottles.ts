@@ -163,8 +163,6 @@ export function useBottleStats() {
   return useQuery({
     queryKey: ['bottles', 'stats', profile?.org_id],
     queryFn: async () => {
-      // TODO: Pass org_id to get_bottle_stats RPC for multi-tenant isolation,
-      // or ensure the RPC uses RLS / auth.uid() internally to scope results.
       const { data, error } = await supabase.rpc('get_bottle_stats');
 
       if (error) throw error;

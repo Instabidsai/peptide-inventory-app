@@ -43,35 +43,31 @@ export function useTenants() {
                 (configs || []).map(c => [c.org_id, c])
             );
 
-            // Fetch counts per org using individual queries
-            const summaries: TenantSummary[] = await Promise.all(
-                orgs.map(async (org) => {
-                    const config = configMap.get(org.id);
-
-                    const [users, peptides, orders] = await Promise.all([
-                        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('org_id', org.id),
-                        supabase.from('peptides').select('id', { count: 'exact', head: true }).eq('org_id', org.id),
-                        supabase.from('sales_orders').select('id', { count: 'exact', head: true }).eq('org_id', org.id),
-                    ]);
-
-                    return {
-                        org_id: org.id,
-                        org_name: org.name,
-                        brand_name: config?.brand_name || org.name,
-                        admin_brand_name: config?.admin_brand_name || org.name,
-                        support_email: config?.support_email || '',
-                        app_url: config?.app_url || '',
-                        logo_url: config?.logo_url || '',
-                        primary_color: config?.primary_color || '#7c3aed',
-                        created_at: org.created_at,
-                        user_count: users.count || 0,
-                        peptide_count: peptides.count || 0,
-                        order_count: orders.count || 0,
-                    };
-                })
+            // Fetch counts for all orgs in a single RPC call (no N+1)
+            const { data: counts } = await supabase.rpc('get_org_counts');
+            const countMap = new Map(
+                (counts || []).map((c: any) => [c.org_id, c])
             );
 
-            return summaries;
+            return orgs.map((org) => {
+                const config = configMap.get(org.id);
+                const c = countMap.get(org.id);
+
+                return {
+                    org_id: org.id,
+                    org_name: org.name,
+                    brand_name: config?.brand_name || org.name,
+                    admin_brand_name: config?.admin_brand_name || org.name,
+                    support_email: config?.support_email || '',
+                    app_url: config?.app_url || '',
+                    logo_url: config?.logo_url || '',
+                    primary_color: config?.primary_color || '#7c3aed',
+                    created_at: org.created_at,
+                    user_count: Number(c?.user_count) || 0,
+                    peptide_count: Number(c?.peptide_count) || 0,
+                    order_count: Number(c?.order_count) || 0,
+                };
+            });
         },
         staleTime: 60_000,
     });

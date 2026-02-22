@@ -1,6 +1,20 @@
 import { createRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/react'
 import App from './App.tsx'
 import './index.css'
+
+// ─── Error Monitoring (Sentry) ──────────────────────────────────────────────
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+    enabled: import.meta.env.PROD,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 0.5,
+  });
+}
 
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────
 // Supabase implicit OAuth puts tokens in the URL hash (#access_token=xxx&...)

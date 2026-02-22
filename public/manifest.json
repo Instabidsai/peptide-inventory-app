@@ -1,7 +1,7 @@
 {
-  "name": "ThePeptideAI",
-  "short_name": "PeptideAI",
-  "description": "The AI-powered command center for peptide businesses.",
+  "name": "Peptide CRM",
+  "short_name": "PeptideCRM",
+  "description": "AI-powered command center for peptide businesses.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

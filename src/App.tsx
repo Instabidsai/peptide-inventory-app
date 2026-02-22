@@ -56,9 +56,21 @@ const Automations = lazyRetry(() => import("./pages/admin/Automations"));
 const PartnerDashboard = lazyRetry(() => import("./pages/partner/PartnerDashboard"));
 const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
 const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
+const AIAssistant = lazyRetry(() => import("./pages/AIAssistant"));
 
 // Vendor (super-admin)
+const VendorLayout = lazyRetry(() => import("./pages/vendor/VendorLayout"));
 const VendorDashboard = lazyRetry(() => import("./pages/vendor/VendorDashboard"));
+const VendorTenants = lazyRetry(() => import("./pages/vendor/VendorTenants"));
+const TenantDetail = lazyRetry(() => import("./pages/vendor/TenantDetail"));
+const VendorAnalytics = lazyRetry(() => import("./pages/vendor/VendorAnalytics"));
+const VendorBilling = lazyRetry(() => import("./pages/vendor/VendorBilling"));
+const VendorHealth = lazyRetry(() => import("./pages/vendor/VendorHealth"));
+const VendorSupport = lazyRetry(() => import("./pages/vendor/VendorSupport"));
+const VendorOnboarding = lazyRetry(() => import("./pages/vendor/VendorOnboarding"));
+const VendorMessages = lazyRetry(() => import("./pages/vendor/VendorMessages"));
+const VendorAudit = lazyRetry(() => import("./pages/vendor/VendorAudit"));
+const VendorSettings = lazyRetry(() => import("./pages/vendor/VendorSettings"));
 
 // Custom engine
 const Customizations = lazyRetry(() => import("./pages/Customizations"));
@@ -67,6 +79,8 @@ const CustomReportView = lazyRetry(() => import("./components/custom/CustomRepor
 
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
+const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
 
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
@@ -120,6 +134,8 @@ const App = () => (
                     <Suspense fallback={<PageLoader />}>
                         <Routes>
                             <Route path="/crm" element={<CrmLanding />} />
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
                             <Route path="/auth" element={<Auth />} />
                             <Route path="/join" element={<Join />} />
                             <Route path="/onboarding" element={<Onboarding />} />
@@ -180,7 +196,19 @@ const App = () => (
                                 <Route path="/partner/store" element={<PartnerStore />} />
                                 <Route path="/partner/orders" element={<PartnerOrders />} />
 
-                                <Route path="/vendor" element={<RoleBasedRedirect allowedRoles={['super_admin']}><VendorDashboard /></RoleBasedRedirect>} />
+                                <Route path="/vendor" element={<RoleBasedRedirect allowedRoles={['super_admin']}><VendorLayout /></RoleBasedRedirect>}>
+                                    <Route index element={<VendorDashboard />} />
+                                    <Route path="tenants" element={<VendorTenants />} />
+                                    <Route path="tenant/:orgId" element={<TenantDetail />} />
+                                    <Route path="analytics" element={<VendorAnalytics />} />
+                                    <Route path="billing" element={<VendorBilling />} />
+                                    <Route path="health" element={<VendorHealth />} />
+                                    <Route path="support" element={<VendorSupport />} />
+                                    <Route path="onboarding" element={<VendorOnboarding />} />
+                                    <Route path="messages" element={<VendorMessages />} />
+                                    <Route path="audit" element={<VendorAudit />} />
+                                    <Route path="settings" element={<VendorSettings />} />
+                                </Route>
 
                                 <Route path="/bottles" element={<Bottles />} />
 
@@ -192,6 +220,7 @@ const App = () => (
 
                                 <Route path="/movements" element={<Movements />} />
                                 <Route path="/movements/new" element={<MovementWizard />} />
+                                <Route path="/ai" element={<AIAssistant />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/customizations" element={<Customizations />} />
                                 <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />

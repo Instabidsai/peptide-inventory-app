@@ -15,6 +15,13 @@ export interface TenantConfig {
     session_timeout_minutes: number;
 }
 
+export interface TenantConfigResult extends TenantConfig {
+    /** True once the config has been fetched (whether successfully or not) */
+    isLoaded: boolean;
+    /** True if the fetch failed — UI can show a subtle fallback indicator */
+    isError: boolean;
+}
+
 const DEFAULTS: TenantConfig = {
     brand_name: 'Peptide AI',
     admin_brand_name: 'Peptide Admin',
@@ -31,9 +38,11 @@ const DEFAULTS: TenantConfig = {
 let cachedConfig: TenantConfig | null = null;
 let cachedOrgId: string | null = null;
 
-export function useTenantConfig(): TenantConfig {
+export function useTenantConfig(): TenantConfigResult {
     const { profile } = useAuth();
     const [config, setConfig] = useState<TenantConfig>(cachedConfig || DEFAULTS);
+    const [isLoaded, setIsLoaded] = useState(!!cachedConfig);
+    const [isError, setIsError] = useState(false);
 
     useEffect(() => {
         const orgId = profile?.org_id;
@@ -42,6 +51,8 @@ export function useTenantConfig(): TenantConfig {
         // Return cached if same org
         if (cachedConfig && cachedOrgId === orgId) {
             setConfig(cachedConfig);
+            setIsLoaded(true);
+            setIsError(false);
             return;
         }
 
@@ -50,15 +61,23 @@ export function useTenantConfig(): TenantConfig {
             .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes')
             .eq('org_id', orgId)
             .single()
-            .then(({ data }) => {
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('[useTenantConfig] Failed to load config:', error.message);
+                    setIsError(true);
+                    setIsLoaded(true);
+                    return;
+                }
                 if (data) {
                     const merged = { ...DEFAULTS, ...data };
                     cachedConfig = merged;
                     cachedOrgId = orgId;
                     setConfig(merged);
+                    setIsError(false);
                 }
+                setIsLoaded(true);
             });
     }, [profile?.org_id]);
 
-    return config;
+    return { ...config, isLoaded, isError };
 }

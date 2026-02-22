@@ -73,8 +73,8 @@ function BrandingTab({ orgId }: { orgId: string }) {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['tenant-config-settings'] });
       toast({ title: 'Branding updated' });
-    } catch (err: any) {
-      toast({ title: 'Failed to save', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      toast({ title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -253,8 +253,8 @@ function IntegrationsTab({ orgId }: { orgId: string }) {
       queryClient.invalidateQueries({ queryKey: ['tenant-api-keys'] });
       setKeys({});
       toast({ title: 'API keys saved' });
-    } catch (err: any) {
-      toast({ title: 'Failed to save keys', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      toast({ title: 'Failed to save keys', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }

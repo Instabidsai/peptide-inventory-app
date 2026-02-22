@@ -14,7 +14,8 @@ import {
   Network,
   Wand2,
   Leaf,
-  Zap
+  Zap,
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -25,6 +26,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
+  { name: 'AI Assistant', href: '/ai', icon: Bot, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },

@@ -47,6 +47,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+  },
   build: {
     rollupOptions: {
       output: {
@@ -56,6 +59,7 @@ export default defineConfig(({ mode }) => ({
           'vendor-charts': ['recharts'],
           'vendor-query': ['@tanstack/react-query'],
           'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge', 'zod'],
+          'vendor-sentry': ['@sentry/react'],
         },
       },
     },

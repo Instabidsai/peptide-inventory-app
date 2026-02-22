@@ -72,18 +72,41 @@ export default function Onboarding() {
       // Refresh profile to pick up the new org_id
       await refreshProfile();
 
+      // Fire welcome email (non-blocking — signup succeeds regardless)
+      if (user.email && data?.org_id) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          fetch('/api/email/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              template: 'welcome',
+              to: user.email,
+              org_id: data.org_id,
+              data: {
+                name: user.user_metadata?.full_name || user.email,
+                login_url: window.location.origin,
+              },
+            }),
+          }).catch(() => {}); // silent fail — welcome email is non-critical
+        }
+      }
+
       toast({
         title: 'Welcome aboard!',
         description: `${companyName.trim()} is ready to go.`,
       });
 
       navigate('/', { replace: true });
-    } catch (err: any) {
-      console.error('Self-signup error:', err);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not create your organization. Please try again.';
       toast({
         variant: 'destructive',
         title: 'Setup failed',
-        description: err.message || 'Could not create your organization. Please try again.',
+        description: message,
       });
       setIsCreatingOrg(false);
     }

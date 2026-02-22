@@ -1,7 +1,7 @@
 {
   "name": "peptide-inventory-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "predev": "npx kill-port 4550",
@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "cycles": "madge --circular src",
-    "preflight": "npm run typecheck && npm run lint && npm run cycles && npm run build"
+    "preflight": "npm run typecheck && npm run lint && npm run cycles && npm run build",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -45,6 +46,7 @@
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@sentry/react": "10.39.0",
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/react-query": "^5.83.0",
     "@types/canvas-confetti": "1.9.0",

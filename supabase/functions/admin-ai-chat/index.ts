@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
@@ -17,7 +18,33 @@ function getCorsHeaders(req: Request) {
 
 const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide Admin';
 
-const SYSTEM_PROMPT = `You are the admin assistant for ${BRAND_NAME} peptide inventory system. You have FULL access to every admin feature in the app.
+// Staff can use operational tools but NOT sensitive admin-only tools
+const STAFF_ALLOWED_TOOLS = new Set([
+  // Contacts (read + write)
+  "search_contacts", "create_contact", "update_contact", "get_contact_history",
+  // Peptides (read only — no create/update)
+  "search_peptides", "list_all_peptides", "get_pricing",
+  // Inventory (read only — no record_inventory_movement)
+  "get_bottle_stats", "list_lots",
+  // Sales orders (full operational access)
+  "create_order", "add_items_to_order", "list_recent_orders", "update_sales_order", "fulfill_order",
+  // Purchase orders (read + create + receive — operational)
+  "list_purchase_orders", "create_purchase_order", "receive_purchase_order", "record_purchase_payment",
+  // Movements (read only)
+  "list_movements",
+  // Commissions (read only — no update)
+  "list_commissions", "get_commission_stats",
+  // Protocols (read + create)
+  "list_protocols", "create_protocol",
+  // Requests (read + respond — operational)
+  "list_requests", "respond_to_request",
+  // Analytics & reports (read only)
+  "get_dashboard_stats", "low_stock_report", "top_sellers", "revenue_by_period",
+  // Suggestions (submit)
+  "submit_suggestion", "report_issue",
+]);
+
+const ADMIN_SYSTEM_PROMPT = `You are the admin assistant for ${BRAND_NAME} peptide inventory system. You have FULL access to every admin feature in the app.
 
 You can help with:
 - CONTACTS: Search, create, update contacts/clients
@@ -37,6 +64,37 @@ You can help with:
 - CUSTOMER HISTORY: Full contact profile with all orders, total spent, balance owed
 - GIVEAWAYS/LOSSES: Record giveaways, internal use, or losses with automatic FIFO bottle allocation
 - VOID ORDERS: Cancel orders and auto-restore inventory + void commissions
+- SUGGESTIONS: Submit feature suggestions or bug reports for the admin to review`;
+
+const STAFF_SYSTEM_PROMPT = `You are the operations assistant for ${BRAND_NAME} peptide inventory system. You are a staff member with access to day-to-day operations.
+
+You can help with:
+- CONTACTS: Search, create, update contacts/clients, view customer history
+- SALES ORDERS: Create, update status, record payments, add items, fulfill orders
+- PURCHASE ORDERS: Create supplier orders, mark received (auto-creates inventory), record payments
+- INVENTORY: View peptides, pricing, lots, bottle stats, stock levels (read-only — cannot create/modify peptides)
+- PRICING: Show cost/2x/3x/MSRP tiers for any peptide
+- MOVEMENTS: View inventory movements (read-only)
+- COMMISSIONS: View commissions and stats (read-only — cannot pay/void commissions)
+- PROTOCOLS: List and create treatment protocols
+- REQUESTS: View and respond to client requests
+- DASHBOARD: Quick stats (orders, revenue, stock, contacts)
+- ANALYTICS: Top sellers, revenue by period, low stock alerts
+- SUGGESTIONS: Submit feature suggestions or bug reports for admin review
+
+RESTRICTIONS (you do NOT have access to):
+- Creating or modifying peptide products (admin only)
+- Recording giveaways, losses, or internal-use movements (admin only)
+- Voiding/cancelling orders (admin only)
+- Modifying partner settings, commission rates, or tiers (admin only)
+- Paying or voiding commissions (admin only)
+- Creating or viewing expenses (admin only)
+- Viewing full financial P&L summaries (admin only)
+- Listing partner details with commission rates (admin only)
+
+If a user asks for something you can't do, explain that it requires admin access.`;
+
+const SHARED_RULES = `
 
 RULES:
 1. ALWAYS confirm before creating or modifying data. Show a clear summary and ask "Should I proceed?" or similar.
@@ -168,6 +226,8 @@ const tools = [
   { type: "function" as const, function: { name: "revenue_by_period", description: "Show revenue broken down by day, week, or month for trend analysis.", parameters: { type: "object", properties: { period: { type: "string", enum: ["day", "week", "month"], description: "Grouping period (default month)" }, periods: { type: "number", description: "Number of periods to show (default 6)" } } } } },
   { type: "function" as const, function: { name: "record_inventory_movement", description: "Record a giveaway, internal use, or loss. Auto-allocates bottles FIFO and updates inventory.", parameters: { type: "object", properties: { type: { type: "string", enum: ["giveaway", "internal_use", "loss"], description: "Type of movement" }, peptide_id: { type: "string" }, quantity: { type: "number" }, contact_id: { type: "string", description: "Optional: recipient (for giveaways)" }, reason: { type: "string", description: "Reason/notes" } }, required: ["type", "peptide_id", "quantity"] } } },
   { type: "function" as const, function: { name: "void_order", description: "Cancel/void an order. If fulfilled, restores bottles to in_stock. Also voids any commissions.", parameters: { type: "object", properties: { order_id: { type: "string" }, reason: { type: "string" } }, required: ["order_id"] } } },
+  { type: "function" as const, function: { name: "submit_suggestion", description: "Submit a feature suggestion or improvement idea for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { suggestion: { type: "string", description: "The feature idea or improvement suggestion" } }, required: ["suggestion"] } } },
+  { type: "function" as const, function: { name: "report_issue", description: "Report a bug or issue for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { description: { type: "string", description: "Description of the bug or issue" } }, required: ["description"] } } },
 ];
 
 // Resolve partial/truncated UUIDs to full UUIDs by prefix match
@@ -215,7 +275,11 @@ async function logToolCall(supabase: any, userId: string, toolName: string, args
   }
 }
 
-async function executeTool(name: string, args: any, supabase: any, orgId: string): Promise<string> {
+async function executeTool(name: string, args: any, supabase: any, orgId: string, userId: string, userRole: string): Promise<string> {
+  // Defense in depth: block staff from admin-only tools even if OpenAI somehow calls them
+  if (userRole === "staff" && !STAFF_ALLOWED_TOOLS.has(name)) {
+    return "Access denied: '" + name + "' requires admin privileges. Ask your admin to perform this action.";
+  }
   try {
     switch (name) {
       case "search_contacts": {
@@ -656,6 +720,20 @@ async function executeTool(name: string, args: any, supabase: any, orgId: string
         await supabase.from("sales_orders").update({ status: "cancelled", notes: voidNote }).eq("id", order.id);
         return "Order #" + order.id.slice(0, 8) + " CANCELLED ($" + Number(order.total_amount).toFixed(2) + ")." + (restored ? " " + restored + " bottles restored to inventory." : "") + (comms?.length ? " " + comms.length + " commission(s) voided." : "") + (args.reason ? " Reason: " + args.reason : "");
       }
+      case "submit_suggestion": {
+        const { error } = await supabase.from("partner_suggestions").insert({
+          org_id: orgId, partner_id: userId, suggestion_text: args.suggestion, category: "feature",
+        });
+        if (error) return "Error saving suggestion: " + error.message;
+        return "Feature suggestion submitted! It will appear in the admin Automations queue for review.";
+      }
+      case "report_issue": {
+        const { error } = await supabase.from("partner_suggestions").insert({
+          org_id: orgId, partner_id: userId, suggestion_text: args.description, category: "bug",
+        });
+        if (error) return "Error saving report: " + error.message;
+        return "Issue reported! It will appear in the admin Automations queue for review.";
+      }
       default:
         return "Unknown tool: " + name;
     }
@@ -680,6 +758,9 @@ Deno.serve(async (req) => {
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
     if (!["admin", "staff"].includes(role)) return json({ error: "Admin or staff role required" }, 403);
+    // Rate limit: 20 requests per minute per user
+    const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
+    if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
     const { message } = await req.json();
     if (!message) return json({ error: "message required" }, 400);
     await supabase.from("admin_chat_messages").insert({ user_id: user.id, role: "user", content: message });
@@ -730,12 +811,16 @@ Deno.serve(async (req) => {
 
     const dynamicContext = "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n");
 
-    const messages = [{ role: "system" as const, content: SYSTEM_PROMPT + dynamicContext }, ...(history || []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }))];
+    // Select system prompt and tools based on role
+    const systemPrompt = role === "admin" ? ADMIN_SYSTEM_PROMPT + SHARED_RULES : STAFF_SYSTEM_PROMPT + SHARED_RULES;
+    const activeTools = role === "admin" ? tools : tools.filter(t => STAFF_ALLOWED_TOOLS.has(t.function.name));
+
+    const messages = [{ role: "system" as const, content: systemPrompt + dynamicContext }, ...(history || []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content }))];
     let response;
     let loopCount = 0;
     while (loopCount < 8) {
       loopCount++;
-      const completion = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + OPENAI_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: "gpt-4o", messages, tools, tool_choice: "auto", temperature: 0.3 }) });
+      const completion = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + OPENAI_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: "gpt-4o", messages, tools: activeTools, tool_choice: "auto", temperature: 0.3 }) });
       const data = await completion.json();
       if (data.error) {
         await logToolCall(supabase, user.id, "_openai_api", { loop: loopCount }, "", "OpenAI API error: " + JSON.stringify(data.error), 0);
@@ -749,7 +834,7 @@ Deno.serve(async (req) => {
         for (const tc of choice.message.tool_calls) {
           const tcArgs = JSON.parse(tc.function.arguments);
           const startMs = Date.now();
-          const result = await executeTool(tc.function.name, tcArgs, supabase, profile.org_id);
+          const result = await executeTool(tc.function.name, tcArgs, supabase, profile.org_id, user.id, role);
           const durationMs = Date.now() - startMs;
           const hasError = result.startsWith("Error:") || result.startsWith("Tool error") || result.includes("failed");
           await logToolCall(supabase, user.id, tc.function.name, tcArgs, result, hasError ? result : null, durationMs);

@@ -19,10 +19,10 @@ import { syncSingleWooOrder } from '../api/webhooks/_woo-sync-shared';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const WOO_URL = process.env.WOO_URL || 'https://shop.pureuspeptide.com';
+const WOO_URL = process.env.WOO_URL!;
 const WOO_USER = process.env.WOO_USER!;
 const WOO_APP_PASS = process.env.WOO_APP_PASS!;
-const ORG_ID = process.env.DEFAULT_ORG_ID || '33a18316-b0a4-4d85-a770-d1ceb762bd4f';
+const ORG_ID = process.env.DEFAULT_ORG_ID!;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[woo-sync] Missing SUPABASE env vars');

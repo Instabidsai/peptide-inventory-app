@@ -59,8 +59,6 @@ export function usePeptides() {
       if (lotsError) throw lotsError;
 
       // 3. Fetch in-stock bottle counts via RPC (Bypass 1000-row limit)
-      // TODO: Pass org_id to get_peptide_stock_counts RPC for multi-tenant isolation,
-      // or ensure the RPC uses RLS / auth.uid() internally to scope results.
       const { data: stockCounts, error: stockError } = await supabase
         .rpc('get_peptide_stock_counts');
 

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.86.1";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
@@ -333,6 +334,9 @@ Deno.serve(async (req) => {
             authHeader.replace('Bearer ', '')
         );
         if (authError || !user) throw new Error('Unauthorized');
+        // Rate limit: 15 requests per minute per user (client-facing, tighter limit)
+        const rl = checkRateLimit(user.id, { maxRequests: 15, windowMs: 60_000 });
+        if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
         const supabase = createClient(supabaseUrl, supabaseKey);
         const openai = new OpenAI({ apiKey: openaiKey });

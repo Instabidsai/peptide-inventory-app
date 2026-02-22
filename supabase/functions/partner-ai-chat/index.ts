@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
@@ -322,6 +323,9 @@ Deno.serve(async (req) => {
 
     // Partners (sales_rep) + admins (for testing)
     if (!["sales_rep", "admin", "staff"].includes(role)) return json({ error: "Partner role required" }, 403);
+    // Rate limit: 20 requests per minute per user
+    const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
+    if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
     const { message } = await req.json();
     if (!message) return json({ error: "message required" }, 400);

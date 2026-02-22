@@ -54,6 +54,13 @@ import { LiveBuildPreview, type BuildPreviewVariant } from "@/components/crm/Liv
 import { PricingCard } from "@/components/crm/PricingCard";
 import { useSubscriptionPlans } from "@/hooks/use-subscription";
 
+// ─── Platform branding (customize here for your own platform) ────
+const PLATFORM = {
+  name: "ThePeptideAI",
+  supportEmail: "hello@thepeptideai.com",
+  legalEmail: "legal@thepeptideai.com",
+} as const;
+
 // ─── Helpers ──────────────────────────────────────────────────────
 const scrollTo = (id: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -186,7 +193,7 @@ function Nav() {
             className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
           >
             <FlaskConical className="w-6 h-6 text-primary" />
-            <span className="font-bold text-lg">ThePeptideAI</span>
+            <span className="font-bold text-lg">{PLATFORM.name}</span>
           </button>
 
           {/* Desktop links */}
@@ -1844,7 +1851,7 @@ function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: "ThePeptideAI is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.",
+      a: `${PLATFORM.name} is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.`,
     },
     {
       q: "How does the AI actually control my entire CRM?",
@@ -1968,7 +1975,7 @@ function FinalCta() {
               size="sm"
               className="text-muted-foreground hover:text-foreground"
               onClick={() => {
-                window.location.href = "mailto:hello@thepeptideai.com?subject=Demo Request";
+                window.location.href = `mailto:${PLATFORM.supportEmail}?subject=Demo Request`;
               }}
             >
               Book a Live Demo
@@ -2036,14 +2043,14 @@ function Footer() {
       links: [
         { label: "How It Works", action: () => scrollTo("ai-showcase") },
         { label: "Partnerships", action: () => scrollTo("final-cta") },
-        { label: "Contact Us", action: () => window.open("mailto:hello@thepeptideai.com", "_blank") },
+        { label: "Contact Us", action: () => window.open(`mailto:${PLATFORM.supportEmail}`, "_blank") },
       ],
     },
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", action: () => window.open("mailto:legal@thepeptideai.com?subject=Privacy Policy Request", "_blank") },
-        { label: "Terms of Service", action: () => window.open("mailto:legal@thepeptideai.com?subject=Terms of Service Request", "_blank") },
+        { label: "Privacy Policy", action: () => window.location.hash = "#/privacy" },
+        { label: "Terms of Service", action: () => window.location.hash = "#/terms" },
         { label: "Contact Us", action: () => scrollTo("final-cta") },
       ],
     },
@@ -2057,7 +2064,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <FlaskConical className="w-5 h-5 text-primary" />
-              <span className="font-bold">ThePeptideAI</span>
+              <span className="font-bold">{PLATFORM.name}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               The AI-powered command center for peptide businesses. One AI,
@@ -2102,13 +2109,13 @@ function Footer() {
 
         <div className="mt-6 pt-6 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} ThePeptideAI. All rights reserved.
+            &copy; {new Date().getFullYear()} {PLATFORM.name}. All rights reserved.
           </p>
           <a
-            href="mailto:hello@thepeptideai.com"
+            href={`mailto:${PLATFORM.supportEmail}`}
             className="text-xs text-muted-foreground hover:text-primary transition-colors"
           >
-            hello@thepeptideai.com
+            {PLATFORM.supportEmail}
           </a>
         </div>
       </div>

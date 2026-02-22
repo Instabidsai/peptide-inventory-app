@@ -31,6 +31,16 @@ export interface TenantSubscription {
     cancel_at_period_end: boolean;
     trial_end: string | null;
     plan?: SubscriptionPlan;
+    org?: { name: string } | null;
+}
+
+export interface BillingEvent {
+    id: string;
+    org_id: string;
+    event_type: string;
+    amount_cents: number | null;
+    created_at: string;
+    org?: { name: string } | null;
 }
 
 /** Fetch all available subscription plans */
@@ -61,13 +71,21 @@ export function useAllSubscriptions() {
         queryFn: async (): Promise<TenantSubscription[]> => {
             const { data, error } = await supabase
                 .from('tenant_subscriptions')
-                .select('*, plan:subscription_plans(*)');
+                .select('*, plan:subscription_plans(*), org:organizations(name)');
 
             if (error) throw error;
             return (data || []) as TenantSubscription[];
         },
         staleTime: 30_000,
     });
+}
+
+/** Calculate MRR from active subscriptions (cents) */
+export function calculateMRR(subscriptions: TenantSubscription[]): number {
+    return subscriptions.reduce((sum, s) => {
+        if (s.status !== 'active' || !s.plan) return sum;
+        return sum + (s.billing_period === 'yearly' ? Math.round(s.plan.price_yearly / 12) : s.plan.price_monthly);
+    }, 0);
 }
 
 /** Fetch billing events (super_admin only) */
@@ -77,10 +95,10 @@ export function useBillingEvents(orgId?: string) {
     return useQuery({
         queryKey: ['billing-events', orgId],
         enabled: userRole?.role === 'super_admin' || userRole?.role === 'admin',
-        queryFn: async () => {
+        queryFn: async (): Promise<BillingEvent[]> => {
             let query = supabase
                 .from('billing_events')
-                .select('*')
+                .select('*, org:organizations(name)')
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -90,7 +108,7 @@ export function useBillingEvents(orgId?: string) {
 
             const { data, error } = await query;
             if (error) throw error;
-            return data || [];
+            return (data || []) as BillingEvent[];
         },
         staleTime: 30_000,
     });

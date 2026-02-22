@@ -415,9 +415,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const webhookSecret = process.env.WOO_WEBHOOK_SECRET;
-        const orgId = process.env.DEFAULT_ORG_ID || '33a18316-b0a4-4d85-a770-d1ceb762bd4f';
+        const orgId = process.env.DEFAULT_ORG_ID;
 
-        if (!supabaseUrl || !supabaseServiceKey) {
+        if (!supabaseUrl || !supabaseServiceKey || !orgId) {
             console.error('[WooCommerce Webhook] Missing Supabase env vars');
             return res.status(500).json({ error: 'Server configuration error' });
         }

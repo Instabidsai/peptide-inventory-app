@@ -54,6 +54,10 @@ export function AdminAIChat() {
   const role = userRole?.role || profile?.role;
   if (role !== 'admin' && role !== 'staff') return null;
 
+  const isStaff = role === 'staff';
+  const bubbleLabel = isStaff ? 'Operations Assistant' : 'Admin Assistant';
+  const bubbleSub = isStaff ? 'Orders, contacts, inventory' : 'Orders, contacts, inventory';
+
   // Auto-scroll on new messages
   useEffect(() => {
     if (scrollRef.current) {
@@ -72,7 +76,9 @@ export function AdminAIChat() {
   const welcomeMessage: AdminMessage = {
     id: 'welcome',
     role: 'assistant',
-    content: "Hey! I'm your admin assistant. I can create contacts, build orders, check inventory & pricing, and pull up stats. Just tell me what you need — like \"new client John Smith john@email.com, wants 2 BPC-157 at MSRP, ship to 123 Main St Miami FL 33101\".",
+    content: isStaff
+      ? "Hey! I'm your operations assistant. I can create contacts, build orders, check inventory & pricing, pull up stats, and submit suggestions to admin.\n\nJust tell me what you need!"
+      : "Hey! I'm your admin assistant. I can create contacts, build orders, check inventory & pricing, and pull up stats. Just tell me what you need — like \"new client John Smith john@email.com, wants 2 BPC-157 at MSRP, ship to 123 Main St Miami FL 33101\".",
     created_at: new Date().toISOString(),
   };
 
@@ -114,8 +120,8 @@ export function AdminAIChat() {
                 <Bot className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">Admin Assistant</h3>
-                <p className="text-[10px] text-muted-foreground">Orders, contacts, inventory</p>
+                <h3 className="font-bold text-sm">{bubbleLabel}</h3>
+                <p className="text-[10px] text-muted-foreground">{bubbleSub}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -187,7 +193,7 @@ export function AdminAIChat() {
                       )}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (
