@@ -15,9 +15,13 @@ import {
   Wand2,
   Leaf,
   Zap,
-  Bot
+  Bot,
+  ToggleRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useOrgFeatures } from '@/hooks/use-org-features';
+import { SIDEBAR_FEATURE_MAP } from '@/lib/feature-registry';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 interface SidebarProps {
   open: boolean;
@@ -46,6 +50,7 @@ const navigation = [
   { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Customizations', href: '/customizations', icon: Wand2, roles: ['admin'] },
+  { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
   { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },
@@ -54,6 +59,8 @@ const navigation = [
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { organization, userRole, user, profile: authProfile } = useAuth();
+  const { isEnabled } = useOrgFeatures();
+  const { brand_name, logo_url, admin_brand_name } = useTenantConfig();
   const [searchParams] = useSearchParams();
   // Only admins can use preview_role to impersonate other roles
   const rawPreviewRole = searchParams.get('preview_role');
@@ -97,14 +104,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border/50">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-[0_1px_4px_rgba(0,0,0,0.2),0_0_8px_hsl(160_84%_39%/0.1)]">
-            <FlaskConical className="h-5 w-5 text-primary" />
+          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-[0_1px_4px_rgba(0,0,0,0.2)]">
+            {logo_url ? (
+              <img src={logo_url} alt={brand_name} className="h-5 w-5 rounded object-contain" />
+            ) : (
+              <FlaskConical className="h-5 w-5 text-primary" />
+            )}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">
-              {organization?.name || 'Inventory'}
+            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[140px]">
+              {brand_name || organization?.name || 'Inventory'}
             </span>
-            <span className="text-[11px] text-muted-foreground -mt-0.5">Tracker</span>
+            <span className="text-[11px] text-muted-foreground -mt-0.5">{admin_brand_name || 'Tracker'}</span>
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
@@ -130,6 +141,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navigation.filter(item => {
+          // Feature flag check — hide items whose feature is disabled
+          const featureKey = SIDEBAR_FEATURE_MAP[item.name];
+          if (featureKey && !isEnabled(featureKey)) return false;
+
           // Standard Role Check
           if (item.roles && !item.roles.includes(organization?.role || effectiveRole || '')) {
             // Allow if allowedRoles matches

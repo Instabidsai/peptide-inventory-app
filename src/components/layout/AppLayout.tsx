@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
+import { useTenantTheme } from '@/hooks/use-tenant-theme';
 // Note: framer-motion transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,8 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const isPartnerRoute = location.pathname.startsWith('/partner');
+  // Inject tenant's primary color into CSS variables
+  useTenantTheme();
 
   return (
     <div className="min-h-screen bg-background">

@@ -211,12 +211,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (smtpUrl) {
             // Send via external SMTP relay (e.g., Resend, SendGrid)
+            const resendKey = smtpKey?.api_key ? null : process.env.RESEND_API_KEY;
+            const fromEmail = branding.support_email || 'noreply@thepeptideai.com';
             const response = await fetch(smtpUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(resendKey ? { 'Authorization': `Bearer ${resendKey}` } : {}),
+                },
                 body: JSON.stringify({
-                    from: `${branding.brand_name} <${branding.support_email}>`,
-                    to,
+                    from: `${branding.brand_name} <${fromEmail}>`,
+                    to: Array.isArray(to) ? to : [to],
                     subject: emailTemplate.subject,
                     html: emailTemplate.html,
                 }),

@@ -57,6 +57,7 @@ const PartnerDashboard = lazyRetry(() => import("./pages/partner/PartnerDashboar
 const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
 const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 const AIAssistant = lazyRetry(() => import("./pages/AIAssistant"));
+const FeatureManagement = lazyRetry(() => import("./pages/admin/FeatureManagement"));
 
 // Vendor (super-admin)
 const VendorLayout = lazyRetry(() => import("./pages/vendor/VendorLayout"));
@@ -191,6 +192,7 @@ const App = () => (
                                 <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
                                 <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
                                 <Route path="/admin/supplements" element={<AdminSupplements />} />
+                                <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
 
                                 <Route path="/partner" element={<PartnerDashboard />} />
                                 <Route path="/partner/store" element={<PartnerStore />} />

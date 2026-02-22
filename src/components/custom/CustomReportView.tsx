@@ -6,6 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileBarChart } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
+
+const CHART_COLORS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
 
 interface CustomReport {
   id: string;
@@ -80,7 +86,7 @@ export default function CustomReportView() {
             <Badge variant="secondary">{rows.length} rows</Badge>
           </div>
           {report.chart_type && (
-            <CardDescription>Chart: {report.chart_type} (visualization coming soon)</CardDescription>
+            <CardDescription>Chart: {report.chart_type}</CardDescription>
           )}
         </CardHeader>
         <CardContent>
@@ -89,6 +95,57 @@ export default function CustomReportView() {
           ) : !rows.length ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No data returned</p>
           ) : (
+            <div className="space-y-6">
+            {report.chart_type && rows.length > 0 && (() => {
+              const keys = Object.keys(rows[0]);
+              const labelKey = keys[0];
+              const valueKeys = keys.filter(k => k !== labelKey && typeof rows[0][k] === 'number');
+              if (!valueKeys.length) return null;
+              const chartData = rows.map(row => {
+                const entry: Record<string, any> = { [labelKey]: row[labelKey] };
+                for (const vk of valueKeys) entry[vk] = Number(row[vk]) || 0;
+                return entry;
+              });
+              const ct = report.chart_type;
+              return (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {ct === 'pie' ? (
+                      <PieChart>
+                        <Pie data={chartData} dataKey={valueKeys[0]} nameKey={labelKey} cx="50%" cy="50%" outerRadius="70%" label={({ name }) => name}>
+                          {chartData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip /><Legend />
+                      </PieChart>
+                    ) : ct === 'line' ? (
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                        <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />{valueKeys.length > 1 && <Legend />}
+                        {valueKeys.map((vk, i) => <Line key={vk} type="monotone" dataKey={vk} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />)}
+                      </LineChart>
+                    ) : ct === 'area' ? (
+                      <AreaChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                        <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />{valueKeys.length > 1 && <Legend />}
+                        {valueKeys.map((vk, i) => <Area key={vk} type="monotone" dataKey={vk} stroke={CHART_COLORS[i % CHART_COLORS.length]} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.2} />)}
+                      </AreaChart>
+                    ) : (
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                        <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />{valueKeys.length > 1 && <Legend />}
+                        {valueKeys.map((vk, i) => <Bar key={vk} dataKey={vk} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />)}
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -112,6 +169,7 @@ export default function CustomReportView() {
                   ))}
                 </tbody>
               </table>
+            </div>
             </div>
           )}
         </CardContent>

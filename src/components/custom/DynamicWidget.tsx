@@ -6,6 +6,10 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { DashboardWidget } from '@/hooks/use-custom-dashboard';
 import { BarChart3, Table2, Hash, List } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 
 const sizeClasses: Record<string, string> = {
   sm: 'col-span-1',
@@ -95,6 +99,91 @@ function TableWidget({ config, orgId }: { config: Record<string, any>; orgId: st
   );
 }
 
+const CHART_COLORS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
+
+function ChartWidget({ config, orgId }: { config: Record<string, any>; orgId: string }) {
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ['widget-chart', orgId, config.query],
+    queryFn: async () => {
+      if (!config.query) return [];
+      const { data, error } = await supabase.rpc('run_readonly_query', {
+        query_text: config.query,
+        p_org_id: orgId,
+      });
+      if (error) return [];
+      return Array.isArray(data) ? data.slice(0, 50) : [];
+    },
+    enabled: !!config.query,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+  if (!rows.length) return <p className="text-sm text-muted-foreground">No data</p>;
+
+  const keys = Object.keys(rows[0]);
+  const labelKey = config.label_field || keys[0];
+  const valueKeys = config.value_fields
+    ? (Array.isArray(config.value_fields) ? config.value_fields : [config.value_fields])
+    : keys.filter(k => k !== labelKey && typeof rows[0][k] === 'number');
+  // Ensure numeric values
+  const chartData = rows.map(row => {
+    const entry: Record<string, any> = { [labelKey]: row[labelKey] };
+    for (const vk of valueKeys) entry[vk] = Number(row[vk]) || 0;
+    return entry;
+  });
+
+  const chartType = config.chart_type || 'bar';
+
+  return (
+    <div className="h-48 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        {chartType === 'pie' ? (
+          <PieChart>
+            <Pie data={chartData} dataKey={valueKeys[0]} nameKey={labelKey} cx="50%" cy="50%" outerRadius="70%" label={({ name }) => name}>
+              {chartData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        ) : chartType === 'line' ? (
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+            <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <Tooltip />
+            {valueKeys.length > 1 && <Legend />}
+            {valueKeys.map((vk: string, i: number) => (
+              <Line key={vk} type="monotone" dataKey={vk} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false} />
+            ))}
+          </LineChart>
+        ) : chartType === 'area' ? (
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+            <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <Tooltip />
+            {valueKeys.length > 1 && <Legend />}
+            {valueKeys.map((vk: string, i: number) => (
+              <Area key={vk} type="monotone" dataKey={vk} stroke={CHART_COLORS[i % CHART_COLORS.length]} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.2} />
+            ))}
+          </AreaChart>
+        ) : (
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+            <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <Tooltip />
+            {valueKeys.length > 1 && <Legend />}
+            {valueKeys.map((vk: string, i: number) => (
+              <Bar key={vk} dataKey={vk} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
+            ))}
+          </BarChart>
+        )}
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function ListWidget({ config, orgId }: { config: Record<string, any>; orgId: string }) {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['widget-list', orgId, config.query],
@@ -146,11 +235,7 @@ export function DynamicWidget({ widget }: { widget: DashboardWidget }) {
         {widget.widget_type === 'stat' && <StatWidget config={widget.config} orgId={orgId} />}
         {widget.widget_type === 'table' && <TableWidget config={widget.config} orgId={orgId} />}
         {widget.widget_type === 'list' && <ListWidget config={widget.config} orgId={orgId} />}
-        {widget.widget_type === 'chart' && (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-            Chart visualization coming soon
-          </div>
-        )}
+        {widget.widget_type === 'chart' && <ChartWidget config={widget.config} orgId={orgId} />}
       </CardContent>
     </Card>
   );

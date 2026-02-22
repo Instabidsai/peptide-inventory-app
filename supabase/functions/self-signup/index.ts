@@ -127,7 +127,21 @@ Deno.serve(async (req) => {
 
         if (tierError) console.warn(`Pricing tiers warning: ${tierError.message}`);
 
-        // ── Step 6: Link Subscription Plan (if selected) ──
+        // ── Step 6: Seed Default Feature Flags ──
+        const featureKeys = [
+            'ai_assistant', 'peptide_catalog', 'lot_tracking', 'bottle_tracking',
+            'supplements', 'movements', 'purchase_orders', 'sales_orders',
+            'fulfillment', 'partner_network', 'financials', 'automations',
+            'contacts', 'protocols', 'resources', 'client_requests',
+            'feedback', 'client_portal', 'customizations',
+        ];
+        const { error: featureError } = await supabase
+            .from('org_features')
+            .insert(featureKeys.map(key => ({ org_id: org.id, feature_key: key, enabled: true })));
+
+        if (featureError) console.warn(`Feature flags warning: ${featureError.message}`);
+
+        // ── Step 7: Link Subscription Plan (if selected) ──
         let subscriptionCreated = false;
         if (planName) {
             const { data: plan } = await supabase
