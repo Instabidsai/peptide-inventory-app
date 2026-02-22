@@ -4,12 +4,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * send-email — Supabase Edge Function
  * Called by: run-automations (action_type: "email"), or any internal service.
- * POST body: { to, subject, html, org_id }
+ * POST body: { to, subject, html, org_id, from_name, from_email, reply_to }
  * Uses Resend API for delivery. Falls back to logging if no API key configured.
+ * API key: checks env var first, then platform_config table (service_role only).
  */
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const RESEND_URL = "https://api.resend.com/emails";
+
+/** Resolve Resend API key: env var → platform_config table */
+async function getResendKey(): Promise<string> {
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) return envKey;
+
+  // Fallback: read from platform_config table (RLS bypassed via service_role)
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, supabaseServiceKey);
+    const { data } = await sb
+      .from("platform_config")
+      .select("value")
+      .eq("key", "RESEND_API_KEY")
+      .single();
+    return data?.value || "";
+  } catch {
+    return "";
+  }
+}
 
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
 
@@ -67,7 +88,8 @@ Deno.serve(async (req) => {
       if (config?.support_email) senderEmail = config.support_email;
     }
 
-    if (!RESEND_API_KEY) {
+    const resendKey = await getResendKey();
+    if (!resendKey) {
       console.log(`[send-email] No RESEND_API_KEY — would send "${subject}" to ${to}`);
       return new Response(
         JSON.stringify({ sent: false, queued: true, note: "No RESEND_API_KEY configured" }),
@@ -79,7 +101,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Authorization": `Bearer ${resendKey}`,
       },
       body: JSON.stringify({
         from: `${senderName} <${senderEmail}>`,
