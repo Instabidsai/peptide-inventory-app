@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import type { ClientInventoryItem } from '@/types/regimen';
 import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 import { calculateDoseUnits } from '@/utils/dose-utils';
+import { getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 
 interface SimpleVialsProps {
     inventory: ClientInventoryItem[];
@@ -46,6 +47,29 @@ const STATE_ORDER: Record<VialState, number> = {
 };
 
 const TIME_ICONS = { morning: Sun, afternoon: Sunset, evening: Moon } as const;
+
+/** Calculate daily mg usage from a vial's dose schedule */
+function vialDailyUsage(vial: ClientInventoryItem): number {
+    const doseMg = Number(vial.dose_amount_mg) || 0;
+    if (doseMg <= 0) return 0;
+    switch (vial.dose_frequency) {
+        case 'daily': return doseMg;
+        case 'every_x_days': return doseMg / (Number(vial.dose_interval) || 2);
+        case 'specific_days': return (doseMg * (vial.dose_days?.length || 1)) / 7;
+        case 'x_on_y_off': {
+            const on = Number(vial.dose_interval) || 5;
+            return (doseMg * on) / (on + (Number(vial.dose_off_days) || 2));
+        }
+        default: return doseMg;
+    }
+}
+
+function getVialSupplyStatus(daysRemaining: number): 'adequate' | 'low' | 'critical' | 'depleted' {
+    if (daysRemaining <= 0) return 'depleted';
+    if (daysRemaining < 3) return 'critical';
+    if (daysRemaining < 7) return 'low';
+    return 'adequate';
+}
 
 // ─── Unmixed Card ─────────────────────────────────────────────
 function UnmixedCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions>; knowledge: PeptideKnowledge | null }) {
@@ -494,6 +518,11 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
     // Dose count estimation
     const dosesRemaining = doseMg > 0 ? Math.floor(vial.current_quantity_mg / doseMg) : null;
 
+    // Supply duration (days remaining based on schedule)
+    const dailyUsage = vialDailyUsage(vial);
+    const daysRemaining = dailyUsage > 0 ? Math.floor(vial.current_quantity_mg / dailyUsage) : null;
+    const supplyStatus = daysRemaining !== null ? getVialSupplyStatus(daysRemaining) : null;
+
     const hasProtocolInfo = knowledge && (knowledge.description || knowledge.supplementNotes?.length || knowledge.cyclePattern || knowledge.dosageSchedule);
 
     return (
@@ -540,11 +569,21 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
             {/* Progress */}
             <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground/60 font-medium">
-                        {Number(vial.current_quantity_mg).toFixed(1)}mg remaining
-                        {dosesRemaining !== null && dosesRemaining > 0 && (
-                            <span className="text-muted-foreground/40 ml-1">
-                                ({dosesRemaining} dose{dosesRemaining !== 1 ? 's' : ''} left)
+                    <span className="text-muted-foreground/60 font-medium flex items-center gap-1.5 flex-wrap">
+                        <span>
+                            {Number(vial.current_quantity_mg).toFixed(1)}mg remaining
+                            {dosesRemaining !== null && dosesRemaining > 0 && (
+                                <span className="text-muted-foreground/40 ml-1">
+                                    ({dosesRemaining} dose{dosesRemaining !== 1 ? 's' : ''})
+                                </span>
+                            )}
+                        </span>
+                        {supplyStatus && daysRemaining !== null && (
+                            <span className={cn(
+                                "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white",
+                                getSupplyStatusColor(supplyStatus)
+                            )}>
+                                {getSupplyStatusLabel(daysRemaining)}
                             </span>
                         )}
                     </span>
@@ -584,14 +623,26 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                 </div>
             )}
 
-            {/* Low stock warning */}
-            {isLow && (
+            {/* Low stock warning — show if % low OR supply < 3 days */}
+            {(isLow || supplyStatus === 'critical' || supplyStatus === 'depleted') && (
                 <button
-                    onClick={() => navigate('/store')}
+                    onClick={() => navigate(`/store?reorder=${encodeURIComponent(JSON.stringify([{
+                        peptide_name: vial.peptide?.name || '',
+                        peptide_id: vial.peptide_id,
+                        quantity: 1,
+                    }]))}`)}
                     className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/15 transition-colors hover:bg-amber-500/[0.12]"
                 >
                     <ShoppingBag className="h-4 w-4 text-amber-400" />
                     <span className="text-sm font-medium text-amber-400">Running low — Reorder</span>
+                    {daysRemaining !== null && supplyStatus && (
+                        <span className={cn(
+                            "ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full text-white",
+                            getSupplyStatusColor(supplyStatus)
+                        )}>
+                            {getSupplyStatusLabel(daysRemaining)}
+                        </span>
+                    )}
                 </button>
             )}
 

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { to, subject, html, org_id, from_name, from_email } = body;
+    const { to, subject, html, org_id, from_name, from_email, reply_to } = body;
 
     if (!to || !subject || !html) {
       return new Response(
@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: `${senderName} <${senderEmail}>`,
         to: Array.isArray(to) ? to : [to],
+        reply_to: reply_to || senderEmail,
         subject,
         html,
       }),

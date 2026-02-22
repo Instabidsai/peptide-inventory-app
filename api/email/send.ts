@@ -222,6 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 body: JSON.stringify({
                     from: `${branding.brand_name} <${fromEmail}>`,
                     to: Array.isArray(to) ? to : [to],
+                    reply_to: branding.support_email || fromEmail,
                     subject: emailTemplate.subject,
                     html: emailTemplate.html,
                 }),

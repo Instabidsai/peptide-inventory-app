@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
+import { SupplyOverview } from '@/components/regimen/SupplyOverview';
 import { WeekStrip } from '@/components/regimen/WeekStrip';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
@@ -546,6 +547,9 @@ function ClientDashboardContent() {
                             </motion.div>
                         );
                     })()}
+
+                    {/* ─── Supply Overview (aggregate days-of-supply for all peptides) ─── */}
+                    <SupplyOverview inventory={inventory || []} contactId={contact?.id} />
 
                     {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
                     <SimpleVials inventory={inventory || []} contactId={contact?.id} />

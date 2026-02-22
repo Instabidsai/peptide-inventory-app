@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
@@ -215,6 +215,7 @@ export default function ClientStore() {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
@@ -351,6 +352,32 @@ export default function ClientStore() {
 
     const cartTotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
     const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+
+    // Pre-fill cart from ?reorder= URL param (e.g. from SupplyOverview or SimpleVials)
+    useEffect(() => {
+        const reorderParam = searchParams.get('reorder');
+        if (!reorderParam || !peptides?.length) return;
+        try {
+            const items: { peptide_name?: string; peptide_id?: string; quantity?: number }[] =
+                JSON.parse(decodeURIComponent(reorderParam));
+            const added: string[] = [];
+            for (const item of items) {
+                const product = peptides.find((p: any) =>
+                    p.id === item.peptide_id ||
+                    (item.peptide_name && p.name?.toLowerCase().includes(item.peptide_name.toLowerCase()))
+                );
+                if (product) {
+                    addToCart(product);
+                    added.push(product.name);
+                }
+            }
+            if (added.length) {
+                toast({ title: 'Reorder items added', description: `${added.join(', ')} added to your cart.` });
+            }
+            // Clear the param so it doesn't re-trigger
+            setSearchParams({}, { replace: true });
+        } catch { /* ignore malformed param */ }
+    }, [searchParams, peptides]);
 
     // Filter peptides by search query + TRT visibility restriction
     const showTrt = canSeeTrt(user?.id, userRole?.role);
