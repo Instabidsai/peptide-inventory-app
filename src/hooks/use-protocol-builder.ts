@@ -84,8 +84,21 @@ export function useProtocolBuilder() {
     const enrichPeptide = useCallback((peptide: Peptide, preferredTierId?: string): EnrichedProtocolItem => {
         const knowledge = lookupKnowledge(peptide.name);
         const tiers = knowledge?.dosingTiers ?? [];
-        const concentrationMgMl = knowledge
-            ? (knowledge.reconstitutionMl > 0 ? knowledge.vialSizeMg / knowledge.reconstitutionMl : 0)
+
+        // Extract vial size from product name (e.g., "BPC-157 20mg" → 20)
+        // Prefer name-extracted size over knowledge default (product name reflects actual vial)
+        const nameMgMatch = peptide.name.match(/(\d+(?:\.\d+)?)\s*mg\b/i);
+        const nameVialMg = nameMgMatch ? parseFloat(nameMgMatch[1]) : null;
+        const vialSizeMg = nameVialMg ?? knowledge?.vialSizeMg ?? null;
+
+        // Scale water proportionally when product vial differs from knowledge default
+        // e.g., knowledge says 20mg/2mL but product is 10mg → scale to 1mL (same concentration)
+        const knowledgeRecon = knowledge?.reconstitutionMl ?? 2;
+        const reconMl = (nameVialMg && knowledge && knowledge.vialSizeMg > 0 && nameVialMg !== knowledge.vialSizeMg)
+            ? Math.round(knowledgeRecon * (nameVialMg / knowledge.vialSizeMg) * 10) / 10
+            : knowledgeRecon;
+        const concentrationMgMl = vialSizeMg != null && vialSizeMg > 0 && reconMl > 0
+            ? vialSizeMg / reconMl
             : (peptide.default_concentration_mg_ml || 0);
 
         // Select tier: preferred > 'standard' > first available > null
@@ -97,7 +110,7 @@ export function useProtocolBuilder() {
             instanceId: crypto.randomUUID(),
             peptideId: peptide.id,
             peptideName: peptide.name,
-            vialSizeMg: knowledge?.vialSizeMg ?? null,
+            vialSizeMg,
             protocolDescription: knowledge?.description ?? peptide.description ?? null,
             reconstitutionMl: knowledge?.reconstitutionMl ?? 2,
             doseAmount: tier?.doseAmount ?? knowledge?.defaultDoseAmount ?? peptide.default_dose_amount ?? 0,

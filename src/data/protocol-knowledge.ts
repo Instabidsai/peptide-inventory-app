@@ -795,15 +795,26 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
     },
     'Thymosin Alpha-1': {
         category: 'healing',
-        description: 'A potent immune-modulating peptide that enhances the body\'s T-cell function and overall immune response. It is used to support immune health in chronic infections and as an adjunct to other therapies.',
-        vialSizeMg: 5,
+        description: 'The "drill sergeant" and "conductor of the immunological orchestra." Thymosin Alpha-1 is NOT an immune booster or suppressant\u2014it is an immune modulator and educator. It crosses the blood-thymus barrier to re-educate T-cells, increasing T-regulatory cell production by 200\u2013250%. It restores TH1/TH2 balance, reactivates Natural Killer cells, and sharpens cytotoxic T-cell response. Used clinically for autoimmune conditions (Hashimoto\u2019s, Lupus), chronic infections (Hepatitis B/C), cancer support (immune surveillance restoration), and neurodegeneration (calms hyperactive microglia). Must be stacked with mitochondrial repair peptides (MOTS-c, SS-31) to fund the energy demands of a retrained immune system.',
+        vialSizeMg: 10,
         reconstitutionMl: 1,
-        defaultDoseAmount: 1.6,
-        defaultDoseUnit: 'mg',
-        defaultFrequency: 'twice weekly',
+        defaultDoseAmount: 500,
+        defaultDoseUnit: 'mcg',
+        defaultFrequency: 'weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
         dosingTiers: [
+            {
+                id: 'bachmeyer',
+                label: 'Dr. Bachmeyer Protocol',
+                doseAmount: 500,
+                doseUnit: 'mcg',
+                frequency: 'weekly',
+                timing: 'AM',
+                notes: 'Dr. Bachmeyer\u2019s immune modulation protocol. 500 mcg subcutaneous once weekly (e.g., Monday AM). Used in his 12-week biological repair model during the second 6-week phase. TA-1 acts as a "software patch" to reboot immune surveillance\u2014must be paired with mitochondrial support (MOTS-c, SS-31) as the immune system is an "energy hog."',
+                dosageSchedule: 'Weeks 1\u20136: 500 mcg once weekly (subcutaneous, Monday AM)\nWeeks 7\u201312: Continue or taper based on response',
+                cyclePattern: '6\u201312 weeks on, 4 weeks off.',
+            },
             {
                 id: 'conservative',
                 label: 'Immune Maintenance',
@@ -1126,6 +1137,23 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
 
 // ── Lookup Helper (case-insensitive, partial match) ────────────
 
+// Alias map for common abbreviations → normalized knowledge key
+const KNOWLEDGE_ALIASES: Record<string, string> = {
+    'thyalpha1': 'thymosinalpha1',
+    'thyalpha': 'thymosinalpha1',
+    'ta1': 'thymosinalpha1',
+    'bpc157': 'pentadecapeptidebpc157',
+    'bpc': 'pentadecapeptidebpc157',
+    'tb500': 'tb500',
+    'ghkcu': 'ghkcu',
+    'ghk': 'ghkcu',
+    'nad': 'nad+',
+    '5amino': '5amino1mq',
+    '5amino1': '5amino1mq',
+    'ss31': 'ss31',
+    'motsc': 'motsc',
+};
+
 export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
     // Normalize: strip mg suffix, hyphens, extra spaces, lowercase
     const normalize = (s: string) =>
@@ -1136,6 +1164,13 @@ export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
     // Exact normalized match first
     for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
         if (normalize(key) === input) return value;
+    }
+    // Alias match — check if abbreviated name maps to a knowledge key
+    const aliasTarget = KNOWLEDGE_ALIASES[input];
+    if (aliasTarget) {
+        for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
+            if (normalize(key) === aliasTarget) return value;
+        }
     }
     // Partial match (normalized)
     for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
