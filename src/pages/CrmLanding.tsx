@@ -223,6 +223,13 @@ function Nav() {
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
             <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/auth")}
+            >
+              Log In
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => scrollTo("final-cta")}
@@ -262,6 +269,12 @@ function Nav() {
                     </button>
                   ))}
                   <hr className="border-border/40 my-2" />
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate("/auth")}
+                  >
+                    Log In
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => {

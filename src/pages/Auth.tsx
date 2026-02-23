@@ -604,8 +604,9 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground/50 mt-4">
-          <span className="font-semibold text-gradient-primary">{brandName}</span>
-          <span className="block mt-0.5 text-muted-foreground/30">Your AI-Powered Peptide Protocol</span>
+          <button onClick={() => navigate('/crm')} className="text-primary/70 hover:text-primary transition-colors underline underline-offset-2">
+            &larr; Back to Home
+          </button>
         </p>
       </motion.div>
     </div>
