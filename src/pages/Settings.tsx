@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink } from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
+import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -72,6 +73,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
         .eq('org_id', orgId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['tenant-config-settings'] });
+      invalidateTenantConfigCache();
       toast({ title: 'Branding updated' });
     } catch (err) {
       toast({ title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });

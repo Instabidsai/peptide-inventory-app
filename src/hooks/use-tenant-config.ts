@@ -64,6 +64,12 @@ const DEFAULTS: TenantConfig = {
 let cachedConfig: TenantConfig | null = null;
 let cachedOrgId: string | null = null;
 
+/** Call after updating tenant_config to force re-fetch on next render */
+export function invalidateTenantConfigCache() {
+    cachedConfig = null;
+    cachedOrgId = null;
+}
+
 export function useTenantConfig(): TenantConfigResult {
     const { profile } = useAuth();
     const [config, setConfig] = useState<TenantConfig>(cachedConfig || DEFAULTS);

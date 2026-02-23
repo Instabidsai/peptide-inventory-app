@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
@@ -223,12 +224,12 @@ export function useValidatedCheckout() {
  * Stops polling after payment confirmed, order cancelled, or ~2 minutes (40 polls).
  */
 export function useOrderPaymentStatus(orderId: string | null) {
-    let pollCount = 0;
+    const pollCountRef = useRef(0);
     return useQuery({
         queryKey: ['order_payment_status', orderId],
         queryFn: async () => {
             if (!orderId) return null;
-            pollCount++;
+            pollCountRef.current++;
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select('id, status, payment_status, psifi_status, total_amount, created_at')
@@ -239,10 +240,9 @@ export function useOrderPaymentStatus(orderId: string | null) {
         },
         enabled: !!orderId,
         refetchInterval: (query) => {
-            // Stop polling once payment is confirmed
             const d = query?.state?.data;
             if (d?.payment_status === 'paid' || d?.status === 'cancelled') return false;
-            if (pollCount >= 40) return false;
+            if (pollCountRef.current >= 40) return false;
             return 3000;
         },
     });

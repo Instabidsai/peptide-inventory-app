@@ -51,16 +51,22 @@ export default function CommunityForum() {
     const [newTopicContent, setNewTopicContent] = useState("");
     const [replyContent, setReplyContent] = useState("");
 
-    // TODO: discussion_topics needs org_id column — see migration 20260223_add_org_id_to_discussions.sql
-    // Until migration is applied, topics are visible to all authenticated users (cross-tenant leak)
+    const orgId = profile?.org_id;
+
     const { data: topics, isLoading: loadingTopics } = useQuery({
-        queryKey: ['discussion-topics'],
+        queryKey: ['discussion-topics', orgId],
+        enabled: !!orgId,
         queryFn: async () => {
-            const { data, error } = await supabase
+            const query = supabase
                 .from('discussion_topics')
                 .select('*')
                 .order('is_pinned', { ascending: false })
                 .order('last_activity_at', { ascending: false });
+
+            // Scope to org if the column exists (migration may or may not be applied)
+            if (orgId) query.eq('org_id', orgId);
+
+            const { data, error } = await query;
             if (error) throw error;
             return data as Topic[];
         }
@@ -91,6 +97,7 @@ export default function CommunityForum() {
                     title: newTopicTitle,
                     content: newTopicContent,
                     user_id: user.id,
+                    org_id: orgId,
                 })
                 .select()
                 .single();

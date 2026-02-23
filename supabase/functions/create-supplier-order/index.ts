@@ -145,10 +145,10 @@ Deno.serve(async (req) => {
             .insert(lineItems);
 
         if (itemsError) {
-            console.warn(`Line items warning: ${itemsError.message}`);
+            // Roll back the order — can't have an order without items
+            await supabase.from('sales_orders').delete().eq('id', order.id);
+            throw new Error(`Line items creation failed: ${itemsError.message}`);
         }
-
-        console.log(`Supplier order created: ${order.id} from merchant ${merchantOrgId}, total: $${totalAmount.toFixed(2)}`);
 
         return json({
             success: true,
