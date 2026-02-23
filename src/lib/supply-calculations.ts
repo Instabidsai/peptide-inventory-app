@@ -10,11 +10,12 @@ export function vialDailyUsage(vial: {
     if (doseMg <= 0) return 0;
     switch (vial.dose_frequency) {
         case 'daily': return doseMg;
-        case 'every_x_days': return doseMg / (Number(vial.dose_interval) || 2);
-        case 'specific_days': return (doseMg * (vial.dose_days?.length || 1)) / 7;
+        case 'every_x_days': return doseMg / Math.max(1, Number(vial.dose_interval) || 2);
+        case 'specific_days': return (doseMg * Math.max(1, vial.dose_days?.length || 1)) / 7;
         case 'x_on_y_off': {
-            const on = Number(vial.dose_interval) || 5;
-            return (doseMg * on) / (on + (Number(vial.dose_off_days) || 2));
+            const on = Math.max(1, Number(vial.dose_interval) || 5);
+            const off = Math.max(0, Number(vial.dose_off_days) || 2);
+            return (doseMg * on) / (on + off);
         }
         default: return doseMg;
     }

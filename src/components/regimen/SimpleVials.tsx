@@ -31,7 +31,8 @@ type VialState = 'unmixed' | 'needs_schedule' | 'due_today' | 'not_today' | 'low
 function getVialState(vial: ClientInventoryItem, todayAbbr: string): VialState {
     if (!vial.concentration_mg_ml || !vial.reconstituted_at) return 'unmixed';
     if (!vial.dose_amount_mg || !vial.dose_frequency) return 'needs_schedule';
-    const pct = vial.vial_size_mg > 0 ? (vial.current_quantity_mg / vial.vial_size_mg) * 100 : 0;
+    const sizeMg = Number(vial.vial_size_mg) || 0;
+    const pct = sizeMg > 0 ? (Number(vial.current_quantity_mg) / sizeMg) * 100 : 0;
     const dueToday = isDoseDay(vial, todayAbbr);
     if (pct < 20) return 'low_stock';
     if (dueToday) return 'due_today';
@@ -486,7 +487,8 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
 }) {
     const navigate = useNavigate();
     const [infoOpen, setInfoOpen] = useState(false);
-    const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
+    const sizeMg = Number(vial.vial_size_mg) || 0;
+    const pct = sizeMg > 0 ? Math.min(100, Math.max(0, (Number(vial.current_quantity_mg) / sizeMg) * 100)) : 0;
     const concentration = Number(vial.concentration_mg_ml) || 0;
     const doseMg = Number(vial.dose_amount_mg) || 0;
     const units = calculateDoseUnits(doseMg, concentration);
@@ -771,7 +773,8 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
 
 // ─── Storage Vial Row ─────────────────────────────────────────
 function StorageRow({ vial, actions }: { vial: ClientInventoryItem; actions: ReturnType<typeof useVialActions> }) {
-    const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
+    const sizeMg = Number(vial.vial_size_mg) || 0;
+    const pct = sizeMg > 0 ? Math.min(100, Math.max(0, (Number(vial.current_quantity_mg) / sizeMg) * 100)) : 0;
     const isMixed = !!vial.concentration_mg_ml;
 
     return (

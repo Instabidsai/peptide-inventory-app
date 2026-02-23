@@ -2111,7 +2111,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                     <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                                                         <div
                                                             className="h-full bg-emerald-500"
-                                                            style={{ width: `${Math.min((item.current_quantity_mg / item.vial_size_mg) * 100, 100)}%` }}
+                                                            style={{ width: `${item.vial_size_mg > 0 ? Math.min((item.current_quantity_mg / item.vial_size_mg) * 100, 100) : 0}%` }}
                                                         />
                                                     </div>
 
@@ -2286,7 +2286,7 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
                                                                     <div>/ {item.vial_size_mg}mg size</div>
                                                                     {item.current_quantity_mg < item.vial_size_mg && (
                                                                         <div className="text-xs text-emerald-600 font-medium">
-                                                                            -{((1 - (item.current_quantity_mg / item.vial_size_mg)) * 100).toFixed(0)}% used
+                                                                            -{(item.vial_size_mg > 0 ? (1 - (item.current_quantity_mg / item.vial_size_mg)) * 100 : 0).toFixed(0)}% used
                                                                         </div>
                                                                     )}
                                                                 </div>

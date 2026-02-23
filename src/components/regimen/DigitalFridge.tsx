@@ -108,7 +108,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 px-1 pb-2 bg-black/20 rounded-b-lg border-x border-b border-emerald-500/10 space-y-2">
                                         {vials.map(vial => {
-                                            const pct = Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100));
+                                            const pct = vial.vial_size_mg > 0 ? Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100)) : 0;
                                             const isLow = pct < 20;
                                             return (
                                                 <div key={vial.id} className="group relative rounded-lg border bg-card p-3 transition-all hover:bg-accent/50">
@@ -431,7 +431,7 @@ function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryIte
                                     </div>
                                 </div>
                                 <div className="text-[10px] text-right text-muted-foreground">
-                                    ({((parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1)) / vial.concentration_mg_ml).toFixed(2)} ml)
+                                    ({(vial.concentration_mg_ml > 0 ? (parseFloat(doseAmount) * (doseUnit === 'mcg' ? 0.001 : 1)) / vial.concentration_mg_ml : 0).toFixed(2)} ml)
                                 </div>
                             </div>
                         )}
