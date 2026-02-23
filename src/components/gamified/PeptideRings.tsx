@@ -36,7 +36,13 @@ export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
     return (
         <div className="flex flex-col items-center gap-4">
             <div className="relative" style={{ width: size, height: size }}>
-                <svg width={size} height={size} className="transform -rotate-90">
+                <svg
+                    width={size} height={size}
+                    className="transform -rotate-90"
+                    role="img"
+                    aria-label={`Peptide compliance: ${takenCount} of ${totalCount} doses taken (${percentage}%)`}
+                >
+                    <title>Peptide Compliance — {takenCount} of {totalCount} done</title>
                     {doses.map((dose, i) => {
                         const radius = (size / 2) - (strokeWidth / 2) - (i * ringStep);
                         if (radius <= 10) return null;
@@ -44,7 +50,7 @@ export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
                         const offset = dose.isTaken ? 0 : circumference;
 
                         return (
-                            <g key={dose.id}>
+                            <g key={dose.id} role="presentation">
                                 {/* Background track */}
                                 <circle
                                     cx={center} cy={center} r={radius}
@@ -60,7 +66,9 @@ export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
                                     strokeDashoffset={offset}
                                     strokeLinecap="round"
                                     className="transition-all duration-700 ease-out"
-                                />
+                                >
+                                    <title>{dose.peptideName}: {dose.isTaken ? 'taken' : 'not taken'}</title>
+                                </circle>
                             </g>
                         );
                     })}
@@ -76,6 +84,11 @@ export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
                     </span>
                 </div>
             </div>
+
+            {/* Screen reader summary */}
+            <span className="sr-only">
+                {doses.map(d => `${d.peptideName}: ${d.isTaken ? 'taken' : 'not taken'}`).join(', ')}
+            </span>
 
             {/* Legend */}
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">

@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react';
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from '@/data/protocol-knowledge';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -36,9 +37,34 @@ interface TemplatePickerProps {
 }
 
 export function TemplatePicker({ onSelect, activeItemCount }: TemplatePickerProps) {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        const buttons = containerRef.current?.querySelectorAll<HTMLButtonElement>('button[role="option"]');
+        if (!buttons?.length) return;
+        const idx = Array.from(buttons).indexOf(document.activeElement as HTMLButtonElement);
+        if (idx === -1) return;
+
+        if (e.key === 'ArrowRight' && idx < buttons.length - 1) {
+            e.preventDefault();
+            buttons[idx + 1].focus();
+            buttons[idx + 1].scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+        } else if (e.key === 'ArrowLeft' && idx > 0) {
+            e.preventDefault();
+            buttons[idx - 1].focus();
+            buttons[idx - 1].scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+        }
+    }, []);
+
     return (
         <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-3 pb-2">
+            <div
+                ref={containerRef}
+                className="flex gap-3 pb-2"
+                role="listbox"
+                aria-label="Protocol templates"
+                onKeyDown={handleKeyDown}
+            >
                 {PROTOCOL_TEMPLATES.map((template) => {
                     const IconComponent = ICON_MAP[template.icon] || Sparkles;
                     const colorClass = CATEGORY_COLORS[template.category] || '';
@@ -47,9 +73,11 @@ export function TemplatePicker({ onSelect, activeItemCount }: TemplatePickerProp
                     return (
                         <button
                             key={template.name}
+                            role="option"
+                            aria-selected={false}
                             onClick={() => onSelect(template.name)}
                             className={cn(
-                                'flex-shrink-0 flex flex-col items-start gap-1.5 p-3 rounded-xl border bg-card/50 transition-all duration-200 text-left min-w-[160px] max-w-[200px] hover:shadow-md hover:scale-[1.02]',
+                                'flex-shrink-0 flex flex-col items-start gap-1.5 p-3 rounded-xl border bg-card/50 transition-all duration-200 text-left min-w-[160px] max-w-[200px] hover:shadow-md hover:scale-[1.02] focus:ring-2 focus:ring-primary/50 focus:outline-none',
                                 colorClass,
                             )}
                         >
