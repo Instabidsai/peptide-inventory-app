@@ -37,6 +37,14 @@ Deno.serve(async (req) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         if (authError || !user) return json({ error: 'Invalid token' }, 401);
 
+        // ── Self-signup gate: disabled by default (invite-only mode) ──
+        const allowSelfSignup = Deno.env.get('ALLOW_SELF_SIGNUP') === 'true';
+        if (!allowSelfSignup) {
+            return json({
+                error: 'Self-service signup is currently disabled. Contact hello@thepeptideai.com to get started.',
+            }, 403);
+        }
+
         // Check that this user does NOT already have an org
         const { data: existingProfile } = await supabase
             .from('profiles')

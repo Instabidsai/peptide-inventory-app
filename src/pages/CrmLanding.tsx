@@ -238,10 +238,10 @@ function Nav() {
             </Button>
             <Button
               size="sm"
-              onClick={() => navigate("/auth?mode=signup&plan=free")}
+              onClick={() => scrollTo("final-cta")}
               className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
             >
-              Start Free
+              Get Started
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
@@ -285,9 +285,12 @@ function Nav() {
                     Book Demo
                   </Button>
                   <Button
-                    onClick={() => navigate("/auth?mode=signup&plan=free")}
+                    onClick={() => {
+                      setMobileOpen(false);
+                      scrollTo("final-cta");
+                    }}
                   >
-                    Start Free
+                    Get Started
                   </Button>
                 </div>
               </SheetContent>
@@ -414,11 +417,11 @@ function Hero() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
                 size="lg"
-                onClick={() => navigate("/auth?mode=signup&plan=free")}
+                onClick={() => scrollTo("final-cta")}
                 className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
                 style={shimmerStyle}
               >
-                Start Free — No Credit Card
+                Book a Demo
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
@@ -433,7 +436,7 @@ function Hero() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3" />
-              14-day free trial. No credit card required.
+              Powering peptide businesses nationwide.
             </p>
           </motion.div>
 
@@ -1841,15 +1844,9 @@ function Pricing() {
                 ctaLabel={
                   plan.name === "enterprise"
                     ? "Contact Sales"
-                    : "Start Free Trial"
+                    : "Book a Demo"
                 }
-                onSelect={() => {
-                  if (plan.name === "enterprise") {
-                    scrollTo("final-cta");
-                  } else {
-                    navigate(`/auth?mode=signup&plan=${plan.name}`);
-                  }
-                }}
+                onSelect={() => scrollTo("final-cta")}
               />
             </motion.div>
           ))}
@@ -1933,13 +1930,16 @@ function Faq() {
 // ─── Final CTA ────────────────────────────────────────────────────
 function FinalCta() {
   const [email, setEmail] = useState("");
-  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams({ mode: "signup", plan: "free" });
-    if (email) params.set("email", email);
-    navigate(`/auth?${params.toString()}`);
+    const body = email
+      ? `Hi, I'm interested in ThePeptideAI. My email is: ${email}`
+      : `Hi, I'm interested in ThePeptideAI.`;
+    window.open(
+      `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("ThePeptideAI Access Request")}&body=${encodeURIComponent(body)}`,
+      "_self",
+    );
   };
 
   return (
@@ -1978,7 +1978,7 @@ function FinalCta() {
               className="flex-1 rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 focus:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-shadow"
             />
             <Button type="submit" className="shadow-btn hover:shadow-btn-hover">
-              Start Free
+              Request Access
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
@@ -1988,16 +1988,18 @@ function FinalCta() {
               size="sm"
               className="text-muted-foreground hover:text-foreground"
               onClick={() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                navigate('/auth?mode=signup&plan=free');
+                window.open(
+                  "mailto:hello@thepeptideai.com?subject=" + encodeURIComponent("Demo Request — ThePeptideAI"),
+                  "_self",
+                );
               }}
             >
-              Book a Live Demo
+              Schedule a Call
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground relative">
-            No credit card required. Set up in 2 minutes.
+            We'll get back to you within 24 hours.
           </p>
         </div>
         </motion.div>
@@ -2009,7 +2011,6 @@ function FinalCta() {
 // ─── Sticky Mobile CTA ──────────────────────────────────────────
 function StickyMobileCta() {
   const [visible, setVisible] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > 600);
@@ -2029,9 +2030,9 @@ function StickyMobileCta() {
         >
           <Button
             className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
-            onClick={() => navigate("/auth?mode=signup&plan=free")}
+            onClick={() => scrollTo("final-cta")}
           >
-            Start Free — No Credit Card
+            Book a Demo
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </motion.div>

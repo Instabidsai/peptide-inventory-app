@@ -298,12 +298,15 @@ export default function Auth() {
   const planParam = searchParams.get('plan');
   const emailParam = searchParams.get('email');
 
-  // Auto-switch to signup when plan param present
+  // Determine if this visitor has a valid referral (the ONLY path to signup)
+  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref'));
+
+  // Auto-switch to signup when plan param present — BUT only if they have a referral
   useEffect(() => {
-    if (planParam && mode === 'login') {
+    if (planParam && mode === 'login' && hasReferral) {
       setMode('signup');
     }
-  }, [planParam]);
+  }, [planParam, hasReferral]);
 
   // Show OAuth error if redirected back with one (see main.tsx interceptor)
   useEffect(() => {
@@ -316,10 +319,17 @@ export default function Auth() {
 
   // Auto-switch to signup mode when coming via referral link
   useEffect(() => {
-    if (refParam && mode === 'login') {
+    if (refParam && hasReferral && mode === 'login') {
       setMode('signup');
     }
-  }, [refParam]);
+  }, [refParam, hasReferral]);
+
+  // Force back to login if someone tries to access signup without a referral
+  useEffect(() => {
+    if (mode === 'signup' && !hasReferral) {
+      setMode('login');
+    }
+  }, [mode, hasReferral]);
 
   // Handle redirect + referral linking for already-authenticated users
   useEffect(() => {
@@ -564,9 +574,7 @@ export default function Auth() {
                   ? isPartnerInvite
                     ? 'Create your partner account to start earning'
                     : 'Create an account to access exclusive partner pricing'
-                  : mode === 'login'
-                    ? 'Sign in to your personalized peptide protocol'
-                    : `Get started with ${brandName}`}
+                  : 'Sign in to your account'}
               </CardDescription>
             </motion.div>
           </CardHeader>
@@ -584,8 +592,8 @@ export default function Auth() {
               </div>
             )}
 
-            {/* Google Sign In Button */}
-            <Button
+            {/* Google Sign In Button — always on login, only on signup with referral */}
+            {(mode === 'login' || hasReferral) && <Button
               type="button"
               variant="outline"
               className="w-full hover:bg-secondary/80 transition-all"
@@ -615,16 +623,18 @@ export default function Auth() {
                 </svg>
               )}
               Continue with Google
-            </Button>
+            </Button>}
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
+            {(mode === 'login' || hasReferral) && (
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card/70 px-4 text-muted-foreground/80 font-medium">Or continue with email</span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card/70 px-4 text-muted-foreground/80 font-medium">Or continue with email</span>
-              </div>
-            </div>
+            )}
 
             <AnimatePresence mode="wait">
               <motion.div
@@ -643,16 +653,26 @@ export default function Auth() {
             </AnimatePresence>
           </CardContent>
 
-          <CardFooter className="flex justify-center">
-            <Button
-              variant="link"
-              className="text-muted-foreground hover:text-primary transition-colors"
-              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-            >
-              {mode === 'login'
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
-            </Button>
+          <CardFooter className="flex flex-col items-center gap-2">
+            {hasReferral ? (
+              <Button
+                variant="link"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              >
+                {mode === 'login'
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground/70 text-center">
+                New to ThePeptideAI?{' '}
+                <a href="mailto:hello@thepeptideai.com" className="text-primary/80 hover:text-primary transition-colors underline underline-offset-2">
+                  Contact us
+                </a>{' '}
+                to get started.
+              </p>
+            )}
           </CardFooter>
         </Card>
 

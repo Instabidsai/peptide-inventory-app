@@ -190,84 +190,8 @@ export default function Onboarding() {
     );
   }
 
-  // ── Self-service signup: user selected a plan from the landing page ──
-  if (selectedPlan) {
-    const planDisplay = selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1);
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
-        </div>
-
-        <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
-                <Building2 className="h-8 w-8 text-primary" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Set Up Your Account
-            </CardTitle>
-            <CardDescription className="text-muted-foreground mt-2">
-              {user?.email && (
-                <span className="block text-xs mb-1">Signed in as {user.email}</span>
-              )}
-              You selected the <span className="text-primary font-medium">{planDisplay}</span> plan.
-              Enter your company name to get started.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="company-name">Company Name</Label>
-              <Input
-                id="company-name"
-                placeholder="e.g. Acme Peptides"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && companyName.trim()) handleCreateOrg();
-                }}
-                disabled={isCreatingOrg}
-                autoFocus
-              />
-            </div>
-
-            <Button
-              className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white hover:opacity-90"
-              onClick={handleCreateOrg}
-              disabled={!companyName.trim() || isCreatingOrg}
-            >
-              {isCreatingOrg ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating your workspace...
-                </>
-              ) : (
-                <>
-                  Create My Account
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-
-            <p className="text-center text-xs text-muted-foreground">
-              14-day free trial. No credit card required.
-            </p>
-
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-3.5 w-3.5" />
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Default: user has no org and no referral — show org creation form
+  // ── No referral: self-service signup is disabled ──
+  // Show a "contact us" message instead of the org creation form
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -283,53 +207,36 @@ export default function Onboarding() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            Set Up Your Account
+            Thanks for Your Interest
           </CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             {user?.email && (
-              <span className="block text-xs mb-1">Signed in as {user.email}</span>
+              <span className="block text-xs mb-2">Signed in as {user.email}</span>
             )}
-            Enter your company name to get started with your free trial.
+            ThePeptideAI is currently available by invitation only. Our team will reach out to set up your account.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="company-name-default">Company Name</Label>
-            <Input
-              id="company-name-default"
-              placeholder="e.g. Acme Peptides"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && companyName.trim()) handleCreateOrg();
-              }}
-              disabled={isCreatingOrg}
-              autoFocus
-            />
+          <div className="p-4 rounded-lg border border-primary/20 bg-primary/[0.04] text-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              Need immediate assistance?
+            </p>
+            <a
+              href="mailto:hello@thepeptideai.com?subject=Account Setup Request"
+              className="text-primary hover:text-primary/80 font-medium text-sm underline underline-offset-2 transition-colors"
+            >
+              hello@thepeptideai.com
+            </a>
           </div>
 
           <Button
-            className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white hover:opacity-90"
-            onClick={handleCreateOrg}
-            disabled={!companyName.trim() || isCreatingOrg}
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate('/crm')}
           >
-            {isCreatingOrg ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating your workspace...
-              </>
-            ) : (
-              <>
-                Create My Account
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
+            Back to Home
           </Button>
-
-          <p className="text-center text-xs text-muted-foreground">
-            14-day free trial. No credit card required.
-          </p>
 
           <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleSignOut}>
             <LogOut className="mr-2 h-3.5 w-3.5" />
