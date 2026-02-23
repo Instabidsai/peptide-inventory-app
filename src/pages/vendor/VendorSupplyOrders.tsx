@@ -38,8 +38,6 @@ import {
     Truck,
     Clock,
     Download,
-    ChevronDown,
-    ChevronUp,
 } from 'lucide-react';
 import { format } from 'date-fns';
 

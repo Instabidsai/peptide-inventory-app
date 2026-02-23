@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
@@ -242,12 +242,15 @@ export default function MerchantOnboarding() {
     const [planName, setPlanName] = useState('');
 
     // If user already has org, redirect
-    if (profile?.org_id) {
-        navigate('/', { replace: true });
-        return null;
-    }
+    useEffect(() => {
+        if (profile?.org_id) {
+            navigate('/', { replace: true });
+        }
+    }, [profile?.org_id, navigate]);
 
-    const totalSteps = path === 'new' ? 5 : 5; // Both paths: path choice + name + branding + subdomain + plan
+    const totalSteps = 5; // Both paths: path choice + name + branding + subdomain + plan
+
+    if (profile?.org_id) return null;
 
     const handleSelectPath = (selected: OnboardingPath) => {
         setPath(selected);

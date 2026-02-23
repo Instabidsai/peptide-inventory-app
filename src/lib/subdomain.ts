@@ -13,7 +13,7 @@ export function getSubdomain(): string | null {
 
     const sub = match[1];
     // Reserved subdomains that aren't merchant stores
-    if (['www', 'app', 'api', 'admin', 'mail', 'staging'].includes(sub)) return null;
+    if (['www', 'app', 'api', 'admin', 'mail', 'staging', 'smtp', 'ftp'].includes(sub)) return null;
 
     return sub;
 }

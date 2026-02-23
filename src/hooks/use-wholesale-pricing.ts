@@ -86,7 +86,7 @@ export function useSubdomainCheck(subdomain: string) {
         queryFn: async () => {
             if (!trimmed || trimmed.length < 3) return { available: false, reason: 'Too short (min 3 chars)' };
             if (!/^[a-z0-9-]+$/.test(trimmed)) return { available: false, reason: 'Only letters, numbers, and hyphens' };
-            if (['www', 'app', 'api', 'admin', 'mail', 'smtp', 'ftp'].includes(trimmed)) {
+            if (['www', 'app', 'api', 'admin', 'mail', 'staging', 'smtp', 'ftp'].includes(trimmed)) {
                 return { available: false, reason: 'Reserved name' };
             }
             const { data, error } = await supabase.rpc('check_subdomain_availability', { p_subdomain: trimmed });
