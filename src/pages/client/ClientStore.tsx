@@ -409,6 +409,10 @@ export default function ClientStore() {
     const handleCardCheckout = async () => {
         if (!user?.id) return;
         if (cart.length === 0) return;
+        if (!shippingAddress.trim()) {
+            toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before checking out.' });
+            return;
+        }
 
         // Clear saved cart before redirect — user will see CheckoutSuccess on return
         localStorage.removeItem('peptide_cart');
@@ -426,6 +430,10 @@ export default function ClientStore() {
     // Non-card checkout — server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
         if (!contact?.id || cart.length === 0) return;
+        if (!shippingAddress.trim()) {
+            toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before placing your order.' });
+            return;
+        }
         setPlacingOrder(true);
 
         const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
