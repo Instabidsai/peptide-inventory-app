@@ -147,23 +147,27 @@ export function useProtocols(contactId?: string) {
     });
 
     const logProtocolUsage = useMutation({
-        mutationFn: async ({ itemId, status = 'taken', note }: { itemId: string, status?: string, note?: string }) => {
+        mutationFn: async ({ itemId, inventoryItemId, status = 'taken', note, takenAt }: { itemId?: string, inventoryItemId?: string, status?: string, note?: string, takenAt?: string }) => {
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Not authenticated');
+            if (!itemId && !inventoryItemId) throw new Error('No item reference provided');
 
             const { error } = await supabase
                 .from('protocol_logs')
                 .insert({
-                    protocol_item_id: itemId,
+                    protocol_item_id: itemId || null,
+                    client_inventory_id: inventoryItemId || null,
                     user_id: user.user.id,
                     status,
-                    notes: note
+                    notes: note,
+                    ...(takenAt ? { taken_at: takenAt } : {}),
                 });
 
             if (error) throw error;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            queryClient.invalidateQueries({ queryKey: ['protocol-logs'] });
             toast({ title: 'Dose logged' });
         },
         onError: (error: Error) => {

@@ -212,17 +212,21 @@ export async function calculateCogs(
 ): Promise<number> {
     const { data: lots } = await supabase
         .from('lots')
-        .select('peptide_id, cost_per_unit');
+        .select('peptide_id, cost_per_unit, quantity_received');
 
-    const grouped: Record<string, number[]> = {};
+    // Weighted average: SUM(cost × qty) / SUM(qty)
+    const grouped: Record<string, { totalCost: number; totalQty: number }> = {};
     lots?.forEach(l => {
-        if (!grouped[l.peptide_id]) grouped[l.peptide_id] = [];
-        grouped[l.peptide_id].push(Number(l.cost_per_unit || 0));
+        const cost = Number(l.cost_per_unit || 0);
+        const qty = Number(l.quantity_received || 0);
+        if (!grouped[l.peptide_id]) grouped[l.peptide_id] = { totalCost: 0, totalQty: 0 };
+        grouped[l.peptide_id].totalCost += cost * qty;
+        grouped[l.peptide_id].totalQty += qty;
     });
 
     const avgCosts = new Map<string, number>();
-    Object.entries(grouped).forEach(([pid, costs]) => {
-        avgCosts.set(pid, costs.reduce((a, b) => a + b, 0) / costs.length);
+    Object.entries(grouped).forEach(([pid, { totalCost, totalQty }]) => {
+        avgCosts.set(pid, totalQty > 0 ? totalCost / totalQty : 0);
     });
 
     let total = 0;

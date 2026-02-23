@@ -82,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Get org info for metadata
-        const { data: org } = await supabase
+        const { data: _org } = await supabase
             .from('organizations')
             .select('name')
             .eq('id', org_id)

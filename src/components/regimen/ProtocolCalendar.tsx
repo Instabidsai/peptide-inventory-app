@@ -10,7 +10,7 @@ import {
     eachDayOfInterval, isSameDay, isSameMonth, isToday,
     startOfDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, LayoutList, Check, Dot, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, LayoutList, Check, Dot, AlertTriangle, Syringe } from 'lucide-react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
 
 const DOT_COLORS = [
@@ -20,7 +20,9 @@ const DOT_COLORS = [
 
 interface ProtocolCalendarProps {
     inventory: ClientInventoryItem[];
-    protocolLogs?: Array<{ created_at: string; protocol_item_id: string; status: string }>;
+    protocolLogs?: Array<{ taken_at?: string; created_at: string; protocol_item_id?: string | null; client_inventory_id?: string | null; status: string }>;
+    onLogDose?: (params: { itemId?: string; inventoryItemId?: string; status?: string; takenAt?: string }) => void;
+    isLogging?: boolean;
 }
 
 interface DayDose {
@@ -33,7 +35,7 @@ interface DayDose {
     isTaken: boolean;
 }
 
-export function ProtocolCalendar({ inventory, protocolLogs = [] }: ProtocolCalendarProps) {
+export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLogging }: ProtocolCalendarProps) {
     const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -58,11 +60,13 @@ export function ProtocolCalendar({ inventory, protocolLogs = [] }: ProtocolCalen
     }, [scheduledVials]);
 
     // Pre-index protocol logs by date+itemId for O(1) lookup
+    // Supports both protocol_item_id and client_inventory_id keys
     const logIndex = useMemo(() => {
         const idx = new Set<string>();
         for (const log of protocolLogs) {
-            const dateKey = format(new Date(log.created_at), 'yyyy-MM-dd');
-            idx.add(`${dateKey}:${log.protocol_item_id}`);
+            const dateKey = format(new Date(log.taken_at || log.created_at), 'yyyy-MM-dd');
+            if (log.protocol_item_id) idx.add(`${dateKey}:pi:${log.protocol_item_id}`);
+            if (log.client_inventory_id) idx.add(`${dateKey}:ci:${log.client_inventory_id}`);
         }
         return idx;
     }, [protocolLogs]);
@@ -92,9 +96,8 @@ export function ProtocolCalendar({ inventory, protocolLogs = [] }: ProtocolCalen
             for (const vial of scheduledVials) {
                 if (isDoseDay(vial, dayAbbr, day)) {
                     const colorIdx = peptideColorMap.get(vial.peptide_id || vial.id) ?? 0;
-                    const isTaken = vial.protocol_item_id
-                        ? logIndex.has(`${dayKey}:${vial.protocol_item_id}`)
-                        : false;
+                    const isTaken = (vial.protocol_item_id && logIndex.has(`${dayKey}:pi:${vial.protocol_item_id}`))
+                        || logIndex.has(`${dayKey}:ci:${vial.id}`);
 
                     dayDoses.push({
                         peptideName: vial.peptide?.name || 'Peptide',
@@ -437,6 +440,15 @@ export function ProtocolCalendar({ inventory, protocolLogs = [] }: ProtocolCalen
                                         <Check className="h-3 w-3" />
                                         <span className="text-[10px] font-medium">Done</span>
                                     </div>
+                                ) : onLogDose ? (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onLogDose({ itemId: dose.protocolItemId || undefined, inventoryItemId: dose.vialId, status: 'taken', takenAt: format(selectedDay, "yyyy-MM-dd'T'12:00:00") }); }}
+                                        disabled={isLogging}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                                    >
+                                        <Syringe className="h-3 w-3" />
+                                        {isLogging ? 'Logging…' : 'Mark Taken'}
+                                    </button>
                                 ) : (
                                     <span className="text-[10px] text-muted-foreground/40">
                                         {startOfDay(selectedDay) < todayStart ? 'Missed' : 'Scheduled'}

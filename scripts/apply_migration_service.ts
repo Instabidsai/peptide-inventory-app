@@ -15,20 +15,20 @@ async function runMigration() {
     console.log('Attempting to run SQL via RPC (exec_sql)...');
 
     // Attempt 1: exec_sql
-    const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
+    const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
 
     if (error) {
         console.error('RPC failed:', error);
 
         // Attempt 2: run_sql (common alternative name)
         console.log('Trying run_sql...');
-        const { data: data2, error: error2 } = await supabase.rpc('run_sql', { sql });
+        const { error: error2 } = await supabase.rpc('run_sql', { sql });
 
         if (error2) {
             console.error('run_sql failed:', error2);
             // Attempt 3: exec (common alternative name)
             console.log('Trying exec...');
-            const { data: data3, error: error3 } = await supabase.rpc('exec', { query: sql });
+            const { error: error3 } = await supabase.rpc('exec', { query: sql });
             if (error3) {
                 console.error('All RPC attempts failed.');
             } else {

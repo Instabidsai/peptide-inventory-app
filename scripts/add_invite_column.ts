@@ -8,7 +8,7 @@ const SUPABASE_URL = "https://mckkegmkpqdicudnfhor.supabase.co";
 // Using the Service Key provided earlier by user
 const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja2tlZ21rcHFkaWN1ZG5maG9yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODQ5MjExNywiZXhwIjoyMDg0MDY4MTE3fQ.s8M-RGqK_8tqdFpfUa_ZNckZ7p1EMdvi-1vcXH8oFn4";
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const _supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 async function runMigration() {
     console.log("Adding 'invite_link' column to 'contacts' table...");

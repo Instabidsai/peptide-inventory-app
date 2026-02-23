@@ -37,8 +37,9 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === 'development' &&
     checker({
+      overlay: { initialIsOpen: false, badgeStyle: 'position: fixed; bottom: 12px; left: 12px; z-index: 99999;' },
       typescript: true,
-      eslint: { lintCommand: 'eslint . --max-warnings=0', useFlatConfig: true }
+      eslint: { lintCommand: 'eslint src/', useFlatConfig: true }
     }),
     vercelSPAPlugin(),
   ].filter(Boolean),

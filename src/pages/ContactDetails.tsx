@@ -6,7 +6,7 @@ import { AssignInventoryForm } from '@/components/forms/AssignInventoryForm';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useCreateMovement, useMovements, useDeleteMovement, type Movement } from '@/hooks/use-movements';
-import type { Protocol, ProtocolItem, ProtocolFeedback } from '@/types/regimen';
+import type { Protocol, ProtocolItem, ProtocolFeedback, ClientInventoryItem } from '@/types/regimen';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query'; // Add this import
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft, Users, Copy, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft, Users, Copy, ExternalLink, CalendarDays } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel, parseVialSize } from '@/lib/supply-calculations';
 import { ProtocolSyncBadge } from '@/components/regimen/ProtocolSyncBadge';
@@ -64,7 +64,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
-import type { ClientInventoryItem } from '@/types/regimen';
+import { ProtocolCalendar } from '@/components/regimen/ProtocolCalendar';
 import { AddSupplementForm } from '@/components/forms/AddSupplementForm';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { Textarea } from '@/components/ui/textarea';
@@ -1188,10 +1188,14 @@ export default function ContactDetails() {
                 <Tabs defaultValue="client-view">
                     <TabsList>
                         <TabsTrigger value="client-view">Client View</TabsTrigger>
+                        <TabsTrigger value="calendar">Protocol Calendar</TabsTrigger>
                         <TabsTrigger value="admin-manage">Admin Manage</TabsTrigger>
                     </TabsList>
                     <TabsContent value="client-view" className="mt-4">
                         <AdminClientFridgeView contactId={id!} />
+                    </TabsContent>
+                    <TabsContent value="calendar" className="mt-4">
+                        <AdminProtocolCalendarView contactId={id!} protocols={assignedProtocols} onLogDose={logProtocolUsage} />
                     </TabsContent>
                     <TabsContent value="admin-manage" className="mt-4">
                         <ClientInventoryList contactId={id!} contactName={contact?.name} assignedProtocols={assignedProtocols} />
@@ -1338,8 +1342,6 @@ interface RegimenPeptide {
 function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDeleteSupplement, onAssignInventory, peptides, movements }: { protocol: Protocol, onDelete: (id: string) => void, onEdit: () => void, onLog: (args: { itemId: string }) => void, onAddSupplement: (args: { protocol_id: string; supplement_id: string; dosage: string; frequency: string; notes: string }) => Promise<void>, onDeleteSupplement: (id: string) => void, onAssignInventory: (id: string, itemId?: string) => void, peptides: RegimenPeptide[] | undefined, movements?: Movement[] }) {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-    if (!protocol?.protocol_items) return null;
-
     // Determine Status Logic
     const { latestMovement, statusColor, statusLabel } = useMemo(() => {
         if (!movements || !protocol.protocol_items?.[0]) return { latestMovement: null, statusColor: 'hidden', statusLabel: 'No History' };
@@ -1478,6 +1480,8 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             };
         });
     }, [protocol.protocol_items, assignedBottles]);
+
+    if (!protocol?.protocol_items) return null;
 
     return (
         <>
@@ -1872,6 +1876,85 @@ function ResourceList({ contactId }: { contactId: string }) {
 
 
 
+
+function AdminProtocolCalendarView({ contactId, protocols, onLogDose }: { contactId: string; protocols?: Protocol[]; onLogDose?: { mutate: (params: { itemId?: string; inventoryItemId?: string; status?: string; takenAt?: string }) => void; isPending?: boolean } }) {
+    const { data: inventory, isLoading } = useQuery({
+        queryKey: ['client-inventory-calendar-view', contactId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('client_inventory')
+                .select(`
+                    *,
+                    peptide:peptides(name)
+                `)
+                .eq('contact_id', contactId)
+                .eq('status', 'active')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return (data || []) as ClientInventoryItem[];
+        },
+    });
+
+    // Fetch protocol logs by client_inventory_id for this contact's inventory
+    const inventoryIds = (inventory || []).map(i => i.id);
+    const { data: inventoryLogs } = useQuery({
+        queryKey: ['protocol-logs', contactId, inventoryIds],
+        queryFn: async () => {
+            if (!inventoryIds.length) return [];
+            const { data, error } = await supabase
+                .from('protocol_logs')
+                .select('taken_at, created_at, protocol_item_id, client_inventory_id, status')
+                .in('client_inventory_id', inventoryIds);
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: inventoryIds.length > 0,
+    });
+
+    if (isLoading) {
+        return <div className="space-y-3"><Skeleton className="h-60" /></div>;
+    }
+
+    // Build protocol logs from protocols data for the calendar
+    const protocolItemLogs = (protocols || []).flatMap(p =>
+        (p.protocol_items || []).flatMap(item =>
+            (item.protocol_logs || []).map(log => ({
+                created_at: log.created_at,
+                protocol_item_id: item.id,
+                status: log.status,
+            }))
+        )
+    );
+
+    // Merge both sources of logs
+    const allLogs = [
+        ...protocolItemLogs,
+        ...(inventoryLogs || []).map(log => ({
+            taken_at: log.taken_at,
+            created_at: log.created_at,
+            protocol_item_id: log.protocol_item_id,
+            client_inventory_id: log.client_inventory_id,
+            status: log.status,
+        })),
+    ];
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/15">
+                <CalendarDays className="h-4 w-4 text-blue-500" />
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                    Viewing this client's dosing calendar — click a day to see details and log doses on their behalf
+                </span>
+            </div>
+            <ProtocolCalendar
+                inventory={inventory || []}
+                protocolLogs={allLogs}
+                onLogDose={onLogDose ? (params) => onLogDose.mutate(params) : undefined}
+                isLogging={onLogDose?.isPending}
+            />
+        </div>
+    );
+}
 
 function AdminClientFridgeView({ contactId }: { contactId: string }) {
     const { data: inventory, isLoading } = useQuery({

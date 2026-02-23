@@ -51,14 +51,15 @@ export function PartnerAIChat() {
 
   // Only show for sales_rep (partners)
   const role = userRole?.role || profile?.role;
-  if (role !== 'sales_rep') return null;
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages (must be before early return for hooks rules)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, open]);
+
+  if (role !== 'sales_rep') return null;
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();

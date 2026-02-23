@@ -49,7 +49,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
         return;
     }
 
-    // 2. Calculate COGS from average lot costs
+    // 2. Calculate COGS from weighted-average lot costs
     const typedOrder = order as unknown as OrderWithItems;
     const items = typedOrder.sales_order_items || [];
     const peptideIds = [...new Set(items.map((i) => i.peptide_id).filter(Boolean))];
@@ -57,22 +57,24 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
     let cogsAmount = 0;
 
     if (peptideIds.length > 0) {
-        // TODO: Use actual FIFO lot cost when bottle->lot mapping is available in order items
         const { data: lots } = await supabase
             .from('lots')
-            .select('peptide_id, cost_per_unit')
+            .select('peptide_id, cost_per_unit, quantity_received')
             .in('peptide_id', peptideIds);
 
-        // Build avg cost per peptide
-        const grouped: Record<string, number[]> = {};
-        lots?.forEach((l: LotCostRow) => {
-            if (!grouped[l.peptide_id]) grouped[l.peptide_id] = [];
-            grouped[l.peptide_id].push(Number(l.cost_per_unit || 0));
+        // Build weighted-average cost per peptide: SUM(cost × qty) / SUM(qty)
+        const grouped: Record<string, { totalCost: number; totalQty: number }> = {};
+        lots?.forEach((l: any) => {
+            const cost = Number(l.cost_per_unit || 0);
+            const qty = Number(l.quantity_received || 0);
+            if (!grouped[l.peptide_id]) grouped[l.peptide_id] = { totalCost: 0, totalQty: 0 };
+            grouped[l.peptide_id].totalCost += cost * qty;
+            grouped[l.peptide_id].totalQty += qty;
         });
 
         const avgCosts = new Map<string, number>();
-        Object.entries(grouped).forEach(([pid, costs]) => {
-            avgCosts.set(pid, costs.reduce((a, b) => a + b, 0) / costs.length);
+        Object.entries(grouped).forEach(([pid, { totalCost, totalQty }]) => {
+            avgCosts.set(pid, totalQty > 0 ? totalCost / totalQty : 0);
         });
 
         for (const item of items) {

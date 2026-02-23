@@ -231,6 +231,7 @@ export default function PartnerDashboard() {
 
             {/* Referral Link */}
             <ReferralLinkCard profileId={myProfileId} />
+            <TeamReferralLinks downline={downline || []} />
 
             {/* Stats Overview — Clickable Cards */}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -973,6 +974,64 @@ function ReferralLinkCard({ profileId }: { profileId: string | undefined }) {
                         <><Copy className="h-4 w-4 mr-1" /> Copy Link</>
                     )}
                 </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
+function TeamReferralLinks({ downline }: { downline: PartnerNode[] }) {
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const partners = downline.filter(d => !d.isClient && d.depth === 1);
+
+    if (partners.length === 0) return null;
+
+    const handleCopy = async (id: string) => {
+        const url = `${window.location.origin}/#/auth?ref=${id}`;
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            const input = document.createElement('input');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    return (
+        <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-purple-500/5">
+            <CardContent className="py-4 space-y-3">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4 text-violet-400" />
+                    Team Partner Referral Links
+                </p>
+                {partners.map(p => {
+                    const url = `${window.location.origin}/#/auth?ref=${p.id}`;
+                    const isCopied = copiedId === p.id;
+                    return (
+                        <div key={p.id} className="flex items-center gap-3 pl-6">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">{p.full_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{url}</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className={isCopied ? 'border-emerald-500/30 text-emerald-400' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}
+                                onClick={() => handleCopy(p.id)}
+                            >
+                                {isCopied ? (
+                                    <><Check className="h-3 w-3 mr-1" /> Copied</>
+                                ) : (
+                                    <><Copy className="h-3 w-3 mr-1" /> Copy</>
+                                )}
+                            </Button>
+                        </div>
+                    );
+                })}
             </CardContent>
         </Card>
     );

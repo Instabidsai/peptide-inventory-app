@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function applyMigration() {
     // 1. Add column
-    const { error } = await supabase.rpc('exec_sql', {
+    await supabase.rpc('exec_sql', {
         sql: `
             ALTER TABLE profiles ADD COLUMN IF NOT EXISTS overhead_per_unit DECIMAL(10, 2) DEFAULT 4.00;
             COMMENT ON COLUMN profiles.overhead_per_unit IS 'Fixed dollar amount added to base cost for this partner';
