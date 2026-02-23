@@ -82,7 +82,7 @@ export function HouseholdDoseSection({
                     </span>
                 </div>
                 <button
-                    onClick={() => navigate('/account')}
+                    onClick={() => navigate('/account?section=family')}
                     className="flex items-center gap-1 text-[11px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
                 >
                     <Settings className="h-3 w-3" />

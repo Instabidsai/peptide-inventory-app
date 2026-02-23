@@ -5,7 +5,7 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ShoppingBag, TrendingDown, CalendarClock, Lock, RefreshCw } from 'lucide-react';
+import { ShoppingBag, TrendingDown, CalendarClock, Lock, RefreshCw, AlertTriangle, Beaker } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSupplyStatusColor, getSupplyStatusLabel, vialDailyUsage } from '@/lib/supply-calculations';
 import type { ClientInventoryItem } from '@/types/regimen';
@@ -105,8 +105,40 @@ export function SupplyOverview({ inventory, contactId }: SupplyOverviewProps) {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }, [peptideSupplies]);
 
-    // Don't render if no active vials
-    if (activeVials.length === 0) return null;
+    // Count vials that exist but don't pass the strict filter
+    const allFridgeVials = inventory.filter(v => v.in_fridge && v.current_quantity_mg > 0);
+    const needSetupCount = allFridgeVials.length - activeVials.length;
+
+    // Show helpful fallback if vials exist but none are fully configured
+    if (activeVials.length === 0) {
+        if (allFridgeVials.length === 0) return null; // genuinely no vials
+
+        return (
+            <GlassCard className="border-amber-500/15">
+                <CardContent className="py-5">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl bg-amber-500/10 shrink-0">
+                            <Beaker className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold tracking-tight">
+                                {needSetupCount} vial{needSetupCount !== 1 ? 's' : ''} need{needSetupCount === 1 ? 's' : ''} setup
+                            </p>
+                            <p className="text-xs text-muted-foreground/50 mt-0.5 leading-relaxed">
+                                Your fridge has vials that need reconstitution or a dose schedule before supply tracking can work.
+                            </p>
+                            <button
+                                onClick={() => navigate('/my-regimen')}
+                                className="mt-2.5 text-xs font-semibold text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 transition-colors"
+                            >
+                                Configure Vials
+                            </button>
+                        </div>
+                    </div>
+                </CardContent>
+            </GlassCard>
+        );
+    }
 
     const handleReorderOne = (supply: PeptideSupply) => {
         navigate(`/store?reorder=${encodeURIComponent(JSON.stringify([{

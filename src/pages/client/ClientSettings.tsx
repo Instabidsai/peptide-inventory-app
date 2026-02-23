@@ -33,7 +33,7 @@ type AddMemberFormData = z.infer<typeof addMemberSchema>;
 
 function HouseholdSection() {
     const { data: contact } = useClientProfile();
-    const { data: members, isLoading } = useHouseholdMembers(contact?.id);
+    const { data: members, isLoading, isError } = useHouseholdMembers(contact?.id);
     const addMember = useAddHouseholdMember(contact?.id);
     const removeMember = useRemoveHouseholdMember();
     const inviteMember = useInviteHouseholdMember();
@@ -46,15 +46,19 @@ function HouseholdSection() {
     });
 
     const handleAddMember = async (data: AddMemberFormData) => {
-        await addMember.mutateAsync({ name: data.name, email: data.email || undefined });
-        addForm.reset();
-        setShowAddForm(false);
-        sonnerToast.success(`${data.name} added to your family!`, {
-            description: data.email
-                ? "They'll get an invite to log their own doses. Until then, you can log for them from the dashboard."
-                : "You can log doses on their behalf from the dashboard.",
-            duration: 6000,
-        });
+        try {
+            await addMember.mutateAsync({ name: data.name, email: data.email || undefined });
+            addForm.reset();
+            setShowAddForm(false);
+            sonnerToast.success(`${data.name} added to your family!`, {
+                description: data.email
+                    ? "They'll get an invite to log their own doses. Until then, you can log for them from the dashboard."
+                    : "You can log doses on their behalf from the dashboard.",
+                duration: 6000,
+            });
+        } catch {
+            // Error toast already handled by the mutation's onError callback
+        }
     };
 
     const handleRemove = (memberId: string) => {
@@ -78,6 +82,13 @@ function HouseholdSection() {
                     {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
+                        </div>
+                    ) : isError ? (
+                        <div className="p-4 text-center space-y-2">
+                            <p className="text-sm text-muted-foreground/60">Couldn't load household data</p>
+                            <Button size="sm" variant="ghost" onClick={() => window.location.reload()}>
+                                Try again
+                            </Button>
                         </div>
                     ) : !hasMembersOrHousehold ? (
                         /* No household yet — prompt to create */

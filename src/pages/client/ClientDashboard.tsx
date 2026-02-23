@@ -8,7 +8,7 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Users, Flame, Target, Calendar, X, Heart } from "lucide-react";
+import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Users, Flame, Target, Calendar, X, Heart, MessageSquare, Bell, Scale, DollarSign } from "lucide-react";
 import { Progress } from '@/components/ui/progress';
 import { format, isSameDay, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -109,6 +109,70 @@ function ClientDashboardContent() {
         },
         enabled: isHousehold,
     });
+
+    // ── Quick Glance data (messages, notifications, weight, balance) ──
+    const { data: unreadNotifications } = useQuery({
+        queryKey: ['dashboard-unread-notifications', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return 0;
+            const { count } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .eq('is_read', false);
+            return count || 0;
+        },
+        enabled: !!user?.id,
+    });
+
+    const { data: unreadMessages } = useQuery({
+        queryKey: ['dashboard-unread-messages', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return 0;
+            const { count } = await supabase
+                .from('client_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .not('admin_notes', 'is', null)
+                .eq('status', 'pending');
+            return count || 0;
+        },
+        enabled: !!user?.id,
+    });
+
+    const { data: latestWeight } = useQuery({
+        queryKey: ['dashboard-latest-weight', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return null;
+            const { data } = await supabase
+                .from('body_composition_logs')
+                .select('weight, date')
+                .eq('user_id', user.id)
+                .order('date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            return data as { weight: number; date: string } | null;
+        },
+        enabled: !!user?.id,
+    });
+
+    const { data: outstandingBalance } = useQuery({
+        queryKey: ['dashboard-balance', contact?.id],
+        queryFn: async () => {
+            if (!contact?.id) return 0;
+            const { data: orders } = await supabase
+                .from('sales_orders')
+                .select('total_amount, amount_paid')
+                .eq('client_id', contact.id)
+                .neq('status', 'cancelled')
+                .neq('payment_status', 'paid');
+            if (!orders?.length) return 0;
+            return orders.reduce((sum, o) => sum + ((Number(o.total_amount) || 0) - (Number(o.amount_paid) || 0)), 0);
+        },
+        enabled: !!contact?.id,
+    });
+
+    const hasQuickGlance = (unreadNotifications ?? 0) > 0 || (unreadMessages ?? 0) > 0 || !!latestWeight || (outstandingBalance ?? 0) > 0;
 
     // ── Helper: build doses for one set of protocols against shared inventory ──
     const buildDosesForProtocols = (
@@ -503,6 +567,82 @@ function ClientDashboardContent() {
                     >
                         <X className="h-3.5 w-3.5" />
                     </button>
+                </motion.div>
+            )}
+
+            {/* ── Quick Glance — connected data tiles ─── */}
+            {hasQuickGlance && (
+                <motion.div
+                    className="grid grid-cols-2 gap-2.5"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                >
+                    {(unreadMessages ?? 0) > 0 && (
+                        <button
+                            onClick={() => navigate('/messages')}
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/15 hover:bg-blue-500/[0.1] transition-colors text-left"
+                        >
+                            <div className="p-1.5 rounded-lg bg-blue-500/10 shrink-0 relative">
+                                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white leading-none px-0.5">
+                                    {(unreadMessages ?? 0) > 9 ? '9+' : unreadMessages}
+                                </span>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold truncate">{unreadMessages} New Message{unreadMessages !== 1 ? 's' : ''}</p>
+                                <p className="text-[10px] text-muted-foreground/40">From your care team</p>
+                            </div>
+                        </button>
+                    )}
+
+                    {(unreadNotifications ?? 0) > 0 && (
+                        <button
+                            onClick={() => navigate('/notifications')}
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/15 hover:bg-amber-500/[0.1] transition-colors text-left"
+                        >
+                            <div className="p-1.5 rounded-lg bg-amber-500/10 shrink-0 relative">
+                                <Bell className="h-3.5 w-3.5 text-amber-400" />
+                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white leading-none px-0.5">
+                                    {(unreadNotifications ?? 0) > 9 ? '9+' : unreadNotifications}
+                                </span>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold truncate">{unreadNotifications} Alert{(unreadNotifications ?? 0) !== 1 ? 's' : ''}</p>
+                                <p className="text-[10px] text-muted-foreground/40">Updates & reminders</p>
+                            </div>
+                        </button>
+                    )}
+
+                    {latestWeight && (
+                        <button
+                            onClick={() => navigate('/body-composition')}
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15 hover:bg-emerald-500/[0.1] transition-colors text-left"
+                        >
+                            <div className="p-1.5 rounded-lg bg-emerald-500/10 shrink-0">
+                                <Scale className="h-3.5 w-3.5 text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold truncate">{latestWeight.weight} lbs</p>
+                                <p className="text-[10px] text-muted-foreground/40">Last weigh-in</p>
+                            </div>
+                        </button>
+                    )}
+
+                    {(outstandingBalance ?? 0) > 0 && (
+                        <button
+                            onClick={() => navigate('/my-regimen')}
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-red-500/[0.06] border border-red-500/15 hover:bg-red-500/[0.1] transition-colors text-left"
+                        >
+                            <div className="p-1.5 rounded-lg bg-red-500/10 shrink-0">
+                                <DollarSign className="h-3.5 w-3.5 text-red-400" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold truncate">${(outstandingBalance ?? 0).toFixed(2)} due</p>
+                                <p className="text-[10px] text-muted-foreground/40">Outstanding balance</p>
+                            </div>
+                        </button>
+                    )}
                 </motion.div>
             )}
 

@@ -126,6 +126,10 @@ export default function AdminDashboard() {
         return <QueryError message="Failed to load dashboard data." onRetry={financialsRefetch} />;
     }
 
+    // Track partial failures from the financials hook
+    const financialErrors = financials?._errors || [];
+    const hasPartialFailure = financialErrors.length > 0;
+
     const recentMovements = movements?.slice(0, 5) || [];
     const lowStock = useMemo(() =>
         peptides
@@ -229,6 +233,28 @@ export default function AdminDashboard() {
                     Full Investment View
                 </button>
             </div>
+
+            {/* Diagnostic: warn admin when financial queries partially failed */}
+            {hasPartialFailure && (
+                <Card className="border-amber-500/30 bg-amber-500/5">
+                    <CardContent className="py-3">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-amber-400">
+                                    Some dashboard data couldn't load
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Failed: {financialErrors.join(', ')}. Values shown as $0.00 may be missing data, not actual zeros.
+                                </p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => financialsRefetch()} className="shrink-0 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                                Retry
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Financial Overview - 4 cards, always in a clean grid */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -603,22 +629,29 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card></motion.div>
 
-                {/* Low Stock Alerts */}
-                {lowStock.length > 0 && (
-                    <Card className="md:col-span-1 bg-card border-border/60 border-amber-500/30">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                    Low Stock ({lowStock.length})
-                                </CardTitle>
+                {/* Low Stock Alerts — always visible */}
+                <Card className={`md:col-span-1 bg-card border-border/60 ${lowStock.length > 0 ? 'border-amber-500/30' : ''}`}>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <AlertTriangle className={`h-4 w-4 ${lowStock.length > 0 ? 'text-amber-500' : 'text-muted-foreground/40'}`} />
+                                Low Stock {lowStock.length > 0 && `(${lowStock.length})`}
+                            </CardTitle>
+                            {lowStock.length > 0 && (
                                 <Button variant="ghost" size="sm" asChild>
                                     <Link to="/lots">Reorder</Link>
                                 </Button>
+                            )}
+                        </div>
+                        <CardDescription>Peptides with 10 or fewer bottles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {lowStock.length === 0 ? (
+                            <div className="text-center py-4">
+                                <Package className="h-6 w-6 mx-auto mb-1.5 text-green-500/40" />
+                                <p className="text-sm text-muted-foreground">All peptides well-stocked</p>
                             </div>
-                            <CardDescription>Peptides with 10 or fewer bottles</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                        ) : (
                             <div className="space-y-2">
                                 {lowStock.slice(0, 8).map(p => (
                                     <div key={p.id} className="flex items-center justify-between text-sm">
@@ -634,21 +667,29 @@ export default function AdminDashboard() {
                                     </p>
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
 
-                {/* Top Sellers */}
-                {topSellers && topSellers.length > 0 && (
-                    <Card className="md:col-span-1 bg-card border-border/60">
-                        <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-green-500" />
-                                Top Sellers
-                            </CardTitle>
-                            <CardDescription>By units sold (all orders)</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                {/* Top Sellers — always visible */}
+                <Card className="md:col-span-1 bg-card border-border/60">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <TrendingUp className={`h-4 w-4 ${topSellers?.length ? 'text-green-500' : 'text-muted-foreground/40'}`} />
+                            Top Sellers
+                        </CardTitle>
+                        <CardDescription>By units sold (all orders)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {!topSellers?.length ? (
+                            <div className="text-center py-4">
+                                <ShoppingCart className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/30" />
+                                <p className="text-sm text-muted-foreground">No sales recorded yet</p>
+                                <Button variant="link" size="sm" asChild className="mt-1">
+                                    <Link to="/movements/new">Record a sale</Link>
+                                </Button>
+                            </div>
+                        ) : (
                             <div className="space-y-2">
                                 {topSellers.map((item, i) => (
                                     <div key={item.name} className="flex items-center justify-between text-sm">
@@ -662,9 +703,9 @@ export default function AdminDashboard() {
                                     </div>
                                 ))}
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
 
                 <motion.div variants={staggerItem} className="md:col-span-2"><Card className="bg-card border-border/60">
                     <CardHeader>

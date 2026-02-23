@@ -42,7 +42,7 @@ export default function ClientMenu() {
     const navigate = useNavigate();
     const { signOut, user } = useAuth();
     const { data: contact } = useClientProfile();
-    const { data: householdMembers } = useHouseholdMembers(contact?.id);
+    const { data: householdMembers } = useHouseholdMembers(contact?.household_id ? contact?.id : undefined);
     const memberCount = householdMembers?.length ?? 0;
 
     // Build menu items, inserting Family after Account if user has/can have household
