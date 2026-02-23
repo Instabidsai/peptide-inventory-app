@@ -42,6 +42,16 @@ export default function MacroTracker() {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Please select a JPG, PNG, or WebP image');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('Image must be under 10MB');
+            return;
+        }
+
         // Convert to base64
         const reader = new FileReader();
         reader.onloadend = async () => {

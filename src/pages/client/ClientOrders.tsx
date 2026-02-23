@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,10 +34,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
     cancelled: { label: 'Cancelled', color: 'bg-red-500/10 text-red-500 border-red-500/20', icon: <XCircle className="h-3.5 w-3.5" /> },
 };
 
+const PAGE_SIZE = 20;
+
 export default function ClientOrders() {
     const { user } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const navigate = useNavigate();
+    const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
     const { data: orders, isLoading, isError, refetch } = useQuery({
         queryKey: ['client_my_orders', contact?.id],
@@ -142,7 +145,7 @@ export default function ClientOrders() {
                     animate="show"
                     variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
                 >
-                    {orders.map((order) => {
+                    {orders.slice(0, displayCount).map((order) => {
                         const statusInfo = getStatus(order.status);
                         const items = order.sales_order_items || [];
 
@@ -242,6 +245,15 @@ export default function ClientOrders() {
                             </motion.div>
                         );
                     })}
+                    {orders.length > displayCount && (
+                        <Button
+                            variant="outline"
+                            className="w-full mt-2"
+                            onClick={() => setDisplayCount(prev => prev + PAGE_SIZE)}
+                        >
+                            Show more ({orders.length - displayCount} remaining)
+                        </Button>
+                    )}
                 </motion.div>
             )}
         </div>

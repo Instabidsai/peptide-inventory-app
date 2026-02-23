@@ -59,12 +59,22 @@ export default function BodyComposition() {
     // Handle Image Selection
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            // Clean up previous preview URL to avoid memory leak
-            if (imagePreview) URL.revokeObjectURL(imagePreview);
-            setSelectedImage(file);
-            setImagePreview(URL.createObjectURL(file));
+        if (!file) return;
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Please select a JPG, PNG, or WebP image');
+            return;
         }
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('Image must be under 10MB');
+            return;
+        }
+
+        // Clean up previous preview URL to avoid memory leak
+        if (imagePreview) URL.revokeObjectURL(imagePreview);
+        setSelectedImage(file);
+        setImagePreview(URL.createObjectURL(file));
     };
 
     // Fetch Logs
