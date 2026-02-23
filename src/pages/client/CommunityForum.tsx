@@ -40,7 +40,7 @@ type Message = {
 };
 
 export default function CommunityForum() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -51,7 +51,8 @@ export default function CommunityForum() {
     const [newTopicContent, setNewTopicContent] = useState("");
     const [replyContent, setReplyContent] = useState("");
 
-    // Fetch topics
+    // TODO: discussion_topics needs org_id column — see migration 20260223_add_org_id_to_discussions.sql
+    // Until migration is applied, topics are visible to all authenticated users (cross-tenant leak)
     const { data: topics, isLoading: loadingTopics } = useQuery({
         queryKey: ['discussion-topics'],
         queryFn: async () => {
@@ -89,7 +90,7 @@ export default function CommunityForum() {
                 .insert({
                     title: newTopicTitle,
                     content: newTopicContent,
-                    user_id: user.id
+                    user_id: user.id,
                 })
                 .select()
                 .single();

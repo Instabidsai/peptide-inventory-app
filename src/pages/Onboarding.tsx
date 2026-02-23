@@ -267,60 +267,74 @@ export default function Onboarding() {
     );
   }
 
-  // Default: user has no org and no referral — show friendly screen with sign out
+  // Default: user has no org and no referral — show org creation form
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
       </div>
 
       <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/20">
-              <FlaskConical className="h-8 w-8 text-primary" />
+            <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
+              <Building2 className="h-8 w-8 text-primary" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            Welcome to {brandName}
+            Set Up Your Account
           </CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
-            {user?.email
-              ? `Signed in as ${user.email}`
-              : 'Your account needs to be connected to a provider.'}
+            {user?.email && (
+              <span className="block text-xs mb-1">Signed in as {user.email}</span>
+            )}
+            Enter your company name to get started with your free trial.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
-            If you received an invite link from your provider, please use that link to get set up. Otherwise, sign out and try again.
-          </p>
+          <div className="space-y-2">
+            <Label htmlFor="company-name-default">Company Name</Label>
+            <Input
+              id="company-name-default"
+              placeholder="e.g. Acme Peptides"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && companyName.trim()) handleCreateOrg();
+              }}
+              disabled={isCreatingOrg}
+              autoFocus
+            />
+          </div>
 
           <Button
-            className="w-full"
-            onClick={async () => {
-              // Try refreshing profile in case it was fixed server-side
-              await refreshProfile();
-              if (profile?.org_id) {
-                navigate('/', { replace: true });
-              } else {
-                toast({ title: 'Not connected yet', description: 'Please use the invite link from your provider to get started.' });
-              }
-            }}
+            className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white hover:opacity-90"
+            onClick={handleCreateOrg}
+            disabled={!companyName.trim() || isCreatingOrg}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh My Account
+            {isCreatingOrg ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating your workspace...
+              </>
+            ) : (
+              <>
+                Create My Account
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
           </Button>
 
-          <Button variant="outline" className="w-full" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
+          <p className="text-center text-xs text-muted-foreground">
+            14-day free trial. No credit card required.
+          </p>
+
+          <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-3.5 w-3.5" />
             Sign Out
           </Button>
-
-          <p className="text-center text-xs text-muted-foreground/50 mt-4">
-            {brandName}
-          </p>
         </CardContent>
       </Card>
     </div>

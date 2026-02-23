@@ -109,13 +109,16 @@ export function useBottleByUid(uid: string) {
 export function useUpdateBottle() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...input }: UpdateBottleInput & { id: string }) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { data, error } = await supabase
         .from('bottles')
         .update(input)
         .eq('id', id)
+        .eq('org_id', profile.org_id)
         .select()
         .single();
 
@@ -135,13 +138,16 @@ export function useUpdateBottle() {
 export function useUpdateBottles() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ ids, ...input }: UpdateBottleInput & { ids: string[] }) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { data, error } = await supabase
         .from('bottles')
         .update(input)
         .in('id', ids)
+        .eq('org_id', profile.org_id)
         .select();
 
       if (error) throw error;
@@ -196,13 +202,16 @@ export function useBottleStats() {
 export function useDeleteBottle() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { error } = await supabase
         .from('bottles')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', profile.org_id);
 
       if (error) throw error;
     },

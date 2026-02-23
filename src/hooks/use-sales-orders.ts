@@ -130,6 +130,7 @@ export function useSalesOrders(status?: SalesOrderStatus) {
             peptides (id, name)
           )
         `)
+                .eq('org_id', profile!.org_id!)
                 .order('created_at', { ascending: false });
 
             if (status) {
@@ -140,6 +141,7 @@ export function useSalesOrders(status?: SalesOrderStatus) {
             if (error) throw error;
             return data as SalesOrder[];
         },
+        enabled: !!profile?.org_id,
     });
 }
 
@@ -151,13 +153,13 @@ export function useMySalesOrders() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data: profile } = await supabase
+            const { data: userProfile } = await supabase
                 .from('profiles')
                 .select('id')
                 .eq('user_id', user.id)
                 .single();
 
-            if (!profile) throw new Error('Profile not found');
+            if (!userProfile) throw new Error('Profile not found');
 
             const { data, error } = await supabase
                 .from('sales_orders')
@@ -169,12 +171,14 @@ export function useMySalesOrders() {
             peptides (id, name)
           )
         `)
-                .eq('rep_id', profile.id)
+                .eq('org_id', profile!.org_id!)
+                .eq('rep_id', userProfile.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return data as SalesOrder[];
         },
+        enabled: !!profile?.org_id,
     });
 }
 
@@ -477,13 +481,16 @@ export function useCreateValidatedOrder() {
 export function useUpdateSalesOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<SalesOrder> & { id: string }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const { error } = await supabase
                 .from('sales_orders')
                 .update(updates)
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', profile.org_id);
 
             if (error) throw error;
 
@@ -580,6 +587,11 @@ export function useFulfillOrder() {
                 .single();
             const profileId = currentProfile?.id || user.id;
 
+            // Track all mutations for rollback on failure
+            let movementId: string | null = null;
+            const soldBottleIds: string[] = [];
+
+            try {
             // 2. Prepare Movement Data
             // We create ONE movement for the whole order
             const { data: movement, error: movError } = await supabase
@@ -599,6 +611,7 @@ export function useFulfillOrder() {
                 .single();
 
             if (movError) throw movError;
+            movementId = movement.id;
 
             // 3. Allocate Inventory (FIFO)
             const allocatedBottles: Array<{ peptideId: string; peptideName: string; bottleId: string; lotNumber: string | null }> = [];
@@ -648,6 +661,7 @@ export function useFulfillOrder() {
                     .in('id', bottleIds);
 
                 if (buError) throw buError;
+                soldBottleIds.push(...bottleIds);
             }
 
             // 4. Update Order Status
@@ -714,6 +728,50 @@ export function useFulfillOrder() {
 
             // 6. Recalculate COGS + profit with current data
             await recalculateOrderProfit(orderId);
+
+            } catch (err) {
+                // ROLLBACK: Revert bottle statuses and clean up movement data
+                console.error('Fulfillment failed, attempting rollback:', err);
+
+                if (soldBottleIds.length > 0) {
+                    await supabase
+                        .from('bottles')
+                        .update({ status: 'in_stock' })
+                        .in('id', soldBottleIds)
+                        .then(({ error }) => error && console.error('Rollback bottles failed:', error));
+                }
+
+                if (movementId) {
+                    // movement_items cascade-delete with the movement in most setups,
+                    // but clean them explicitly to be safe
+                    await supabase
+                        .from('movement_items')
+                        .delete()
+                        .eq('movement_id', movementId)
+                        .then(({ error }) => error && console.error('Rollback movement_items failed:', error));
+
+                    await supabase
+                        .from('client_inventory')
+                        .delete()
+                        .eq('movement_id', movementId)
+                        .then(({ error }) => error && console.error('Rollback client_inventory failed:', error));
+
+                    await supabase
+                        .from('movements')
+                        .delete()
+                        .eq('id', movementId)
+                        .then(({ error }) => error && console.error('Rollback movement failed:', error));
+                }
+
+                // Revert order status back (only if we changed it)
+                await supabase
+                    .from('sales_orders')
+                    .update({ status: order.status })
+                    .eq('id', orderId)
+                    .then(({ error }) => error && console.error('Rollback order status failed:', error));
+
+                throw err;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
@@ -735,13 +793,16 @@ export function useFulfillOrder() {
 export function useDeleteSalesOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async (id: string) => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const { error } = await supabase
                 .from('sales_orders')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', profile.org_id);
 
             if (error) throw error;
         },

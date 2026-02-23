@@ -277,7 +277,7 @@ export function useCreateMovement() {
 
       if (!profile?.org_id) throw new Error('No organization found');
 
-      const bottleIds = input.items.map(i => i.bottle_id);
+      const bottleIds = input.items.map(i => i.bottle_id).filter(Boolean) as string[];
 
       // PRE-FETCH: Get bottle details while they are still visible (in_stock)
       // This is crucial because once marked 'sold', RLS might hide them from some queries
@@ -296,6 +296,10 @@ export function useCreateMovement() {
         }
       }
 
+      // Track mutations for rollback on failure
+      let movementId: string | null = null;
+
+      try {
       // 1. Create the movement
       const { data: movement, error: movementError } = await supabase
         .from('movements')
@@ -315,6 +319,7 @@ export function useCreateMovement() {
         .single();
 
       if (movementError) throw movementError;
+      movementId = movement.id;
 
       // 2. Create movement items
       const movementItems = input.items.map(item => ({
@@ -463,6 +468,41 @@ export function useCreateMovement() {
       }
 
       return movement;
+
+      } catch (err) {
+        // ROLLBACK: Revert bottle statuses and clean up movement data
+        console.error('Movement creation failed, attempting rollback:', err);
+
+        if (bottleIds.length > 0) {
+          await supabase
+            .from('bottles')
+            .update({ status: 'in_stock' })
+            .in('id', bottleIds)
+            .then(({ error }) => error && console.error('Rollback bottles failed:', error));
+        }
+
+        if (movementId) {
+          await supabase
+            .from('client_inventory')
+            .delete()
+            .eq('movement_id', movementId)
+            .then(({ error }) => error && console.error('Rollback client_inventory failed:', error));
+
+          await supabase
+            .from('movement_items')
+            .delete()
+            .eq('movement_id', movementId)
+            .then(({ error }) => error && console.error('Rollback movement_items failed:', error));
+
+          await supabase
+            .from('movements')
+            .delete()
+            .eq('id', movementId)
+            .then(({ error }) => error && console.error('Rollback movement failed:', error));
+        }
+
+        throw err;
+      }
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });

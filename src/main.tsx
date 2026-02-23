@@ -10,9 +10,9 @@ if (sentryDsn) {
     dsn: sentryDsn,
     environment: import.meta.env.MODE,
     enabled: import.meta.env.PROD,
-    tracesSampleRate: 0.1,
+    tracesSampleRate: 0.3,
     replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 0.5,
+    replaysOnErrorSampleRate: 1.0,
   });
 }
 

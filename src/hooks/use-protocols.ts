@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useProtocols(contactId?: string) {
     const { toast } = useToast();
+    const { profile } = useAuth();
     const queryClient = useQueryClient();
 
     const query = useQuery({
-        queryKey: ['protocols', contactId],
+        queryKey: ['protocols', contactId, profile?.org_id],
         queryFn: async () => {
             let dbQuery = supabase
                 .from('protocols')
@@ -37,6 +39,7 @@ export function useProtocols(contactId?: string) {
                         )
                     )
                 `)
+                .eq('org_id', profile!.org_id!)
                 .order('created_at', { ascending: false });
 
             if (contactId) {
@@ -49,6 +52,7 @@ export function useProtocols(contactId?: string) {
             if (error) throw error;
             return data;
         },
+        enabled: !!profile?.org_id,
     });
 
     const createProtocol = useMutation({
@@ -103,6 +107,7 @@ export function useProtocols(contactId?: string) {
 
     const updateProtocol = useMutation({
         mutationFn: async ({ id, name, description }: { id: string; name?: string; description?: string }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const updates: Record<string, unknown> = {};
             if (name !== undefined) updates.name = name;
             if (description !== undefined) updates.description = description;
@@ -110,7 +115,8 @@ export function useProtocols(contactId?: string) {
             const { error } = await supabase
                 .from('protocols')
                 .update(updates)
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', profile.org_id);
 
             if (error) throw error;
         },
@@ -168,11 +174,19 @@ export function useProtocols(contactId?: string) {
 
     const deleteProtocol = useMutation({
         mutationFn: async (id: string) => {
-            // Manual Cascade Delete
-            // 1. Delete Items (and their logs? No, logs reference items. Items ref protocol.)
-            // We must delete logs first if they reference items that will be deleted.
-            // But wait, logs reference `protocol_items`.
+            if (!profile?.org_id) throw new Error('No organization found');
 
+            // Verify protocol belongs to this org before cascading deletes
+            const { data: protocol } = await supabase
+                .from('protocols')
+                .select('id')
+                .eq('id', id)
+                .eq('org_id', profile.org_id)
+                .single();
+
+            if (!protocol) throw new Error('Protocol not found or access denied');
+
+            // Manual Cascade Delete
             // Step 1: Get all Item IDs to delete logs
             const { data: items } = await supabase.from('protocol_items').select('id').eq('protocol_id', id);
             if (items && items.length > 0) {
@@ -193,7 +207,8 @@ export function useProtocols(contactId?: string) {
             const { error } = await supabase
                 .from('protocols')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', profile.org_id);
 
             if (error) throw error;
         },

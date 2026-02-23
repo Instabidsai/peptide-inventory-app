@@ -156,16 +156,12 @@ function getPeptideDescription(peptideName: string): string | null {
     return null;
 }
 
-// TRT is restricted — only Don and admins can see/purchase it
-const DON_USER_ID = '36958287-ccb2-4ba0-922d-f8ecb9ae4043';
-function canSeeTrt(userId?: string, role?: string): boolean {
+// Visibility check: peptides with visible_to_user_ids set are restricted
+// to those specific users (by profile.id) + admins. Null/empty = visible to all.
+function canSeePeptide(peptide: { visible_to_user_ids?: string[] | null }, profileId?: string, role?: string): boolean {
     if (role === 'admin') return true;
-    if (userId === DON_USER_ID) return true;
-    return false;
-}
-function isTrtProduct(name: string): boolean {
-    const lower = name.toLowerCase();
-    return lower.includes('trt') || lower.includes('testosterone');
+    if (!peptide.visible_to_user_ids || peptide.visible_to_user_ids.length === 0) return true;
+    return !!profileId && peptide.visible_to_user_ids.includes(profileId);
 }
 
 // Find protocol templates that include a given peptide, and return the other peptides in those stacks
@@ -379,11 +375,9 @@ export default function ClientStore() {
         } catch { /* ignore malformed param */ }
     }, [searchParams, peptides]);
 
-    // Filter peptides by search query + TRT visibility restriction
-    const showTrt = canSeeTrt(user?.id, userRole?.role);
+    // Filter peptides by search query + visibility restrictions
     const filteredPeptides = peptides?.filter((p) => {
-        // TRT restricted to Don + admin only
-        if (isTrtProduct(p.name || '') && !showTrt) return false;
+        if (!canSeePeptide(p, authProfile?.id, userRole?.role)) return false;
         if (!searchQuery) return true;
         return p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
