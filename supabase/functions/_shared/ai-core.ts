@@ -775,8 +775,18 @@ async function notifyPartnerCommissions(supabase: any, saleId: string, orgId: st
       const phone = partnerContact?.phone;
       if (!phone) continue; // No phone number — can't notify
 
+      // Get YTD commission total for this partner
+      const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
+      const { data: ytdData } = await supabase
+        .from("commissions")
+        .select("amount")
+        .eq("partner_id", partnerId)
+        .gte("created_at", yearStart);
+
+      const ytdTotal = (ytdData || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+
       const firstName = (partnerProfile.full_name || "").split(" ")[0] || "Partner";
-      const msg = `${firstName}, new sale! ${customerName} - $${orderTotal}. Your commission: $${totalCommission.toFixed(2)}`;
+      const msg = `${firstName}, new sale! ${customerName} - $${orderTotal}. Your commission: $${totalCommission.toFixed(2)}. YTD total: $${ytdTotal.toFixed(2)}`;
 
       // Send via Textbelt (fire and forget — don't block order flow)
       fetch("https://textbelt.com/text", {
