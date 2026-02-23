@@ -483,14 +483,14 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
       }
       case "list_expenses": {
         const limit = args.limit || 20;
-        let query = supabase.from("expenses").select("*").eq("org_id", orgId).order("date", { ascending: false }).limit(limit);
+        let query = supabase.from("expenses").select("*").order("date", { ascending: false }).limit(limit);
         if (args.category) query = query.eq("category", args.category);
         const { data } = await query;
         if (!data?.length) return "No expenses found.";
         return data.map((e: any) => e.date + " | " + e.category + " | $" + Number(e.amount).toFixed(2) + " | " + (e.description || "no desc") + " | " + (e.recipient || "") + " | " + (e.payment_method || "") + " | " + e.status).join("\n");
       }
       case "create_expense": {
-        const { error } = await supabase.from("expenses").insert({ org_id: orgId, date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
+        const { error } = await supabase.from("expenses").insert({ date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
         if (error) return "Error: " + error.message;
         return "Expense recorded: $" + args.amount.toFixed(2) + " (" + args.category + ") on " + args.date;
       }
@@ -503,7 +503,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const orderProfit = salesOrders?.reduce((s: number, o: any) => s + Number(o.profit_amount || 0), 0) || 0;
         const merchantFees = salesOrders?.reduce((s: number, o: any) => s + Number(o.merchant_fee || 0), 0) || 0;
         const totalCommission = salesOrders?.reduce((s: number, o: any) => s + Number(o.commission_amount || 0), 0) || 0;
-        const { data: expenses } = await supabase.from("expenses").select("amount, category").eq("org_id", orgId);
+        const { data: expenses } = await supabase.from("expenses").select("amount, category");
         let inventoryExp = 0;
         let operatingExp = 0;
         expenses?.forEach((e: any) => { if (e.category === "inventory") inventoryExp += Number(e.amount); else operatingExp += Number(e.amount); });

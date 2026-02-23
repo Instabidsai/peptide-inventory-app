@@ -3,13 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.86.1";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
-
 function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('origin') || '';
-    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
     return {
-        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     };
 }
