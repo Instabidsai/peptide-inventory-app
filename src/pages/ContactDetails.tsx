@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, FileText, FlaskConical, Calculator, Trash2, Pencil, CheckCircle2, Star, ShoppingBag, RefreshCcw, AlertCircle, MoreVertical, Package, Edit, Pill, Folder, MessageSquare, Send, ArrowLeft, Users, Copy, ExternalLink } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock'; // Import hook
 import { calculateSupply, getSupplyStatusColor, getSupplyStatusLabel, parseVialSize } from '@/lib/supply-calculations';
+import { ProtocolSyncBadge } from '@/components/regimen/ProtocolSyncBadge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useUpdateBottleQuantity } from '@/hooks/use-update-bottle-quantity';
 import {
@@ -1438,7 +1439,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                     current_quantity_mg,
                     initial_quantity_mg,
                     movement_id,
-                    created_at
+                    created_at,
+                    dose_amount_mg,
+                    dose_frequency,
+                    dose_interval,
+                    protocol_item_id
                 `)
                 .eq('contact_id', protocol.contact_id)
                 .in('peptide_id', protocolItems.map((item) => item.peptide_id));
@@ -1495,7 +1500,11 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    {protocol.protocol_items?.map((item) => (
+                    {protocol.protocol_items?.map((item) => {
+                        const linkedVial = assignedBottles?.find(b =>
+                            b.peptide_id === item.peptide_id && b.dose_frequency
+                        ) || null;
+                        return (
                         <div key={item.id} className="flex justify-between items-center p-3 bg-card/50 rounded-lg border border-border/40 md:flex-row flex-col gap-2 md:gap-0 items-start md:items-center">
                             <div className="flex items-center gap-3">
                                 <div className="bg-primary/10 p-2 rounded-full">
@@ -1506,13 +1515,21 @@ function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement, onDel
                                     <div className="text-sm text-muted-foreground">
                                         {item.dosage_amount}{item.dosage_unit} • {item.frequency} • {item.duration_days || (item.duration_weeks * 7)} days
                                     </div>
+                                    {linkedVial && (
+                                        <ProtocolSyncBadge
+                                            protocolItem={item}
+                                            vial={linkedVial}
+                                            compact
+                                        />
+                                    )}
                                 </div>
                             </div>
                             <Button size="sm" variant="secondary" className="w-full md:w-auto" onClick={(e) => { e.stopPropagation(); onLog({ itemId: item.id }); }}>
                                 <CheckCircle2 className="mr-2 h-3 w-3" /> Log Dose
                             </Button>
                         </div>
-                    ))}
+                        );
+                    })}
                     {(!protocol.protocol_items || protocol.protocol_items.length === 0) && (
                         <p className="text-sm text-muted-foreground italic">No peptides in this regimen.</p>
                     )}
@@ -1920,6 +1937,15 @@ function ClientInventoryList({ contactId, contactName, assignedProtocols }: { co
     });
 
     const [linkingItem, setLinkingItem] = useState<{ id: string; peptide_id: string; peptide?: { name: string } | null; [key: string]: unknown } | null>(null);
+
+    // Local confirm dialog state (this component is a separate function, not a child of ContactDetails)
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean; title: string; description: string; action: () => void;
+    }>({ open: false, title: '', description: '', action: () => {} });
+
+    const openConfirm = (title: string, description: string, action: () => void) => {
+        setConfirmDialog({ open: true, title, description, action });
+    };
 
     const linkToRegimen = useMutation({
         mutationFn: async ({ inventoryId, protocolItemId }: { inventoryId: string, protocolItemId: string }) => {

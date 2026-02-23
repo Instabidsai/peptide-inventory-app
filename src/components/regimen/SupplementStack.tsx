@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pill, ExternalLink, ShoppingBag } from "lucide-react";
+import { Pill, ExternalLink, ShoppingBag, Info } from "lucide-react";
 
 export interface SupplementItem {
     id: string;
@@ -63,10 +63,10 @@ export function SupplementStack({ items }: SupplementStackProps) {
                                 )}
                             </div>
 
-                            {/* Notes Tooltip/Indicator could go here */}
+                            {/* Notes tooltip */}
                             {item.notes && (
-                                <div className="absolute top-2 right-2">
-                                    {/* Maybe a small info icon if notes exist? For now clean. */}
+                                <div className="absolute top-2 right-2" title={item.notes}>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-help" />
                                 </div>
                             )}
                         </div>

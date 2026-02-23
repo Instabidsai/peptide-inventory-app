@@ -1,3 +1,25 @@
+/** Calculate daily mg usage from a vial's dose schedule */
+export function vialDailyUsage(vial: {
+    dose_amount_mg?: number | null;
+    dose_frequency?: string | null;
+    dose_interval?: number | null;
+    dose_off_days?: number | null;
+    dose_days?: string[] | null;
+}): number {
+    const doseMg = Number(vial.dose_amount_mg) || 0;
+    if (doseMg <= 0) return 0;
+    switch (vial.dose_frequency) {
+        case 'daily': return doseMg;
+        case 'every_x_days': return doseMg / (Number(vial.dose_interval) || 2);
+        case 'specific_days': return (doseMg * (vial.dose_days?.length || 1)) / 7;
+        case 'x_on_y_off': {
+            const on = Number(vial.dose_interval) || 5;
+            return (doseMg * on) / (on + (Number(vial.dose_off_days) || 2));
+        }
+        default: return doseMg;
+    }
+}
+
 interface SupplyCalculation {
     totalSupplyMg: number;
     dailyUsageMg: number;

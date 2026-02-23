@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import {
     Droplets, ShoppingBag, Syringe, Check, Beaker,
     ChevronDown, ChevronUp, Plus, Package, Sun, Sunset, Moon,
-    AlertTriangle, Pill, Info,
+    AlertTriangle, Pill, Info, CalendarClock, FlaskConical,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import type { ClientInventoryItem } from '@/types/regimen';
 import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 import { calculateDoseUnits } from '@/utils/dose-utils';
-import { getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
+import { vialDailyUsage, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 
 interface SimpleVialsProps {
     inventory: ClientInventoryItem[];
@@ -47,22 +47,6 @@ const STATE_ORDER: Record<VialState, number> = {
 };
 
 const TIME_ICONS = { morning: Sun, afternoon: Sunset, evening: Moon } as const;
-
-/** Calculate daily mg usage from a vial's dose schedule */
-function vialDailyUsage(vial: ClientInventoryItem): number {
-    const doseMg = Number(vial.dose_amount_mg) || 0;
-    if (doseMg <= 0) return 0;
-    switch (vial.dose_frequency) {
-        case 'daily': return doseMg;
-        case 'every_x_days': return doseMg / (Number(vial.dose_interval) || 2);
-        case 'specific_days': return (doseMg * (vial.dose_days?.length || 1)) / 7;
-        case 'x_on_y_off': {
-            const on = Number(vial.dose_interval) || 5;
-            return (doseMg * on) / (on + (Number(vial.dose_off_days) || 2));
-        }
-        default: return doseMg;
-    }
-}
 
 function getVialSupplyStatus(daysRemaining: number): 'adequate' | 'low' | 'critical' | 'depleted' {
     if (daysRemaining <= 0) return 'depleted';
@@ -523,6 +507,26 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
     const daysRemaining = dailyUsage > 0 ? Math.floor(vial.current_quantity_mg / dailyUsage) : null;
     const supplyStatus = daysRemaining !== null ? getVialSupplyStatus(daysRemaining) : null;
 
+    // Depletion date
+    const depletionDate = daysRemaining && daysRemaining > 0
+        ? format(new Date(Date.now() + daysRemaining * 86400000), 'MMM d')
+        : null;
+
+    // Next dose date (scan forward up to 14 days)
+    const nextDoseInfo = useMemo(() => {
+        if (!vial.dose_frequency) return null;
+        const today = new Date();
+        for (let i = 0; i <= 14; i++) {
+            const checkDate = new Date(today);
+            checkDate.setDate(today.getDate() + i);
+            const dayAbbr = format(checkDate, 'EEE');
+            if (isDoseDay(vial, dayAbbr, checkDate)) {
+                return { daysAway: i };
+            }
+        }
+        return null;
+    }, [vial]);
+
     const hasProtocolInfo = knowledge && (knowledge.description || knowledge.supplementNotes?.length || knowledge.cyclePattern || knowledge.dosageSchedule);
 
     return (
@@ -586,6 +590,9 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                                 {getSupplyStatusLabel(daysRemaining)}
                             </span>
                         )}
+                        {depletionDate && (
+                            <span className="text-[10px] text-muted-foreground/40">~{depletionDate}</span>
+                        )}
                     </span>
                     <span className={cn(
                         "font-semibold",
@@ -603,6 +610,18 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                     )}
                 />
             </div>
+
+            {/* Next dose indicator (only when not due today) */}
+            {!isDueToday && nextDoseInfo && nextDoseInfo.daysAway > 0 && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+                    <CalendarClock className="h-3 w-3" />
+                    <span>
+                        {nextDoseInfo.daysAway === 1
+                            ? 'Next dose tomorrow'
+                            : `Next dose in ${nextDoseInfo.daysAway} days`}
+                    </span>
+                </div>
+            )}
 
             {/* Dose info */}
             {isDueToday && doseMg > 0 && (

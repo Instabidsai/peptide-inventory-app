@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useProtocols } from '@/hooks/use-protocols';
 import { usePeptides } from '@/hooks/use-peptides';
+import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,18 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { QueryError } from '@/components/ui/query-error';
-import { Loader2, Plus, Trash2, Calculator } from 'lucide-react';
+import { Loader2, Plus, Trash2, Pencil } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export default function Protocols() {
-    const { protocols, isLoading, isError, refetch, createProtocol } = useProtocols();
+    const { protocols, isLoading, isError, refetch, createProtocol, updateProtocol, deleteProtocol, updateProtocolItem } = useProtocols();
     const { data: peptides } = usePeptides();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 
+    const [editingProtocolId, setEditingProtocolId] = useState<string | null>(null);
+    const originalItemIds = useRef<string[]>([]);
+
     // Builder State
-    const [items, setItems] = useState<Array<{ peptideId: string; peptideName?: string; dosageAmount: string; dosageUnit: string; frequency: string; duration: string; costMultiplier: string }>>([]);
+    const [items, setItems] = useState<Array<{ peptideId: string; peptideName?: string; dosageAmount: string; dosageUnit: string; frequency: string; duration: string; costMultiplier: string; itemId?: string }>>([]);
 
     // Current Item State for Builder
     const [currentItem, setCurrentItem] = useState({
@@ -45,38 +49,114 @@ export default function Protocols() {
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const handleCreate = async () => {
+    const handleEdit = (protocol: NonNullable<typeof protocols>[number]) => {
+        if (!protocol) return;
+        setEditingProtocolId(protocol.id);
+        setName(protocol.name);
+        setDescription(protocol.description || '');
+        const mappedItems = (protocol.protocol_items || []).map(item => ({
+            peptideId: item.peptide_id,
+            peptideName: item.peptides?.name,
+            dosageAmount: String(item.dosage_amount),
+            dosageUnit: item.dosage_unit,
+            frequency: item.frequency,
+            duration: String(item.duration_days || (item.duration_weeks * 7) || 30),
+            costMultiplier: String(item.cost_multiplier || 1),
+            itemId: item.id,
+        }));
+        setItems(mappedItems);
+        originalItemIds.current = mappedItems.map(i => i.itemId).filter(Boolean) as string[];
+        setIsCreateOpen(true);
+    };
+
+    const resetForm = () => {
+        setEditingProtocolId(null);
+        setName('');
+        setDescription('');
+        setItems([]);
+        originalItemIds.current = [];
+    };
+
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
         if (!name) return;
+        setIsSaving(true);
 
         try {
-            await createProtocol.mutateAsync({
-                name,
-                description,
-                items: items.map(item => ({
-                    peptide_id: item.peptideId,
-                    dosage_amount: parseFloat(item.dosageAmount) || 0,
-                    dosage_unit: item.dosageUnit,
-                    frequency: item.frequency,
-                    duration_days: parseInt(item.duration) || 30,
-                    cost_multiplier: parseFloat(item.costMultiplier) || 1
-                }))
-            });
+            if (editingProtocolId) {
+                // 1. Update protocol name/description
+                await updateProtocol.mutateAsync({ id: editingProtocolId, name, description });
+
+                // 2. Update existing items
+                for (const item of items) {
+                    if (item.itemId) {
+                        await updateProtocolItem.mutateAsync({
+                            id: item.itemId,
+                            dosage_amount: parseFloat(item.dosageAmount) || 0,
+                            dosage_unit: item.dosageUnit,
+                            frequency: item.frequency,
+                            duration_days: parseInt(item.duration) || 30,
+                            cost_multiplier: parseFloat(item.costMultiplier) || 1,
+                        });
+                    }
+                }
+
+                // 3. Insert new items (no itemId = newly added during edit)
+                const newItems = items.filter(i => !i.itemId);
+                if (newItems.length > 0) {
+                    await supabase.from('protocol_items').insert(
+                        newItems.map(item => ({
+                            protocol_id: editingProtocolId,
+                            peptide_id: item.peptideId,
+                            dosage_amount: parseFloat(item.dosageAmount) || 0,
+                            dosage_unit: item.dosageUnit,
+                            frequency: item.frequency,
+                            duration_days: parseInt(item.duration) || 30,
+                            duration_weeks: Math.ceil((parseInt(item.duration) || 30) / 7),
+                            cost_multiplier: parseFloat(item.costMultiplier) || 1,
+                        }))
+                    );
+                }
+
+                // 4. Delete removed items (was in original but no longer in items list)
+                const currentItemIds = items.map(i => i.itemId).filter(Boolean) as string[];
+                const removedIds = originalItemIds.current.filter(id => !currentItemIds.includes(id));
+                if (removedIds.length > 0) {
+                    // Delete logs first (FK constraint), then items
+                    await supabase.from('protocol_logs').delete().in('protocol_item_id', removedIds);
+                    await supabase.from('protocol_items').delete().in('id', removedIds);
+                }
+            } else {
+                await createProtocol.mutateAsync({
+                    name,
+                    description,
+                    items: items.map(item => ({
+                        peptide_id: item.peptideId,
+                        dosage_amount: parseFloat(item.dosageAmount) || 0,
+                        dosage_unit: item.dosageUnit,
+                        frequency: item.frequency,
+                        duration_days: parseInt(item.duration) || 30,
+                        cost_multiplier: parseFloat(item.costMultiplier) || 1
+                    }))
+                });
+            }
 
             setIsCreateOpen(false);
-            setName('');
-            setDescription('');
-            setItems([]);
+            resetForm();
+            refetch();
         } catch { /* onError in hook shows toast */ }
+        finally { setIsSaving(false); }
     };
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Protocols</h1>
-                    <p className="text-muted-foreground">Manage protocol templates.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Protocol Templates</h1>
+                    <p className="text-muted-foreground">Create reusable treatment plans you can assign to clients.</p>
                 </div>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
@@ -85,8 +165,8 @@ export default function Protocols() {
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>Create Protocol Template</DialogTitle>
-                            <DialogDescription>Define a reusable protocol with multiple items.</DialogDescription>
+                            <DialogTitle>{editingProtocolId ? 'Edit Protocol Template' : 'Create Protocol Template'}</DialogTitle>
+                            <DialogDescription>{editingProtocolId ? 'Update the items in this protocol.' : 'Define a reusable protocol with multiple items.'}</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
@@ -210,8 +290,8 @@ export default function Protocols() {
 
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleCreate} disabled={!name}>
-                                {createProtocol.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : 'Create Protocol'}
+                            <Button onClick={handleSave} disabled={!name || isSaving}>
+                                {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : editingProtocolId ? 'Save Changes' : 'Create Protocol'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -223,48 +303,88 @@ export default function Protocols() {
             ) : isError ? (
                 <QueryError message="Failed to load protocols." onRetry={refetch} />
             ) : protocols?.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                    No protocol templates yet. Create your first one above.
+                <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-xl space-y-3">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Plus className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                        <p className="font-semibold text-foreground">No templates yet</p>
+                        <p className="text-sm mt-1 max-w-sm mx-auto">Protocol templates let you define standard treatment plans (peptides, dosages, frequencies) that can be quickly assigned to new clients.</p>
+                    </div>
                 </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {protocols?.map((protocol) => {
                         const items = protocol.protocol_items || [];
                         const supps = protocol.protocol_supplements || [];
+                        const freqLabel = (f: string) => ({
+                            daily: 'Daily', daily_am_pm: '2x/day', weekly: 'Weekly',
+                            biweekly: '2x/week', monthly: 'Monthly', every_other_day: 'EOD',
+                        }[f] || f);
+                        const totalDuration = items.length > 0
+                            ? Math.max(...items.map(i => i.duration_days || (i.duration_weeks * 7) || 0))
+                            : 0;
                         return (
-                            <Card key={protocol.id}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">
-                                        {protocol.name}
-                                    </CardTitle>
-                                    <Badge variant="secondary" className="text-xs">
-                                        {items.length} item{items.length !== 1 ? 's' : ''}
-                                    </Badge>
+                            <Card key={protocol.id} className="flex flex-col">
+                                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                                    <div className="space-y-1 flex-1 min-w-0">
+                                        <CardTitle className="text-sm font-semibold leading-tight truncate">
+                                            {protocol.name}
+                                        </CardTitle>
+                                        {protocol.description && (
+                                            <CardDescription className="text-xs line-clamp-2">{protocol.description}</CardDescription>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                                        <Badge variant="secondary" className="text-[10px]">
+                                            {items.length} peptide{items.length !== 1 ? 's' : ''}
+                                        </Badge>
+                                        {totalDuration > 0 && (
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {totalDuration}d
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </CardHeader>
-                                <CardContent>
-                                    {protocol.description && (
-                                        <div className="text-xs text-muted-foreground mb-3">{protocol.description}</div>
-                                    )}
+                                <CardContent className="flex-1 flex flex-col">
                                     {items.length > 0 && (
-                                        <div className="space-y-1">
+                                        <div className="space-y-1.5 flex-1">
                                             {items.slice(0, 4).map((item) => (
-                                                <div key={item.id} className="text-xs flex justify-between">
-                                                    <span className="font-medium truncate mr-2">{item.peptides?.name || 'Unknown'}</span>
-                                                    <span className="text-muted-foreground whitespace-nowrap">
-                                                        {item.dosage_amount}{item.dosage_unit} · {item.frequency}
+                                                <div key={item.id} className="flex items-center justify-between gap-2 py-1 px-2 rounded-md bg-muted/30">
+                                                    <span className="text-xs font-medium truncate">{item.peptides?.name || 'Unknown'}</span>
+                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                        {item.dosage_amount}{item.dosage_unit} · {freqLabel(item.frequency)}
                                                     </span>
                                                 </div>
                                             ))}
                                             {items.length > 4 && (
-                                                <div className="text-xs text-muted-foreground">+{items.length - 4} more</div>
+                                                <div className="text-[10px] text-muted-foreground pl-2">+{items.length - 4} more</div>
                                             )}
                                         </div>
                                     )}
+                                    {items.length === 0 && (
+                                        <div className="flex-1 flex items-center justify-center py-3">
+                                            <span className="text-xs text-muted-foreground">No items added yet</span>
+                                        </div>
+                                    )}
                                     {supps.length > 0 && (
-                                        <div className="mt-2 text-xs text-muted-foreground">
+                                        <div className="mt-2 text-[10px] text-muted-foreground">
                                             + {supps.length} supplement{supps.length !== 1 ? 's' : ''}
                                         </div>
                                     )}
+                                    <div className="flex gap-1 mt-3 pt-2 border-t border-border/40">
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleEdit(protocol)}>
+                                            <Pencil className="h-3 w-3 mr-1" /> Edit
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs text-destructive hover:text-destructive"
+                                            onClick={() => { if (confirm(`Delete "${protocol.name}"?`)) deleteProtocol.mutate(protocol.id); }}
+                                        >
+                                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         );

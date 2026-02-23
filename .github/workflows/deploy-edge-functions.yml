@@ -44,6 +44,8 @@ jobs:
             provision-tenant
             run-automations
             self-signup
+            send-email
+            telegram-webhook
           )
           for fn in "${functions[@]}"; do
             echo "Deploying $fn..."

@@ -24,7 +24,7 @@ function getCellColor(completed: number, total: number): string {
 }
 
 export function ComplianceHeatmap({ data }: ComplianceHeatmapProps) {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useState(true);
 
     const dataMap = useMemo(() => {
         const map = new Map<string, DayCompletion>();

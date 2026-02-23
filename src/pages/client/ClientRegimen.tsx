@@ -18,7 +18,7 @@ import { calculateDoseUnits } from "@/utils/dose-utils";
 
 export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
-    const { protocols } = useProtocols(contact?.id);
+    const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const inventoryOwnerId = useInventoryOwnerId(contact);
     const { toast } = useToast();
 
@@ -72,6 +72,7 @@ export default function ClientRegimen() {
 
                 // 3. Build Tasks from Protocols
                 if (protocols) {
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
                     const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p => {
                         const items = p.protocol_items?.map(item => {
                             const activeVial = inventory.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
@@ -80,15 +81,30 @@ export default function ClientRegimen() {
                             let unitsLabel = '';
                             if (activeVial?.concentration_mg_ml) {
                                 const units = calculateDoseUnits(doseMg, activeVial.concentration_mg_ml);
-                                unitsLabel = ` - Take ${units} units`;
+                                unitsLabel = ` · ${units} units on syringe`;
                             }
+
+                            // Check protocol_logs for today to set initial completion state
+                            const isTakenToday = (item.protocol_logs || []).some(
+                                log => format(new Date(log.created_at), 'yyyy-MM-dd') === todayStr
+                            );
+
+                            // Friendly frequency labels
+                            const freqLabels: Record<string, string> = {
+                                daily: 'Every day',
+                                daily_am_pm: 'Twice daily (AM & PM)',
+                                weekly: 'Once a week',
+                                biweekly: 'Twice a week',
+                                monthly: 'Once a month',
+                                every_other_day: 'Every other day',
+                            };
 
                             return {
                                 id: item.id,
                                 type: 'peptide' as const,
-                                label: `${item.peptides?.name || p.name} (${item.dosage_amount}${item.dosage_unit})${unitsLabel}`,
-                                detail: item.frequency,
-                                is_completed: false
+                                label: `${item.peptides?.name || p.name} — ${item.dosage_amount}${item.dosage_unit}${unitsLabel}`,
+                                detail: freqLabels[item.frequency] || item.frequency,
+                                is_completed: isTakenToday,
                             };
                         }) || [];
 
@@ -162,7 +178,13 @@ export default function ClientRegimen() {
     };
 
     const handleTaskToggle = (id: string) => {
+        const task = tasks.find(t => t.id === id);
+        // Optimistic update
         setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
+        // Persist to protocol_logs if marking as completed (not un-checking)
+        if (task && !task.is_completed && task.type === 'peptide') {
+            logProtocolUsage.mutate({ itemId: id });
+        }
     };
 
     const handleDeleteVial = async (id: string) => {
@@ -200,9 +222,12 @@ export default function ClientRegimen() {
 
     if (!contact) {
         return (
-            <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl m-8">
-                <h2 className="text-xl font-semibold mb-2">No Protocol Found</h2>
-                <p>Please ask your administrator to link your user account to a Client Profile.</p>
+            <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl m-8 space-y-3">
+                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <h2 className="text-xl font-semibold">Getting Things Ready</h2>
+                <p className="text-sm max-w-sm mx-auto">Your account hasn't been linked to a patient profile yet. Your provider will set this up for you — it usually takes less than a day.</p>
             </div>
         );
     }
@@ -213,17 +238,18 @@ export default function ClientRegimen() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
-                        Bio-Optimization Command Center
+                        My Health Dashboard
                     </h1>
                     <p className="text-muted-foreground mt-1 text-sm">
-                        Track your protocol, inventory, and health metrics in one place.
+                        Your daily wellness routine, supplies, and progress — all in one place.
                     </p>
                 </div>
                 <button
                     onClick={() => setRequestModalOpen(true)}
-                    className="bg-secondary/50 hover:bg-secondary text-sm px-4 py-2 rounded-lg transition-colors border border-border shrink-0"
+                    className="bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium px-5 py-2.5 rounded-xl transition-colors border border-primary/20 shrink-0 flex items-center gap-2"
                 >
-                    Have a Question?
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Contact My Provider
                 </button>
             </div>
 

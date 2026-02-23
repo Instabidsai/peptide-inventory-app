@@ -101,8 +101,29 @@ export function useProtocols(contactId?: string) {
 
 
 
+    const updateProtocol = useMutation({
+        mutationFn: async ({ id, name, description }: { id: string; name?: string; description?: string }) => {
+            const updates: Record<string, unknown> = {};
+            if (name !== undefined) updates.name = name;
+            if (description !== undefined) updates.description = description;
+
+            const { error } = await supabase
+                .from('protocols')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Update failed', description: error.message });
+        },
+    });
+
     const updateProtocolItem = useMutation({
-        mutationFn: async ({ id, ...updates }: { id: string; dosage_amount?: number; dosage_unit?: string; frequency?: string; duration_weeks?: number; timing?: string; notes?: string }) => {
+        mutationFn: async ({ id, ...updates }: { id: string; dosage_amount?: number; dosage_unit?: string; frequency?: string; duration_weeks?: number; duration_days?: number; cost_multiplier?: number; timing?: string; notes?: string }) => {
             const { error } = await supabase
                 .from('protocol_items')
                 .update(updates)
@@ -215,6 +236,7 @@ export function useProtocols(contactId?: string) {
         isError: query.isError,
         refetch: query.refetch,
         createProtocol,
+        updateProtocol,
         deleteProtocol,
         updateProtocolItem,
         logProtocolUsage,

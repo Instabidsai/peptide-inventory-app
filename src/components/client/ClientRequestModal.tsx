@@ -31,7 +31,7 @@ import {
 const requestSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
     message: z.string().min(1, "Message is required"),
-    type: z.enum(["general_inquiry", "product_request", "regimen_help"]),
+    type: z.enum(["general_inquiry", "product_request", "regimen_help", "protocol_change"]),
     requested_quantity: z.number().min(1).optional(),
 });
 
@@ -40,7 +40,7 @@ type RequestFormValues = z.infer<typeof requestSchema>;
 interface ClientRequestModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    defaultType?: "general_inquiry" | "product_request" | "regimen_help";
+    defaultType?: "general_inquiry" | "product_request" | "regimen_help" | "protocol_change";
     prefillPeptide?: {
         id: string;
         name: string;
@@ -81,12 +81,16 @@ export function ClientRequestModal({
             if (prefillPeptide) {
                 setValue("subject", `Refill Request: ${prefillPeptide.name}`);
                 setValue("message", `Hi, I'd like to request a refill for ${prefillPeptide.name}.`);
-            } else if (!watch("subject")) {
-                // Only reset if empty to avoid wiping user draft on re-open (basic)
-                // Actually, safer to reset if it's a fresh open for a different purpose
+            } else if (defaultType === "protocol_change") {
+                setValue("subject", "Protocol Change Request");
+                if (!watch("message")) {
+                    setValue("message", "");
+                }
+            } else if (context) {
+                setValue("subject", `Question about ${context.title}`);
             }
         }
-    }, [open, defaultType, prefillPeptide, setValue]);
+    }, [open, defaultType, prefillPeptide, context, setValue]);
 
     const requestType = watch("type");
 
@@ -222,8 +226,19 @@ export function ClientRequestModal({
                                     <SelectItem value="general_inquiry">General Question</SelectItem>
                                     <SelectItem value="product_request">Product Request</SelectItem>
                                     <SelectItem value="regimen_help">Regimen Help</SelectItem>
+                                    <SelectItem value="protocol_change">Protocol Change Request</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    )}
+
+                    {requestType === 'protocol_change' && (
+                        <div className="space-y-1 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                            <p className="text-xs font-medium text-amber-400">Protocol Change Request</p>
+                            <p className="text-[10px] text-muted-foreground">
+                                Describe the change you'd like (e.g., "Increase BPC-157 from 250mcg to 500mcg daily").
+                                Your provider will review and approve changes.
+                            </p>
                         </div>
                     )}
 

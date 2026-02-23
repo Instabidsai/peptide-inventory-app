@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Activity, Scale, TrendingDown } from "lucide-react";
+import { Activity, Scale } from "lucide-react";
 import { useState } from "react";
 import { ClientDailyLog } from "@/types/regimen";
 
@@ -38,43 +38,33 @@ export function HealthMetrics({ todayLog, onSaveLog }: HealthMetricsProps) {
             </CardHeader>
             <CardContent className="space-y-6">
 
-                {/* Visual Trend Placeholder (Recharts would go here) */}
-                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 h-32 flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20">
-                        {/* Fake Sparkline SVG */}
-                        <svg viewBox="0 0 100 40" className="w-full h-full text-purple-500 fill-none stroke-current stroke-2">
-                            <path d="M0 30 Q 20 10 40 25 T 80 15 T 100 20" />
-                        </svg>
-                    </div>
-                    <div className="text-center z-10">
+                {/* Current weight display */}
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex items-center justify-center">
+                    <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-purple-300">
-                            <TrendingDown className="w-4 h-4" />
+                            <Scale className="w-4 h-4" />
                             <span className="text-2xl font-bold">{weight || '--'}</span>
                             <span className="text-sm">lbs</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">Current Weight</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {weight ? 'Today\'s weight' : 'Log your weight to start tracking'}
+                        </p>
                     </div>
                 </div>
 
                 {/* Quick Entry Form */}
                 <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <Label className="text-xs">Weight (lbs)</Label>
-                            <div className="relative">
-                                <Scale className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    className="pl-8 h-9 bg-card/50"
-                                    placeholder="000.0"
-                                    value={weight}
-                                    onChange={(e) => setWeight(e.target.value)}
-                                    type="number"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Body Fat %</Label>
-                            <Input className="h-9 bg-card/50" placeholder="--%" type="number" disabled />
+                    <div className="space-y-1">
+                        <Label className="text-xs">Weight (lbs)</Label>
+                        <div className="relative">
+                            <Scale className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                className="pl-8 h-9 bg-card/50"
+                                placeholder="000.0"
+                                value={weight}
+                                onChange={(e) => setWeight(e.target.value)}
+                                type="number"
+                            />
                         </div>
                     </div>
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
@@ -17,10 +17,11 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
 import { SupplyOverview } from '@/components/regimen/SupplyOverview';
-import { WeekStrip } from '@/components/regimen/WeekStrip';
+import { ProtocolCalendar } from '@/components/regimen/ProtocolCalendar';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { isDoseDay } from '@/types/regimen';
+import { cn } from '@/lib/utils';
 import { calculateDoseUnits } from '@/utils/dose-utils';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +29,7 @@ import { AIChatInterface } from "@/components/ai/AIChatInterface";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { QueryError } from "@/components/ui/query-error";
+import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 
 import { PeptideRings, RING_COLORS } from '@/components/gamified/PeptideRings';
 import type { RingDose } from '@/components/gamified/PeptideRings';
@@ -61,6 +63,8 @@ function ClientDashboardContent() {
     );
     const isHousehold = !!contact?.household_id && (householdMembers?.length ?? 0) > 1;
     const actions = useVialActions(inventoryOwnerId);
+    const [changeRequestOpen, setChangeRequestOpen] = useState(false);
+    const [statsOpen, setStatsOpen] = useState(false);
 
     const today = new Date();
     const todayAbbr = format(today, 'EEE');
@@ -554,34 +558,64 @@ function ClientDashboardContent() {
                     {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
                     <SimpleVials inventory={inventory || []} contactId={contact?.id} />
 
-                    {/* ─── Week Calendar Strip ─── */}
-                    <WeekStrip inventory={inventory || []} />
+                    {/* ─── Protocol Calendar (month/week) ─── */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                            <Calendar className="h-4 w-4 text-muted-foreground/50" />
+                            <h3 className="text-sm font-semibold tracking-tight">Your Schedule</h3>
+                            <span className="text-[10px] text-muted-foreground/40">Tap any day to see details</span>
+                        </div>
+                    <ProtocolCalendar
+                        inventory={inventory || []}
+                        protocolLogs={(protocols || []).flatMap(p =>
+                            (p.protocol_items || []).flatMap(item =>
+                                (item.protocol_logs || []).map(log => ({
+                                    created_at: log.created_at,
+                                    protocol_item_id: item.id,
+                                    status: log.status,
+                                }))
+                            )
+                        )}
+                    />
+                    </div>
+
+                    {/* ─── Request Protocol Change ─── */}
+                    <div className="flex justify-center">
+                        <button
+                            onClick={() => setChangeRequestOpen(true)}
+                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground/60 hover:text-primary bg-white/[0.02] hover:bg-primary/5 border border-white/[0.06] hover:border-primary/20 px-4 py-2.5 rounded-xl transition-all"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Want to adjust your dosage or schedule? Request a change
+                        </button>
+                    </div>
+                    <ClientRequestModal
+                        open={changeRequestOpen}
+                        onOpenChange={setChangeRequestOpen}
+                        defaultType="protocol_change"
+                        context={contact ? { type: 'protocol', id: contact.id, title: 'My Protocol' } : undefined}
+                    />
 
                     {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
                     <GlassCard className="border-white/[0.04] overflow-hidden">
                         <button
-                            onClick={() => {
-                                const el = document.getElementById('stats-content');
-                                if (el) el.classList.toggle('hidden');
-                                const chevron = document.getElementById('stats-chevron');
-                                if (chevron) chevron.classList.toggle('rotate-180');
-                            }}
+                            onClick={() => setStatsOpen(prev => !prev)}
                             className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-white/[0.02]"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-xl bg-white/[0.04] text-muted-foreground/60">
                                     <Target className="h-4 w-4" />
                                 </div>
-                                <span className="font-semibold text-sm tracking-tight">My Stats</span>
+                                <span className="font-semibold text-sm tracking-tight">My Progress</span>
                                 <span className="text-xs text-muted-foreground/40">
-                                    {gamified.adherenceRate}% adherence
+                                    {gamified.adherenceRate}% consistency
                                 </span>
                             </div>
-                            <div id="stats-chevron" className="p-1 rounded-lg bg-white/[0.04] transition-transform duration-200">
+                            <div className={cn("p-1 rounded-lg bg-white/[0.04] transition-transform duration-200", statsOpen && "rotate-180")}>
                                 <ChevronDown className="h-4 w-4 text-muted-foreground/40" />
                             </div>
                         </button>
-                        <div id="stats-content" className="hidden">
+                        <div className={statsOpen ? '' : 'hidden'}>
                             <CardContent className="pt-0 pb-4 space-y-4">
                                 {/* Stats Row */}
                                 <div className="grid grid-cols-2 gap-3">
@@ -593,7 +627,7 @@ function ClientDashboardContent() {
                                     <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
                                         <Target className="h-4 w-4 text-emerald-400" />
                                         <div className="text-2xl font-bold tracking-tight text-emerald-400">{gamified.adherenceRate}%</div>
-                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Adherence</div>
+                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Consistency</div>
                                     </div>
                                 </div>
 
@@ -619,8 +653,8 @@ function ClientDashboardContent() {
                                 <Calendar className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
                             </div>
                             <div className="text-left">
-                                <div className="font-semibold text-sm tracking-tight">Full Regimen</div>
-                                <div className="text-xs text-muted-foreground/40">View all protocol details</div>
+                                <div className="font-semibold text-sm tracking-tight">My Wellness Hub</div>
+                                <div className="text-xs text-muted-foreground/40">Manage supplies, log health data, and view your full plan</div>
                             </div>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
