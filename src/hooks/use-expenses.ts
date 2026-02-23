@@ -27,12 +27,11 @@ export function useExpenses() {
     return useQuery({
         queryKey: ['expenses', orgId],
         queryFn: async () => {
-            let query = supabase
+            // expenses table has no org_id column — RLS scopes via has_role(admin/staff)
+            const query = supabase
                 .from('expenses')
                 .select('*')
                 .order('date', { ascending: false });
-
-            if (orgId) query = query.eq('org_id', orgId);
 
             const { data, error } = await query;
             if (error) throw error;
