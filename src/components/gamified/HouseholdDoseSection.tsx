@@ -1,5 +1,6 @@
-import { User } from 'lucide-react';
+import { User, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import { DueNowCards } from './DueNowCards';
 import type { DueNowDose } from './DueNowCards';
 
@@ -9,6 +10,11 @@ const MEMBER_COLORS = [
     'text-violet-400',
     'text-amber-400',
     'text-rose-400',
+    'text-cyan-400',
+    'text-indigo-400',
+    'text-lime-400',
+    'text-pink-400',
+    'text-teal-400',
 ];
 
 interface HouseholdDoseSectionProps {
@@ -26,7 +32,16 @@ export function HouseholdDoseSection({
     isLogging,
     currentMemberId,
 }: HouseholdDoseSectionProps) {
-    if (doses.length === 0) return null;
+    const navigate = useNavigate();
+
+    if (doses.length === 0) {
+        return (
+            <div className="text-center py-4 text-xs text-muted-foreground/50">
+                <Users className="h-4 w-4 mx-auto mb-1 opacity-40" />
+                No household members have doses scheduled right now
+            </div>
+        );
+    }
 
     // Group by member contact ID, preserving order (owner first)
     const memberOrder: string[] = [];
@@ -55,6 +70,26 @@ export function HouseholdDoseSection({
 
     return (
         <div className="space-y-6">
+            {/* Household header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-violet-400" />
+                    <span className="text-sm font-semibold text-muted-foreground/70">
+                        Family Doses
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 font-medium">
+                        {memberOrder.length} {memberOrder.length === 1 ? 'member' : 'members'}
+                    </span>
+                </div>
+                <button
+                    onClick={() => navigate('/account')}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                >
+                    <Settings className="h-3 w-3" />
+                    Manage
+                </button>
+            </div>
+
             {memberOrder.map((memberId, idx) => {
                 const memberDoses = byMember[memberId];
                 const name = memberNames[memberId] || 'Member';

@@ -13,9 +13,12 @@ import {
     MessageSquare,
     Bell,
     Users,
+    Heart,
     LogOut,
     ChevronRight,
 } from 'lucide-react';
+import { useClientProfile } from '@/hooks/use-client-profile';
+import { useHouseholdMembers } from '@/hooks/use-household';
 
 interface MenuItem {
     label: string;
@@ -23,9 +26,10 @@ interface MenuItem {
     icon: typeof User;
     path: string;
     badgeKey?: 'messages' | 'notifications';
+    staticBadge?: string;
 }
 
-const menuItems: MenuItem[] = [
+const BASE_MENU_ITEMS: MenuItem[] = [
     { label: 'Account & Profile', description: 'Manage your settings', icon: User, path: '/account' },
     { label: 'Full Regimen', description: 'Detailed protocol view', icon: ListChecks, path: '/my-regimen' },
     { label: 'Health Tracking', description: 'Macros, body comp & hydration', icon: Activity, path: '/health' },
@@ -37,6 +41,22 @@ const menuItems: MenuItem[] = [
 export default function ClientMenu() {
     const navigate = useNavigate();
     const { signOut, user } = useAuth();
+    const { data: contact } = useClientProfile();
+    const { data: householdMembers } = useHouseholdMembers(contact?.id);
+    const memberCount = householdMembers?.length ?? 0;
+
+    // Build menu items, inserting Family after Account if user has/can have household
+    const menuItems: MenuItem[] = [
+        BASE_MENU_ITEMS[0], // Account & Profile
+        {
+            label: 'My Family',
+            description: memberCount > 1 ? `${memberCount} members sharing your fridge` : 'Add family members to share doses',
+            icon: Heart,
+            path: '/account?section=family',
+            staticBadge: memberCount > 1 ? `${memberCount}` : undefined,
+        },
+        ...BASE_MENU_ITEMS.slice(1),
+    ];
 
     const { data: unreadNotifications } = useQuery({
         queryKey: ['unread-notifications-menu', user?.id],
@@ -70,6 +90,7 @@ export default function ClientMenu() {
     const badgeCounts: Record<string, number> = {
         messages: unreadMessages || 0,
         notifications: unreadNotifications || 0,
+        family: memberCount > 1 ? memberCount : 0,
     };
 
     return (
@@ -90,7 +111,7 @@ export default function ClientMenu() {
                 {menuItems.map((item) => {
                     const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
                     return (
-                        <motion.div key={item.path} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }} whileTap={{ scale: 0.97 }}>
+                        <motion.div key={item.label} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }} whileTap={{ scale: 0.97 }}>
                         <Button
                             variant="secondary"
                             className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
@@ -107,6 +128,7 @@ export default function ClientMenu() {
                                     <div className="font-medium flex items-center gap-2">
                                         {item.label}
                                         {count > 0 && <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-red-500/10 text-red-400 border-red-500/20">{count} new</Badge>}
+                                        {item.staticBadge && <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-violet-500/10 text-violet-400 border-violet-500/20">{item.staticBadge} members</Badge>}
                                     </div>
                                     <div className="text-xs text-muted-foreground">{item.description}</div>
                                 </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
@@ -11,23 +11,317 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
-import { Loader2, LogOut, User, Lock, ChevronRight, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, LogOut, User, Lock, ChevronRight, Shield, Users, UserPlus, Copy, Trash2, Crown, Syringe, Refrigerator, ClipboardList } from 'lucide-react';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useClientProfile } from '@/hooks/use-client-profile';
+import { useHouseholdMembers, useAddHouseholdMember, useRemoveHouseholdMember, useInviteHouseholdMember } from '@/hooks/use-household';
+import { toast as sonnerToast } from 'sonner';
 
 const profileSchema = z.object({
     full_name: z.string().min(2, 'Name must be at least 2 characters'),
 });
 
+const addMemberSchema = z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Please enter a valid email').or(z.literal('')).optional(),
+});
+
 type ProfileFormData = z.infer<typeof profileSchema>;
+type AddMemberFormData = z.infer<typeof addMemberSchema>;
+
+function HouseholdSection() {
+    const { data: contact } = useClientProfile();
+    const { data: members, isLoading } = useHouseholdMembers(contact?.id);
+    const addMember = useAddHouseholdMember(contact?.id);
+    const removeMember = useRemoveHouseholdMember();
+    const inviteMember = useInviteHouseholdMember();
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+    const addForm = useForm<AddMemberFormData>({
+        resolver: zodResolver(addMemberSchema),
+        defaultValues: { name: '', email: '' },
+    });
+
+    const handleAddMember = async (data: AddMemberFormData) => {
+        await addMember.mutateAsync({ name: data.name, email: data.email || undefined });
+        addForm.reset();
+        setShowAddForm(false);
+        sonnerToast.success(`${data.name} added to your family!`, {
+            description: data.email
+                ? "They'll get an invite to log their own doses. Until then, you can log for them from the dashboard."
+                : "You can log doses on their behalf from the dashboard.",
+            duration: 6000,
+        });
+    };
+
+    const handleRemove = (memberId: string) => {
+        removeMember.mutate(memberId, {
+            onSuccess: () => setConfirmRemoveId(null),
+        });
+    };
+
+    const handleInvite = (memberId: string, email: string) => {
+        inviteMember.mutate({ contactId: memberId, email });
+    };
+
+    const isOwner = members?.some(m => m.id === contact?.id && m.household_role === 'owner');
+    const hasMembersOrHousehold = (members?.length ?? 0) > 0;
+
+    return (
+        <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">My Household</p>
+            <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                <CardContent className="p-0">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
+                        </div>
+                    ) : !hasMembersOrHousehold ? (
+                        /* No household yet — prompt to create */
+                        <div className="p-4 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-violet-500/10">
+                                    <Users className="h-5 w-5 text-violet-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">Share with family</p>
+                                    <p className="text-xs text-muted-foreground/60">
+                                        Add family members to share your fridge and track doses together
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* How it works */}
+                            <div className="space-y-2.5 pl-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/40">How it works</p>
+                                <div className="flex items-start gap-2.5">
+                                    <div className="p-1 rounded-md bg-emerald-500/10 mt-0.5">
+                                        <Refrigerator className="h-3 w-3 text-emerald-400" />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground/70">Everyone shares one fridge — vials are tracked together so you know what's left</p>
+                                </div>
+                                <div className="flex items-start gap-2.5">
+                                    <div className="p-1 rounded-md bg-blue-500/10 mt-0.5">
+                                        <ClipboardList className="h-3 w-3 text-blue-400" />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground/70">Each person gets their own protocol and dose schedule from their provider</p>
+                                </div>
+                                <div className="flex items-start gap-2.5">
+                                    <div className="p-1 rounded-md bg-violet-500/10 mt-0.5">
+                                        <Syringe className="h-3 w-3 text-violet-400" />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground/70">You can log doses for family until they create their own account</p>
+                                </div>
+                            </div>
+
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => setShowAddForm(true)}
+                            >
+                                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                                Add First Member
+                            </Button>
+                        </div>
+                    ) : (
+                        /* Has household — show members */
+                        <div>
+                            {members?.map((member) => {
+                                const isYou = member.id === contact?.id;
+                                const memberInitials = member.name
+                                    .split(' ')
+                                    .map(n => n[0])
+                                    .join('')
+                                    .toUpperCase()
+                                    .slice(0, 2);
+
+                                return (
+                                    <div
+                                        key={member.id}
+                                        className="flex items-center gap-3 px-4 py-3 border-b border-border/30 last:border-b-0"
+                                    >
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarFallback className="bg-gradient-to-br from-primary/15 to-violet-500/10 text-xs font-semibold">
+                                                {memberInitials}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-medium truncate">{member.name}</span>
+                                                {member.household_role === 'owner' && (
+                                                    <Crown className="h-3 w-3 text-amber-400 shrink-0" />
+                                                )}
+                                                {isYou && (
+                                                    <Badge variant="secondary" className="text-[9px] h-4 px-1.5">You</Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                {member.email && (
+                                                    <span className="text-[11px] text-muted-foreground/50 truncate">{member.email}</span>
+                                                )}
+                                                {!member.is_linked && member.email && (
+                                                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-amber-500/30 text-amber-400">
+                                                        Not joined
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Actions for non-self members (owner only) */}
+                                        {!isYou && isOwner && (
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {member.email && !member.is_linked && (
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7"
+                                                        disabled={inviteMember.isPending}
+                                                        onClick={() => handleInvite(member.id, member.email!)}
+                                                        title="Send invite link"
+                                                    >
+                                                        <Copy className="h-3 w-3 text-muted-foreground/60" />
+                                                    </Button>
+                                                )}
+                                                {confirmRemoveId === member.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-7 text-[11px] px-2"
+                                                            disabled={removeMember.isPending}
+                                                            onClick={() => handleRemove(member.id)}
+                                                        >
+                                                            {removeMember.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Remove'}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-7 text-[11px] px-2"
+                                                            onClick={() => setConfirmRemoveId(null)}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7"
+                                                        onClick={() => setConfirmRemoveId(member.id)}
+                                                        title="Remove member"
+                                                    >
+                                                        <Trash2 className="h-3 w-3 text-muted-foreground/40" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                            {/* Add member button */}
+                            {isOwner && !showAddForm && (
+                                <button
+                                    onClick={() => setShowAddForm(true)}
+                                    className="flex items-center gap-2 w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-muted-foreground/60"
+                                >
+                                    <UserPlus className="h-3.5 w-3.5" />
+                                    <span className="text-xs font-medium">Add family member</span>
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Inline add member form */}
+                    <AnimatePresence>
+                        {showAddForm && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                            >
+                                <Form {...addForm}>
+                                    <form
+                                        onSubmit={addForm.handleSubmit(handleAddMember)}
+                                        className="p-4 space-y-3 border-t border-border/30"
+                                    >
+                                        <FormField
+                                            control={addForm.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Name</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} placeholder="Family member's name" className="h-9" autoFocus />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={addForm.control}
+                                            name="email"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Email (optional)</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} placeholder="Their email to send an invite" className="h-9" type="email" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="submit"
+                                                size="sm"
+                                                className="flex-1 h-9"
+                                                disabled={addMember.isPending}
+                                            >
+                                                {addMember.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                                                Add Member
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-9"
+                                                onClick={() => { setShowAddForm(false); addForm.reset(); }}
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </div>
+                                    </form>
+                                </Form>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
 
 export default function ClientSettings() {
     const { profile, userRole, refreshProfile, signOut } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const householdRef = useRef<HTMLDivElement>(null);
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
     const { brand_name: brandName } = useTenantConfig();
+
+    // Deep-link: scroll to household section when navigated from menu
+    useEffect(() => {
+        if (searchParams.get('section') === 'family' && householdRef.current) {
+            setTimeout(() => householdRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+        }
+    }, [searchParams]);
 
     const profileForm = useForm<ProfileFormData>({
         resolver: zodResolver(profileSchema),
@@ -136,6 +430,11 @@ export default function ClientSettings() {
                         </Form>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* My Household Section */}
+            <div ref={householdRef}>
+                <HouseholdSection />
             </div>
 
             {/* Security Section */}

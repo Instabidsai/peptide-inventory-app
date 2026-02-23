@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { useProtocols } from "@/hooks/use-protocols";
 import { useInventoryOwnerId } from "@/hooks/use-inventory-owner";
+import { useHouseholdMembers } from "@/hooks/use-household";
 import { supabase } from "@/integrations/sb_client/client";
 import { ClientInventoryItem, ClientDailyLog, DailyProtocolTask } from "@/types/regimen";
 import { DigitalFridge } from "@/components/regimen/DigitalFridge";
@@ -12,6 +13,7 @@ import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { SupplementStack, SupplementItem } from "@/components/regimen/SupplementStack";
 import { SuggestedStack } from "@/components/regimen/SuggestedStack";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { format } from "date-fns";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 import { calculateDoseUnits } from "@/utils/dose-utils";
@@ -20,6 +22,8 @@ export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const inventoryOwnerId = useInventoryOwnerId(contact);
+    const { data: householdMembers } = useHouseholdMembers(contact?.household_id ? contact?.id : undefined);
+    const isHousehold = !!contact?.household_id && (householdMembers?.length ?? 0) > 1;
     const { toast } = useToast();
 
     const [inventory, setInventory] = useState<ClientInventoryItem[]>([]);
@@ -31,13 +35,16 @@ export default function ClientRegimen() {
     const [selectedRefillPeptide, setSelectedRefillPeptide] = useState<{ id: string, name: string } | undefined>(undefined);
 
     // Standalone inventory refresh — uses household owner's contact for shared fridge
-    const refreshInventory = async () => {
-        if (!inventoryOwnerId) return;
+    // Returns the fetched items so callers can use fresh data without waiting for state flush
+    const refreshInventory = async (): Promise<ClientInventoryItem[]> => {
+        if (!inventoryOwnerId) return [];
         const { data: invData } = await supabase
             .from('client_inventory')
             .select('*, peptide:peptides(name), movement:movements(movement_date, id)')
             .eq('contact_id', inventoryOwnerId);
-        if (invData) setInventory(invData as ClientInventoryItem[]);
+        const items = (invData || []) as ClientInventoryItem[];
+        setInventory(items);
+        return items;
     };
 
     // Initial Data Fetch
@@ -54,8 +61,8 @@ export default function ClientRegimen() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // 1. Fetch Inventory
-                await refreshInventory();
+                // 1. Fetch Inventory — use returned data directly to avoid stale closure
+                const freshInventory = await refreshInventory();
                 if (!mounted) return;
 
                 // 2. Fetch Today's Log
@@ -70,12 +77,12 @@ export default function ClientRegimen() {
                 if (!mounted) return;
                 if (logData) setDailyLogs([logData as ClientDailyLog]);
 
-                // 3. Build Tasks from Protocols
+                // 3. Build Tasks from Protocols (using freshInventory, not stale state)
                 if (protocols) {
                     const todayStr = format(new Date(), 'yyyy-MM-dd');
                     const protocolTasks: DailyProtocolTask[] = protocols.flatMap(p => {
                         const items = p.protocol_items?.map(item => {
-                            const activeVial = inventory.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
+                            const activeVial = freshInventory.find(v => v.peptide_id === item.peptide_id && v.status === 'active' && v.concentration_mg_ml);
                             const doseMg = item.dosage_unit === 'mcg' ? item.dosage_amount / 1000 : item.dosage_amount;
 
                             let unitsLabel = '';
@@ -179,11 +186,30 @@ export default function ClientRegimen() {
 
     const handleTaskToggle = (id: string) => {
         const task = tasks.find(t => t.id === id);
+        if (!task) return;
+
         // Optimistic update
         setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
-        // Persist to protocol_logs if marking as completed (not un-checking)
-        if (task && !task.is_completed && task.type === 'peptide') {
-            logProtocolUsage.mutate({ itemId: id });
+
+        // Only persist when marking as completed (not un-checking)
+        if (!task.is_completed && task.type === 'peptide') {
+            // 5-second undo window before persisting dose log
+            let undone = false;
+            sonnerToast.success('Dose logged', {
+                action: {
+                    label: 'Undo',
+                    onClick: () => {
+                        undone = true;
+                        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: false } : t));
+                    },
+                },
+                duration: 5000,
+            });
+            setTimeout(() => {
+                if (!undone) {
+                    logProtocolUsage.mutate({ itemId: id });
+                }
+            }, 5100); // Slightly after toast closes
         }
     };
 
@@ -243,6 +269,13 @@ export default function ClientRegimen() {
                     <p className="text-muted-foreground mt-1 text-sm">
                         Your daily wellness routine, supplies, and progress — all in one place.
                     </p>
+                    {isHousehold && (
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                Shared Fridge · {householdMembers?.length} family members
+                            </span>
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={() => setRequestModalOpen(true)}

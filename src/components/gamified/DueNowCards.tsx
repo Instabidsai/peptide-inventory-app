@@ -20,6 +20,8 @@ export interface DueNowDose {
     memberContactId?: string;
     /** False when viewing another household member's dose (can't log for them) */
     isOtherMember?: boolean;
+    /** True when this is a household member who hasn't created their own account */
+    isUnlinkedMember?: boolean;
 }
 
 interface DueNowCardsProps {
@@ -102,16 +104,23 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                             </span>
                         )}
                     </motion.div>
+                ) : dose.isOtherMember && !dose.isUnlinkedMember ? (
+                    <motion.div key="theirs" className="flex flex-col items-center gap-0.5 shrink-0">
+                        <div className="h-10 w-10 rounded-xl bg-white/[0.04] flex items-center justify-center" title="Only they can log their own dose">
+                            <Syringe className="h-4 w-4 text-muted-foreground/30" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground/40 font-medium">Their dose</span>
+                    </motion.div>
                 ) : (
                     <motion.div key="log" whileTap={{ scale: 0.92 }}>
                         <Button
                             size="sm"
                             className="h-12 px-5 rounded-xl text-sm font-semibold shrink-0"
-                            disabled={isLogging || dose.isOtherMember}
+                            disabled={isLogging}
                             onClick={() => onLogDose(dose)}
                         >
                             <Syringe className="h-4 w-4 mr-1.5" />
-                            {dose.isOtherMember ? 'Their Dose' : 'Log Dose'}
+                            {dose.isUnlinkedMember ? `Log for ${dose.memberName?.split(' ')[0] || 'them'}` : 'Log Dose'}
                         </Button>
                     </motion.div>
                 )}

@@ -8,7 +8,7 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Flame, Target, Calendar } from "lucide-react";
+import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Users, Flame, Target, Calendar, X, Heart } from "lucide-react";
 import { Progress } from '@/components/ui/progress';
 import { format, isSameDay, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { isDoseDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { calculateDoseUnits } from '@/utils/dose-utils';
+import { toast } from 'sonner';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChatInterface } from "@/components/ai/AIChatInterface";
@@ -65,6 +66,9 @@ function ClientDashboardContent() {
     const actions = useVialActions(inventoryOwnerId);
     const [changeRequestOpen, setChangeRequestOpen] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
+    const [bannerDismissed, setBannerDismissed] = useState(() =>
+        localStorage.getItem('household-banner-dismissed') === 'true'
+    );
 
     const today = new Date();
     const todayAbbr = format(today, 'EEE');
@@ -112,6 +116,7 @@ function ClientDashboardContent() {
         inv: typeof inventory,
         memberName?: string,
         memberContactId?: string,
+        memberIsLinked?: boolean,
     ) => {
         const protocolItemMap = new Map<string, {
             id: string;
@@ -189,6 +194,7 @@ function ClientDashboardContent() {
                 memberName,
                 memberContactId,
                 isOtherMember: !!memberContactId && memberContactId !== contact?.id,
+                isUnlinkedMember: !!memberContactId && memberContactId !== contact?.id && memberIsLinked === false,
             });
             colorIdx++;
         }
@@ -210,6 +216,7 @@ function ClientDashboardContent() {
                     inventory,
                     member.name?.split(' ')[0] || 'Member',
                     member.id,
+                    member.is_linked,
                 );
                 todayDoses.push(...result.doses);
                 allLogs.push(...result.logs);
@@ -304,9 +311,10 @@ function ClientDashboardContent() {
 
     // ── Unified dose logging (protocol log + vial decrement) ────
     const handleLogDose = (dose: DueNowDose) => {
-        // In household mode, only allow logging your own doses (not other members')
-        if (dose.memberContactId && dose.memberContactId !== contact?.id) {
-            return; // Can't log another member's protocol
+        // In household mode, only allow logging your own doses OR unlinked members' doses
+        if (dose.memberContactId && dose.memberContactId !== contact?.id && !dose.isUnlinkedMember) {
+            toast.info(`Only ${dose.memberName || 'they'} can log their own doses`);
+            return;
         }
 
         // 1. Log protocol compliance (if linked)
@@ -437,7 +445,13 @@ function ClientDashboardContent() {
                             Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
                             <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
                         </h1>
-                        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-white/[0.04]">
+                        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-white/[0.04] flex-wrap">
+                            {isHousehold && (
+                                <span className="text-xs font-medium text-muted-foreground/50 flex items-center gap-1">
+                                    <Users className="h-3 w-3 text-violet-400" />
+                                    {householdMembers?.length} family
+                                </span>
+                            )}
                             {hasDosesToday && (
                                 <span className="text-xs font-medium text-muted-foreground/50">
                                     <span className="text-emerald-400 font-semibold">{gamified.todayDoses.filter(d => d.isTaken).length}/{gamified.todayDoses.length}</span> doses today
@@ -458,6 +472,39 @@ function ClientDashboardContent() {
                     </motion.div>
                 </CardContent>
             </GlassCard>
+
+            {/* ── Family Discovery Banner (non-household users) ─── */}
+            {!contact?.household_id && !bannerDismissed && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-violet-500/[0.06] border border-violet-500/15"
+                >
+                    <div className="p-2 rounded-xl bg-violet-500/10 shrink-0">
+                        <Heart className="h-4 w-4 text-violet-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold tracking-tight">Share your fridge with family</p>
+                        <p className="text-[11px] text-muted-foreground/50 leading-relaxed">Add family members so everyone tracks their own doses from your shared supply.</p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/account?section=family')}
+                        className="text-xs font-semibold text-violet-400 hover:text-violet-300 px-3 py-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500/15 transition-colors whitespace-nowrap shrink-0"
+                    >
+                        Set Up
+                    </button>
+                    <button
+                        onClick={() => {
+                            localStorage.setItem('household-banner-dismissed', 'true');
+                            setBannerDismissed(true);
+                        }}
+                        className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
+                        title="Dismiss"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                </motion.div>
+            )}
 
             <Tabs defaultValue="protocol" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
@@ -526,28 +573,40 @@ function ClientDashboardContent() {
                         </GlassCard>
                     )}
 
-                    {/* ─── Progress Bar (compact replacement for rings) ─── */}
+                    {/* ─── Progress Bar ─── */}
                     {hasDosesToday && (() => {
                         const totalDoses = gamified.todayDoses.length;
                         const doneDoses = gamified.todayDoses.filter(d => d.isTaken).length;
                         const pct = totalDoses > 0 ? Math.round((doneDoses / totalDoses) * 100) : 0;
+                        const personalDoses = isHousehold
+                            ? gamified.todayDoses.filter(d => !d.memberContactId || d.memberContactId === contact?.id)
+                            : gamified.todayDoses;
+                        const personalDone = personalDoses.filter(d => d.isTaken).length;
                         return (
                             <motion.div
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center gap-3 px-1"
+                                className="space-y-1.5 px-1"
                             >
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <Flame className="h-4 w-4 text-primary" />
-                                    <span className="text-sm font-bold text-primary">{gamified.streak}d</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Flame className="h-4 w-4 text-primary" />
+                                        <span className="text-sm font-bold text-primary">{gamified.streak}d</span>
+                                    </div>
+                                    <Progress
+                                        value={pct}
+                                        className="flex-1 h-3 rounded-full [&>div]:bg-gradient-to-r [&>div]:from-emerald-600 [&>div]:to-emerald-400 [&>div]:rounded-full"
+                                    />
+                                    <span className="text-sm font-semibold text-emerald-400 shrink-0">
+                                        {doneDoses}/{totalDoses}
+                                    </span>
                                 </div>
-                                <Progress
-                                    value={pct}
-                                    className="flex-1 h-3 rounded-full [&>div]:bg-gradient-to-r [&>div]:from-emerald-600 [&>div]:to-emerald-400 [&>div]:rounded-full"
-                                />
-                                <span className="text-sm font-semibold text-emerald-400 shrink-0">
-                                    {doneDoses}/{totalDoses}
-                                </span>
+                                {isHousehold && (
+                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground/40 pl-[52px]">
+                                        <span>You: <span className="font-semibold text-emerald-400/70">{personalDone}/{personalDoses.length}</span></span>
+                                        <span>Family total: {doneDoses}/{totalDoses}</span>
+                                    </div>
+                                )}
                             </motion.div>
                         );
                     })()}
@@ -562,7 +621,7 @@ function ClientDashboardContent() {
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
                             <Calendar className="h-4 w-4 text-muted-foreground/50" />
-                            <h3 className="text-sm font-semibold tracking-tight">Your Schedule</h3>
+                            <h3 className="text-sm font-semibold tracking-tight">{isHousehold ? 'Family Schedule' : 'Your Schedule'}</h3>
                             <span className="text-[10px] text-muted-foreground/40">Tap any day to see details</span>
                         </div>
                     <ProtocolCalendar
