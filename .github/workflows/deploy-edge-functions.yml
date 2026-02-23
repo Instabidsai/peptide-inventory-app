@@ -45,6 +45,7 @@ jobs:
             run-automations
             self-signup
             send-email
+            sms-webhook
             telegram-webhook
           )
           for fn in "${functions[@]}"; do
