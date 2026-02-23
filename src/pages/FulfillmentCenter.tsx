@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +29,7 @@ import {
     MapPin, User, AlertCircle, PackageCheck,
     ClipboardList, ArrowRight, ExternalLink, Copy,
     AlertTriangle, RefreshCw, Pill, Clock, Save, HandMetal,
-    Undo2
+    Undo2, Store
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getTrackingUrl } from '@/lib/tracking';
@@ -44,6 +44,9 @@ export default function FulfillmentCenter() {
     const { toast } = useToast();
     const navigate = useNavigate();
     const { user, organization } = useAuth();
+
+    // Fulfillment type filter: 'all' | 'standard' | 'dropship'
+    const [fulfillmentFilter, setFulfillmentFilter] = useState<string>('all');
 
     // Track which order is being acted on (prevents shared loading state bug)
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
@@ -113,6 +116,31 @@ export default function FulfillmentCenter() {
         },
     });
 
+    // Resolve merchant org names for dropship orders
+    const dropshipOrgIds = useMemo(() => {
+        if (!allOrders) return [];
+        const ids = new Set<string>();
+        for (const o of allOrders) {
+            if (o.is_supplier_order && o.source_org_id) ids.add(o.source_org_id);
+        }
+        return Array.from(ids);
+    }, [allOrders]);
+
+    const { data: merchantOrgs } = useQuery({
+        queryKey: ['merchant_orgs', dropshipOrgIds],
+        queryFn: async () => {
+            if (dropshipOrgIds.length === 0) return {};
+            const { data } = await supabase
+                .from('organizations')
+                .select('id, name')
+                .in('id', dropshipOrgIds);
+            const map: Record<string, string> = {};
+            for (const o of data || []) map[o.id] = o.name;
+            return map;
+        },
+        enabled: dropshipOrgIds.length > 0,
+    });
+
     // Get stock counts per peptide for pick list
     const { data: stockCounts } = useQuery({
         queryKey: ['fulfillment_stock'],
@@ -151,6 +179,10 @@ export default function FulfillmentCenter() {
 
         for (const o of allOrders) {
             if (o.status === 'cancelled') continue;
+
+            // Apply fulfillment type filter
+            if (fulfillmentFilter === 'dropship' && !o.is_supplier_order) continue;
+            if (fulfillmentFilter === 'standard' && o.is_supplier_order) continue;
             const isPickup = o.delivery_method === 'local_pickup';
 
             // Ready to pick: submitted, not yet fulfilled (any payment status)
@@ -179,7 +211,7 @@ export default function FulfillmentCenter() {
         pick.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
         return { readyToPick: pick, readyToShip: ship, readyForPickup: pickup, recentlyCompleted: completed };
-    }, [allOrders]);
+    }, [allOrders, fulfillmentFilter]);
 
     // Total bottles to pull across all pick orders
     const totalBottlesToPull = useMemo(() => {
@@ -353,12 +385,20 @@ export default function FulfillmentCenter() {
             `<td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${item.quantity}</td></tr>`
         ).join('') || '';
 
+        const merchantName = order.is_supplier_order && order.source_org_id
+            ? merchantOrgs?.[order.source_org_id] || ''
+            : '';
+        const brandLine = merchantName
+            ? `<p style="color:#0891b2;font-weight:600;margin-bottom:4px">Fulfilled for: ${merchantName}</p>`
+            : '';
+
         const html = `<!DOCTYPE html><html><head><title>Packing Slip - ${order.id.slice(0, 8)}</title>
             <style>body{font-family:system-ui,sans-serif;margin:40px;color:#333}
             h1{font-size:24px;margin-bottom:4px} table{width:100%;border-collapse:collapse;margin:20px 0}
             th{text-align:left;padding:8px;border-bottom:2px solid #333;font-size:14px}
             .label{color:#666;font-size:12px;margin-bottom:2px} .value{font-size:14px}
             @media print{body{margin:20px}}</style></head><body>
+            ${brandLine}
             <h1>Packing Slip</h1>
             <p style="color:#666">Order #${order.id.slice(0, 8)} &mdash; ${format(new Date(order.created_at), 'MMMM d, yyyy')}</p>
             <div style="margin:20px 0">
@@ -396,9 +436,21 @@ export default function FulfillmentCenter() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Fulfillment Center</h1>
-                <p className="text-muted-foreground">Pick, pack, and ship orders.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Fulfillment Center</h1>
+                    <p className="text-muted-foreground">Pick, pack, and ship orders.</p>
+                </div>
+                <Select value={fulfillmentFilter} onValueChange={setFulfillmentFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter orders" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Orders</SelectItem>
+                        <SelectItem value="standard">My Orders</SelectItem>
+                        <SelectItem value="dropship">Dropship</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             {/* Hours Logging Card */}
@@ -614,6 +666,12 @@ export default function FulfillmentCenter() {
                                                             WC
                                                         </Badge>
                                                     )}
+                                                    {order.is_supplier_order && (
+                                                        <Badge variant="outline" className="bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
+                                                            <Store className="h-3 w-3 mr-1" />
+                                                            {merchantOrgs?.[order.source_org_id!] || 'Dropship'}
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         </CardHeader>
@@ -769,6 +827,12 @@ export default function FulfillmentCenter() {
                                                                 </Badge>
                                                             )}
                                                         </>
+                                                    )}
+                                                    {order.is_supplier_order && (
+                                                        <Badge variant="outline" className="bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
+                                                            <Store className="h-3 w-3 mr-1" />
+                                                            {merchantOrgs?.[order.source_org_id!] || 'Dropship'}
+                                                        </Badge>
                                                     )}
                                                 </div>
                                             </div>

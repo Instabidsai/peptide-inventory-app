@@ -12,12 +12,14 @@ import {
     Settings,
     Shield,
     ChevronLeft,
+    Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const vendorNav = [
     { name: 'Overview', path: '/vendor', icon: Shield, end: true },
     { name: 'Tenants', path: '/vendor/tenants', icon: Building2 },
+    { name: 'Supply Orders', path: '/vendor/supply-orders', icon: Package },
     { name: 'Analytics', path: '/vendor/analytics', icon: BarChart3 },
     { name: 'Billing', path: '/vendor/billing', icon: CreditCard },
     { name: 'Health', path: '/vendor/health', icon: Activity },

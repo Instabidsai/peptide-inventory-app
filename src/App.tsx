@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SubdomainTenantProvider } from "@/hooks/use-subdomain-tenant";
 import { Loader2 } from "lucide-react";
 
 // Eagerly loaded — needed on first render
@@ -72,11 +73,15 @@ const VendorOnboarding = lazyRetry(() => import("./pages/vendor/VendorOnboarding
 const VendorMessages = lazyRetry(() => import("./pages/vendor/VendorMessages"));
 const VendorAudit = lazyRetry(() => import("./pages/vendor/VendorAudit"));
 const VendorSettings = lazyRetry(() => import("./pages/vendor/VendorSettings"));
+const VendorSupplyOrders = lazyRetry(() => import("./pages/vendor/VendorSupplyOrders"));
 
 // Custom engine
 const Customizations = lazyRetry(() => import("./pages/Customizations"));
 const CustomEntityPage = lazyRetry(() => import("./components/custom/CustomEntityPage"));
 const CustomReportView = lazyRetry(() => import("./components/custom/CustomReportView"));
+
+// Merchant onboarding wizard
+const MerchantOnboarding = lazyRetry(() => import("./pages/merchant/MerchantOnboarding"));
 
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
@@ -130,6 +135,7 @@ const App = () => (
         <TooltipProvider>
             <Toaster />
             <Sonner />
+            <SubdomainTenantProvider>
             <HashRouter>
                 <AuthProvider>
                     <Suspense fallback={<PageLoader />}>
@@ -140,6 +146,7 @@ const App = () => (
                             <Route path="/auth" element={<Auth />} />
                             <Route path="/join" element={<Join />} />
                             <Route path="/onboarding" element={<Onboarding />} />
+                            <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
                             <Route path="/update-password" element={<UpdatePassword />} />
                             <Route element={
                                 <ProtectedRoute>
@@ -202,6 +209,7 @@ const App = () => (
                                     <Route index element={<VendorDashboard />} />
                                     <Route path="tenants" element={<VendorTenants />} />
                                     <Route path="tenant/:orgId" element={<TenantDetail />} />
+                                    <Route path="supply-orders" element={<VendorSupplyOrders />} />
                                     <Route path="analytics" element={<VendorAnalytics />} />
                                     <Route path="billing" element={<VendorBilling />} />
                                     <Route path="health" element={<VendorHealth />} />
@@ -236,6 +244,7 @@ const App = () => (
                     </Suspense>
                 </AuthProvider>
             </HashRouter>
+            </SubdomainTenantProvider>
         </TooltipProvider>
     </QueryClientProvider>
     </ErrorBoundary>

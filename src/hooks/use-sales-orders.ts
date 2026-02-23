@@ -79,6 +79,10 @@ export interface SalesOrder {
     cogs_amount?: number | null;
     profit_amount?: number | null;
     merchant_fee?: number | null;
+    // Supplier / dropship fields
+    is_supplier_order?: boolean;
+    source_org_id?: string | null;
+    fulfillment_type?: string;
     contacts?: {
         id: string;
         name: string;

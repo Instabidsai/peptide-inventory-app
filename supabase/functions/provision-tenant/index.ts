@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
@@ -39,6 +39,11 @@ interface ProvisionRequest {
     ship_from_email?: string;
     // Options
     seed_sample_peptides?: boolean;
+    // Business-in-a-Box (v2)
+    plan_name?: string;           // 'starter' | 'professional' | 'enterprise'
+    onboarding_path?: string;     // 'new' | 'existing'
+    subdomain?: string;
+    seed_supplier_catalog?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -231,6 +236,122 @@ Deno.serve(async (req) => {
             } catch (compErr: any) {
                 console.warn(`  Composio entity registration skipped: ${compErr.message}`);
                 results.composio_entity_registered = false;
+            }
+        }
+
+        // ── Step 9: Seed Feature Flags ──
+        const featureKeys = [
+            'ai_assistant', 'peptide_catalog', 'lot_tracking', 'bottle_tracking',
+            'supplements', 'movements', 'purchase_orders', 'sales_orders',
+            'fulfillment', 'partner_network', 'financials', 'automations',
+            'contacts', 'protocols', 'resources', 'client_requests',
+            'feedback', 'client_portal', 'customizations',
+        ];
+        const { error: featureError } = await supabase
+            .from('org_features')
+            .insert(featureKeys.map(key => ({ org_id: org.id, feature_key: key, enabled: true })));
+
+        if (featureError) console.warn(`Feature flags warning: ${featureError.message}`);
+        results.feature_flags_created = true;
+        console.log(`  Seeded ${featureKeys.length} feature flags`);
+
+        // ── Step 10: Create Subscription (if plan specified) ──
+        if (body.plan_name) {
+            const { data: plan } = await supabase
+                .from('subscription_plans')
+                .select('id, name')
+                .eq('name', body.plan_name)
+                .eq('active', true)
+                .single();
+
+            if (plan) {
+                const trialEnd = new Date();
+                trialEnd.setDate(trialEnd.getDate() + 14);
+
+                const { error: subError } = await supabase
+                    .from('tenant_subscriptions')
+                    .insert({
+                        org_id: org.id,
+                        plan_id: plan.id,
+                        status: 'trialing',
+                        billing_period: 'monthly',
+                        trial_end: trialEnd.toISOString(),
+                        current_period_start: new Date().toISOString(),
+                        current_period_end: trialEnd.toISOString(),
+                    });
+
+                if (subError) console.warn(`Subscription warning: ${subError.message}`);
+                else results.subscription_created = true;
+                console.log(`  Created subscription: ${plan.name} (14-day trial)`);
+            }
+        }
+
+        // ── Step 11: Assign Wholesale Tier + Supplier ──
+        const supplierOrgId = Deno.env.get('SUPPLIER_ORG_ID');
+        if (supplierOrgId) {
+            // Default new merchants to Starter tier
+            const { data: starterTier } = await supabase
+                .from('wholesale_pricing_tiers')
+                .select('id')
+                .eq('name', 'Starter')
+                .eq('active', true)
+                .single();
+
+            if (starterTier) {
+                const updatePayload: Record<string, any> = {
+                    wholesale_tier_id: starterTier.id,
+                    supplier_org_id: supplierOrgId,
+                };
+                if (body.onboarding_path) updatePayload.onboarding_path = body.onboarding_path;
+                if (body.subdomain) updatePayload.subdomain = body.subdomain.toLowerCase().trim();
+
+                const { error: tierUpdateError } = await supabase
+                    .from('tenant_config')
+                    .update(updatePayload)
+                    .eq('org_id', org.id);
+
+                if (tierUpdateError) console.warn(`Wholesale tier assignment warning: ${tierUpdateError.message}`);
+                else results.wholesale_tier_assigned = true;
+                console.log(`  Assigned wholesale tier: Starter, supplier: ${supplierOrgId}`);
+            }
+        }
+
+        // ── Step 12: Seed Supplier Catalog ──
+        if (body.seed_supplier_catalog && supplierOrgId) {
+            const { data: supplierPeptides, error: catError } = await supabase
+                .from('peptides')
+                .select('name, description, sku, retail_price, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes')
+                .eq('org_id', supplierOrgId)
+                .eq('active', true);
+
+            if (catError) {
+                console.warn(`Supplier catalog read warning: ${catError.message}`);
+            } else if (supplierPeptides && supplierPeptides.length > 0) {
+                const catalogRows = supplierPeptides.map(p => ({
+                    org_id: org.id,
+                    name: p.name,
+                    description: p.description,
+                    sku: p.sku,
+                    retail_price: p.retail_price,
+                    active: true,
+                    default_dose_amount: p.default_dose_amount,
+                    default_dose_unit: p.default_dose_unit,
+                    default_frequency: p.default_frequency,
+                    default_timing: p.default_timing,
+                    default_concentration_mg_ml: p.default_concentration_mg_ml,
+                    reconstitution_notes: p.reconstitution_notes,
+                }));
+
+                const { error: seedError } = await supabase
+                    .from('peptides')
+                    .insert(catalogRows);
+
+                if (seedError) console.warn(`Supplier catalog seed warning: ${seedError.message}`);
+                else {
+                    results.supplier_catalog_seeded = true;
+                    results.catalog_product_count = catalogRows.length;
+                }
+                console.log(`  Seeded ${catalogRows.length} products from supplier catalog`);
             }
         }
 

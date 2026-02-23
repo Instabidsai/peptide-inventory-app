@@ -87,6 +87,11 @@ export function useProvisionTenant() {
             support_email?: string;
             primary_color?: string;
             seed_sample_peptides?: boolean;
+            // Business-in-a-Box v2
+            plan_name?: string;
+            onboarding_path?: string;
+            subdomain?: string;
+            seed_supplier_catalog?: boolean;
         }) => {
             const { data, error } = await supabase.functions.invoke('provision-tenant', {
                 body: payload,

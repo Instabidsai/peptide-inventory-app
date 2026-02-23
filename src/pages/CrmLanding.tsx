@@ -467,6 +467,78 @@ function Hero() {
   );
 }
 
+// ─── Two-Path Fork ───────────────────────────────────────────────
+function TwoPathFork() {
+  const navigate = useNavigate();
+
+  const handlePath = (path: "existing" | "new") => {
+    sessionStorage.setItem("onboarding_path", path);
+    scrollTo("final-cta");
+  };
+
+  const paths = [
+    {
+      icon: Building2,
+      title: "I Have a Peptide Business",
+      desc: "Replace your spreadsheets and cobbled-together tools with one AI-powered platform. Import your catalog or connect to our wholesale supply.",
+      cta: "Upgrade My Business",
+      path: "existing" as const,
+      gradient: "from-primary/10 to-primary/5",
+      border: "border-primary/30 hover:border-primary/50",
+      iconBg: "bg-primary/15 text-primary",
+    },
+    {
+      icon: Rocket,
+      title: "Start a New Peptide Business",
+      desc: "Launch in 10 minutes. Pre-loaded catalog, branded storefront, wholesale pricing, AI assistant, and fulfillment — all included.",
+      cta: "Launch My Business",
+      path: "new" as const,
+      gradient: "from-emerald-500/10 to-emerald-500/5",
+      border: "border-emerald-500/30 hover:border-emerald-500/50",
+      iconBg: "bg-emerald-500/15 text-emerald-400",
+    },
+  ];
+
+  return (
+    <section className="py-12 sm:py-16">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Two Paths. One Powerful Platform.
+          </h2>
+          <p className="mt-2 text-muted-foreground">
+            Whether you're scaling an existing company or starting fresh — we've got you covered.
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-2 gap-6">
+          {paths.map((p, i) => (
+            <motion.button
+              key={p.path}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+              onClick={() => handlePath(p.path)}
+              className={`text-left rounded-2xl border ${p.border} bg-gradient-to-br ${p.gradient} p-6 sm:p-8 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer group`}
+            >
+              <div className={`w-12 h-12 rounded-xl ${p.iconBg} flex items-center justify-center mb-4`}>
+                <p.icon className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2">{p.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">{p.desc}</p>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                {p.cta}
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Trust Bar ────────────────────────────────────────────────────
 function TrustBar() {
   const stats = [
@@ -672,6 +744,91 @@ function HowItWorks() {
             </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Start a Business Steps ─────────────────────────────────────
+function StartABusinessSteps() {
+  const steps = [
+    {
+      icon: Palette,
+      title: "Name & Brand Your Company",
+      desc: "Choose your company name, upload a logo, pick your brand colors, and claim your subdomain — yourname.thepeptideai.com.",
+    },
+    {
+      icon: FlaskConical,
+      title: "50+ Products Pre-Loaded",
+      desc: "Your store launches with a full catalog of research peptides, ready to sell. No sourcing, no spreadsheets, no data entry.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Set Your Markup & Start Selling",
+      desc: "Choose your retail markup over wholesale cost. See live margin previews. Your branded storefront is live in minutes.",
+    },
+    {
+      icon: Truck,
+      title: "We Handle Fulfillment",
+      desc: "When your customers order, we pick, pack, and ship under your brand. You focus on growing your client base — we handle the rest.",
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-12">
+          <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2 block">
+            Start a Business
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+            Launch Your Peptide Business in 10 Minutes
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            No inventory to buy. No warehouse to rent. No tech team to hire.
+            Everything is included from day one.
+          </p>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {steps.map((s, i) => (
+            <motion.div
+              key={s.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className="text-center"
+            >
+              <div className="relative mx-auto mb-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto">
+                  <s.icon className="w-6 h-6 text-emerald-400" />
+                </div>
+                <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center">
+                  {i + 1}
+                </span>
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                {s.desc}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div {...fadeInUp} className="text-center mt-10">
+          <Button
+            size="lg"
+            onClick={() => {
+              sessionStorage.setItem("onboarding_path", "new");
+              scrollTo("final-cta");
+            }}
+            className="bg-gradient-to-r from-emerald-500 to-primary text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
+          >
+            Start My Business
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </motion.div>
       </div>
     </section>
   );
@@ -1708,15 +1865,16 @@ function Pricing() {
       id: "1",
       name: "starter",
       display_name: "Starter",
-      price_monthly: 9900,
-      price_yearly: 99900,
+      price_monthly: 34900,
+      price_yearly: 349900,
       max_users: 5,
       max_peptides: 50,
       max_orders_per_month: 500,
       features: [
+        "Pre-loaded supplier catalog",
         "AI Chat Assistant",
-        "Inventory management",
-        "Order tracking",
+        "Branded client portal",
+        "Inventory & order tracking",
         "5 user accounts",
         "Email support",
       ],
@@ -1729,17 +1887,18 @@ function Pricing() {
       id: "2",
       name: "professional",
       display_name: "Professional",
-      price_monthly: 19900,
-      price_yearly: 199900,
+      price_monthly: 49900,
+      price_yearly: 499900,
       max_users: 25,
       max_peptides: 200,
       max_orders_per_month: 2000,
       features: [
         "Everything in Starter",
         "AI Feature Builder",
-        "Protocol management",
+        "Advanced fulfillment & shipping",
+        "Partner network & commissions",
         "White-label branding",
-        "Shipping integration",
+        "Automations & workflows",
         "Priority support",
       ],
       stripe_monthly_price_id: null,
@@ -1751,19 +1910,19 @@ function Pricing() {
       id: "3",
       name: "enterprise",
       display_name: "Enterprise",
-      price_monthly: 49900,
-      price_yearly: 499900,
+      price_monthly: 129900,
+      price_yearly: 1299000,
       max_users: 999999,
       max_peptides: 999999,
       max_orders_per_month: 999999,
       features: [
         "Everything in Professional",
-        "Unlimited users & peptides",
-        "Custom AI integrations",
+        "Full Jarvis AI ecosystem",
+        "Autonomous operations",
+        "Multi-location support",
+        "Custom integrations & API",
         "Dedicated account manager",
-        "SLA guarantee",
-        "Custom domain",
-        "API access",
+        "Custom domain & SLA",
       ],
       stripe_monthly_price_id: null,
       stripe_yearly_price_id: null,
@@ -1785,7 +1944,7 @@ function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            Start free. Scale as you grow. No hidden fees. Every plan includes AI.
+            Software + supplier catalog + fulfillment — all in one monthly price. No hidden fees. Every plan includes AI.
           </p>
 
           {/* Premium toggle */}
@@ -1929,18 +2088,29 @@ function Faq() {
 
 // ─── Final CTA ────────────────────────────────────────────────────
 function FinalCta() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [businessStatus, setBusinessStatus] = useState<string>(
+    sessionStorage.getItem("onboarding_path") || ""
+  );
+  const [volume, setVolume] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const body = email
-      ? `Hi, I'm interested in ThePeptideAI. My email is: ${email}`
-      : `Hi, I'm interested in ThePeptideAI.`;
+    const lines = [
+      `Name: ${name || "Not provided"}`,
+      `Email: ${email || "Not provided"}`,
+      `Business Status: ${businessStatus === "new" ? "Starting a New Business" : businessStatus === "existing" ? "I Have an Existing Business" : "Not specified"}`,
+      `Expected Monthly Volume: ${volume || "Not specified"}`,
+    ];
+    const body = `Hi, I'd like to apply to join ThePeptideAI.\n\n${lines.join("\n")}`;
     window.open(
-      `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("ThePeptideAI Access Request")}&body=${encodeURIComponent(body)}`,
+      `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
       "_self",
     );
   };
+
+  const inputCls = "w-full rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 focus:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-shadow";
 
   return (
     <section id="final-cta" className="py-16 sm:py-24">
@@ -1956,29 +2126,74 @@ function FinalCta() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
             <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
             <span className="text-xs font-medium text-yellow-300">
-              Now accepting new partners
+              Now accepting applications
             </span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground relative">
-            Ready to Transform Your Peptide Business?
+            Apply to Join ThePeptideAI
           </h2>
           <p className="mt-4 text-muted-foreground max-w-lg mx-auto relative">
-            Join the peptide companies replacing spreadsheets and generic CRMs
-            with an AI-powered command center that builds itself.
+            Whether you're launching a new peptide business or upgrading an existing one,
+            tell us about yourself and we'll get you set up.
           </p>
           <form
             onSubmit={handleSubmit}
-            className="mt-8 flex flex-col sm:flex-row gap-3 max-w-md mx-auto relative"
+            className="mt-8 max-w-md mx-auto space-y-3 relative text-left"
           >
+            <input
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+            />
             <input
               type="email"
               placeholder="you@peptidecompany.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 focus:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-shadow"
+              className={inputCls}
+              required
             />
-            <Button type="submit" className="shadow-btn hover:shadow-btn-hover">
-              Request Access
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setBusinessStatus("existing")}
+                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                  businessStatus === "existing"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <Building2 className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                Existing Business
+              </button>
+              <button
+                type="button"
+                onClick={() => setBusinessStatus("new")}
+                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                  businessStatus === "new"
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-emerald-500/40"
+                }`}
+              >
+                <Rocket className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                Starting New
+              </button>
+            </div>
+            <select
+              value={volume}
+              onChange={(e) => setVolume(e.target.value)}
+              className={inputCls + " appearance-none"}
+            >
+              <option value="">Expected monthly volume</option>
+              <option value="1-50">1–50 orders/month</option>
+              <option value="50-200">50–200 orders/month</option>
+              <option value="200-500">200–500 orders/month</option>
+              <option value="500+">500+ orders/month</option>
+            </select>
+            <Button type="submit" className="w-full shadow-btn hover:shadow-btn-hover">
+              Apply to Join
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
@@ -1994,12 +2209,12 @@ function FinalCta() {
                 );
               }}
             >
-              Schedule a Call
+              Or schedule a call instead
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground relative">
-            We'll get back to you within 24 hours.
+            We review applications within 24 hours.
           </p>
         </div>
         </motion.div>
@@ -2176,9 +2391,11 @@ export default function CrmLanding() {
       <ScrollProgress />
       <Nav />
       <Hero />
+      <TwoPathFork />
       <TrustBar />
       <PainPoints />
       <HowItWorks />
+      <StartABusinessSteps />
       <TwoAiBrains />
       <PlatformFeatures />
       <AiShowcase />

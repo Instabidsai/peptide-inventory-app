@@ -10,7 +10,7 @@ const BRAND_NAME = Deno.env.get("BRAND_NAME") || "Peptide Admin";
 export const STAFF_ALLOWED_TOOLS = new Set([
   "search_contacts", "create_contact", "update_contact", "get_contact_history",
   "search_peptides", "list_all_peptides", "get_pricing",
-  "get_bottle_stats", "list_lots",
+  "get_bottle_stats", "list_lots", "add_inventory",
   "create_order", "add_items_to_order", "list_recent_orders", "update_sales_order", "fulfill_order",
   "list_purchase_orders", "create_purchase_order", "receive_purchase_order", "record_purchase_payment",
   "list_movements",
@@ -28,6 +28,7 @@ You can help with:
 - CONTACTS: Search, create, update contacts/clients
 - SALES ORDERS: Create, update status, record payments, add items to existing orders
 - PURCHASE ORDERS: Create supplier orders, mark received (auto-creates inventory), record payments
+- ADD INVENTORY: Directly add stock (lot + bottles) without a PO — use when admin says "add inventory" or "we received X bottles"
 - INVENTORY: Create/update peptides, view lots, check bottle stats, view stock levels
 - PRICING: Show cost/2x/3x/MSRP tiers for any peptide
 - MOVEMENTS: View inventory movements (sales, giveaways, internal use, losses, returns)
@@ -51,6 +52,7 @@ You can help with:
 - CONTACTS: Search, create, update contacts/clients, view customer history
 - SALES ORDERS: Create, update status, record payments, add items, fulfill orders
 - PURCHASE ORDERS: Create supplier orders, mark received (auto-creates inventory), record payments
+- ADD INVENTORY: Directly add stock (lot + bottles) without a PO — use when told "add inventory" or "we received X bottles"
 - INVENTORY: View peptides, pricing, lots, bottle stats, stock levels (read-only — cannot create/modify peptides)
 - PRICING: Show cost/2x/3x/MSRP tiers for any peptide
 - MOVEMENTS: View inventory movements (read-only)
@@ -95,6 +97,7 @@ RULES:
 17. When an error occurs, ALWAYS tell the user what the error was. Never say "contact technical support" — you ARE the technical support. Show the actual error message.
 18. ONE-STEP ORDERS: You have peptide IDs, all pricing tiers, contact IDs, and addresses pre-loaded. Create orders directly without searching first — you already have the data. Don't waste tool calls on search_peptides or search_contacts when you can see the answer in your context.
 19. NEVER give up after one failed search. If a tool returns "not found", check the pre-loaded catalog and suggest the closest match. Always offer alternatives.
+20. ADDING INVENTORY: When the user says "add inventory", "add stock", "we received bottles", or "add X of peptide Y" — use the add_inventory tool directly. Do NOT create a purchase order first. The add_inventory tool creates the lot + bottles in one step. Only use create_purchase_order when they explicitly want to track a future order from a supplier.
 
 PRICING TIERS:
 - Cost = avg_cost (base wholesale cost from lots)
@@ -170,6 +173,7 @@ export const tools = [
   { type: "function" as const, function: { name: "update_peptide", description: "Update a peptide's details (name, description, sku, retail_price, active status).", parameters: { type: "object", properties: { peptide_id: { type: "string" }, name: { type: "string" }, description: { type: "string" }, sku: { type: "string" }, retail_price: { type: "number" }, active: { type: "boolean" } }, required: ["peptide_id"] } } },
   { type: "function" as const, function: { name: "get_bottle_stats", description: "Get bottle count breakdown by status (in_stock, sold, given_away, internal_use, lost, returned, expired).", parameters: { type: "object", properties: {} } } },
   { type: "function" as const, function: { name: "list_lots", description: "List inventory lots with peptide name, quantity, cost, payment status, expiry.", parameters: { type: "object", properties: { limit: { type: "number", description: "Max lots to return (default 20)" } } } } },
+  { type: "function" as const, function: { name: "add_inventory", description: "Directly add inventory (create a lot + auto-generate bottles). Use this when the admin says 'add inventory', 'receive stock', or 'we got X bottles of Y'. Skips the PO workflow — creates a lot and bottles immediately.", parameters: { type: "object", properties: { peptide_id: { type: "string" }, quantity: { type: "number", description: "Number of bottles/vials received" }, cost_per_unit: { type: "number", description: "Cost per bottle/vial" }, lot_number: { type: "string", description: "Lot/batch number from supplier" }, supplier: { type: "string" }, expiry_date: { type: "string", description: "YYYY-MM-DD" }, payment_status: { type: "string", enum: ["unpaid", "partial", "paid"], description: "Default: unpaid" }, notes: { type: "string" } }, required: ["peptide_id", "quantity", "cost_per_unit", "lot_number"] } } },
   { type: "function" as const, function: { name: "list_purchase_orders", description: "List supplier purchase orders. Can filter by status: pending, received, cancelled.", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "received", "cancelled"] }, limit: { type: "number" } } } } },
   { type: "function" as const, function: { name: "create_purchase_order", description: "Create a new supplier purchase order for a peptide.", parameters: { type: "object", properties: { peptide_id: { type: "string" }, quantity_ordered: { type: "number" }, estimated_cost_per_unit: { type: "number" }, supplier: { type: "string" }, expected_arrival_date: { type: "string", description: "YYYY-MM-DD" }, tracking_number: { type: "string" }, notes: { type: "string" } }, required: ["peptide_id", "quantity_ordered"] } } },
   { type: "function" as const, function: { name: "receive_purchase_order", description: "Mark a purchase order as received. Creates a lot + auto-generates bottles in inventory.", parameters: { type: "object", properties: { order_id: { type: "string" }, actual_quantity: { type: "number" }, actual_cost_per_unit: { type: "number" }, lot_number: { type: "string" }, expiry_date: { type: "string", description: "YYYY-MM-DD" } }, required: ["order_id", "actual_quantity", "actual_cost_per_unit", "lot_number"] } } },
@@ -278,8 +282,13 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const matches = await findPeptides(supabase, orgId, args.peptide_name, 1);
         const data = matches?.[0];
         if (!data) return "Peptide '" + args.peptide_name + "' not found. Try a different spelling or use list_all_peptides.";
-        const { data: lots } = await supabase.from("lots").select("cost_per_unit").eq("peptide_id", data.id);
-        const avgCost = lots?.length ? lots.reduce((s: number, l: any) => s + Number(l.cost_per_unit), 0) / lots.length : 0;
+        const { data: lots } = await supabase.from("lots").select("cost_per_unit, quantity_received").eq("peptide_id", data.id);
+        let avgCost = 0;
+        if (lots?.length) {
+          let totalCost = 0, totalQty = 0;
+          lots.forEach((l: any) => { const c = Number(l.cost_per_unit || 0); const q = Number(l.quantity_received || 0); totalCost += c * q; totalQty += q; });
+          avgCost = totalQty > 0 ? totalCost / totalQty : 0;
+        }
         return "Pricing for " + data.name + ":\n  Cost: $" + avgCost.toFixed(2) + "\n  2x: $" + (avgCost * 2).toFixed(2) + "\n  3x: $" + (avgCost * 3).toFixed(2) + "\n  MSRP: $" + Number(data.retail_price).toFixed(2);
       }
       case "create_peptide": {
@@ -313,6 +322,30 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (!data?.length) return "No lots found.";
         return data.map((l: any) => "#" + l.id.slice(0, 8) + " | " + (l.peptides?.name || "?") + " | " + l.quantity + " units @ $" + Number(l.cost_per_unit).toFixed(2) + " | Payment: " + l.payment_status + " | Expiry: " + (l.expiry_date || "N/A")).join("\n");
       }
+      case "add_inventory": {
+        // Direct inventory creation: lot + bottles in one step
+        const { data: lot, error: lotErr } = await supabase.from("lots").insert({
+          org_id: orgId, peptide_id: args.peptide_id, quantity_received: args.quantity,
+          cost_per_unit: args.cost_per_unit, lot_number: args.lot_number,
+          expiry_date: args.expiry_date || null, payment_status: args.payment_status || "unpaid",
+        }).select().single();
+        if (lotErr) return "Error creating lot: " + lotErr.message;
+        const bottles = Array(args.quantity).fill(null).map(() => ({
+          lot_id: lot.id, peptide_id: args.peptide_id, status: "in_stock", created_at: new Date().toISOString(),
+        }));
+        const { error: bottleErr } = await supabase.from("bottles").insert(bottles);
+        if (bottleErr) return "Lot created but bottle generation failed: " + bottleErr.message;
+        // Optionally create a matching PO record for tracking
+        if (args.supplier) {
+          await supabase.from("orders").insert({
+            org_id: orgId, peptide_id: args.peptide_id, status: "received",
+            quantity_ordered: args.quantity, estimated_cost_per_unit: args.cost_per_unit,
+            supplier: args.supplier, notes: args.notes || null,
+          }).catch(() => {});
+        }
+        const pepName = await supabase.from("peptides").select("name").eq("id", args.peptide_id).single();
+        return "Inventory added: " + args.quantity + " bottles of " + (pepName?.data?.name || args.peptide_id) + " @ $" + args.cost_per_unit.toFixed(2) + "/unit. Lot: " + args.lot_number + ". Payment: " + (args.payment_status || "unpaid") + ".";
+      }
       case "list_purchase_orders": {
         const limit = args.limit || 20;
         let query = supabase.from("orders").select("id, status, supplier, quantity_ordered, estimated_cost_per_unit, expected_arrival_date, created_at, peptides(name)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(limit);
@@ -322,7 +355,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         return data.map((o: any) => "#" + o.id.slice(0, 8) + " | " + (o.peptides?.name || "?") + " | " + o.quantity_ordered + " units @ ~$" + Number(o.estimated_cost_per_unit).toFixed(2) + " | Supplier: " + (o.supplier || "—") + " | Status: " + o.status + " | ETA: " + (o.expected_arrival_date || "?") + " | ID: " + o.id).join("\n");
       }
       case "create_purchase_order": {
-        const { data: order, error } = await supabase.from("orders").insert({ org_id: orgId, peptide_id: args.peptide_id, type: "purchase", status: "pending", quantity_ordered: args.quantity_ordered, estimated_cost_per_unit: args.estimated_cost_per_unit, supplier: args.supplier || null, expected_arrival_date: args.expected_arrival_date || null, tracking_number: args.tracking_number || null, notes: args.notes || null }).select().single();
+        const { data: order, error } = await supabase.from("orders").insert({ org_id: orgId, peptide_id: args.peptide_id, status: "pending", quantity_ordered: args.quantity_ordered, estimated_cost_per_unit: args.estimated_cost_per_unit, supplier: args.supplier || null, expected_arrival_date: args.expected_arrival_date || null, tracking_number: args.tracking_number || null, notes: args.notes || null }).select().single();
         if (error) return "Error: " + error.message;
         return "PO created (#" + order.id.slice(0, 8) + "): " + args.quantity_ordered + " units ordered. ID: " + order.id;
       }
@@ -331,7 +364,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (!resolvedId) return "Error: Purchase order not found for ID '" + args.order_id + "'. Use the full UUID.";
         const { data: order } = await supabase.from("orders").select("*").eq("id", resolvedId).single();
         if (!order) return "PO not found.";
-        const { data: lot, error: lotErr } = await supabase.from("lots").insert({ org_id: orgId, peptide_id: order.peptide_id, quantity: args.actual_quantity, cost_per_unit: args.actual_cost_per_unit, lot_number: args.lot_number, expiry_date: args.expiry_date || null, payment_status: "unpaid" }).select().single();
+        const { data: lot, error: lotErr } = await supabase.from("lots").insert({ org_id: orgId, peptide_id: order.peptide_id, quantity_received: args.actual_quantity, cost_per_unit: args.actual_cost_per_unit, lot_number: args.lot_number, expiry_date: args.expiry_date || null, payment_status: "unpaid" }).select().single();
         if (lotErr) return "Error creating lot: " + lotErr.message;
         const bottleInserts = Array(args.actual_quantity).fill(null).map(() => ({ lot_id: lot.id, peptide_id: order.peptide_id, status: "in_stock", created_at: new Date().toISOString() }));
         await supabase.from("bottles").insert(bottleInserts);
@@ -810,7 +843,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     { data: recentOrders },
   ] = await Promise.all([
     supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", orgId).order("name"),
-    supabase.from("lots").select("peptide_id, cost_per_unit").eq("org_id", orgId),
+    supabase.from("lots").select("peptide_id, cost_per_unit, quantity_received").eq("org_id", orgId),
     supabase.from("bottles").select("peptide_id").eq("status", "in_stock"),
     supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
     supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10),
@@ -819,16 +852,18 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
   const stockMap: Record<string, number> = {};
   stockBottles?.forEach((b: any) => { stockMap[b.peptide_id] = (stockMap[b.peptide_id] || 0) + 1; });
 
-  const costMap: Record<string, { total: number; count: number }> = {};
+  const costMap: Record<string, { totalCost: number; totalQty: number }> = {};
   allLots?.forEach((l: any) => {
-    if (!costMap[l.peptide_id]) costMap[l.peptide_id] = { total: 0, count: 0 };
-    costMap[l.peptide_id].total += Number(l.cost_per_unit);
-    costMap[l.peptide_id].count++;
+    const cost = Number(l.cost_per_unit || 0);
+    const qty = Number(l.quantity_received || 0);
+    if (!costMap[l.peptide_id]) costMap[l.peptide_id] = { totalCost: 0, totalQty: 0 };
+    costMap[l.peptide_id].totalCost += cost * qty;
+    costMap[l.peptide_id].totalQty += qty;
   });
 
   const catalogLines = (allPeptides || []).map((p: any) => {
     const stock = stockMap[p.id] || 0;
-    const avg = costMap[p.id] ? costMap[p.id].total / costMap[p.id].count : 0;
+    const avg = costMap[p.id] && costMap[p.id].totalQty > 0 ? costMap[p.id].totalCost / costMap[p.id].totalQty : 0;
     return p.name + " | Stock: " + stock + " | Cost: $" + avg.toFixed(2) + " | 2x: $" + (avg * 2).toFixed(2) + " | 3x: $" + (avg * 3).toFixed(2) + " | MSRP: $" + Number(p.retail_price).toFixed(2) + (p.active === false ? " | INACTIVE" : "") + " | ID: " + p.id;
   });
 

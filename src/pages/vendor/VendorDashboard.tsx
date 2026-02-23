@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useTenants, useProvisionTenant } from '@/hooks/use-tenants';
 import { useAllSubscriptions, calculateMRR } from '@/hooks/use-subscription';
@@ -37,6 +38,11 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
         support_email: '',
         primary_color: '#7c3aed',
         seed_sample_peptides: true,
+        // Business-in-a-Box v2
+        plan_name: '',
+        onboarding_path: 'new' as 'new' | 'existing',
+        subdomain: '',
+        seed_supplier_catalog: true,
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -56,6 +62,10 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
                 support_email: form.support_email || undefined,
                 primary_color: form.primary_color,
                 seed_sample_peptides: form.seed_sample_peptides,
+                plan_name: form.plan_name || undefined,
+                onboarding_path: form.onboarding_path,
+                subdomain: form.subdomain || undefined,
+                seed_supplier_catalog: form.seed_supplier_catalog,
             });
 
             toast({
@@ -63,7 +73,7 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
                 description: `Created ${form.org_name} with org ID: ${result.org_id}`,
             });
 
-            setForm({ org_name: '', admin_email: '', admin_name: '', admin_password: '', brand_name: '', support_email: '', primary_color: '#7c3aed', seed_sample_peptides: true });
+            setForm({ org_name: '', admin_email: '', admin_name: '', admin_password: '', brand_name: '', support_email: '', primary_color: '#7c3aed', seed_sample_peptides: true, plan_name: '', onboarding_path: 'new', subdomain: '', seed_supplier_catalog: true });
             setOpen(false);
             onSuccess();
         } catch (err: unknown) {
@@ -118,6 +128,48 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
                         <Switch checked={form.seed_sample_peptides} onCheckedChange={v => setForm(f => ({ ...f, seed_sample_peptides: v }))} />
                         <Label>Seed sample peptides (BPC-157, TB-500, Semaglutide, CJC-1295, Ipamorelin)</Label>
                     </div>
+
+                    {/* Business-in-a-Box v2 Fields */}
+                    <div className="border-t pt-4 mt-2">
+                        <p className="text-sm font-medium mb-3">Business-in-a-Box Options</p>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <Label>Onboarding Path</Label>
+                                    <Select value={form.onboarding_path} onValueChange={v => setForm(f => ({ ...f, onboarding_path: v as 'new' | 'existing' }))}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="new">New Business</SelectItem>
+                                            <SelectItem value="existing">Existing Business</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Plan</Label>
+                                    <Select value={form.plan_name} onValueChange={v => setForm(f => ({ ...f, plan_name: v }))}>
+                                        <SelectTrigger><SelectValue placeholder="No plan" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="starter">Starter ($349/mo)</SelectItem>
+                                            <SelectItem value="professional">Professional ($499/mo)</SelectItem>
+                                            <SelectItem value="enterprise">Enterprise ($1,299/mo)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Subdomain</Label>
+                                <div className="flex items-center gap-1">
+                                    <Input value={form.subdomain} onChange={e => setForm(f => ({ ...f, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} placeholder="acmepeptides" className="flex-1" />
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap">.thepeptideai.com</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Switch checked={form.seed_supplier_catalog} onCheckedChange={v => setForm(f => ({ ...f, seed_supplier_catalog: v }))} />
+                                <Label>Seed supplier catalog (copy your peptide products into their account)</Label>
+                            </div>
+                        </div>
+                    </div>
+
                     <Button type="submit" className="w-full" disabled={provision.isPending}>
                         {provision.isPending ? 'Provisioning...' : 'Create Tenant'}
                     </Button>
