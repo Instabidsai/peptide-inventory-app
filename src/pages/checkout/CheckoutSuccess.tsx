@@ -16,6 +16,7 @@ import {
     Check,
     Truck,
     Mail,
+    RefreshCw,
 } from 'lucide-react';
 
 export default function CheckoutSuccess() {
@@ -24,6 +25,8 @@ export default function CheckoutSuccess() {
     const orderId = searchParams.get('orderId');
     const [showConfetti, setShowConfetti] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [pollCount, setPollCount] = useState(0);
+    const pollingTimedOut = pollCount >= 40; // 40 polls × 3s = 2 minutes
 
     const copyOrderId = () => {
         if (orderId) {
@@ -33,11 +36,12 @@ export default function CheckoutSuccess() {
         }
     };
 
-    // Poll order status to confirm payment via webhook
-    const { data: order, isLoading } = useQuery({
+    // Poll order status to confirm payment via webhook (max 2 minutes)
+    const { data: order, isLoading, refetch } = useQuery({
         queryKey: ['checkout_order', orderId],
         queryFn: async () => {
             if (!orderId) return null;
+            setPollCount(c => c + 1);
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
@@ -60,6 +64,8 @@ export default function CheckoutSuccess() {
             if (d?.payment_status === 'paid' || d?.psifi_status === 'complete') {
                 return false;
             }
+            // Stop after 40 polls (~2 minutes)
+            if (pollCount >= 40) return false;
             return 3000; // Poll every 3s
         },
     });
@@ -122,13 +128,30 @@ export default function CheckoutSuccess() {
                                     <Clock className="h-10 w-10 text-amber-500 animate-pulse" />
                                 </div>
                             </div>
-                            <h1 className="text-2xl font-bold tracking-tight">
-                                Confirming Payment...
-                            </h1>
-                            <p className="text-muted-foreground">
-                                We're confirming your payment with the processor. This usually takes a few seconds.
-                            </p>
-                            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                            {pollingTimedOut ? (
+                                <>
+                                    <h1 className="text-2xl font-bold tracking-tight">
+                                        Payment is Being Processed
+                                    </h1>
+                                    <p className="text-muted-foreground">
+                                        Your payment is still being confirmed. You'll receive a confirmation email shortly.
+                                    </p>
+                                    <Button variant="outline" size="sm" onClick={() => { setPollCount(0); refetch(); }}>
+                                        <RefreshCw className="h-4 w-4 mr-2" />
+                                        Check Again
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="text-2xl font-bold tracking-tight">
+                                        Confirming Payment...
+                                    </h1>
+                                    <p className="text-muted-foreground">
+                                        We're confirming your payment with the processor. This usually takes a few seconds.
+                                    </p>
+                                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                                </>
+                            )}
                         </>
                     ) : (
                         <>

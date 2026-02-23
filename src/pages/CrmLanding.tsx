@@ -1694,9 +1694,9 @@ function Pricing() {
   const navigate = useNavigate();
   const { data: plans } = useSubscriptionPlans();
 
-  // Filter out free plan and sort
+  // Show all active plans including free tier (best for conversion)
   const visiblePlans = (plans ?? [])
-    .filter((p) => p.name !== "free" && p.active)
+    .filter((p) => p.active)
     .sort((a, b) => a.sort_order - b.sort_order);
 
   // Fallback plans if DB isn't seeded
@@ -1988,7 +1988,8 @@ function FinalCta() {
               size="sm"
               className="text-muted-foreground hover:text-foreground"
               onClick={() => {
-                window.location.href = `mailto:${PLATFORM.supportEmail}?subject=Demo Request`;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                navigate('/auth?mode=signup&plan=free');
               }}
             >
               Book a Live Demo
@@ -2109,9 +2110,9 @@ function Footer() {
         {/* Security badges */}
         <div className="mt-8 flex flex-wrap justify-center gap-6">
           {[
-            { icon: Shield, label: "SOC2 Ready" },
+            { icon: Shield, label: "Security Best Practices" },
             { icon: Lock, label: "256-bit Encrypted" },
-            { icon: BadgeCheck, label: "HIPAA Aware" },
+            { icon: BadgeCheck, label: "Row-Level Data Isolation" },
           ].map((badge) => (
             <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <badge.icon className="w-3.5 h-3.5 text-emerald-400/70" />

@@ -26,10 +26,25 @@ const signupSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
+  agreedToTerms: z.literal(true, { errorMap: () => ({ message: 'You must agree to the terms' }) }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 10) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 1) return { score: 20, label: 'Weak', color: 'bg-red-500' };
+  if (score <= 2) return { score: 40, label: 'Fair', color: 'bg-orange-500' };
+  if (score <= 3) return { score: 60, label: 'Good', color: 'bg-yellow-500' };
+  if (score <= 4) return { score: 80, label: 'Strong', color: 'bg-emerald-500' };
+  return { score: 100, label: 'Very Strong', color: 'bg-emerald-400' };
+}
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -135,8 +150,11 @@ function SignupForm({
 }) {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: defaultEmail || '', password: '', confirmPassword: '', fullName: '' },
+    defaultValues: { email: defaultEmail || '', password: '', confirmPassword: '', fullName: '', agreedToTerms: false as unknown as true },
   });
+
+  const watchPassword = form.watch('password');
+  const strength = watchPassword ? getPasswordStrength(watchPassword) : null;
 
   return (
     <Form {...form}>
@@ -193,6 +211,14 @@ function SignupForm({
                   {...field}
                 />
               </FormControl>
+              {strength && (
+                <div className="space-y-1 pt-1">
+                  <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-300 ${strength.color}`} style={{ width: `${strength.score}%` }} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{strength.label}</p>
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -212,6 +238,29 @@ function SignupForm({
                   {...field}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="agreedToTerms"
+          render={({ field }) => (
+            <FormItem>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={field.value === true}
+                  onChange={(e) => field.onChange(e.target.checked ? true : false)}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                />
+                <span className="text-xs text-muted-foreground leading-tight">
+                  I agree to the{' '}
+                  <a href="/#/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>
+                </span>
+              </label>
               <FormMessage />
             </FormItem>
           )}
@@ -236,7 +285,7 @@ export default function Auth() {
   const { toast } = useToast();
   const referralHandled = useRef(false);
   const linkingInProgress = useRef(false);
-  const { brand_name: brandName } = useTenantConfig();
+  const { brand_name: brandName, logo_url: logoUrl } = useTenantConfig();
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
@@ -493,7 +542,11 @@ export default function Auth() {
               className="flex justify-center mb-4"
             >
               <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/20 glow-primary">
-                <FlaskConical className="h-8 w-8 text-primary" />
+                {logoUrl ? (
+                  <img src={logoUrl} alt={brandName} className="h-8 w-8 rounded object-contain" />
+                ) : (
+                  <FlaskConical className="h-8 w-8 text-primary" />
+                )}
               </div>
             </motion.div>
             <motion.div

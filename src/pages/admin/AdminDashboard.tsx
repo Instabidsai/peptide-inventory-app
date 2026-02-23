@@ -29,7 +29,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 const staggerContainer = {
     hidden: {},
@@ -51,6 +51,15 @@ export default function AdminDashboard() {
     const handleSetViewMode = (mode: 'operations' | 'investment') => {
         setViewMode(mode);
         localStorage.setItem('dashboard_view_mode', mode);
+    };
+
+    // One-time welcome modal for new users
+    const [showWelcome, setShowWelcome] = useState(() => {
+        return !localStorage.getItem('peptide_welcome_dismissed');
+    });
+    const dismissWelcome = () => {
+        setShowWelcome(false);
+        localStorage.setItem('peptide_welcome_dismissed', '1');
     };
 
     const { data: stats, isLoading: statsLoading } = useBottleStats();
@@ -136,6 +145,43 @@ export default function AdminDashboard() {
 
     return (
         <div className="space-y-6">
+
+            {/* One-time welcome modal */}
+            {showWelcome && (
+                <motion.div
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                >
+                    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-emerald-500/5">
+                        <CardContent className="pt-6 pb-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-3 flex-1">
+                                    <h2 className="text-lg font-semibold">Welcome to {organization?.name || 'ThePeptideAI'}!</h2>
+                                    <p className="text-sm text-muted-foreground">Here's how to get started:</p>
+                                    <div className="grid sm:grid-cols-2 gap-2">
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/peptides"><Package className="mr-2 h-3.5 w-3.5" /> Add Your First Peptide</Link>
+                                        </Button>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/settings"><ClipboardList className="mr-2 h-3.5 w-3.5" /> Configure Settings</Link>
+                                        </Button>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/team"><Users className="mr-2 h-3.5 w-3.5" /> Invite Team Members</Link>
+                                        </Button>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/settings"><DollarSign className="mr-2 h-3.5 w-3.5" /> Set Up Payments</Link>
+                                        </Button>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" onClick={dismissWelcome} className="shrink-0 text-muted-foreground">
+                                    Dismiss
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
 
             {/* Header */}
             <motion.div

@@ -199,7 +199,12 @@ export default function ClientStore() {
     const { toast } = useToast();
     const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
     const navigate = useNavigate();
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        try {
+            const saved = localStorage.getItem('peptide_cart');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -212,6 +217,13 @@ export default function ClientStore() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
     const [searchParams, setSearchParams] = useSearchParams();
+
+    const MAX_ITEM_QTY = 10;
+
+    // Persist cart to localStorage
+    useEffect(() => {
+        localStorage.setItem('peptide_cart', JSON.stringify(cart));
+    }, [cart]);
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
@@ -321,6 +333,10 @@ export default function ClientStore() {
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
+                if (existing.quantity >= MAX_ITEM_QTY) {
+                    toast({ title: 'Quantity limit reached', description: `Maximum ${MAX_ITEM_QTY} per item.` });
+                    return prev;
+                }
                 return prev.map(i =>
                     i.peptide_id === peptide.id
                         ? { ...i, quantity: i.quantity + 1 }
@@ -340,7 +356,7 @@ export default function ClientStore() {
         setCart(prev =>
             prev.map(i => {
                 if (i.peptide_id !== peptideId) return i;
-                const newQty = Math.max(0, i.quantity + delta);
+                const newQty = Math.min(MAX_ITEM_QTY, Math.max(0, i.quantity + delta));
                 return { ...i, quantity: newQty };
             }).filter(i => i.quantity > 0)
         );
@@ -393,6 +409,9 @@ export default function ClientStore() {
     const handleCardCheckout = async () => {
         if (!user?.id) return;
         if (cart.length === 0) return;
+
+        // Clear saved cart before redirect — user will see CheckoutSuccess on return
+        localStorage.removeItem('peptide_cart');
 
         checkout.mutate({
             items: cart.map(i => ({

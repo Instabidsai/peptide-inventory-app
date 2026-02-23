@@ -167,10 +167,16 @@ export default function PartnerStore() {
         return Math.round(retail * 0.4 * 100) / 100;
     };
 
+    const MAX_ITEM_QTY = 10;
+
     const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
+                if (existing.quantity >= MAX_ITEM_QTY) {
+                    toast({ title: 'Quantity limit reached', description: `Maximum ${MAX_ITEM_QTY} per item.` });
+                    return prev;
+                }
                 return prev.map(i =>
                     i.peptide_id === peptide.id
                         ? { ...i, quantity: i.quantity + 1 }
@@ -191,7 +197,7 @@ export default function PartnerStore() {
         setCart(prev =>
             prev.map(i => {
                 if (i.peptide_id !== peptideId) return i;
-                const newQty = Math.max(0, i.quantity + delta);
+                const newQty = Math.min(MAX_ITEM_QTY, Math.max(0, i.quantity + delta));
                 return { ...i, quantity: newQty };
             }).filter(i => i.quantity > 0)
         );

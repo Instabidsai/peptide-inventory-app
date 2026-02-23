@@ -220,12 +220,15 @@ export function useValidatedCheckout() {
 
 /**
  * Hook to check the payment status of an order (used on success/cancel pages)
+ * Stops polling after payment confirmed, order cancelled, or ~2 minutes (40 polls).
  */
 export function useOrderPaymentStatus(orderId: string | null) {
+    let pollCount = 0;
     return useQuery({
         queryKey: ['order_payment_status', orderId],
         queryFn: async () => {
             if (!orderId) return null;
+            pollCount++;
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select('id, status, payment_status, psifi_status, total_amount, created_at')
@@ -239,6 +242,7 @@ export function useOrderPaymentStatus(orderId: string | null) {
             // Stop polling once payment is confirmed
             const d = query?.state?.data;
             if (d?.payment_status === 'paid' || d?.status === 'cancelled') return false;
+            if (pollCount >= 40) return false;
             return 3000;
         },
     });

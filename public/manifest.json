@@ -1,11 +1,11 @@
 {
-  "name": "Peptide CRM",
-  "short_name": "PeptideCRM",
+  "name": "ThePeptideAI",
+  "short_name": "PeptideAI",
   "description": "AI-powered command center for peptide businesses.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#10b981",
+  "theme_color": "#7c3aed",
   "icons": [
     {
       "src": "/favicon.svg",

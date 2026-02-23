@@ -1,11 +1,13 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { FlaskConical, Home, ArrowLeft, Search } from "lucide-react";
+import { FlaskConical, Home, ArrowLeft, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NotFound = () => {
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -58,18 +60,21 @@ const NotFound = () => {
           transition={{ delay: 0.4 }}
           className="flex flex-col sm:flex-row gap-3 justify-center"
         >
-          <Button asChild>
-            <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/peptides">
-              <Search className="mr-2 h-4 w-4" />
-              Peptides
-            </Link>
-          </Button>
+          {user ? (
+            <Button asChild>
+              <Link to="/">
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/crm">
+                <Globe className="mr-2 h-4 w-4" />
+                Home
+              </Link>
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => window.history.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Go Back
