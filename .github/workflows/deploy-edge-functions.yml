@@ -47,6 +47,7 @@ jobs:
             send-email
             sms-webhook
             telegram-webhook
+            textbelt-webhook
           )
           for fn in "${functions[@]}"; do
             echo "Deploying $fn..."

@@ -42,7 +42,8 @@ You can help with:
 - CUSTOMER HISTORY: Full contact profile with all orders, total spent, balance owed
 - GIVEAWAYS/LOSSES: Record giveaways, internal use, or losses with automatic FIFO bottle allocation
 - VOID ORDERS: Cancel orders and auto-restore inventory + void commissions
-- SUGGESTIONS: Submit feature suggestions or bug reports for the admin to review`;
+- SUGGESTIONS: Submit feature suggestions or bug reports for the admin to review
+- SMS: Send text messages to contacts/customers. Look up their phone number from contacts, then use send_sms.`;
 
 export const STAFF_SYSTEM_PROMPT = `You are the operations assistant for ${BRAND_NAME} peptide inventory system. You are a staff member with access to day-to-day operations.
 
@@ -201,6 +202,7 @@ export const tools = [
   { type: "function" as const, function: { name: "void_order", description: "Cancel/void an order. If fulfilled, restores bottles to in_stock. Also voids any commissions.", parameters: { type: "object", properties: { order_id: { type: "string" }, reason: { type: "string" } }, required: ["order_id"] } } },
   { type: "function" as const, function: { name: "submit_suggestion", description: "Submit a feature suggestion or improvement idea for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { suggestion: { type: "string", description: "The feature idea or improvement suggestion" } }, required: ["suggestion"] } } },
   { type: "function" as const, function: { name: "report_issue", description: "Report a bug or issue for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { description: { type: "string", description: "Description of the bug or issue" } }, required: ["description"] } } },
+  { type: "function" as const, function: { name: "send_sms", description: "Send an SMS text message to a contact's phone number. Look up the contact first to get their phone number. Keep messages concise (under 300 chars). The message is sent via Textbelt and the contact can reply back.", parameters: { type: "object", properties: { phone: { type: "string", description: "Phone number in E.164 format (+15551234567) or 10-digit US format" }, message: { type: "string", description: "The text message to send (keep under 300 chars)" }, contact_name: { type: "string", description: "Name of recipient (for logging)" } }, required: ["phone", "message"] } } },
 ];
 
 // ── UUID resolvers ───────────────────────────────────────────
@@ -677,6 +679,35 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { error } = await supabase.from("partner_suggestions").insert({ org_id: orgId, partner_id: userId, suggestion_text: args.description, category: "bug" });
         if (error) return "Error saving report: " + error.message;
         return "Issue reported! It will appear in the admin Automations queue for review.";
+      }
+      case "send_sms": {
+        const textbeltKey = Deno.env.get("TEXTBELT_API_KEY");
+        if (!textbeltKey) return "Error: SMS not configured. Set TEXTBELT_API_KEY in Supabase secrets.";
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+        const webhookUrl = supabaseUrl + "/functions/v1/textbelt-webhook";
+        const resp = await fetch("https://textbelt.com/text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: args.phone,
+            message: args.message,
+            key: textbeltKey,
+            replyWebhookUrl: webhookUrl,
+          }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+          // Log the outbound SMS
+          await supabase.from("admin_ai_logs").insert({
+            user_id: userId,
+            tool_name: "send_sms",
+            tool_args: { phone: args.phone, contact_name: args.contact_name || "unknown" },
+            tool_result: "Sent. textId=" + result.textId + ", quota=" + result.quotaRemaining,
+            duration_ms: 0,
+          });
+          return "SMS sent to " + args.phone + (args.contact_name ? " (" + args.contact_name + ")" : "") + ". Message: \"" + args.message + "\". Quota remaining: " + result.quotaRemaining + ". If they reply, it will come back to the AI.";
+        }
+        return "SMS failed: " + (result.error || "Unknown error") + ". Quota: " + result.quotaRemaining;
       }
       default:
         return "Unknown tool: " + name;
