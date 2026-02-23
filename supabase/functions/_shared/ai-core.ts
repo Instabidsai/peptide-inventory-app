@@ -367,7 +367,10 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const lineItems = args.items.map((i: any) => ({ sales_order_id: order.id, peptide_id: i.peptide_id, quantity: i.quantity, unit_price: i.unit_price }));
         const { error: itemErr } = await supabase.from("sales_order_items").insert(lineItems);
         if (itemErr) return "Order created (#" + order.id.slice(0, 8) + ") but items failed: " + itemErr.message;
-        if (repId) { await supabase.rpc("process_sale_commission", { p_sale_id: order.id }).catch(() => {}); }
+        if (repId) {
+          await supabase.rpc("process_sale_commission", { p_sale_id: order.id }).catch(() => {});
+          notifyPartnerCommissions(supabase, order.id, orgId).catch(() => {});
+        }
         const itemSummary = args.items.map((i: any) => i.quantity + "x @ $" + i.unit_price.toFixed(2)).join(", ");
         return "Order #" + order.id.slice(0, 8) + " created (SUBMITTED — ready for Pick & Pack)" + (shippingAddr ? "\nShip to: " + shippingAddr : "\nWARNING: No shipping address!") + "\nItems: " + itemSummary + "\nTotal: $" + totalAmount.toFixed(2) + "\nDelivery: " + (args.delivery_method || "ship") + "\nFull ID: " + order.id;
       }
@@ -428,6 +431,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         }
         await supabase.from("sales_orders").update({ status: "fulfilled" }).eq("id", order.id);
         await supabase.rpc("process_sale_commission", { p_sale_id: order.id }).catch(() => {});
+        notifyPartnerCommissions(supabase, order.id, orgId).catch(() => {});
         const totalBottles = order.sales_order_items.reduce((s: number, i: any) => s + i.quantity, 0);
         return "Order #" + order.id.slice(0, 8) + " FULFILLED. " + totalBottles + " bottles deducted from inventory.";
       }
@@ -714,6 +718,75 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
     }
   } catch (err: any) {
     return "Tool error (" + name + "): " + err.message;
+  }
+}
+
+// ── Partner commission SMS notifications ─────────────────────
+async function notifyPartnerCommissions(supabase: any, saleId: string, orgId: string): Promise<void> {
+  try {
+    const textbeltKey = Deno.env.get("TEXTBELT_API_KEY");
+    if (!textbeltKey) return; // SMS not configured — skip silently
+
+    // Get commissions just created for this sale
+    const { data: commissions } = await supabase
+      .from("commissions")
+      .select("partner_id, amount, type, commission_rate")
+      .eq("sale_id", saleId);
+
+    if (!commissions?.length) return;
+
+    // Get the order details for context
+    const { data: order } = await supabase
+      .from("sales_orders")
+      .select("total_amount, contacts(name)")
+      .eq("id", saleId)
+      .single();
+
+    const customerName = order?.contacts?.name || "a customer";
+    const orderTotal = Number(order?.total_amount || 0).toFixed(2);
+
+    // Group commissions by partner (a partner can have both 'available' + 'pending' entries)
+    const partnerTotals: Record<string, number> = {};
+    for (const c of commissions) {
+      partnerTotals[c.partner_id] = (partnerTotals[c.partner_id] || 0) + Number(c.amount);
+    }
+
+    // Send SMS to each partner
+    for (const [partnerId, totalCommission] of Object.entries(partnerTotals)) {
+      if (totalCommission <= 0) continue;
+
+      // Get partner profile name
+      const { data: partnerProfile } = await supabase
+        .from("profiles")
+        .select("full_name, user_id")
+        .eq("id", partnerId)
+        .single();
+
+      if (!partnerProfile) continue;
+
+      // Find partner's phone number via their linked contact record
+      const { data: partnerContact } = await supabase
+        .from("contacts")
+        .select("phone")
+        .eq("org_id", orgId)
+        .eq("linked_user_id", partnerProfile.user_id)
+        .single();
+
+      const phone = partnerContact?.phone;
+      if (!phone) continue; // No phone number — can't notify
+
+      const firstName = (partnerProfile.full_name || "").split(" ")[0] || "Partner";
+      const msg = `${firstName}, new sale! ${customerName} - $${orderTotal}. Your commission: $${totalCommission.toFixed(2)}`;
+
+      // Send via Textbelt (fire and forget — don't block order flow)
+      fetch("https://textbelt.com/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, message: msg, key: textbeltKey }),
+      }).catch(() => {}); // Silent fail — notifications shouldn't break orders
+    }
+  } catch {
+    // Never let notification errors break the order flow
   }
 }
 

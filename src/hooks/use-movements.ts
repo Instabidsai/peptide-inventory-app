@@ -458,7 +458,12 @@ export function useCreateMovement() {
               const { error: rpcErr } = await supabase.rpc('process_sale_commission', {
                 p_sale_id: salesOrder.id,
               });
-              if (rpcErr) console.error('process_sale_commission RPC failed:', rpcErr);
+              if (rpcErr) {
+                console.error('process_sale_commission RPC failed:', rpcErr);
+              } else {
+                // Notify partners via SMS (fire and forget)
+                supabase.functions.invoke('notify-commission', { body: { sale_id: salesOrder.id } }).catch(() => {});
+              }
             }
           }
         } catch (commErr) {

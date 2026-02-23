@@ -38,6 +38,7 @@ jobs:
             composio-connect
             exchange-token
             invite-user
+            notify-commission
             partner-ai-chat
             process-health-document
             promote-contact

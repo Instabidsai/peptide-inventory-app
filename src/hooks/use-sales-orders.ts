@@ -321,6 +321,9 @@ export function useCreateSalesOrder() {
                     if (commError) {
                         console.error("Manual commission insert failed:", commError);
                         toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
+                    } else {
+                        // Notify partners via SMS (fire and forget)
+                        supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
                     }
                 } else {
                     // Auto commission via RPC (existing behavior)
@@ -328,6 +331,9 @@ export function useCreateSalesOrder() {
                     if (rpcError) {
                         console.error("Commission processing failed:", rpcError);
                         toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                    } else {
+                        // Notify partners via SMS (fire and forget)
+                        supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
                     }
                 }
             }
@@ -723,6 +729,9 @@ export function useFulfillOrder() {
                 if (rpcError) {
                     console.error("Commission processing on fulfill failed:", rpcError);
                     toast({ title: "Warning", description: "Order fulfilled but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                } else {
+                    // Notify partners via SMS (fire and forget)
+                    supabase.functions.invoke('notify-commission', { body: { sale_id: orderId } }).catch(() => {});
                 }
             }
 
