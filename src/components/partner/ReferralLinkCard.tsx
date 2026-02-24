@@ -10,16 +10,18 @@ interface ReferralLinkCardProps {
     profileId: string | undefined;
     /** Current partner's tier — only senior+ can see the partner recruitment link */
     partnerTier?: string;
+    /** Current user's role — admins always see both links */
+    userRole?: string;
 }
 
-export function ReferralLinkCard({ profileId, partnerTier }: ReferralLinkCardProps) {
+export function ReferralLinkCard({ profileId, partnerTier, userRole }: ReferralLinkCardProps) {
     const [copiedType, setCopiedType] = useState<string | null>(null);
 
     if (!profileId) return null;
 
     const customerUrl = `${window.location.origin}/#/auth?ref=${profileId}`;
     const partnerUrl = `${window.location.origin}/#/auth?ref=${profileId}&role=partner`;
-    const canRecruit = CAN_RECRUIT_TIERS.includes(partnerTier || '');
+    const canRecruit = userRole === 'admin' || userRole === 'super_admin' || CAN_RECRUIT_TIERS.includes(partnerTier || '');
 
     const handleCopy = async (url: string, type: string) => {
         try {

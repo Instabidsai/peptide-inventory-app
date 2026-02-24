@@ -646,7 +646,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <Link2 className="h-5 w-5" /> Partner Invite Links
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                        Each partner has two links: one that creates <strong>customers</strong> under them, and one that recruits new <strong>partners</strong> under them.
+                        Each partner has a <strong>customer</strong> link. Only <strong>senior+</strong> partners can also recruit new partners.
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -657,6 +657,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                             {reps.map(rep => {
                                 const customerUrl = `${window.location.origin}/#/auth?ref=${rep.id}`;
                                 const partnerUrl = `${window.location.origin}/#/auth?ref=${rep.id}&role=partner`;
+                                const canRecruit = ['senior', 'director', 'executive'].includes(rep.partner_tier || '');
                                 return (
                                     <div
                                         key={rep.id}
@@ -670,6 +671,11 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                             >
                                                 {rep.partner_tier || 'standard'}
                                             </Badge>
+                                            {canRecruit && (
+                                                <Badge variant="outline" className="text-xs bg-violet-900/30 text-violet-400 border-violet-500/50">
+                                                    Can Recruit
+                                                </Badge>
+                                            )}
                                             <span className="text-xs text-muted-foreground ml-auto">{rep.email}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -677,11 +683,13 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                             <code className="flex-1 text-[11px] bg-black/10 rounded-lg px-3 py-1.5 text-muted-foreground/70 truncate">{customerUrl}</code>
                                             <CopyBtn url={customerUrl} copyKey={`${rep.id}-cust`} label="Customer" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-violet-400 w-20 shrink-0">Partner:</span>
-                                            <code className="flex-1 text-[11px] bg-violet-500/10 rounded-lg px-3 py-1.5 text-violet-300/70 truncate">{partnerUrl}</code>
-                                            <CopyBtn url={partnerUrl} copyKey={`${rep.id}-partner`} label="Partner" />
-                                        </div>
+                                        {canRecruit && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-violet-400 w-20 shrink-0">Partner:</span>
+                                                <code className="flex-1 text-[11px] bg-violet-500/10 rounded-lg px-3 py-1.5 text-violet-300/70 truncate">{partnerUrl}</code>
+                                                <CopyBtn url={partnerUrl} copyKey={`${rep.id}-partner`} label="Partner" />
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

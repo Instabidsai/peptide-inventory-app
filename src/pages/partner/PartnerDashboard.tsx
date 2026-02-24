@@ -236,7 +236,7 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Referral Links */}
-            <ReferralLinkCard profileId={myProfileId} partnerTier={tier} />
+            <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} />
             <TeamReferralLinks downline={downline || []} />
 
             {/* Stats Overview */}
