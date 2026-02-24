@@ -151,7 +151,9 @@ const App = () => (
                             <Route element={
                                 <ProtectedRoute>
                                     <RoleBasedRedirect allowedRoles={['client', 'customer']}>
-                                        <ClientLayout />
+                                        <ErrorBoundary>
+                                            <ClientLayout />
+                                        </ErrorBoundary>
                                     </RoleBasedRedirect>
                                 </ProtectedRoute>
                             }>
@@ -175,7 +177,9 @@ const App = () => (
                             <Route element={
                                 <ProtectedRoute>
                                     <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin', 'viewer']}>
-                                        <AppLayout />
+                                        <ErrorBoundary>
+                                            <AppLayout />
+                                        </ErrorBoundary>
                                     </RoleBasedRedirect>
                                 </ProtectedRoute>
                             }>

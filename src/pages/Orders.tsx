@@ -3,6 +3,7 @@ import { toast } from '@/hooks/use-toast';
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder, useMarkOrderReceived, useCancelOrder, useRecordOrderPayment, type Order, type OrderStatus } from '@/hooks/use-orders';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -73,6 +74,7 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 export default function Orders() {
+    usePageTitle('Purchase Orders');
     const [searchParams] = useSearchParams();
     const initialStatus = searchParams.get('status') as OrderStatus | null;
 

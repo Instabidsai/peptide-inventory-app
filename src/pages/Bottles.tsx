@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useBottles, useDeleteBottle, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,7 @@ const statusLabels: Record<BottleStatus, string> = {
 };
 
 export default function Bottles() {
+  usePageTitle('Inventory');
   const [searchParams] = useSearchParams();
   const { userRole } = useAuth();
   const isMobile = useIsMobile();

@@ -1,64 +1,93 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+import { authenticateCron, AuthError } from "../_shared/auth.ts";
+import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('origin') || '';
-    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    };
-}
+/**
+ * run-automations — Cron-triggered automation executor.
+ * Auth: CRON_SECRET header (not user JWT).
+ *
+ * SECURITY: The condition_sql field has been removed to prevent SQL injection.
+ * The update_field and create_record actions use an allowlist of safe tables.
+ */
+
+// Allowlist of tables that automations can write to
+const SAFE_TABLES = new Set([
+    'notifications',
+    'custom_entity_records',
+    'contacts',
+    'movements',
+]);
 
 // Parse cron schedule to check if it should run now
 function shouldCronRun(schedule: string, lastRunAt: string | null): boolean {
-    if (!lastRunAt) return true; // Never ran before
+    if (!lastRunAt) return true;
 
     const parts = schedule.split(' ');
     if (parts.length !== 5) return false;
 
     const now = new Date();
     const lastRun = new Date(lastRunAt);
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    const [minute, hour, , ,] = parts;
 
-    // Simple check: has enough time passed since last run?
-    // For "every 15 min" (*/15 * * * *), check 15 min gap
     if (minute.startsWith('*/')) {
         const interval = parseInt(minute.slice(2)) || 15;
         const minsSinceLastRun = (now.getTime() - lastRun.getTime()) / 60000;
         return minsSinceLastRun >= interval;
     }
 
-    // For hourly (0 * * * *), check 1 hour gap
     if (minute !== '*' && hour === '*') {
         const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / 3600000;
         return hoursSinceLastRun >= 1;
     }
 
-    // For daily (0 8 * * *), check 24 hour gap
-    if (minute !== '*' && hour !== '*' && dayOfMonth === '*') {
+    if (minute !== '*' && hour !== '*') {
         const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / 3600000;
         return hoursSinceLastRun >= 23;
     }
 
-    // Default: run if more than 1 hour since last run
     const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / 3600000;
     return hoursSinceLastRun >= 1;
 }
 
+interface ActionConfig {
+    title?: string;
+    body?: string;
+    to?: string;
+    subject?: string;
+    template?: string;
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    payload?: Record<string, unknown>;
+    table?: string;
+    field?: string;
+    value?: unknown;
+    match?: Record<string, unknown>;
+    data?: Record<string, unknown>;
+}
+
+interface Automation {
+    id: string;
+    name: string;
+    org_id: string;
+    action_type: string;
+    action_config: ActionConfig;
+    trigger_config: { schedule?: string; table?: string };
+    last_run_at: string | null;
+    run_count: number;
+}
+
 async function executeAction(
-    automation: any,
-    supabase: any,
-    orgId: string
+    automation: Automation,
+    supabase: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2").createClient>,
+    orgId: string,
 ): Promise<{ success: boolean; message: string }> {
     const { action_type, action_config } = automation;
 
     switch (action_type) {
         case "notification": {
-            // Insert into notifications table
             const { error } = await supabase.from("notifications").insert({
                 org_id: orgId,
                 title: action_config.title || "Automation Alert",
@@ -71,7 +100,6 @@ async function executeAction(
         }
 
         case "email": {
-            // Call the platform email edge function
             const sbUrl = Deno.env.get("SUPABASE_URL");
             const sbAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
             if (!sbUrl || !sbAnonKey) return { success: false, message: "Missing Supabase config for email" };
@@ -97,7 +125,6 @@ async function executeAction(
         }
 
         case "webhook": {
-            // SSRF protection: block private/internal URLs
             const webhookUrl = action_config.url || '';
             try {
                 const parsed = new URL(webhookUrl);
@@ -141,9 +168,12 @@ async function executeAction(
         }
 
         case "update_field": {
-            // Update a field on matching records
             if (!action_config.table || !action_config.field || action_config.value === undefined) {
                 return { success: false, message: "update_field requires table, field, and value" };
+            }
+            // Table allowlist — prevent arbitrary table writes
+            if (!SAFE_TABLES.has(action_config.table)) {
+                return { success: false, message: `Table "${action_config.table}" is not allowed for automations` };
             }
 
             const { error } = await supabase
@@ -159,6 +189,10 @@ async function executeAction(
         case "create_record": {
             if (!action_config.table || !action_config.data) {
                 return { success: false, message: "create_record requires table and data" };
+            }
+            // Table allowlist
+            if (!SAFE_TABLES.has(action_config.table)) {
+                return { success: false, message: `Table "${action_config.table}" is not allowed for automations` };
             }
 
             const { error } = await supabase
@@ -176,21 +210,18 @@ async function executeAction(
 
 Deno.serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
-    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-    const json = (body: object, status = 200) =>
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    const preflight = handleCors(req);
+    if (preflight) return preflight;
 
     try {
-        const supabase = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+        // Auth: CRON_SECRET only — not user-triggered
+        const supabase = authenticateCron(req);
 
-        // Fetch all active cron automations across all tenants
+        // Rate limit: 1 req/min (cron only runs periodically)
+        const rl = checkRateLimit('cron:run-automations', { maxRequests: 1, windowMs: 60_000 });
+        if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
+
+        // Fetch all active cron automations
         const { data: automations, error } = await supabase
             .from("custom_automations")
             .select("*")
@@ -199,28 +230,24 @@ Deno.serve(async (req) => {
 
         if (error) {
             console.error("[run-automations] Fetch error:", error.message);
-            return json({ error: error.message }, 500);
+            return jsonResponse({ error: error.message }, 500, corsHeaders);
         }
 
         if (!automations?.length) {
-            return json({ message: "No active cron automations", executed: 0 });
+            return jsonResponse({ message: "No active cron automations", executed: 0 }, 200, corsHeaders);
         }
 
         const results: { id: string; name: string; success: boolean; message: string }[] = [];
 
-        for (const automation of automations) {
+        for (const automation of automations as Automation[]) {
             const schedule = automation.trigger_config?.schedule;
             if (!schedule) continue;
 
             if (!shouldCronRun(schedule, automation.last_run_at)) continue;
 
-            // Check condition if present
-            if (automation.condition_sql) {
-                // For safety, only allow simple conditions
-                const conditionQuery = `SELECT EXISTS(SELECT 1 FROM ${automation.trigger_config.table || 'custom_entity_records'} WHERE org_id = '${automation.org_id}' AND ${automation.condition_sql}) as met`;
-                // Skip condition evaluation for now — just run the action
-                // TODO: implement safe condition evaluation
-            }
+            // SECURITY: condition_sql field is intentionally ignored.
+            // Raw SQL interpolation is a SQL injection vector.
+            // TODO: Replace with safe predicate system (field/operator/value).
 
             const result = await executeAction(automation, supabase, automation.org_id);
             results.push({
@@ -229,7 +256,6 @@ Deno.serve(async (req) => {
                 ...result,
             });
 
-            // Update last_run_at and run_count
             await supabase
                 .from("custom_automations")
                 .update({
@@ -241,12 +267,16 @@ Deno.serve(async (req) => {
 
         console.log(`[run-automations] Executed ${results.length} automations`);
 
-        return json({
+        return jsonResponse({
             message: `Processed ${automations.length} automations, executed ${results.length}`,
             results,
-        });
+        }, 200, corsHeaders);
+
     } catch (err) {
+        if (err instanceof AuthError) {
+            return jsonResponse({ error: err.message }, err.status, corsHeaders);
+        }
         console.error("[run-automations]", err);
-        return json({ error: (err as Error).message || "Internal error" }, 500);
+        return jsonResponse({ error: (err as Error).message || "Internal error" }, 500, corsHeaders);
     }
 });

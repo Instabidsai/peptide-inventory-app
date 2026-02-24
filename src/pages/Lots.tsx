@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLots, useCreateLot, useUpdateLot, useDeleteLot, type Lot } from '@/hooks/use-lots';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,7 @@ const lotSchema = z.object({
 type LotFormData = z.infer<typeof lotSchema>;
 
 export default function Lots() {
+  usePageTitle('Lots');
   const { userRole } = useAuth();
   const { data: lots, isLoading, isError, refetch } = useLots();
   const { data: peptides } = usePeptides();

@@ -2,11 +2,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.86.1";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { sanitizeString } from "../_shared/validate.ts";
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
 
 function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('origin') || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || '');
     return {
-        'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
     };
 }
 
@@ -315,7 +321,15 @@ Deno.serve(async (req) => {
     }
 
     try {
-        const { message, conversation_id } = await req.json();
+        const body = await req.json();
+        const message = sanitizeString(body.message, 5000);
+        if (!message) {
+            return new Response(JSON.stringify({ error: 'message is required (max 5000 chars)' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        const conversation_id = body.conversation_id;
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';

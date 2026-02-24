@@ -2,10 +2,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export function useAIKnowledge() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     // Documents
     const { data: documents = [], isLoading: isLoadingDocs } = useQuery({
@@ -97,6 +99,9 @@ export function useAIKnowledge() {
                 queryClient.invalidateQueries({ queryKey: ['ai-insights', user?.id] });
                 queryClient.invalidateQueries({ queryKey: ['ai-health-profile', user?.id] });
             }, 10000); // Refresh after 10s to give processing time
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to upload document', description: error.message });
         },
     });
 

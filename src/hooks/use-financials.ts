@@ -3,6 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Query result row types for type safety
+interface SaleRow { id: string; amount_paid: number }
+interface MovementRow { id: string }
+interface ExpenseRow { amount: number; category: string }
+interface CommissionRow { amount: number; status: string; sale_id: string }
+interface OrderAggRow { merchant_fee: number; profit_amount: number; cogs_amount: number }
+interface CommOffsetRow { total_amount: number; cogs_amount: number }
+interface MovementItemRow { bottle_id: string }
+interface BottleRow { id: string; lot_id: string }
+interface LotRow { id: string; cost_per_unit: number }
+
 export interface FinancialMetrics {
     inventoryValue: number;
     salesRevenue: number;
@@ -98,7 +109,7 @@ export function useFinancialMetrics() {
 
             // --- Sales Revenue ---
             const sales = salesResult.data || [];
-            const salesRevenue = Math.round(sales.reduce((sum: number, s: any) => sum + (s.amount_paid || 0), 0) * 100) / 100;
+            const salesRevenue = Math.round(sales.reduce((sum: number, s: SaleRow) => sum + (s.amount_paid || 0), 0) * 100) / 100;
 
             // === Phase 2: Two independent chains in parallel (COGS + Overhead) ===
             // Helper to calculate cost from movement IDs → items → bottles → lots
@@ -115,7 +126,7 @@ export function useFinancialMetrics() {
                     return 0;
                 }
 
-                const bottleIds = items?.map((i: any) => i.bottle_id) || [];
+                const bottleIds = items?.map((i: MovementItemRow) => i.bottle_id) || [];
                 if (bottleIds.length === 0) return 0;
 
                 // Fetch bottles and their lots in parallel
@@ -128,7 +139,7 @@ export function useFinancialMetrics() {
                     return 0;
                 }
 
-                const lotIds = [...new Set(bottles?.map((b: any) => b.lot_id).filter(Boolean) || [])];
+                const lotIds = [...new Set(bottles?.map((b: BottleRow) => b.lot_id).filter(Boolean) || [])];
                 if (lotIds.length === 0) return 0;
 
                 const { data: lots, error: lotsError } = await supabase
@@ -140,18 +151,18 @@ export function useFinancialMetrics() {
                     return 0;
                 }
 
-                const lotCostMap = new Map(lots?.map((l: any) => [l.id, l.cost_per_unit]) || []);
-                const bottleLotMap = new Map(bottles?.map((b: any) => [b.id, b.lot_id]) || []);
+                const lotCostMap = new Map(lots?.map((l: LotRow) => [l.id, l.cost_per_unit]) || []);
+                const bottleLotMap = new Map(bottles?.map((b: BottleRow) => [b.id, b.lot_id]) || []);
 
-                return Math.round((items?.reduce((sum: number, item: any) => {
+                return Math.round((items?.reduce((sum: number, item: MovementItemRow) => {
                     const lotId = bottleLotMap.get(item.bottle_id);
                     if (!lotId) return sum;
                     return sum + (lotCostMap.get(lotId) || 0);
                 }, 0) || 0) * 100) / 100;
             }
 
-            const saleIds = sales.map((s: any) => s.id);
-            const overheadIds = (overheadResult.data || []).map((m: any) => m.id);
+            const saleIds = sales.map((s: SaleRow) => s.id);
+            const overheadIds = (overheadResult.data || []).map((m: MovementRow) => m.id);
 
             // Run both cost chains in parallel (fault-isolated)
             const [cogsResult, internalOverheadResult] = await Promise.allSettled([
@@ -169,7 +180,7 @@ export function useFinancialMetrics() {
             let inventoryExpenses = 0;
             let operatingExpenses = 0;
 
-            expensesResult.data?.forEach((e: any) => {
+            expensesResult.data?.forEach((e: ExpenseRow) => {
                 const amt = Number(e.amount);
                 if (e.category === 'inventory') {
                     inventoryExpenses += amt;
@@ -183,7 +194,7 @@ export function useFinancialMetrics() {
             let commissionsOwed = 0;
             let commissionsApplied = 0;
 
-            commissionsResult.data?.forEach((c: any) => {
+            commissionsResult.data?.forEach((c: CommissionRow) => {
                 const amt = Number(c.amount) || 0;
                 switch (c.status) {
                     case 'paid': commissionsPaid += amt; break;
@@ -198,17 +209,17 @@ export function useFinancialMetrics() {
             // --- Per-Order Aggregates ---
             const orderAgg = orderAggResult.data;
 
-            const merchantFees = Math.round((orderAgg?.reduce((s: number, o: any) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
-            const orderBasedProfit = Math.round((orderAgg?.reduce((s: number, o: any) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
-            const orderBasedCogs = Math.round((orderAgg?.reduce((s: number, o: any) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
+            const merchantFees = Math.round((orderAgg?.reduce((s: number, o: OrderAggRow) => s + Number(o.merchant_fee || 0), 0) || 0) * 100) / 100;
+            const orderBasedProfit = Math.round((orderAgg?.reduce((s: number, o: OrderAggRow) => s + Number(o.profit_amount || 0), 0) || 0) * 100) / 100;
+            const orderBasedCogs = Math.round((orderAgg?.reduce((s: number, o: OrderAggRow) => s + Number(o.cogs_amount || 0), 0) || 0) * 100) / 100;
 
             // --- Commission-in-Product ---
             const commOffsetOrders = commOffsetResult.data || [];
             const commissionsInProduct = Math.round(
-                commOffsetOrders.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) * 100
+                commOffsetOrders.reduce((s: number, o: CommOffsetRow) => s + Number(o.total_amount || 0), 0) * 100
             ) / 100;
             const commissionProductCost = Math.round(
-                commOffsetOrders.reduce((s: number, o: any) => s + Number(o.cogs_amount || 0), 0) * 100
+                commOffsetOrders.reduce((s: number, o: CommOffsetRow) => s + Number(o.cogs_amount || 0), 0) * 100
             ) / 100;
             const commissionProductMarkup = Math.round(
                 (commissionsInProduct - commissionProductCost) * 100

@@ -181,53 +181,20 @@ export function useUpdateContact() {
 export function useDeleteContact() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // IMPORTANT: This cascade delete should ideally be a single DB transaction
-      // (e.g., a Supabase RPC/stored procedure) to guarantee atomicity.
-      // If any step fails, earlier deletes cannot be rolled back from the client.
+      if (!profile?.org_id) throw new Error('No organization context');
 
-      // Step 1: Delete dependent sales_orders
-      const { error: soError } = await supabase.from('sales_orders').delete().eq('client_id', id);
-      if (soError) throw new Error(`Failed to delete related sales orders: ${soError.message}`);
+      // Atomic cascade delete via Postgres RPC — all-or-nothing transaction
+      const { data, error } = await supabase.rpc('delete_contact_cascade', {
+        p_contact_id: id,
+        p_org_id: profile.org_id,
+      });
 
-      // Step 2: Delete dependent movements
-      const { error: movError } = await supabase.from('movements').delete().eq('contact_id', id);
-      if (movError) throw new Error(`Failed to delete related movements: ${movError.message}`);
-
-      // Step 3: Delete dependent client_inventory
-      const { error: invError } = await supabase.from('client_inventory').delete().eq('contact_id', id);
-      if (invError) throw new Error(`Failed to delete related inventory: ${invError.message}`);
-
-      // Step 4: Delete protocol children, then protocols
-      const { data: protocols } = await supabase.from('protocols').select('id').eq('contact_id', id);
-      if (protocols && protocols.length > 0) {
-        const protocolIds = protocols.map(p => p.id);
-        const { data: items } = await supabase.from('protocol_items').select('id').in('protocol_id', protocolIds);
-        if (items && items.length > 0) {
-          await supabase.from('protocol_logs').delete().in('protocol_item_id', items.map(i => i.id));
-          await supabase.from('protocol_items').delete().in('protocol_id', protocolIds);
-        }
-        await supabase.from('protocol_supplements').delete().in('protocol_id', protocolIds);
-        await supabase.from('protocol_feedback').delete().in('protocol_id', protocolIds);
-        const { error: protoError } = await supabase.from('protocols').delete().eq('contact_id', id);
-        if (protoError) throw new Error(`Failed to delete related protocols: ${protoError.message}`);
-      }
-
-      // Step 5: Delete contact notes
-      await supabase.from('contact_notes').delete().eq('contact_id', id);
-
-      // Step 6: Delete resources
-      await supabase.from('resources').delete().eq('contact_id', id);
-
-      // Step 7: Finally delete the contact
-      const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw new Error(`Failed to delete contact: ${error.message}`);
+      if (error) throw new Error(`Delete failed: ${error.message}`);
+      if (!data?.success) throw new Error(data?.error || 'Unknown delete error');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });

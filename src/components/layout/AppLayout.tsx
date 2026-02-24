@@ -7,7 +7,8 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
-// Note: framer-motion transitions removed — opacity exit + backdrop-blur caused fuzzy screen on mobile
+// Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
+import { motion } from 'framer-motion';
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +51,14 @@ export function AppLayout() {
           isPartnerRoute && "pb-24 lg:pb-8" // extra bottom padding for mobile nav
         )}>
           <ErrorBoundary>
-            <Outlet />
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
+              <Outlet />
+            </motion.div>
           </ErrorBoundary>
         </main>
       </div>

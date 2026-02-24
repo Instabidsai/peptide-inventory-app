@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export function useAllPartnerSuggestions() {
     const { userRole } = useAuth();
@@ -24,6 +25,7 @@ export function useAllPartnerSuggestions() {
 
 export function useUpdateSuggestionStatus() {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     return useMutation({
         mutationFn: async ({ id, status, admin_notes }: { id: string; status: string; admin_notes?: string }) => {
@@ -39,6 +41,9 @@ export function useUpdateSuggestionStatus() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['vendor-partner-suggestions'] });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to update suggestion', description: error.message });
         },
     });
 }

@@ -144,9 +144,21 @@ Deno.serve(async (req) => {
         if (userData?.user) {
             adminUserId = userData.user.id;
         } else if (userError?.message?.includes('already registered')) {
-            // User exists — find them
-            const { data: userList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-            const found = userList?.users?.find(u => u.email?.toLowerCase() === body.admin_email.toLowerCase());
+            // User exists — find them (profiles first, bounded fallback)
+            const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('email', body.admin_email.toLowerCase())
+                .limit(1)
+                .maybeSingle();
+            let found: { id: string } | undefined;
+            if (existingProfile) {
+                found = { id: existingProfile.user_id };
+            } else {
+                const { data: userList } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 });
+                const match = userList?.users?.find(u => u.email?.toLowerCase() === body.admin_email.toLowerCase());
+                if (match) found = { id: match.id };
+            }
             if (!found) throw new Error('User exists but could not be found');
             adminUserId = found.id;
             results.admin_user_existed = true;

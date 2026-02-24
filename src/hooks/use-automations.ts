@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface Automation {
   id: string;
@@ -39,6 +40,7 @@ export function useAutomations() {
 export function useToggleAutomation() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
@@ -51,12 +53,16 @@ export function useToggleAutomation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automations', profile?.org_id] });
     },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to update automation', description: error.message });
+    },
   });
 }
 
 export function useDeleteAutomation() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -68,6 +74,9 @@ export function useDeleteAutomation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automations', profile?.org_id] });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to delete automation', description: error.message });
     },
   });
 }

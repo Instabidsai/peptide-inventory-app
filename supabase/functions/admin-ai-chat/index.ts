@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { sanitizeString } from "../_shared/validate.ts";
 import {
   ADMIN_SYSTEM_PROMPT,
   STAFF_SYSTEM_PROMPT,
@@ -9,9 +10,13 @@ import {
   runAILoop,
 } from "../_shared/ai-core.ts";
 
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+
 function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || "");
   return {
-    "Access-Control-Allow-Origin": req.headers.get("origin") || "*",
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
@@ -43,9 +48,10 @@ Deno.serve(async (req) => {
     const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
     if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
-    // Parse & save user message
-    const { message } = await req.json();
-    if (!message) return json({ error: "message required" }, 400);
+    // Parse & validate user message
+    const body = await req.json();
+    const message = sanitizeString(body.message, 5000);
+    if (!message) return json({ error: "message required (max 5000 chars)" }, 400);
     await supabase.from("admin_chat_messages").insert({ user_id: user.id, role: "user", content: message });
 
     // Load chat history + smart context in parallel

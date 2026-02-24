@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMovements, useMovementItems, useDeleteMovement, type Movement, type MovementType } from '@/hooks/use-movements';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -400,6 +401,7 @@ function MovementDetailsDialog({
 }
 
 export default function Movements() {
+  usePageTitle('Movements');
   const { userRole, profile, user, authError, session } = useAuth();
   const isMobile = useIsMobile();
   const { data: movements, isLoading, isError, error: queryError, refetch } = useMovements();

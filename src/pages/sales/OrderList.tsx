@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin, Pencil } from 'lucide-react';
+import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin, Pencil, ClipboardList } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
@@ -244,6 +244,13 @@ export default function OrderList() {
             </div>
 
             {/* Mobile Card View */}
+            {isMobile && orders && orders.length === 0 && (
+                <div className="md:hidden text-center py-12 text-muted-foreground">
+                    <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium">No orders found</p>
+                    <p className="text-sm mt-1">{filterStatus !== 'all' || filterPayment !== 'all' ? 'Try adjusting your filters.' : 'Create your first sales order to get started.'}</p>
+                </div>
+            )}
             {isMobile && orders && orders.length > 0 && (
                 <div className="space-y-3 md:hidden">
                     {orders.map((order, index) => (

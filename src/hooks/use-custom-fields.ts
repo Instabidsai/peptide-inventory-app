@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface CustomField {
   id: string;
@@ -88,6 +89,7 @@ export function useCustomFieldValues(entity: string, recordId: string) {
 export function useSaveCustomFieldValue() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ fieldId, recordId, value }: { fieldId: string; recordId: string; value: any }) => {
@@ -104,6 +106,9 @@ export function useSaveCustomFieldValue() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-field-values'] });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to save field value', description: error.message });
     },
   });
 }

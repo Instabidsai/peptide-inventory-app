@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface TenantConnection {
   id: string;
@@ -33,6 +34,7 @@ export function useTenantConnections() {
 export function useConnectService() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (service: string) => {
@@ -48,6 +50,9 @@ export function useConnectService() {
       if (data.redirect_url) {
         window.open(data.redirect_url, '_blank', 'width=600,height=700');
       }
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to connect service', description: error.message });
     },
   });
 }

@@ -1,136 +1,133 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { authenticateRequest, AuthError } from "../_shared/auth.ts";
+import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { isValidEmail, sanitizeString } from "../_shared/validate.ts";
+
 /**
  * send-email — Supabase Edge Function
- * Called by: run-automations (action_type: "email"), or any internal service.
+ * Called by: run-automations (action_type: "email"), or admin/staff users.
  * POST body: { to, subject, html, org_id, from_name, from_email, reply_to }
- * Uses Resend API for delivery. Falls back to logging if no API key configured.
- * API key: checks env var first, then platform_config table (service_role only).
+ * Uses Resend API for delivery.
  */
 
 const RESEND_URL = "https://api.resend.com/emails";
 
-/** Resolve Resend API key: env var → platform_config table */
+/** Resolve Resend API key: env var -> platform_config table */
 async function getResendKey(): Promise<string> {
-  const envKey = Deno.env.get("RESEND_API_KEY");
-  if (envKey) return envKey;
+    const envKey = Deno.env.get("RESEND_API_KEY");
+    if (envKey) return envKey;
 
-  // Fallback: read from platform_config table (RLS bypassed via service_role)
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const sb = createClient(supabaseUrl, supabaseServiceKey);
-    const { data } = await sb
-      .from("platform_config")
-      .select("value")
-      .eq("key", "RESEND_API_KEY")
-      .single();
-    return data?.value || "";
-  } catch {
-    return "";
-  }
-}
-
-const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || "");
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
+    try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sb = createClient(supabaseUrl, supabaseServiceKey);
+        const { data } = await sb
+            .from("platform_config")
+            .select("value")
+            .eq("key", "RESEND_API_KEY")
+            .single();
+        return data?.value || "";
+    } catch {
+        return "";
+    }
 }
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
+    const corsHeaders = getCorsHeaders(req);
+    const preflight = handleCors(req);
+    if (preflight) return preflight;
 
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  try {
-    const body = await req.json();
-    const { to, subject, html, org_id, from_name, from_email, reply_to } = body;
-
-    if (!to || !subject || !html) {
-      return new Response(
-        JSON.stringify({ error: "to, subject, and html are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    if (req.method !== "POST") {
+        return jsonResponse({ error: "Method not allowed" }, 405, corsHeaders);
     }
 
-    // Optionally fetch tenant branding for from address
-    let senderName = from_name || "Peptide Portal";
-    let senderEmail = from_email || "noreply@thepeptideai.com";
+    try {
+        // Auth: require admin or staff
+        const { user, orgId, supabase } = await authenticateRequest(req, {
+            requireRole: ['admin', 'staff', 'super_admin'],
+        });
 
-    if (org_id) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        // Rate limit: 20 emails/min per user
+        const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
+        if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
-      const { data: config } = await supabase
-        .from("tenant_config")
-        .select("brand_name, support_email")
-        .eq("org_id", org_id)
-        .single();
+        const body = await req.json();
+        const { to, subject, html, from_name, from_email, reply_to } = body;
 
-      if (config?.brand_name) senderName = config.brand_name;
-      if (config?.support_email) senderEmail = config.support_email;
+        // Validate required fields
+        if (!to || !subject || !html) {
+            return jsonResponse({ error: "to, subject, and html are required" }, 400, corsHeaders);
+        }
+
+        // Validate email recipients
+        const recipients = Array.isArray(to) ? to : [to];
+        for (const recipient of recipients) {
+            if (!isValidEmail(recipient)) {
+                return jsonResponse({ error: `Invalid email: ${recipient}` }, 400, corsHeaders);
+            }
+        }
+
+        const cleanSubject = sanitizeString(subject, 200) || "Notification";
+
+        // Fetch tenant branding for from address — scoped to caller's org
+        let senderName = from_name || "Peptide Portal";
+        let senderEmail = from_email || "noreply@thepeptideai.com";
+
+        if (orgId) {
+            const { data: config } = await supabase
+                .from("tenant_config")
+                .select("brand_name, support_email")
+                .eq("org_id", orgId)
+                .single();
+
+            if (config?.brand_name) senderName = config.brand_name;
+            if (config?.support_email) senderEmail = config.support_email;
+        }
+
+        const resendKey = await getResendKey();
+        if (!resendKey) {
+            console.log(`[send-email] No RESEND_API_KEY — would send "${cleanSubject}" to ${recipients.join(', ')}`);
+            return jsonResponse(
+                { sent: false, queued: true, note: "No RESEND_API_KEY configured" },
+                200, corsHeaders,
+            );
+        }
+
+        const response = await fetch(RESEND_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${resendKey}`,
+            },
+            body: JSON.stringify({
+                from: `${senderName} <${senderEmail}>`,
+                to: recipients,
+                reply_to: reply_to || senderEmail,
+                subject: cleanSubject,
+                html,
+            }),
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error("[send-email] Resend error:", response.status, errText);
+            return jsonResponse(
+                { error: "Email delivery failed", detail: errText },
+                502, corsHeaders,
+            );
+        }
+
+        const result = await response.json();
+        return jsonResponse({ sent: true, id: result.id }, 200, corsHeaders);
+
+    } catch (err) {
+        if (err instanceof AuthError) {
+            return jsonResponse({ error: err.message }, err.status, corsHeaders);
+        }
+        console.error("[send-email] Error:", err);
+        return jsonResponse({ error: "Internal server error" }, 500, corsHeaders);
     }
-
-    const resendKey = await getResendKey();
-    if (!resendKey) {
-      console.log(`[send-email] No RESEND_API_KEY — would send "${subject}" to ${to}`);
-      return new Response(
-        JSON.stringify({ sent: false, queued: true, note: "No RESEND_API_KEY configured" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const response = await fetch(RESEND_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${resendKey}`,
-      },
-      body: JSON.stringify({
-        from: `${senderName} <${senderEmail}>`,
-        to: Array.isArray(to) ? to : [to],
-        reply_to: reply_to || senderEmail,
-        subject,
-        html,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("[send-email] Resend error:", response.status, errText);
-      return new Response(
-        JSON.stringify({ error: "Email delivery failed", detail: errText }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const result = await response.json();
-    return new Response(
-      JSON.stringify({ sent: true, id: result.id }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (error) {
-    console.error("[send-email] Error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
 });

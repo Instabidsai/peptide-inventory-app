@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { sanitizeString } from "../_shared/validate.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
@@ -327,8 +328,9 @@ Deno.serve(async (req) => {
     const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
     if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
-    const { message } = await req.json();
-    if (!message) return json({ error: "message required" }, 400);
+    const body = await req.json();
+    const message = sanitizeString(body.message, 5000);
+    if (!message) return json({ error: "message required (max 5000 chars)" }, 400);
 
     // Save user message
     await supabase.from("partner_chat_messages").insert({ org_id: profile.org_id, user_id: user.id, role: "user", content: message });

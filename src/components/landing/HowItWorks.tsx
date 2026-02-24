@@ -1,0 +1,74 @@
+import { motion } from "framer-motion";
+import { MessageSquare, Wand2, Rocket } from "lucide-react";
+import { fadeInUp } from "./constants";
+
+export function HowItWorks() {
+  const steps = [
+    {
+      icon: MessageSquare,
+      title: "Tell the AI What You Need",
+      desc: 'Describe your workflow in plain English. "I need a reorder alert when BPC-157 drops below 500 vials."',
+    },
+    {
+      icon: Wand2,
+      title: "Watch It Build in Real Time",
+      desc: "Our AI architect designs, codes, and deploys your custom feature — dashboards, automations, reports — in seconds.",
+    },
+    {
+      icon: Rocket,
+      title: "Use It Immediately",
+      desc: "No waiting for dev sprints. Your feature is live, integrated into your CRM, and ready for your team.",
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24 bg-card/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div {...fadeInUp} className="text-center mb-14">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
+            3 Simple Steps
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">How It Works</h2>
+          <p className="mt-3 text-muted-foreground">
+            Three steps from idea to live feature.
+          </p>
+        </motion.div>
+        <div className="grid sm:grid-cols-3 gap-8 relative">
+          {/* Connector line (desktop only) — animated gradient */}
+          <div className="hidden sm:block absolute top-12 left-[16.5%] right-[16.5%] h-px overflow-hidden">
+            <div
+              className="h-full w-full"
+              style={{
+                background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), hsl(142 76% 36% / 0.5), hsl(var(--primary) / 0.5), transparent)",
+                backgroundSize: "200% 100%",
+                animation: "gradient-slide 3s ease-in-out infinite",
+              }}
+            />
+          </div>
+
+          {steps.map((s, i) => (
+            <motion.div
+              key={s.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.15 }}
+              className="text-center relative"
+            >
+              <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto mb-4 relative z-10">
+                <s.icon className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-primary mb-2 block">
+                Step {i + 1}
+              </span>
+              <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                {s.desc}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
