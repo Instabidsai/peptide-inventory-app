@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink, Truck, Globe, Wand2 } from 'lucide-react';
+import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink, Truck, Globe, Wand2, RefreshCw, PackageSearch } from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -293,6 +293,14 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
   const [generating, setGenerating] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    woo_product_count: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
 
   // Fetch existing WooCommerce webhook secret
   const { data: wooSecret } = useQuery({
@@ -424,7 +432,284 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
             <li>Click <strong>Save webhook</strong> — WooCommerce will send a test ping</li>
           </ol>
         </div>
+
+        {/* Product Sync */}
+        <div className="border-t pt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2">
+                <PackageSearch className="h-4 w-4" /> Sync Product Catalog
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Import your WooCommerce products as peptides. Requires Store URL + App Password above.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={syncing}
+              onClick={async () => {
+                setSyncing(true);
+                setSyncResult(null);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) throw new Error('Not authenticated');
+                  const resp = await fetch('/api/integrations/woo-sync-products', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ dryRun: false }),
+                  });
+                  const data = await resp.json();
+                  if (!resp.ok) throw new Error(data.error || 'Sync failed');
+                  setSyncResult(data);
+                  queryClient.invalidateQueries({ queryKey: ['peptides'] });
+                  toast({
+                    title: 'Product sync complete',
+                    description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
+                  });
+                } catch (err) {
+                  toast({
+                    title: 'Product sync failed',
+                    description: err instanceof Error ? err.message : 'Unknown error',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+            >
+              {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {syncing ? 'Syncing...' : 'Sync Products'}
+            </Button>
+          </div>
+          {syncResult && (
+            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs space-y-1">
+              <p className="font-medium text-emerald-400">Sync Results</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <p className="text-lg font-bold">{syncResult.woo_product_count}</p>
+                  <p className="text-muted-foreground">WooCommerce</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-emerald-400">{syncResult.created}</p>
+                  <p className="text-muted-foreground">Created</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-blue-400">{syncResult.updated}</p>
+                  <p className="text-muted-foreground">Updated</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-amber-400">{syncResult.skipped}</p>
+                  <p className="text-muted-foreground">Skipped</p>
+                </div>
+              </div>
+              {syncResult.errors > 0 && (
+                <p className="text-red-400">⚠ {syncResult.errors} error(s) — check console</p>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
+    </Card>
+  );
+}
+
+// ─── Scraped Peptides Review Section ───
+function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [importing, setImporting] = useState<string | null>(null);
+
+  const { data: scraped, isLoading } = useQuery({
+    queryKey: ['scraped-peptides', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scraped_peptides')
+        .select('*')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const pending = scraped?.filter(s => s.status === 'pending') || [];
+  const accepted = scraped?.filter(s => s.status === 'accepted') || [];
+  const rejected = scraped?.filter(s => s.status === 'rejected') || [];
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+  if (!scraped?.length) return null;
+
+  const handleImport = async (item: any) => {
+    setImporting(item.id);
+    try {
+      // Create peptide from scraped data
+      const { data: newPeptide, error: insertErr } = await supabase
+        .from('peptides')
+        .insert({
+          org_id: orgId,
+          name: item.name,
+          retail_price: item.price || null,
+          description: item.description || null,
+          active: true,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      // Mark as accepted with link
+      const { error: updateErr } = await supabase
+        .from('scraped_peptides')
+        .update({ status: 'accepted', imported_peptide_id: newPeptide.id })
+        .eq('id', item.id);
+
+      if (updateErr) throw updateErr;
+
+      queryClient.invalidateQueries({ queryKey: ['scraped-peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      toast({ title: `Imported "${item.name}"` });
+    } catch (err) {
+      toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setImporting(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const { error } = await supabase
+      .from('scraped_peptides')
+      .update({ status: 'rejected' })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Failed to reject', variant: 'destructive' });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['scraped-peptides'] });
+    }
+  };
+
+  const handleImportAll = async () => {
+    setImporting('all');
+    let imported = 0;
+    for (const item of pending) {
+      try {
+        const { data: newPeptide, error: insertErr } = await supabase
+          .from('peptides')
+          .insert({
+            org_id: orgId,
+            name: item.name,
+            retail_price: item.price || null,
+            description: item.description || null,
+            active: true,
+          })
+          .select('id')
+          .single();
+
+        if (!insertErr && newPeptide) {
+          await supabase
+            .from('scraped_peptides')
+            .update({ status: 'accepted', imported_peptide_id: newPeptide.id })
+            .eq('id', item.id);
+          imported++;
+        }
+      } catch {
+        // continue with others
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['scraped-peptides'] });
+    queryClient.invalidateQueries({ queryKey: ['peptides'] });
+    toast({ title: `Imported ${imported} of ${pending.length} peptides` });
+    setImporting(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <PackageSearch className="h-5 w-5" /> Scraped Peptides
+            </CardTitle>
+            <CardDescription>
+              Peptides detected from your website during setup. Review and import into your catalog.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {pending.length > 0 && (
+              <Badge variant="secondary">{pending.length} pending</Badge>
+            )}
+            {accepted.length > 0 && (
+              <Badge variant="default" className="bg-emerald-600">{accepted.length} imported</Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      {pending.length > 0 && (
+        <CardContent className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              disabled={importing === 'all'}
+              onClick={handleImportAll}
+            >
+              {importing === 'all' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+              Import All ({pending.length})
+            </Button>
+          </div>
+          {pending.map(item => (
+            <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/40">
+              {item.image_url && (
+                <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded object-cover" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{item.name}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {item.price && <span>${Number(item.price).toFixed(2)}</span>}
+                  {item.confidence > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {Math.round(item.confidence * 100)}% confidence
+                    </Badge>
+                  )}
+                  {item.description && (
+                    <span className="truncate max-w-[200px]">{item.description}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 px-2 text-xs"
+                  disabled={!!importing}
+                  onClick={() => handleImport(item)}
+                >
+                  {importing === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Import'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                  disabled={!!importing}
+                  onClick={() => handleReject(item.id)}
+                >
+                  Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      )}
+      {pending.length === 0 && (accepted.length > 0 || rejected.length > 0) && (
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            All scraped peptides have been reviewed. {accepted.length} imported, {rejected.length} rejected.
+          </p>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -857,6 +1142,7 @@ export default function Settings() {
           <TabsContent value="integrations" className="space-y-6">
             <ShippingConfigSection orgId={organization.id} />
             <WooCommerceSetupSection orgId={organization.id} />
+            <ScrapedPeptidesReview orgId={organization.id} />
             <OAuthConnectionsSection />
             <IntegrationsTab orgId={organization.id} />
           </TabsContent>
