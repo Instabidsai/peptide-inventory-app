@@ -30,10 +30,10 @@ export function PlatformFeatures() {
       label: "AI & Automation",
       icon: Brain,
       features: [
-        { icon: Bot, title: "AI Chat Assistant", desc: "GPT-4o powered chat with RAG knowledge base. Ask about inventory, protocols, client health — get instant answers with citations." },
-        { icon: Wand2, title: "AI Feature Builder", desc: "Describe what you need in plain English. The AI creates custom dashboards, data fields, entities, and automations — deployed instantly." },
+        { icon: Bot, title: "AI Chat Assistant", desc: "AI-powered chat with RAG knowledge base. Ask about inventory, protocols, client health — get instant answers with citations." },
+        { icon: Wand2, title: "AI Feature Builder", desc: "Describe what you need in plain English. The AI creates custom dashboards, data fields, entities, and automations — deployed in minutes." },
         { icon: Zap, title: "Smart Automations", desc: "Automated payment matching, email scanning, restock alerts, and custom workflow triggers. Set rules once, the AI handles the rest." },
-        { icon: Sparkles, title: "Jarvis SDK Agents", desc: "Extensible AI agent framework. New specialized agents deploy as your business grows — each one built for a specific task." },
+        { icon: Sparkles, title: "AI Agent Framework", desc: "Extensible agent framework. New specialized AI agents deploy as your business grows — each one built for a specific task." },
       ],
     },
     {
@@ -93,7 +93,7 @@ export function PlatformFeatures() {
             Everything Your Peptide Business Needs
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            200+ purpose-built features across inventory, client experience,
+            Purpose-built features across inventory, client experience,
             sales, fulfillment — plus an AI that builds whatever else you need.
           </p>
         </motion.div>
@@ -137,7 +137,7 @@ export function PlatformFeatures() {
 
         <motion.div {...fadeInUp} className="text-center mt-10">
           <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">200+ features</span> across 20 categories — and the AI builds more every day.
+            <span className="text-primary font-semibold">100+ features</span> across 5 categories — and the AI builds more on demand.
           </p>
         </motion.div>
       </div>

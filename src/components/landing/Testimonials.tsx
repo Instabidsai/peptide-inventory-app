@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Star, Quote, BadgeCheck } from "lucide-react";
+import { Star, Quote } from "lucide-react";
 import { fadeInUp } from "./constants";
 
 export function Testimonials() {
@@ -38,10 +38,10 @@ export function Testimonials() {
             Testimonials
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Trusted by Peptide Leaders
+            What Early Testers Are Saying
           </h2>
           <p className="mt-3 text-muted-foreground">
-            See why peptide companies are switching to AI-powered CRM.
+            Feedback from our beta program participants.
           </p>
         </motion.div>
 
@@ -76,9 +76,8 @@ export function Testimonials() {
                   {t.name.split(" ").map(n => n[0]).join("")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-foreground">
                     {t.name}
-                    <BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0" />
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {t.title}, {t.company}

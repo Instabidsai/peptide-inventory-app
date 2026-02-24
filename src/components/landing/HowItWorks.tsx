@@ -12,7 +12,7 @@ export function HowItWorks() {
     {
       icon: Wand2,
       title: "Watch It Build in Real Time",
-      desc: "Our AI architect designs, codes, and deploys your custom feature — dashboards, automations, reports — in seconds.",
+      desc: "Our AI architect designs, codes, and deploys your custom feature — dashboards, automations, reports — in minutes.",
     },
     {
       icon: Rocket,

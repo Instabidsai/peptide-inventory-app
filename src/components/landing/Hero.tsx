@@ -114,7 +114,7 @@ export function Hero() {
               <strong className="text-foreground">runs your entire business</strong> —
               inventory, orders, fulfillment, client health, commissions — and{" "}
               <strong className="text-foreground">builds new features on demand</strong>.
-              Dashboards, automations, entire modules — in seconds, not months.
+              Dashboards, automations, entire modules — in minutes, not months.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -138,7 +138,7 @@ export function Hero() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3" />
-              Powering peptide businesses nationwide.
+              Built for peptide businesses. 7-day free trial.
             </p>
           </motion.div>
 

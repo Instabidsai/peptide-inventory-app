@@ -9,25 +9,25 @@ export function Pricing() {
   const [period, setPeriod] = useState<"monthly" | "yearly">("yearly");
   const { data: plans } = useSubscriptionPlans();
 
-  // Show all active plans including free tier (best for conversion)
+  // Show only paid plans on landing page (free tier handled as trial messaging)
   const visiblePlans = (plans ?? [])
-    .filter((p) => p.active)
+    .filter((p) => p.active && p.name !== "free")
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  // Fallback plans if DB isn't seeded
+  // Fallback plans if DB isn't seeded — matches DB prices
   const fallbackPlans = [
     {
       id: "1",
       name: "starter",
       display_name: "Starter",
-      price_monthly: 49900,
-      price_yearly: 499900,
+      price_monthly: 34900,
+      price_yearly: 349900,
       max_users: 5,
       max_peptides: 50,
       max_orders_per_month: 500,
       features: [
-        "PsiFi payment processing pre-configured",
-        "Pre-loaded supplier catalog",
+        "PsiFi payment processing included",
+        "Supplier catalog access",
         "AI Chat Assistant",
         "Branded client portal",
         "Inventory & order tracking",
@@ -43,8 +43,8 @@ export function Pricing() {
       id: "2",
       name: "professional",
       display_name: "Professional",
-      price_monthly: 89900,
-      price_yearly: 899900,
+      price_monthly: 49900,
+      price_yearly: 499900,
       max_users: 25,
       max_peptides: 200,
       max_orders_per_month: 2000,
@@ -73,7 +73,7 @@ export function Pricing() {
       max_orders_per_month: 999999,
       features: [
         "Everything in Professional",
-        "Full Jarvis AI ecosystem",
+        "Full AI agent ecosystem",
         "Autonomous operations",
         "Multi-location support",
         "Custom integrations & API",
@@ -100,7 +100,7 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            Software + supplier catalog + fulfillment + PsiFi payment processing — all in one price. No hidden fees, no setup costs. Every plan includes AI.
+            Software + supplier catalog + fulfillment + payment processing — all in one price. No hidden fees, no setup costs. Every plan includes AI and a 7-day free trial.
           </p>
 
           {/* Premium toggle */}
@@ -159,7 +159,7 @@ export function Pricing() {
                 ctaLabel={
                   plan.name === "enterprise"
                     ? "Contact Sales"
-                    : "Book a Demo"
+                    : "Start 7-Day Free Trial"
                 }
                 onSelect={() => scrollTo("final-cta")}
               />

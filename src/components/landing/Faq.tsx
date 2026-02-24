@@ -11,7 +11,7 @@ export function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: `${PLATFORM.name} is purpose-built for peptide businesses — lot tracking, COA management, cold chain monitoring, and protocol management come built-in. But the real difference is the AI: where HubSpot charges $150/hour for consultant customization, our AI builds custom dashboards, automations, and entire modules in seconds from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.`,
+      a: `${PLATFORM.name} is purpose-built for peptide businesses — lot tracking, COA management, expiry alerts, and protocol management come built-in. But the real difference is the AI: where generic CRMs require expensive consultants and months of customization, our AI builds custom dashboards, automations, and modules in minutes from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.`,
     },
     {
       q: "How does the AI actually control my entire CRM?",
@@ -19,7 +19,7 @@ export function Faq() {
     },
     {
       q: "Is my data secure? What about compliance?",
-      a: "Every tenant is fully isolated with Row-Level Security — your data is invisible to other tenants. Data is encrypted at rest and in transit. We follow SOC2-ready practices and HIPAA-aware data handling for health-related records. Your peptide inventory, client data, and financial records are protected by enterprise-grade security.",
+      a: "Every tenant is fully isolated with Row-Level Security — your data is invisible to other tenants. Data is encrypted at rest and in transit via Supabase's infrastructure. We follow industry-standard security practices with role-based access control, rate limiting, and input validation across all endpoints. Your peptide inventory, client data, and financial records are protected with multiple security layers.",
     },
     {
       q: "Can I import data from my current system?",
@@ -27,7 +27,7 @@ export function Faq() {
     },
     {
       q: "What does the free trial include?",
-      a: "The free trial gives you full access to Starter features for 14 days — AI chat assistant, inventory management, order tracking, and up to 2 users. No credit card required. You can upgrade to Professional (AI Feature Builder, white-label, protocols) or Enterprise (unlimited everything, custom domain, API access) at any time.",
+      a: "Every paid plan starts with a 7-day free trial — full access to all features in your chosen plan, no credit card required. Starter includes AI chat, inventory, order tracking, and up to 5 users. You can upgrade to Professional (AI Feature Builder, white-label, commissions) or Enterprise (unlimited everything, custom domain, API access) at any time.",
     },
     {
       q: "Do you offer white-label and custom domains?",

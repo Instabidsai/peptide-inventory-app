@@ -71,7 +71,7 @@ export function Footer() {
         <div className="mt-8 flex flex-wrap justify-center gap-6">
           {[
             { icon: Shield, label: "Security Best Practices" },
-            { icon: Lock, label: "256-bit Encrypted" },
+            { icon: Lock, label: "Encrypted at Rest & In Transit" },
             { icon: BadgeCheck, label: "Row-Level Data Isolation" },
           ].map((badge) => (
             <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">

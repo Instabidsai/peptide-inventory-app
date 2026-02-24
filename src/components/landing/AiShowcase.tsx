@@ -321,11 +321,11 @@ export function AiShowcase() {
       messages: [
         {
           role: "user",
-          text: "Generate a monthly compliance report showing all COA expirations and cold chain events.",
+          text: "Generate a monthly compliance report showing all COA expirations and lot issues.",
         },
         {
           role: "ai",
-          text: "Your compliance report is ready — COA status for all active lots, cold chain deviations flagged by severity, and an exportable PDF for auditors.",
+          text: "Your compliance report is ready — COA status for all active lots, expiring items flagged by severity, and an exportable PDF for auditors.",
         },
       ],
       buildSteps: [
@@ -348,7 +348,7 @@ export function AiShowcase() {
             {[
               { label: "Active COAs", value: "24", ok: true },
               { label: "Expiring", value: "3", ok: false },
-              { label: "Chain Events", value: "0", ok: true },
+              { label: "Lot Issues", value: "0", ok: true },
             ].map((s) => (
               <div
                 key={s.label}

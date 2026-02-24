@@ -15,23 +15,23 @@ export function SupplyChain() {
   const benefits = [
     {
       icon: FlaskConical,
-      title: "Wholesale Peptide Sourcing",
-      desc: "Access verified wholesale peptide supply directly through the platform. No middlemen, no separate ordering systems.",
+      title: "Option A: Direct Sourcing",
+      desc: "Source wholesale peptides through the platform and hold your own inventory. Full lot tracking, COA management, and expiry alerts built in.",
     },
     {
       icon: Truck,
-      title: "Direct Supply Chain Integration",
-      desc: "Orders placed in the CRM flow straight to fulfillment. Your clients' inventory replenishes automatically from our wholesale pipeline.",
+      title: "Option B: White-Label Fulfillment",
+      desc: "We source, label, and ship under your brand. Your clients order through your storefront — we handle the rest, including custom branding and packaging.",
     },
     {
       icon: Package,
-      title: "Lot Tracking from Source",
-      desc: "Every vial tracked from supplier to client. COA documentation, expiry management, and cold chain compliance built in from day one.",
+      title: "End-to-End Lot Tracking",
+      desc: "Every vial tracked from supplier to client — whether you hold inventory or we do. COA documentation and expiry management built in.",
     },
     {
       icon: TrendingUp,
       title: "Margin & Cost Analysis",
-      desc: "Real-time cost-per-unit tracking, supplier price comparison, and margin analysis — so your clients always know their numbers.",
+      desc: "Real-time cost-per-unit tracking and margin analysis — so your clients always know their numbers regardless of fulfillment model.",
     },
   ];
 
@@ -43,11 +43,11 @@ export function SupplyChain() {
             Supply Chain
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Wholesale Peptide Sourcing, Built Into the CRM
+            Sourcing & Fulfillment, Two Ways
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Your clients don't just manage their peptide business — they source product directly
-            through the platform. Our wholesale supply chain back-channels into every tenant.
+            Your clients can source product directly through the platform and hold their own inventory,
+            or use our white-label fulfillment service — including custom labeling and shipping under their brand.
           </p>
         </motion.div>
 
@@ -80,8 +80,8 @@ export function SupplyChain() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               {[
                 { step: "Client Orders in CRM", icon: ShoppingCart },
-                { step: "Wholesale Sourced", icon: FlaskConical },
-                { step: "Direct to Client", icon: Truck },
+                { step: "Sourced or Fulfilled", icon: FlaskConical },
+                { step: "Shipped to Client", icon: Truck },
                 { step: "Auto-Tracked", icon: Package },
               ].map((s, i) => (
                 <div key={s.step} className="flex items-center gap-2">

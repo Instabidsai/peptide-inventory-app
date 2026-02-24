@@ -12,12 +12,12 @@ export function TwoAiBrains() {
     {
       icon: Wand2,
       title: "Builds Itself Continuously",
-      desc: "Describe what you need in plain English. The AI creates custom dashboards, data modules, automations, and reports — then deploys them instantly.",
+      desc: "Describe what you need in plain English. The AI creates custom dashboards, data modules, automations, and reports — then deploys them in minutes.",
     },
     {
       icon: Blocks,
       title: "Adds Agentic Capabilities",
-      desc: "Powered by the Jarvis SDK, new AI agents are added to your CRM as your business grows — each one specialized for a specific task.",
+      desc: "New AI agents are added to your CRM as your business grows — each one specialized for a specific task.",
     },
   ];
 
@@ -43,7 +43,7 @@ export function TwoAiBrains() {
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
             Other platforms bolt on a chatbot. Ours is different — a single AI
             controls your entire CRM, continuously builds new features, and
-            deploys specialized agents through our Jarvis SDK as your business evolves.
+            deploys specialized agents as your business evolves.
           </p>
         </motion.div>
 
@@ -103,7 +103,7 @@ export function TwoAiBrains() {
                 <Sparkles className="w-4.5 h-4.5 text-primary" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-foreground">Jarvis SDK</h4>
+                <h4 className="text-sm font-semibold text-foreground">AI Agent Framework</h4>
                 <p className="text-xs text-muted-foreground">Agentic capabilities that grow with your business</p>
               </div>
             </div>

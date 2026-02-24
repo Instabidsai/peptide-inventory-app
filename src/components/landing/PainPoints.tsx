@@ -7,13 +7,13 @@ export function PainPoints() {
     {
       icon: Wrench,
       title: "6+ Months of Customization",
-      desc: "Generic CRMs like HubSpot and Salesforce need $50K+ in consulting and months of setup for peptide workflows. Our AI does it in seconds.",
+      desc: "Generic CRMs like HubSpot and Salesforce need expensive consultants and months of setup for peptide workflows. Our AI handles it from day one.",
       stat: "Solved on day one",
     },
     {
       icon: Thermometer,
       title: "No Peptide-Specific Features",
-      desc: "Lot tracking, COA management, cold chain compliance, and expiry alerts don't exist in off-the-shelf tools. You'd need to build them from scratch.",
+      desc: "Lot tracking, COA management, and expiry alerts don't exist in off-the-shelf tools. You'd need to build them from scratch.",
       stat: "20+ built-in workflows",
     },
     {

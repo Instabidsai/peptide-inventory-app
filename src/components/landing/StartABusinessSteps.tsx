@@ -8,22 +8,22 @@ export function StartABusinessSteps() {
     {
       icon: Palette,
       title: "Name & Brand Your Company",
-      desc: "Choose your company name, upload a logo, pick your brand colors, and claim your subdomain — yourname.thepeptideai.com.",
+      desc: "Choose your company name, upload a logo, and pick your brand colors. Your clients see your brand — not ours.",
     },
     {
       icon: FlaskConical,
-      title: "50+ Products Pre-Loaded",
-      desc: "Your store launches with a full catalog of research peptides, ready to sell. No sourcing, no spreadsheets, no data entry.",
+      title: "Product Catalog Ready to Go",
+      desc: "Launch with a pre-loaded catalog of research peptides from our wholesale network, or import your own existing inventory.",
     },
     {
       icon: TrendingUp,
       title: "Set Your Markup & Start Selling",
-      desc: "Choose your retail markup over wholesale cost. See live margin previews. Your branded storefront is live in minutes.",
+      desc: "Choose your retail markup over wholesale cost. See live margin previews. Your branded storefront is ready in minutes.",
     },
     {
       icon: Truck,
-      title: "We Handle Fulfillment",
-      desc: "When your customers order, we pick, pack, and ship under your brand. You focus on growing your client base — we handle the rest.",
+      title: "Two Fulfillment Options",
+      desc: "Hold your own inventory with full lot tracking, or use our white-label service — we label, pack, and ship under your brand.",
     },
   ];
 
@@ -35,11 +35,11 @@ export function StartABusinessSteps() {
             Start a Business
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Launch Your Peptide Business in 10 Minutes
+            Launch Your Peptide Business — Fast
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            No inventory to buy. No warehouse to rent. No tech team to hire.
-            Everything is included from day one.
+            Choose your model: source and hold your own inventory, or use our
+            white-label fulfillment service. No tech team to hire — everything is included.
           </p>
         </motion.div>
 

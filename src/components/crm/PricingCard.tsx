@@ -76,6 +76,9 @@ export function PricingCard({
             ${(price / 100).toLocaleString()}/year billed annually
           </p>
         )}
+        <p className="text-xs text-emerald-400 font-medium mt-1.5">
+          7-day free trial included
+        </p>
       </div>
 
       {/* Limits */}

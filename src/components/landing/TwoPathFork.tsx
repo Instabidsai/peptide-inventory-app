@@ -12,7 +12,7 @@ export function TwoPathFork() {
     {
       icon: Building2,
       title: "I Have a Peptide Business",
-      desc: "Replace your spreadsheets and cobbled-together tools with one AI-powered platform. Import your catalog or connect to our wholesale supply.",
+      desc: "Replace your spreadsheets and cobbled-together tools with one AI-powered platform. Import your catalog, manage your own inventory, or connect to our wholesale sourcing and white-label fulfillment.",
       cta: "Upgrade My Business",
       path: "existing" as const,
       gradient: "from-primary/10 to-primary/5",
@@ -22,7 +22,7 @@ export function TwoPathFork() {
     {
       icon: Rocket,
       title: "Start a New Peptide Business",
-      desc: "Launch in 10 minutes. Pre-loaded catalog, branded storefront, wholesale pricing, AI assistant, and fulfillment — all included.",
+      desc: "Get started fast. Pre-loaded catalog, branded storefront, wholesale pricing, AI assistant, and optional white-label fulfillment — all included.",
       cta: "Launch My Business",
       path: "new" as const,
       gradient: "from-emerald-500/10 to-emerald-500/5",

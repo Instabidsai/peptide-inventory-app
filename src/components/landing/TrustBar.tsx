@@ -5,7 +5,7 @@ export function TrustBar() {
   const stats = [
     {
       icon: Package,
-      value: 200,
+      value: 100,
       suffix: "+",
       label: "Features Built",
     },
@@ -17,22 +17,22 @@ export function TrustBar() {
     },
     {
       icon: Zap,
-      value: 30,
+      value: 60,
       suffix: "s",
-      label: "Avg. AI Build Time",
+      label: "Avg. AI Response",
     },
     {
       icon: Shield,
-      value: 99.9,
+      value: 100,
       suffix: "%",
-      label: "Uptime SLA",
+      label: "Data Isolation",
     },
   ];
 
   return (
     <section className="py-10 border-y border-border/30 bg-card/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Trusted by logos — infinite marquee */}
+        {/* Industry categories — infinite marquee */}
         <div className="relative mb-8 overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-card/20 to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-card/20 to-transparent z-10 pointer-events-none" />
