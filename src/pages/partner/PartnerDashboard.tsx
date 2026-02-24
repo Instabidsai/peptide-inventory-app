@@ -1012,26 +1012,15 @@ function TeamReferralLinks({ downline }: { downline: PartnerNode[] }) {
                 </p>
                 {partners.map(p => {
                     const custUrl = `${window.location.origin}/#/auth?ref=${p.id}`;
-                    const partnerUrl = `${window.location.origin}/#/auth?ref=${p.id}&role=partner`;
                     return (
                         <div key={p.id} className="pl-4 space-y-1.5 border-l-2 border-violet-500/20">
                             <p className="text-sm font-medium">{p.full_name}</p>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-emerald-400 w-20 shrink-0">Customer:</span>
                                 <p className="flex-1 text-[11px] text-muted-foreground truncate">{custUrl}</p>
                                 <Button variant="outline" size="sm"
                                     className={copiedKey === `${p.id}-c` ? 'border-emerald-500/30 text-emerald-400' : 'border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300'}
                                     onClick={() => handleCopy(custUrl, `${p.id}-c`)}>
                                     {copiedKey === `${p.id}-c` ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-violet-400 w-20 shrink-0">Partner:</span>
-                                <p className="flex-1 text-[11px] text-violet-300/70 truncate">{partnerUrl}</p>
-                                <Button variant="outline" size="sm"
-                                    className={copiedKey === `${p.id}-p` ? 'border-emerald-500/30 text-emerald-400' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}
-                                    onClick={() => handleCopy(partnerUrl, `${p.id}-p`)}>
-                                    {copiedKey === `${p.id}-p` ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
                                 </Button>
                             </div>
                         </div>
