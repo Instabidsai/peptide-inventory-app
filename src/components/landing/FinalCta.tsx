@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Rocket, Sparkles, ArrowRight } from "lucide-react";
+import { Building2, Rocket, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/sb_client/client";
 import { fadeInUp } from "./constants";
 
 export function FinalCta() {
@@ -11,20 +12,38 @@ export function FinalCta() {
     sessionStorage.getItem("onboarding_path") || ""
   );
   const [volume, setVolume] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lines = [
-      `Name: ${name || "Not provided"}`,
-      `Email: ${email || "Not provided"}`,
-      `Business Status: ${businessStatus === "new" ? "Starting a New Business" : businessStatus === "existing" ? "I Have an Existing Business" : "Not specified"}`,
-      `Expected Monthly Volume: ${volume || "Not specified"}`,
-    ];
-    const body = `Hi, I'd like to apply to join ThePeptideAI.\n\n${lines.join("\n")}`;
-    window.open(
-      `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
-      "_self",
-    );
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("lead_submissions").insert({
+        name: name.trim() || null,
+        email: email.trim(),
+        business_status: businessStatus || null,
+        expected_volume: volume || null,
+        source: "landing_page",
+      });
+      if (error) throw error;
+      setSubmitted(true);
+    } catch {
+      // Fallback to mailto if Supabase insert fails
+      const lines = [
+        `Name: ${name || "Not provided"}`,
+        `Email: ${email || "Not provided"}`,
+        `Business Status: ${businessStatus === "new" ? "Starting a New Business" : businessStatus === "existing" ? "I Have an Existing Business" : "Not specified"}`,
+        `Expected Monthly Volume: ${volume || "Not specified"}`,
+      ];
+      const body = `Hi, I'd like to apply to join ThePeptideAI.\n\n${lines.join("\n")}`;
+      window.open(
+        `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
+        "_self",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputCls = "w-full rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 focus:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-shadow";
@@ -53,6 +72,20 @@ export function FinalCta() {
             Whether you're launching a new peptide business or upgrading an existing one,
             tell us about yourself and we'll get you set up.
           </p>
+          {submitted ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-8 max-w-md mx-auto relative text-center space-y-3"
+            >
+              <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+              <h3 className="text-xl font-semibold text-foreground">Application Received</h3>
+              <p className="text-sm text-muted-foreground">
+                We'll review your application and reach out to <span className="text-foreground font-medium">{email}</span> within 24 hours to get you set up.
+              </p>
+            </motion.div>
+          ) : (
+          <>
           <form
             onSubmit={handleSubmit}
             className="mt-8 max-w-md mx-auto space-y-3 relative text-left"
@@ -109,9 +142,9 @@ export function FinalCta() {
               <option value="200-500">200-500 orders/month</option>
               <option value="500+">500+ orders/month</option>
             </select>
-            <Button type="submit" className="w-full shadow-btn hover:shadow-btn-hover">
-              Apply to Join
-              <ArrowRight className="w-4 h-4 ml-2" />
+            <Button type="submit" disabled={submitting} className="w-full shadow-btn hover:shadow-btn-hover">
+              {submitting ? "Submitting..." : "Apply to Join"}
+              {!submitting && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
           </form>
           <div className="mt-4 flex flex-wrap justify-center gap-4 relative">
@@ -133,6 +166,8 @@ export function FinalCta() {
           <p className="mt-3 text-xs text-muted-foreground relative">
             We review applications within 24 hours.
           </p>
+          </>
+          )}
         </div>
         </motion.div>
       </div>
