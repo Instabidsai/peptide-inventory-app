@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubdomainTenantProvider } from "@/hooks/use-subdomain-tenant";
+import { BugReportButton } from "@/components/BugReportButton";
 import { Loader2 } from "lucide-react";
 
 // Eagerly loaded — needed on first render
@@ -59,6 +60,7 @@ const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
 const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 const AIAssistant = lazyRetry(() => import("./pages/AIAssistant"));
 const FeatureManagement = lazyRetry(() => import("./pages/admin/FeatureManagement"));
+const SystemHealth = lazyRetry(() => import("./pages/admin/SystemHealth"));
 
 // Vendor (super-admin)
 const VendorLayout = lazyRetry(() => import("./pages/vendor/VendorLayout"));
@@ -138,6 +140,7 @@ const App = () => (
             <SubdomainTenantProvider>
             <HashRouter>
                 <AuthProvider>
+                    <BugReportButton />
                     <Suspense fallback={<PageLoader />}>
                         <Routes>
                             <Route path="/crm" element={<CrmLanding />} />
@@ -204,6 +207,7 @@ const App = () => (
                                 <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
                                 <Route path="/admin/supplements" element={<AdminSupplements />} />
                                 <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
+                                <Route path="/admin/health" element={<RoleBasedRedirect allowedRoles={['admin']}><SystemHealth /></RoleBasedRedirect>} />
 
                                 <Route path="/partner" element={<PartnerDashboard />} />
                                 <Route path="/partner/store" element={<PartnerStore />} />

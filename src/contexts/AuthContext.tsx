@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
 
 type AppRole = 'admin' | 'staff' | 'fulfillment' | 'viewer' | 'client' | 'customer' | 'sales_rep' | 'super_admin';
@@ -163,6 +164,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(null);
         setOrganization(null);
       }
+
+      // Attach user context to Sentry for error attribution
+      Sentry.setUser({ id: userId, email: profileData?.full_name || undefined });
+      Sentry.setContext('app', {
+        role: profileData?.role,
+        org_id: profileData?.org_id,
+        partner_tier: profileData?.partner_tier,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error loading user data';
       console.error('AuthProvider: Unexpected error in fetchUserData:', msg);
@@ -304,6 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setUserRole(null);
     setOrganization(null);
+    Sentry.setUser(null);
     window.location.hash = '#/auth';
   };
 
