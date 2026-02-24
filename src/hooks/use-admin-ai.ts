@@ -48,6 +48,26 @@ export function useAdminAI() {
 
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
+      // In dev mode, use Vite proxy to bypass Supabase gateway CORS restrictions
+      if (import.meta.env.DEV) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+        const res = await fetch('/functions/v1/admin-ai-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ message }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(body.error || `Edge function error (${res.status})`);
+        }
+        return await res.json() as { reply: string };
+      }
+      // Production: use Supabase client (CORS works for production domains)
       const { data, error } = await supabase.functions.invoke('admin-ai-chat', {
         body: { message },
       });

@@ -97,40 +97,39 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border/50 transform transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:translate-x-0 flex flex-col',
-        open ? 'translate-x-0 shadow-2xl shadow-black/30' : '-translate-x-full'
+        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/30 transform transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:translate-x-0 flex flex-col',
+        open ? 'translate-x-0 shadow-2xl shadow-black/40' : '-translate-x-full'
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border/50">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg ring-1 ring-primary/20 shadow-[0_1px_4px_rgba(0,0,0,0.2)]">
-            {logo_url ? (
-              <img src={logo_url} alt={brand_name} className="h-5 w-5 rounded object-contain" />
-            ) : (
-              <FlaskConical className="h-5 w-5 text-primary" />
-            )}
+      <div className="flex items-center justify-between h-20 px-6 border-b border-sidebar-border/20 relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 mix-blend-screen" />
+            <div className="relative p-1.5 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] flex items-center justify-center overflow-hidden">
+              <img src={logo_url || "/logo.png"} alt={brand_name || "Logo"} className="h-7 w-7 object-contain group-hover:scale-110 transition-transform duration-500" />
+            </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[140px]">
-              {brand_name || organization?.name || 'Inventory'}
+            <span className="text-base font-bold tracking-tight text-sidebar-foreground truncate max-w-[140px] text-gradient-primary">
+              {brand_name || organization?.name || 'Peptide AI'}
             </span>
-            <span className="text-[11px] text-muted-foreground -mt-0.5">{admin_brand_name || 'Tracker'}</span>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">{admin_brand_name || 'Inventory'}</span>
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
-              <div className="mt-1 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-900/60 to-green-900/40 rounded-md text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/30 shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
+              <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-400 ring-1 ring-emerald-500/20 shadow-glow-success">
                 <DollarSign className="h-3 w-3" />
                 <span>${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>
             )}
-
           </div>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden text-sidebar-foreground"
+          className="lg:hidden text-sidebar-foreground hover:bg-white/5"
           aria-label="Close menu"
           onClick={onClose}
         >
@@ -176,8 +175,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary shadow-[0_1px_4px_rgba(0,0,0,0.2)] ring-1 ring-primary/10'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                  ? 'bg-gradient-to-r from-primary/15 to-primary/5 text-primary shadow-[0_2px_10px_rgba(0,0,0,0.1)] ring-1 ring-primary/20 scale-[1.02]'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
               )
             }
           >

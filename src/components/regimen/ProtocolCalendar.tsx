@@ -5,18 +5,30 @@ import { Button } from '@/components/ui/button';
 import { DAYS_OF_WEEK, isDoseDay, type ClientInventoryItem } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import {
-    format, addMonths, subMonths, addWeeks, subWeeks,
-    startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-    eachDayOfInterval, isSameDay, isSameMonth, isToday,
-    startOfDay,
+    format, addMonths, subMonths,
+    startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
+    isSameDay, isSameMonth, isToday, startOfDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, LayoutList, Check, Dot, AlertTriangle, Syringe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Check, Syringe, ChevronDown, ChevronUp } from 'lucide-react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
 
 const DOT_COLORS = [
     'bg-emerald-400', 'bg-blue-400', 'bg-amber-400', 'bg-violet-400',
     'bg-rose-400', 'bg-cyan-400', 'bg-orange-400', 'bg-pink-400',
 ];
+
+/** Strip trailing vial size from peptide names: "Ipamorelin 10mg" → "Ipamorelin" */
+function cleanPeptideName(name: string): string {
+    return name.replace(/\s+\d+\s*mg$/i, '').trim() || name;
+}
+
+/** Sort order for time of day */
+function timeSort(t: string | null): number {
+    if (t === 'morning') return 0;
+    if (t === 'afternoon') return 1;
+    if (t === 'evening') return 2;
+    return 3;
+}
 
 interface ProtocolCalendarProps {
     inventory: ClientInventoryItem[];
@@ -36,9 +48,9 @@ interface DayDose {
 }
 
 export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLogging }: ProtocolCalendarProps) {
-    const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     const now = useMemo(() => new Date(), []);
     const todayStart = useMemo(() => startOfDay(now), [now]);
@@ -60,7 +72,6 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
     }, [scheduledVials]);
 
     // Pre-index protocol logs by date+itemId for O(1) lookup
-    // Supports both protocol_item_id and client_inventory_id keys
     const logIndex = useMemo(() => {
         const idx = new Set<string>();
         for (const log of protocolLogs) {
@@ -71,27 +82,12 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
         return idx;
     }, [protocolLogs]);
 
-    // Build day grid
-    const days = useMemo(() => {
-        if (viewMode === 'month') {
-            const monthStart = startOfMonth(currentDate);
-            const monthEnd = endOfMonth(currentDate);
-            const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-            const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-            return eachDayOfInterval({ start: gridStart, end: gridEnd });
-        }
-        const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-        return eachDayOfInterval({ start: weekStart, end: weekEnd });
-    }, [viewMode, currentDate]);
-
-    // Compute doses per day
-    const dosesMap = useMemo(() => {
-        const map = new Map<string, DayDose[]>();
-        for (const day of days) {
+    // Compute doses for ANY given day
+    const getDosesForDay = useMemo(() => {
+        return (day: Date): DayDose[] => {
             const dayKey = format(day, 'yyyy-MM-dd');
             const dayAbbr = format(day, 'EEE') as typeof DAYS_OF_WEEK[number];
-            const dayDoses: DayDose[] = [];
+            const doses: DayDose[] = [];
 
             for (const vial of scheduledVials) {
                 if (isDoseDay(vial, dayAbbr, day)) {
@@ -99,7 +95,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                     const isTaken = (vial.protocol_item_id && logIndex.has(`${dayKey}:pi:${vial.protocol_item_id}`))
                         || logIndex.has(`${dayKey}:ci:${vial.id}`);
 
-                    dayDoses.push({
+                    doses.push({
                         peptideName: vial.peptide?.name || 'Peptide',
                         doseAmountMg: Number(vial.dose_amount_mg) || 0,
                         timeOfDay: vial.dose_time_of_day,
@@ -110,16 +106,42 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                     });
                 }
             }
-            map.set(dayKey, dayDoses);
+            // Sort by time of day: AM → Noon → PM → unset
+            return doses.sort((a, b) => timeSort(a.timeOfDay) - timeSort(b.timeOfDay));
+        };
+    }, [scheduledVials, logIndex, peptideColorMap]);
+
+    // Today's doses — always computed, independent of calendar
+    const todayDoses = useMemo(() => getDosesForDay(now), [getDosesForDay, now]);
+
+    // Selected day's doses (when browsing calendar)
+    const selectedDayDoses = useMemo(() =>
+        selectedDay ? getDosesForDay(selectedDay) : [],
+        [selectedDay, getDosesForDay],
+    );
+
+    // Calendar grid (month only)
+    const calendarDays = useMemo(() => {
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+        const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+        return eachDayOfInterval({ start: gridStart, end: gridEnd });
+    }, [currentDate]);
+
+    // Calendar doses map
+    const calendarDosesMap = useMemo(() => {
+        const map = new Map<string, DayDose[]>();
+        for (const day of calendarDays) {
+            map.set(format(day, 'yyyy-MM-dd'), getDosesForDay(day));
         }
         return map;
-    }, [days, scheduledVials, logIndex, peptideColorMap]);
+    }, [calendarDays, getDosesForDay]);
 
-    // ── Supply runway: per-peptide depletion dates ──
+    // ── Supply runway: per-peptide depletion ──
     interface PeptideDepletion {
         peptideId: string;
         peptideName: string;
-        depletionDate: Date;
         daysRemaining: number;
         status: 'adequate' | 'low' | 'critical' | 'depleted';
         colorIdx: number;
@@ -138,395 +160,320 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
             const totalMg = vials.reduce((s, v) => s + (Number(v.current_quantity_mg) || 0), 0);
             const daily = vialDailyUsage(vials[0]);
             const daysRemaining = daily > 0 ? Math.floor(totalMg / daily) : 0;
-            const depletionDate = new Date(Date.now() + daysRemaining * 86400000);
             const status: PeptideDepletion['status'] = daysRemaining <= 0 ? 'depleted'
                 : daysRemaining < 3 ? 'critical'
                 : daysRemaining < 7 ? 'low'
                 : 'adequate';
-            return {
-                peptideId,
-                peptideName: vials[0].peptide?.name || 'Peptide',
-                depletionDate,
-                daysRemaining,
-                status,
-                colorIdx: peptideColorMap.get(peptideId) ?? 0,
-            };
+            return { peptideId, peptideName: vials[0].peptide?.name || 'Peptide', daysRemaining, status, colorIdx: peptideColorMap.get(peptideId) ?? 0 };
         }).sort((a, b) => a.daysRemaining - b.daysRemaining);
     }, [scheduledVials, peptideColorMap]);
 
-    // Index: which peptides deplete on which calendar day?
-    const depletionDayIndex = useMemo(() => {
-        const map = new Map<string, PeptideDepletion[]>();
-        for (const d of peptideDepletions) {
-            if (d.daysRemaining > 0) {
-                const key = format(d.depletionDate, 'yyyy-MM-dd');
-                const arr = map.get(key) || [];
-                arr.push(d);
-                map.set(key, arr);
-            }
-        }
-        return map;
-    }, [peptideDepletions]);
+    // ── Group doses by time of day for the daily view ──
+    function groupByTime(doses: DayDose[]): { label: string; doses: DayDose[] }[] {
+        const groups: { label: string; doses: DayDose[] }[] = [];
+        const am = doses.filter(d => d.timeOfDay === 'morning');
+        const noon = doses.filter(d => d.timeOfDay === 'afternoon');
+        const pm = doses.filter(d => d.timeOfDay === 'evening');
+        const other = doses.filter(d => !d.timeOfDay);
 
-    const handleNav = (dir: 'prev' | 'next') => {
-        if (viewMode === 'month') {
-            setCurrentDate(prev => dir === 'next' ? addMonths(prev, 1) : subMonths(prev, 1));
-        } else {
-            setCurrentDate(prev => dir === 'next' ? addWeeks(prev, 1) : subWeeks(prev, 1));
-        }
-        setSelectedDay(null);
-    };
+        if (am.length) groups.push({ label: 'Morning (AM)', doses: am });
+        if (noon.length) groups.push({ label: 'Afternoon', doses: noon });
+        if (pm.length) groups.push({ label: 'Evening (PM)', doses: pm });
+        if (other.length) groups.push({ label: doses.length === other.length ? 'Your Doses' : 'Other', doses: other });
+        // If no time-of-day is set on any, just show flat
+        if (groups.length === 0 && doses.length > 0) groups.push({ label: 'Your Doses', doses });
+        return groups;
+    }
 
-    const handleToday = () => {
-        setCurrentDate(new Date());
-        setSelectedDay(null);
-    };
+    // ── Render a dose card (reused for today + selected day) ──
+    function renderDoseCard(dose: DayDose, day: Date, i: number) {
+        const isPast = startOfDay(day) < todayStart;
+        return (
+            <div
+                key={i}
+                className={cn(
+                    "flex items-center gap-4 px-5 py-4 rounded-2xl",
+                    dose.isTaken
+                        ? 'bg-emerald-500/10 border-2 border-emerald-500/30'
+                        : 'bg-muted/20 border-2 border-border/20',
+                )}
+            >
+                <div className={cn("h-4 w-4 rounded-full shrink-0", DOT_COLORS[dose.colorIdx])} />
+                <div className="flex-1 min-w-0">
+                    <div className={cn(
+                        "text-base font-bold leading-snug",
+                        dose.isTaken && 'line-through text-muted-foreground/50',
+                    )}>
+                        {cleanPeptideName(dose.peptideName)}
+                    </div>
+                    <div className="text-sm text-muted-foreground/60 mt-0.5">
+                        {dose.doseAmountMg}mg dose
+                    </div>
+                </div>
+                {dose.isTaken ? (
+                    <div className="flex items-center gap-2 text-emerald-400 shrink-0">
+                        <Check className="h-6 w-6" />
+                        <span className="text-base font-bold">Done</span>
+                    </div>
+                ) : onLogDose && !isPast ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onLogDose({ itemId: dose.protocolItemId || undefined, inventoryItemId: dose.vialId, status: 'taken', takenAt: format(day, "yyyy-MM-dd'T'12:00:00") }); }}
+                        disabled={isLogging}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-base font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                    >
+                        <Syringe className="h-5 w-5" />
+                        {isLogging ? 'Saving...' : 'Take'}
+                    </button>
+                ) : isPast && !dose.isTaken ? (
+                    <span className="text-sm text-red-400/70 font-semibold shrink-0">Missed</span>
+                ) : (
+                    <span className="text-sm text-muted-foreground/40 font-medium shrink-0">Upcoming</span>
+                )}
+            </div>
+        );
+    }
 
-    const handleDayClick = (day: Date) => {
-        setSelectedDay(prev => prev && isSameDay(prev, day) ? null : day);
-    };
-
+    // ── Empty state ──
     if (scheduledVials.length === 0) {
         return (
             <GlassCard className="border-white/[0.04]">
-                <CardContent className="py-6 text-center space-y-2">
-                    <CalendarDays className="h-6 w-6 text-muted-foreground/30 mx-auto" />
-                    <p className="text-sm font-medium text-muted-foreground/50">No schedule set up yet</p>
-                    <p className="text-xs text-muted-foreground/30 max-w-[280px] mx-auto">
-                        Once your provider sets up a dosing schedule for your vials, your calendar will appear here showing when each dose is due.
+                <CardContent className="py-10 text-center space-y-3">
+                    <CalendarDays className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                    <p className="text-lg font-bold text-muted-foreground/60">No schedule set up yet</p>
+                    <p className="text-base text-muted-foreground/40 max-w-[340px] mx-auto leading-relaxed">
+                        Once your provider sets up a dosing schedule, your daily doses will appear here.
                     </p>
                 </CardContent>
             </GlassCard>
         );
     }
 
-    const isViewingCurrentPeriod = viewMode === 'month'
-        ? isSameMonth(currentDate, now)
-        : days.some(d => isToday(d));
+    // ── Which day detail to show (selected from calendar, or null) ──
+    const showingDay = selectedDay;
+    const showingDoses = selectedDayDoses;
+    const isShowingToday = showingDay ? isToday(showingDay) : false;
 
-    const headerLabel = viewMode === 'month'
-        ? format(currentDate, 'MMMM yyyy')
-        : `${format(days[0], 'MMM d')} – ${format(days[days.length - 1], 'MMM d, yyyy')}`;
-
-    const selectedDayDoses = selectedDay
-        ? dosesMap.get(format(selectedDay, 'yyyy-MM-dd')) || []
-        : [];
+    // Today's progress
+    const todayTakenCount = todayDoses.filter(d => d.isTaken).length;
+    const todayTotalCount = todayDoses.length;
+    const todayAllDone = todayTotalCount > 0 && todayTakenCount === todayTotalCount;
 
     return (
-        <GlassCard className="border-white/[0.04] overflow-hidden">
-            <CardContent className="py-4 px-3">
-                {/* Header: navigation + view toggle */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleNav('prev')}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <button
-                            onClick={handleToday}
-                            className="text-sm font-semibold min-w-[140px] text-center hover:text-primary transition-colors"
-                            title="Jump to today"
-                        >
-                            {headerLabel}
-                        </button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleNav('next')}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        {!isViewingCurrentPeriod && (
-                            <button
-                                onClick={handleToday}
-                                className="text-[10px] text-primary/70 hover:text-primary font-medium transition-colors"
-                            >
-                                Today
-                            </button>
+        <div className="space-y-4">
+            {/* ═══════════════════════════════════════════════ */}
+            {/* TODAY'S DOSES — The main thing a user cares about */}
+            {/* ═══════════════════════════════════════════════ */}
+            <GlassCard className="border-white/[0.04]">
+                <CardContent className="py-5 px-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold">
+                                {todayAllDone ? 'All Done Today!' : "Today's Doses"}
+                            </h2>
+                            <p className="text-sm text-muted-foreground/60 mt-0.5">
+                                {format(now, 'EEEE, MMMM d')}
+                                {todayTotalCount > 0 && (
+                                    <span className="ml-2 font-semibold">
+                                        {todayAllDone
+                                            ? '— Great job!'
+                                            : `— ${todayTakenCount} of ${todayTotalCount} done`
+                                        }
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        {todayAllDone && (
+                            <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                <Check className="h-7 w-7 text-emerald-400" />
+                            </div>
                         )}
-                        <div className="flex gap-0.5 bg-muted/30 rounded-lg p-0.5">
-                            <button
-                                onClick={() => { setViewMode('month'); setSelectedDay(null); }}
-                                className={cn(
-                                    "px-2 py-1 rounded-md text-[10px] font-medium transition-colors",
-                                    viewMode === 'month' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground',
-                                )}
-                            >
-                                <CalendarDays className="h-3 w-3" />
-                            </button>
-                            <button
-                                onClick={() => { setViewMode('week'); setSelectedDay(null); }}
-                                className={cn(
-                                    "px-2 py-1 rounded-md text-[10px] font-medium transition-colors",
-                                    viewMode === 'week' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground',
-                                )}
-                            >
-                                <LayoutList className="h-3 w-3" />
-                            </button>
-                        </div>
                     </div>
-                </div>
 
-                {/* Day-of-week headers */}
-                <div className="grid grid-cols-7 mb-1">
-                    {DAYS_OF_WEEK.map(d => (
-                        <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 py-1">
-                            {d.slice(0, 2)}
+                    {/* Dose list grouped by time of day */}
+                    {todayDoses.length === 0 ? (
+                        <div className="text-center py-6 text-base text-muted-foreground/50">
+                            No doses scheduled for today.
                         </div>
-                    ))}
-                </div>
-
-                {/* Day grid */}
-                <div className="grid grid-cols-7 gap-px">
-                    {days.map(day => {
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        const dayDoses = dosesMap.get(dayKey) || [];
-                        const depletionsOnDay = depletionDayIndex.get(dayKey) || [];
-                        const isCurrentMonth = isSameMonth(day, currentDate);
-                        const isTodayCell = isToday(day);
-                        const isSelected = selectedDay ? isSameDay(day, selectedDay) : false;
-                        const allTaken = dayDoses.length > 0 && dayDoses.every(d => d.isTaken);
-                        const isPast = day < todayStart;
-                        const hasMissed = isPast && dayDoses.length > 0 && dayDoses.some(d => !d.isTaken);
-
-                        return (
-                            <button
-                                key={dayKey}
-                                onClick={() => handleDayClick(day)}
-                                className={cn(
-                                    "relative flex flex-col items-center rounded-xl transition-all duration-200",
-                                    viewMode === 'month' ? 'h-11 justify-center py-1.5' : 'h-[72px] justify-start pt-1.5 gap-0.5',
-                                    isTodayCell && 'ring-2 ring-primary/40',
-                                    isSelected && 'bg-primary/15 ring-2 ring-primary/60',
-                                    !isCurrentMonth && viewMode === 'month' && 'opacity-30',
-                                    dayDoses.length > 0 && !isSelected && !isTodayCell && 'hover:bg-white/[0.04]',
-                                )}
-                            >
-                                <span className={cn(
-                                    "text-xs font-medium leading-none",
-                                    isTodayCell ? 'text-primary font-bold' : isPast ? 'text-muted-foreground/40' : 'text-foreground/80',
-                                )}>
-                                    {format(day, 'd')}
-                                </span>
-
-                                {/* Month view: compact dots */}
-                                {viewMode === 'month' && dayDoses.length > 0 && (
-                                    <div className="flex gap-0.5 mt-1">
-                                        {dayDoses.slice(0, 4).map((dose, i) => (
-                                            <div
-                                                key={i}
-                                                className={cn(
-                                                    "h-1 w-1 rounded-full",
-                                                    dose.isTaken
-                                                        ? 'bg-emerald-400/80'
-                                                        : isPast
-                                                            ? 'bg-red-400/50'
-                                                            : DOT_COLORS[dose.colorIdx],
-                                                )}
-                                            />
-                                        ))}
-                                        {dayDoses.length > 4 && (
-                                            <span className="text-[7px] text-muted-foreground/50 leading-none">+{dayDoses.length - 4}</span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Week view: show peptide names inline */}
-                                {viewMode === 'week' && dayDoses.length > 0 && (
-                                    <div className="flex flex-col items-center gap-px w-full px-0.5 overflow-hidden">
-                                        {dayDoses.slice(0, 3).map((dose, i) => (
-                                            <div key={i} className="flex items-center gap-0.5 w-full justify-center">
-                                                <div className={cn(
-                                                    "h-1 w-1 rounded-full shrink-0",
-                                                    dose.isTaken ? 'bg-emerald-400/80' : isPast ? 'bg-red-400/50' : DOT_COLORS[dose.colorIdx],
-                                                )} />
-                                                <span className={cn(
-                                                    "text-[8px] leading-tight truncate",
-                                                    dose.isTaken ? 'text-emerald-400/60 line-through' : 'text-muted-foreground/50',
-                                                )}>
-                                                    {dose.peptideName.length > 8 ? dose.peptideName.slice(0, 7) + '…' : dose.peptideName}
-                                                </span>
-                                            </div>
-                                        ))}
-                                        {dayDoses.length > 3 && (
-                                            <span className="text-[7px] text-muted-foreground/40">+{dayDoses.length - 3}</span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* All-done checkmark */}
-                                {allTaken && (
-                                    <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 flex items-center justify-center">
-                                        <Check className="h-2 w-2 text-white" />
-                                    </div>
-                                )}
-
-                                {/* Missed indicator for past days with incomplete doses */}
-                                {hasMissed && !allTaken && (
-                                    <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500/60 flex items-center justify-center">
-                                        <Dot className="h-3 w-3 text-white" />
-                                    </div>
-                                )}
-
-                                {/* Depletion marker — colored bar on the day a peptide runs out */}
-                                {depletionsOnDay.length > 0 && (
-                                    <div className="absolute bottom-0 left-1 right-1 h-[3px] bg-gradient-to-r from-red-500 to-amber-500 rounded-full" />
-                                )}
-
-                                {/* Week view: show depletion warnings inline */}
-                                {viewMode === 'week' && depletionsOnDay.length > 0 && (
-                                    <div className="flex flex-col items-center gap-px w-full px-0.5">
-                                        {depletionsOnDay.slice(0, 2).map((dep, i) => (
-                                            <span key={`dep-${i}`} className="text-[7px] text-red-400 font-semibold truncate w-full text-center">
-                                                {dep.peptideName} ends
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Expanded day detail */}
-                {selectedDay && (() => {
-                    const selectedDayDepletions = depletionDayIndex.get(format(selectedDay, 'yyyy-MM-dd')) || [];
-                    return (
-                    <div className="mt-3 pt-3 border-t border-border/20 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <div className="text-xs font-semibold text-foreground/80">
-                            {format(selectedDay, 'EEEE, MMMM d')}
-                            {selectedDayDoses.length === 0 && selectedDayDepletions.length === 0 && (
-                                <span className="text-muted-foreground/50 font-normal ml-2">No doses scheduled</span>
-                            )}
-                        </div>
-
-                        {/* Depletion notices for this day */}
-                        {selectedDayDepletions.map((dep, i) => (
-                            <div key={`depl-${i}`}
-                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
-                            >
-                                <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-medium text-red-300">
-                                        {dep.peptideName} supply runs out
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground/50 ml-2">
-                                        {dep.daysRemaining} days from today
-                                    </span>
+                    ) : (
+                        <div className="space-y-4">
+                            {groupByTime(todayDoses).map(group => (
+                                <div key={group.label} className="space-y-2">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground/50 px-1">
+                                        {group.label}
+                                    </h3>
+                                    {group.doses.map((dose, i) => renderDoseCard(dose, now, i))}
                                 </div>
-                            </div>
-                        ))}
-
-                        {selectedDayDoses.map((dose, i) => (
-                            <div
-                                key={i}
-                                className={cn(
-                                    "flex items-center gap-2.5 px-3 py-2 rounded-lg",
-                                    dose.isTaken ? 'bg-emerald-500/10' : 'bg-muted/20',
-                                )}
-                            >
-                                <div className={cn("h-2 w-2 rounded-full shrink-0", DOT_COLORS[dose.colorIdx])} />
-                                <div className="flex-1 min-w-0">
-                                    <span className={cn(
-                                        "text-xs font-medium",
-                                        dose.isTaken && 'line-through text-muted-foreground/60',
-                                    )}>
-                                        {dose.peptideName}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground/50 ml-2">
-                                        {dose.doseAmountMg}mg
-                                        {dose.timeOfDay && ` · ${dose.timeOfDay}`}
-                                    </span>
-                                </div>
-                                {dose.isTaken ? (
-                                    <div className="flex items-center gap-1 text-emerald-400">
-                                        <Check className="h-3 w-3" />
-                                        <span className="text-[10px] font-medium">Done</span>
-                                    </div>
-                                ) : onLogDose ? (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onLogDose({ itemId: dose.protocolItemId || undefined, inventoryItemId: dose.vialId, status: 'taken', takenAt: format(selectedDay, "yyyy-MM-dd'T'12:00:00") }); }}
-                                        disabled={isLogging}
-                                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
-                                    >
-                                        <Syringe className="h-3 w-3" />
-                                        {isLogging ? 'Logging…' : 'Mark Taken'}
-                                    </button>
-                                ) : (
-                                    <span className="text-[10px] text-muted-foreground/40">
-                                        {startOfDay(selectedDay) < todayStart ? 'Missed' : 'Scheduled'}
-                                    </span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    );
-                })()}
-
-                {/* Legend */}
-                {scheduledVials.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-border/10 space-y-1.5">
-                        <div className="flex flex-wrap gap-x-3 gap-y-1">
-                            {Array.from(peptideColorMap.entries()).map(([peptideId, colorIdx]) => {
-                                const vial = scheduledVials.find(v => (v.peptide_id || v.id) === peptideId);
-                                return (
-                                    <div key={peptideId} className="flex items-center gap-1">
-                                        <div className={cn("h-1.5 w-1.5 rounded-full", DOT_COLORS[colorIdx])} />
-                                        <span className="text-[9px] text-muted-foreground/50">{vial?.peptide?.name || 'Peptide'}</span>
-                                    </div>
-                                );
-                            })}
+                            ))}
                         </div>
-                        <div className="flex gap-3">
-                            <div className="flex items-center gap-1">
-                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                                <span className="text-[9px] text-muted-foreground/40">Taken</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="h-1.5 w-1.5 rounded-full bg-red-400/50" />
-                                <span className="text-[9px] text-muted-foreground/40">Missed</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="h-[3px] w-3 bg-gradient-to-r from-red-500 to-amber-500 rounded-full" />
-                                <span className="text-[9px] text-muted-foreground/40">Runs out</span>
-                            </div>
-                        </div>
+                    )}
 
-                        {/* Supply Runway — per-peptide days remaining */}
-                        {peptideDepletions.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-border/10 space-y-1.5">
-                                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/40">
-                                    Supply Runway
-                                </span>
+                    {/* Supply summary — simple text, not bars */}
+                    {peptideDepletions.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-border/20">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground/50 mb-2">
+                                Supply Left
+                            </h3>
+                            <div className="space-y-2">
                                 {peptideDepletions.map(dep => (
-                                    <div key={dep.peptideId} className="flex items-center gap-2">
-                                        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", DOT_COLORS[dep.colorIdx])} />
-                                        <span className="text-[9px] text-muted-foreground/60 w-16 truncate">{dep.peptideName}</span>
-                                        <div className="flex-1 h-1 bg-muted/20 rounded-full overflow-hidden">
-                                            <div
-                                                className={cn(
-                                                    "h-full rounded-full transition-all",
-                                                    dep.status === 'adequate' ? 'bg-green-500'
-                                                        : dep.status === 'low' ? 'bg-yellow-500'
-                                                        : dep.status === 'critical' ? 'bg-orange-500'
-                                                        : 'bg-red-500',
-                                                )}
-                                                style={{ width: `${Math.min(100, (dep.daysRemaining / 30) * 100)}%` }}
-                                            />
-                                        </div>
+                                    <div key={dep.peptideId} className="flex items-center gap-3">
+                                        <div className={cn("h-3 w-3 rounded-full shrink-0", DOT_COLORS[dep.colorIdx])} />
+                                        <span className="text-base font-medium text-foreground/80 flex-1">
+                                            {cleanPeptideName(dep.peptideName)}
+                                        </span>
                                         <span className={cn(
-                                            "text-[9px] font-medium shrink-0 w-12 text-right",
-                                            dep.status === 'adequate' ? 'text-green-400/70'
-                                                : dep.status === 'low' ? 'text-yellow-400/70'
-                                                : dep.status === 'critical' ? 'text-orange-400/70'
-                                                : 'text-red-400/70',
+                                            "text-base font-bold",
+                                            dep.status === 'adequate' ? 'text-green-400'
+                                                : dep.status === 'low' ? 'text-yellow-400'
+                                                : dep.status === 'critical' ? 'text-orange-400'
+                                                : 'text-red-400',
                                         )}>
-                                            {dep.daysRemaining <= 0 ? 'Empty' : `${dep.daysRemaining}d`}
+                                            {dep.daysRemaining <= 0 ? 'Empty!' : `${dep.daysRemaining} days`}
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
-                )}
-            </CardContent>
-        </GlassCard>
+                        </div>
+                    )}
+                </CardContent>
+            </GlassCard>
+
+            {/* ═══════════════════════════════════════════════ */}
+            {/* CALENDAR — Collapsible, for browsing other days */}
+            {/* ═══════════════════════════════════════════════ */}
+            <GlassCard className="border-white/[0.04]">
+                <CardContent className="py-3 px-4">
+                    <button
+                        onClick={() => { setCalendarOpen(prev => !prev); if (calendarOpen) setSelectedDay(null); }}
+                        className="flex items-center justify-between w-full py-1"
+                    >
+                        <span className="text-sm font-bold text-muted-foreground/70">
+                            Calendar
+                        </span>
+                        {calendarOpen
+                            ? <ChevronUp className="h-5 w-5 text-muted-foreground/50" />
+                            : <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
+                        }
+                    </button>
+
+                    {calendarOpen && (
+                        <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {/* Month nav */}
+                            <div className="flex items-center justify-center gap-2 mb-3">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCurrentDate(prev => subMonths(prev, 1)); setSelectedDay(null); }}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <button
+                                    onClick={() => { setCurrentDate(new Date()); setSelectedDay(null); }}
+                                    className="text-sm font-semibold min-w-[140px] text-center hover:text-primary transition-colors"
+                                >
+                                    {format(currentDate, 'MMMM yyyy')}
+                                </button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCurrentDate(prev => addMonths(prev, 1)); setSelectedDay(null); }}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {/* Day-of-week headers */}
+                            <div className="grid grid-cols-7 mb-1">
+                                {DAYS_OF_WEEK.map(d => (
+                                    <div key={d} className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50 py-1">
+                                        {d.slice(0, 3)}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Day grid — compact */}
+                            <div className="grid grid-cols-7 gap-0.5">
+                                {calendarDays.map(day => {
+                                    const dayKey = format(day, 'yyyy-MM-dd');
+                                    const dayDoses = calendarDosesMap.get(dayKey) || [];
+                                    const isCurrentMonth = isSameMonth(day, currentDate);
+                                    const isTodayCell = isToday(day);
+                                    const isSelected = selectedDay ? isSameDay(day, selectedDay) : false;
+                                    const allTaken = dayDoses.length > 0 && dayDoses.every(d => d.isTaken);
+                                    const isPast = day < todayStart;
+                                    const hasMissed = isPast && dayDoses.length > 0 && dayDoses.some(d => !d.isTaken);
+
+                                    return (
+                                        <button
+                                            key={dayKey}
+                                            onClick={() => setSelectedDay(prev => prev && isSameDay(prev, day) ? null : day)}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center rounded-lg h-10 transition-all",
+                                                isTodayCell && 'ring-2 ring-primary/50',
+                                                isSelected && 'bg-primary/15 ring-2 ring-primary/60',
+                                                !isCurrentMonth && 'opacity-25',
+                                                dayDoses.length > 0 && !isSelected && !isTodayCell && 'hover:bg-white/[0.06]',
+                                            )}
+                                        >
+                                            <span className={cn(
+                                                "text-xs font-semibold",
+                                                isTodayCell ? 'text-primary font-bold' : isPast ? 'text-muted-foreground/40' : 'text-foreground/80',
+                                            )}>
+                                                {format(day, 'd')}
+                                            </span>
+
+                                            {dayDoses.length > 0 && (
+                                                <div className="flex gap-0.5 mt-0.5">
+                                                    {dayDoses.slice(0, 4).map((dose, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className={cn(
+                                                                "h-1 w-1 rounded-full",
+                                                                dose.isTaken ? 'bg-emerald-400' : isPast ? 'bg-red-400/50' : DOT_COLORS[dose.colorIdx],
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {allTaken && (
+                                                <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                    <Check className="h-2 w-2 text-white" />
+                                                </div>
+                                            )}
+                                            {hasMissed && !allTaken && (
+                                                <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500/60" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Selected day detail (from calendar click) */}
+                            {showingDay && !isShowingToday && (
+                                <div className="mt-4 pt-3 border-t border-border/20 space-y-2 animate-in fade-in duration-200">
+                                    <div className="text-base font-bold text-foreground/90">
+                                        {format(showingDay, 'EEEE, MMMM d')}
+                                    </div>
+                                    {showingDoses.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground/50 py-2">No doses scheduled</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {groupByTime(showingDoses).map(group => (
+                                                <div key={group.label} className="space-y-1.5">
+                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/40 px-1">
+                                                        {group.label}
+                                                    </h4>
+                                                    {group.doses.map((dose, i) => renderDoseCard(dose, showingDay, i))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* If they clicked today in the calendar, nudge them up */}
+                            {isShowingToday && (
+                                <div className="mt-3 text-center">
+                                    <p className="text-sm text-muted-foreground/50">Today's doses are shown above</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </GlassCard>
+        </div>
     );
 }

@@ -31,16 +31,18 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const roleVariant = userRole?.role === 'admin' ? 'default' : userRole?.role === 'staff' ? 'secondary' : 'outline';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-card/80 backdrop-blur-md shadow-[0_1px_3px_rgba(0,0,0,0.15)] px-4 md:px-6">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="lg:hidden"
-        aria-label="Open menu"
-        onClick={onMenuClick}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+    <header className="sticky top-0 z-30 flex h-20 items-center gap-4 border-b border-primary/10 bg-background/40 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.1)] px-6 md:px-8 transition-all">
+      <div className="flex items-center gap-4 lg:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hover:bg-white/5"
+          aria-label="Open menu"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
+      </div>
 
       {/* Search trigger */}
       <button
@@ -59,8 +61,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/30 hover:ring-offset-2">
-            <Avatar className="h-10 w-10 border-2 border-primary/20 transition-colors">
+          <Button variant="ghost" className="relative h-11 w-11 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 duration-300">
+            <Avatar className="h-11 w-11 border-2 border-primary/20 transition-colors">
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {initials}
               </AvatarFallback>

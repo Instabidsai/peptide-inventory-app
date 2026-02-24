@@ -15,7 +15,7 @@ const ACCESS_TOKEN = 'sbp_94ff4e12ec85a9a4576569e3675f2af6e11c0430';
 const FUNCTIONS_DIR = path.join(__dirname, '..', 'supabase', 'functions');
 
 const FUNCTIONS = {
-  'admin-ai-chat': { verify_jwt: true, sharedFiles: ['ai-core.ts', 'rate-limit.ts'] },
+  'admin-ai-chat': { verify_jwt: false, sharedFiles: ['ai-core.ts', 'rate-limit.ts', 'validate.ts'] },
   'telegram-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },
   'textbelt-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },
   'sms-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },

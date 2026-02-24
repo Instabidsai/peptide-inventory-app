@@ -333,18 +333,13 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         return data.map((l: any) => "#" + l.id.slice(0, 8) + " | " + (l.peptides?.name || "?") + " | " + l.quantity_received + " units @ $" + Number(l.cost_per_unit).toFixed(2) + " | Payment: " + l.payment_status + " | Expiry: " + (l.expiry_date || "N/A")).join("\n");
       }
       case "add_inventory": {
-        // Direct inventory creation: lot + bottles in one step
+        // Insert lot — database trigger `create_bottles_for_lot` auto-creates bottles
         const { data: lot, error: lotErr } = await supabase.from("lots").insert({
           org_id: orgId, peptide_id: args.peptide_id, quantity_received: args.quantity,
           cost_per_unit: args.cost_per_unit, lot_number: args.lot_number,
           expiry_date: args.expiry_date || null, payment_status: args.payment_status || "unpaid",
         }).select().single();
         if (lotErr) return "Error creating lot: " + lotErr.message;
-        const bottles = Array(args.quantity).fill(null).map(() => ({
-          lot_id: lot.id, org_id: orgId, status: "in_stock", created_at: new Date().toISOString(),
-        }));
-        const { error: bottleErr } = await supabase.from("bottles").insert(bottles);
-        if (bottleErr) return "Lot created but bottle generation failed: " + bottleErr.message;
         // Optionally create a matching PO record for tracking
         if (args.supplier) {
           await supabase.from("orders").insert({
@@ -374,10 +369,9 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (!resolvedId) return "Error: Purchase order not found for ID '" + args.order_id + "'. Use the full UUID.";
         const { data: order } = await supabase.from("orders").select("*").eq("id", resolvedId).single();
         if (!order) return "PO not found.";
+        // Insert lot — database trigger `create_bottles_for_lot` auto-creates bottles
         const { data: lot, error: lotErr } = await supabase.from("lots").insert({ org_id: orgId, peptide_id: order.peptide_id, quantity_received: args.actual_quantity, cost_per_unit: args.actual_cost_per_unit, lot_number: args.lot_number, expiry_date: args.expiry_date || null, payment_status: "unpaid" }).select().single();
         if (lotErr) return "Error creating lot: " + lotErr.message;
-        const bottleInserts = Array(args.actual_quantity).fill(null).map(() => ({ lot_id: lot.id, org_id: orgId, status: "in_stock", created_at: new Date().toISOString() }));
-        await supabase.from("bottles").insert(bottleInserts);
         await supabase.from("orders").update({ status: "received" }).eq("id", resolvedId);
         return "PO received! Created lot '" + args.lot_number + "' with " + args.actual_quantity + " bottles.";
       }

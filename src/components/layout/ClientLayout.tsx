@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, ArrowLeft, Briefcase, Menu, Dna } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -19,7 +19,6 @@ export function ClientLayout() {
     const { brand_name: brandName } = useTenantConfig();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
-    const canGoBack = isAdmin || isSalesRep;
 
     const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback', user?.id],
@@ -70,17 +69,19 @@ export function ClientLayout() {
     ];
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+            <div className="fixed inset-0 pointer-events-none noise-overlay z-0 opacity-[0.012]" />
             <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
                 Skip to main content
             </a>
             {/* Top Bar */}
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border/30 bg-card/80 backdrop-blur-md px-4 justify-between">
-                <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl ring-1 ring-primary/15">
-                        <Dna className="h-4 w-4 text-primary" />
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-primary/10 bg-background/40 backdrop-blur-2xl px-4 justify-between shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
+                <div className="flex items-center gap-2.5 relative group cursor-pointer" onClick={() => navigate('/dashboard')}>
+                    <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
+                    <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] overflow-hidden flex items-center justify-center">
+                        <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    <span className="font-bold text-lg tracking-tight text-gradient-primary">{brandName}</span>
+                    <span className="font-bold text-lg tracking-tight text-gradient-primary relative z-10">{brandName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
@@ -132,7 +133,7 @@ export function ClientLayout() {
             <FloatingHelpWidget />
 
             {/* Bottom Navigation (Mobile First) */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className="fixed bottom-0 left-0 right-0 border-t border-primary/10 bg-background/60 backdrop-blur-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 <nav className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = item.path === '/menu'

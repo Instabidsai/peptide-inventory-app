@@ -189,20 +189,25 @@ export function AdminAIChat() {
                         "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
                         msg.role === 'user'
                           ? "bg-primary text-primary-foreground rounded-tr-sm"
-                          : "bg-muted/50 border border-border/50 text-foreground rounded-tl-sm"
+                          : "rounded-tl-sm"
                       )}
+                      style={msg.role === 'assistant' ? {
+                        background: 'hsl(217 33% 25%)',
+                        border: '1px solid hsl(217 33% 35%)',
+                        color: '#f1f5f9',
+                      } : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2" style={{ color: '#f1f5f9' }}>
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                       )}
                       <div className={cn(
-                        "text-[10px] mt-1.5 opacity-50",
-                        msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
-                      )}>
+                        "text-[10px] mt-1.5",
+                        msg.role === 'user' ? "text-primary-foreground opacity-50" : ""
+                      )} style={msg.role === 'assistant' ? { color: 'hsl(215 20% 65%)' } : undefined}>
                         {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
@@ -219,13 +224,13 @@ export function AdminAIChat() {
                     <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <Bot className="h-3.5 w-3.5 text-primary" />
                     </div>
-                    <div className="bg-muted/50 border border-border/50 p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
+                    <div className="p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2" style={{ background: 'hsl(217 33% 25%)', border: '1px solid hsl(217 33% 35%)' }}>
                       <div className="flex gap-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
                         <div className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse [animation-delay:150ms]" />
                         <div className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse [animation-delay:300ms]" />
                       </div>
-                      <span className="text-muted-foreground/50 text-xs">Working on it...</span>
+                      <span className="text-xs" style={{ color: 'hsl(215 20% 65%)' }}>Working on it...</span>
                     </div>
                   </div>
                 )}

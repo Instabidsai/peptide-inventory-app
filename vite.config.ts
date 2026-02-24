@@ -32,6 +32,13 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 4550,
     strictPort: true,
+    proxy: {
+      '/functions/v1': {
+        target: 'https://mckkegmkpqdicudnfhor.supabase.co',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
   plugins: [
     react(),
