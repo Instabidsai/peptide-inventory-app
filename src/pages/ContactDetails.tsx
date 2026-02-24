@@ -18,6 +18,16 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { useState } from 'react';
 import { Separator } from '@/components/ui/separator';
@@ -85,6 +95,60 @@ export default function ContactDetails() {
         gcTime: 5 * 60_000,
     });
 
+    // Order picker for "Build Protocol" flow
+    const [orderPickerOpen, setOrderPickerOpen] = useState(false);
+    const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+    const { data: clientOrders } = useQuery({
+        queryKey: ['contact_orders_for_protocol', id],
+        queryFn: async () => {
+            if (!id) return [];
+            const { data, error } = await supabase
+                .from('sales_orders')
+                .select(`
+                    id, total_amount, created_at, status,
+                    sales_order_items (
+                        peptide_id,
+                        quantity,
+                        peptides ( name )
+                    )
+                `)
+                .eq('client_id', id)
+                .neq('status', 'cancelled')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!id,
+        staleTime: 60_000,
+    });
+
+    const openOrderPicker = () => {
+        if (!clientOrders || clientOrders.length === 0) {
+            // No orders — go straight to empty protocol builder
+            navigate(`/protocol-builder?contact=${id}`);
+            return;
+        }
+        // Pre-select all orders
+        setSelectedOrderIds(clientOrders.map(o => o.id));
+        setOrderPickerOpen(true);
+    };
+
+    const toggleOrder = (orderId: string) => {
+        setSelectedOrderIds(prev =>
+            prev.includes(orderId) ? prev.filter(x => x !== orderId) : [...prev, orderId]
+        );
+    };
+
+    const handleBuildWithOrders = () => {
+        setOrderPickerOpen(false);
+        if (selectedOrderIds.length > 0) {
+            navigate(`/protocol-builder?contact=${id}&orders=${selectedOrderIds.join(',')}`);
+        } else {
+            navigate(`/protocol-builder?contact=${id}`);
+        }
+    };
+
     // ContactDialogs is a "render hook" - returns handlers + JSX
     const {
         handleEditClick,
@@ -114,7 +178,7 @@ export default function ContactDetails() {
                     {dialogsJSX}
                     <Button
                         variant="outline"
-                        onClick={() => navigate(`/protocol-builder?contact=${id}`)}
+                        onClick={openOrderPicker}
                     >
                         <FlaskConical className="mr-2 h-4 w-4" />
                         Build Protocol
@@ -170,6 +234,92 @@ export default function ContactDetails() {
             <ClientPortalCard contact={contact} />
 
             <FeedbackSection assignedProtocols={assignedProtocols} />
+
+            {/* Order Picker Dialog */}
+            <Dialog open={orderPickerOpen} onOpenChange={setOrderPickerOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Select Orders to Build Protocol From</DialogTitle>
+                        <DialogDescription>
+                            Choose which orders' peptides to load into the Protocol Builder. You can adjust everything after.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
+                        {clientOrders?.map(order => {
+                            const peptideNames = (order.sales_order_items || [])
+                                .map((item: any) => item.peptides?.name)
+                                .filter(Boolean);
+                            const isSelected = selectedOrderIds.includes(order.id);
+                            return (
+                                <label
+                                    key={order.id}
+                                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/30'
+                                    }`}
+                                >
+                                    <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleOrder(order.id)}
+                                        className="mt-0.5"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm font-medium">
+                                                {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </span>
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {order.status}
+                                            </Badge>
+                                            {order.total_amount > 0 && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    ${Number(order.total_amount).toFixed(2)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {peptideNames.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1.5">
+                                                {peptideNames.map((name: string, i: number) => (
+                                                    <Badge key={i} variant="secondary" className="text-[10px]">
+                                                        {name}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </label>
+                            );
+                        })}
+                    </div>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setOrderPickerOpen(false);
+                                navigate(`/protocol-builder?contact=${id}`);
+                            }}
+                        >
+                            Skip — Start Empty
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (selectedOrderIds.length === clientOrders?.length) {
+                                    setSelectedOrderIds([]);
+                                } else {
+                                    setSelectedOrderIds(clientOrders?.map(o => o.id) || []);
+                                }
+                            }}
+                        >
+                            {selectedOrderIds.length === clientOrders?.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                        <Button onClick={handleBuildWithOrders} disabled={selectedOrderIds.length === 0}>
+                            <FlaskConical className="mr-2 h-4 w-4" />
+                            Build with {selectedOrderIds.length} Order{selectedOrderIds.length !== 1 ? 's' : ''}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
                 <AlertDialogContent>

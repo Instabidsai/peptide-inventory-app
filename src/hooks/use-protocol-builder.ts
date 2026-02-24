@@ -273,6 +273,33 @@ export function useProtocolBuilder() {
         setItems(newItems);
     }, [peptides, enrichPeptide]);
 
+    const loadFromOrders = useCallback(async (orderIds: string[]) => {
+        if (!peptides || orderIds.length === 0) return;
+
+        const { data: orderItems, error } = await supabase
+            .from('sales_order_items')
+            .select('peptide_id, quantity')
+            .in('sales_order_id', orderIds);
+
+        if (error) {
+            toast.error('Failed to load order items');
+            return;
+        }
+
+        // Deduplicate by peptide_id
+        const seen = new Set<string>();
+        const newItems: EnrichedProtocolItem[] = [];
+        for (const oi of (orderItems || [])) {
+            if (seen.has(oi.peptide_id)) continue;
+            seen.add(oi.peptide_id);
+            const peptide = peptides.find(p => p.id === oi.peptide_id);
+            if (peptide) {
+                newItems.push(enrichPeptide(peptide));
+            }
+        }
+        setItems(newItems);
+    }, [peptides, enrichPeptide]);
+
     // ── Saved Protocol Loading ───────────────────────────────────
 
     const loadSavedProtocol = useCallback(async (protocolId: string) => {
@@ -327,18 +354,22 @@ export function useProtocolBuilder() {
 
         const contactParam = searchParams.get('contact');
         const orderParam = searchParams.get('order');
+        const ordersParam = searchParams.get('orders');
         const templateParam = searchParams.get('template');
 
         if (contactParam) {
             setSelectedContactId(contactParam);
         }
 
-        if (orderParam) {
+        if (ordersParam) {
+            const ids = ordersParam.split(',').filter(Boolean);
+            if (ids.length > 0) loadFromOrders(ids);
+        } else if (orderParam) {
             loadFromOrder(orderParam);
         } else if (templateParam) {
             loadTemplate(templateParam);
         }
-    }, [initialized, peptides, searchParams, loadFromOrder, loadTemplate]);
+    }, [initialized, peptides, searchParams, loadFromOrder, loadFromOrders, loadTemplate]);
 
     // ── Auto-generate Protocol Name ─────────────────────────────
     useEffect(() => {
@@ -436,6 +467,7 @@ export function useProtocolBuilder() {
         clearAll,
         loadTemplate,
         loadFromOrder,
+        loadFromOrders,
         loadSavedProtocol,
 
         // Output
