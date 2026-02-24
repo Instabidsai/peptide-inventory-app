@@ -15,7 +15,11 @@
     "typecheck": "tsc --noEmit",
     "cycles": "madge --circular src",
     "preflight": "npm run typecheck && npm run lint && npm run cycles && npm run build",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "node scripts/bump-version.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:dry": "node scripts/deploy.mjs --dry-run",
+    "deploy:quick": "node scripts/deploy.mjs --skip-tests --skip-migrations",
+    "migrate:mark": "node scripts/deploy.mjs --mark-applied"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

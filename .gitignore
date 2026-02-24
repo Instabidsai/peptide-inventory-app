@@ -42,6 +42,9 @@ cookies.txt
 # Transcripts (large data files)
 scripts/transcripts/
 
+# Deploy tracking (machine-local state)
+.migration-tracking.json
+
 # Temp / debug files
 test_lab_report.png
 srccomponentsErrorBoundary.tsx
