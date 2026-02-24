@@ -28,7 +28,6 @@ interface InventoryItem {
     concentration_mg_ml: number | null;
     current_quantity_mg: number | null;
     initial_quantity_mg: number | null;
-    org_id: string;
     peptides: { name: string } | null;
     contacts: { name: string; linked_user_id: string | null; assigned_rep_id: string | null } | null;
 }
@@ -83,7 +82,7 @@ Deno.serve(async (req) => {
             .select(`
                 id, contact_id, peptide_id, in_fridge,
                 dose_amount_mg, dose_frequency, dose_interval, dose_off_days, dose_days,
-                concentration_mg_ml, current_quantity_mg, initial_quantity_mg, org_id,
+                concentration_mg_ml, current_quantity_mg, initial_quantity_mg,
                 peptides ( name ),
                 contacts ( name, linked_user_id, assigned_rep_id )
             `)
