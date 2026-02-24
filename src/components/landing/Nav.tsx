@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { FlaskConical, Menu, ArrowRight } from "lucide-react";
+import { Menu, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PLATFORM, scrollTo } from "./constants";
@@ -45,20 +45,21 @@ export function Nav() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
+        ? "bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm"
+        : "bg-transparent"
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button
             onClick={() => scrollTo("hero")}
-            className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+            className="flex items-center gap-2.5 text-foreground hover:text-primary transition-colors group"
           >
-            <FlaskConical className="w-6 h-6 text-primary" />
+            <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-lg ring-1 ring-primary/30 flex items-center justify-center">
+              <img src="/logo.png" alt="Logo" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform duration-300" />
+            </div>
             <span className="font-bold text-lg">{PLATFORM.name}</span>
           </button>
 
@@ -68,11 +69,10 @@ export function Nav() {
               <button
                 key={l.id}
                 onClick={() => scrollTo(l.id)}
-                className={`text-sm transition-colors relative ${
-                  activeSection === l.id
-                    ? "text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`text-sm transition-colors relative ${activeSection === l.id
+                  ? "text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 {l.label}
                 {activeSection === l.id && (

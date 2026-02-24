@@ -779,7 +779,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground">
-                                Looking for users with role 'client' or 'staff'.
+                                All users except existing partners are shown.
                             </p>
                         </div>
                         {/* Upline Selector (shared for Promote) */}

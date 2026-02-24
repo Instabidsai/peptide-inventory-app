@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { FlaskConical, ArrowRight, ChevronRight, Lock } from "lucide-react";
+import { ArrowRight, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiDemoChat } from "@/components/crm/AiDemoChat";
 import { LiveBuildPreview } from "@/components/crm/LiveBuildPreview";
@@ -114,7 +114,7 @@ export function Hero() {
             {/* Industry badge */}
             <div className="flex items-center gap-2 mb-6">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                <FlaskConical className="w-3.5 h-3.5 text-primary" />
+                <img src="/logo.png" alt="Logo" className="w-3.5 h-3.5 object-contain" />
                 <span className="text-xs font-medium text-primary">Purpose-Built for the Peptide Industry</span>
               </div>
             </div>

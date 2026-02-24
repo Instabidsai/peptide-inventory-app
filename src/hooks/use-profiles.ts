@@ -86,7 +86,7 @@ export function useRepProfile(repId: string | null) {
     });
 }
 
-// Fetch all profiles that are NOT sales reps (potential candidates)
+// Fetch all profiles that are NOT already sales reps (potential partner candidates)
 export function useTeamMembers() {
     const { user, profile } = useAuth();
 
@@ -96,10 +96,9 @@ export function useTeamMembers() {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
-                .neq('role', 'sales_rep') // Exclude existing reps
-                .neq('role', 'admin')     // Exclude super admins? Maybe optional. Let's keep admins out for now.
+                .neq('role', 'sales_rep') // Only exclude users who are already partners
                 .eq('org_id', profile!.org_id!)
-                .order('created_at', { ascending: false });
+                .order('full_name', { ascending: true });
 
             if (error) throw error;
             return data as UserProfile[];

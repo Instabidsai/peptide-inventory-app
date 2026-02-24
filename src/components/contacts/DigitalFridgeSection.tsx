@@ -116,7 +116,7 @@ function AdminProtocolCalendarView({ contactId, protocols, onLogDose }: { contac
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/15">
                 <CalendarDays className="h-4 w-4 text-blue-500" />
                 <span className="text-xs text-blue-600 dark:text-blue-400">
-                    Viewing this client's dosing calendar — click a day to see details and log doses on their behalf
+                    Viewing this client's dosing calendar — tap <strong>Edit</strong> on any dose to change amount or set AM/PM timing
                 </span>
             </div>
             <ProtocolCalendar
@@ -124,6 +124,7 @@ function AdminProtocolCalendarView({ contactId, protocols, onLogDose }: { contac
                 protocolLogs={allLogs}
                 onLogDose={onLogDose ? (params) => onLogDose.mutate(params) : undefined}
                 isLogging={onLogDose?.isPending}
+                contactId={contactId}
             />
         </div>
     );

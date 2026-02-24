@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { createPageWrapper } from '@/test/mocks/wrapper';
-import { resetMockResponses } from '@/test/mocks/supabase';
+import { resetMockResponses, mockProfile } from '@/test/mocks/supabase';
 import { resetToast } from '@/test/mocks/toast';
 import { resetAuthContext, setAuthContext } from '@/test/mocks/auth';
-import { mockProfile } from '@/test/mocks/supabase';
 
 beforeEach(() => {
   vi.clearAllMocks();

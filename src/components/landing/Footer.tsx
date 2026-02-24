@@ -1,4 +1,4 @@
-import { FlaskConical, Shield, Lock, BadgeCheck } from "lucide-react";
+import { Shield, Lock, BadgeCheck } from "lucide-react";
 import { PLATFORM, scrollTo } from "./constants";
 
 export function Footer() {
@@ -36,8 +36,10 @@ export function Footer() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <FlaskConical className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-2.5 mb-4 group cursor-pointer">
+              <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-lg ring-1 ring-primary/30 flex items-center justify-center">
+                <img src="/logo.png" alt="Logo" className="w-4 h-4 object-contain group-hover:scale-110 transition-transform duration-300" />
+              </div>
               <span className="font-bold">{PLATFORM.name}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
