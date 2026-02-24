@@ -32,7 +32,7 @@ interface CartItem {
     peptide_id: string;
     name: string;
     quantity: number;
-    retail_price: number;
+    base_cost: number;
     wholesale_price: number;
 }
 
@@ -68,10 +68,11 @@ export default function SupplierOrderDialog() {
     const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
     const createOrder = useCreateSupplierOrder();
 
-    const discountPct = tierInfo?.tier?.discount_pct || 0;
+    const markupAmount = tierInfo?.tier?.markup_amount || 0;
     const tierName = tierInfo?.tier?.name || 'Standard';
 
-    const catalogPeptides = (peptides || []).filter(p => p.retail_price && p.retail_price > 0);
+    // Only show peptides that have a base_cost set
+    const catalogPeptides = (peptides || []).filter(p => (p.base_cost ?? 0) > 0);
 
     const updateQty = (peptide: typeof catalogPeptides[0], delta: number) => {
         const newCart = new Map(cart);
@@ -86,8 +87,8 @@ export default function SupplierOrderDialog() {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: newQty,
-                retail_price: peptide.retail_price!,
-                wholesale_price: calculateWholesalePrice(peptide.retail_price!, discountPct),
+                base_cost: peptide.base_cost!,
+                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markupAmount),
             });
         }
         setCart(newCart);
@@ -104,8 +105,8 @@ export default function SupplierOrderDialog() {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: safeQty,
-                retail_price: peptide.retail_price!,
-                wholesale_price: calculateWholesalePrice(peptide.retail_price!, discountPct),
+                base_cost: peptide.base_cost!,
+                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markupAmount),
             });
         }
         setCart(newCart);
@@ -170,7 +171,7 @@ export default function SupplierOrderDialog() {
                     <>
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">
-                                Your tier: <Badge variant="outline">{tierName}</Badge> ({Math.round(discountPct * 100)}% off MSRP)
+                                Your tier: <Badge variant="outline">{tierName}</Badge> (cost + ${markupAmount.toFixed(0)})
                             </span>
                             {totalItems > 0 && (
                                 <Badge>{totalItems} items in cart</Badge>
@@ -181,7 +182,6 @@ export default function SupplierOrderDialog() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Product</TableHead>
-                                    <TableHead className="text-right">MSRP</TableHead>
                                     <TableHead className="text-right">Your Cost</TableHead>
                                     <TableHead className="text-center">Quantity</TableHead>
                                     <TableHead className="text-right">Subtotal</TableHead>
@@ -190,20 +190,17 @@ export default function SupplierOrderDialog() {
                             <TableBody>
                                 {catalogPeptides.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             No products in catalog
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     catalogPeptides.map(p => {
-                                        const wholesalePrice = calculateWholesalePrice(p.retail_price!, discountPct);
+                                        const wholesalePrice = calculateWholesalePrice(p.base_cost!, markupAmount);
                                         const qty = cart.get(p.id)?.quantity || 0;
                                         return (
                                             <TableRow key={p.id} className={qty > 0 ? 'bg-primary/5' : ''}>
                                                 <TableCell className="font-medium">{p.name}</TableCell>
-                                                <TableCell className="text-right text-muted-foreground">
-                                                    ${p.retail_price!.toFixed(2)}
-                                                </TableCell>
                                                 <TableCell className="text-right font-medium text-green-600">
                                                     ${wholesalePrice.toFixed(2)}
                                                 </TableCell>
@@ -236,7 +233,7 @@ export default function SupplierOrderDialog() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    {qty > 0 ? `$${(wholesalePrice * qty).toFixed(2)}` : '—'}
+                                                    {qty > 0 ? `$${(wholesalePrice * qty).toFixed(2)}` : '\u2014'}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -246,7 +243,7 @@ export default function SupplierOrderDialog() {
                             {totalItems > 0 && (
                                 <TableFooter>
                                     <TableRow>
-                                        <TableCell colSpan={3} className="font-semibold">Order Total</TableCell>
+                                        <TableCell colSpan={2} className="font-semibold">Order Total</TableCell>
                                         <TableCell className="text-center font-semibold">{totalItems} units</TableCell>
                                         <TableCell className="text-right font-bold text-lg">
                                             ${totalCost.toFixed(2)}

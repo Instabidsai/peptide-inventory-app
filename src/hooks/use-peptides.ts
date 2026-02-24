@@ -15,6 +15,7 @@ export interface Peptide {
   stock_count?: number;
   avg_cost?: number;
   retail_price: number | null;
+  base_cost?: number | null;
   default_dose_amount?: number | null;
   default_dose_unit?: string | null;
   default_frequency?: string | null;

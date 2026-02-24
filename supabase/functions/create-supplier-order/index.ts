@@ -69,14 +69,14 @@ Deno.serve(async (req) => {
         }
 
         // Get wholesale tier for validation
-        let discountPct = 0;
+        let markupAmount = 0;
         if (config.wholesale_tier_id) {
             const { data: tier } = await supabase
                 .from('wholesale_pricing_tiers')
-                .select('discount_pct')
+                .select('markup_amount')
                 .eq('id', config.wholesale_tier_id)
                 .single();
-            if (tier) discountPct = tier.discount_pct;
+            if (tier) markupAmount = tier.markup_amount;
         }
 
         const body: { items: OrderItem[] } = await req.json();

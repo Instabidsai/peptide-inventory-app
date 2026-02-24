@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
         if (body.seed_supplier_catalog && supplierOrgId) {
             const { data: supplierPeptides, error: catError } = await supabase
                 .from('peptides')
-                .select('name, description, sku, retail_price, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes')
+                .select('name, description, sku, retail_price, base_cost, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes')
                 .eq('org_id', supplierOrgId)
                 .eq('active', true);
 
@@ -333,6 +333,7 @@ Deno.serve(async (req) => {
                     description: p.description,
                     sku: p.sku,
                     retail_price: p.retail_price,
+                    base_cost: p.base_cost,
                     active: true,
                     default_dose_amount: p.default_dose_amount,
                     default_dose_unit: p.default_dose_unit,

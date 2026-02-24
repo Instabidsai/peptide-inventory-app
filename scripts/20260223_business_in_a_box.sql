@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS wholesale_pricing_tiers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     min_monthly_units INT NOT NULL DEFAULT 0,
-    discount_pct NUMERIC NOT NULL,          -- 0.40 = 40% off MSRP
+    discount_pct NUMERIC NOT NULL DEFAULT 0, -- LEGACY (kept for compat, use markup_amount)
+    markup_amount NUMERIC NOT NULL DEFAULT 0, -- fixed dollar markup over base_cost
     sort_order INT NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -29,12 +30,11 @@ CREATE POLICY "wholesale_tiers_super_admin_write" ON wholesale_pricing_tiers
         EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
     );
 
--- Seed default tiers
-INSERT INTO wholesale_pricing_tiers (name, min_monthly_units, discount_pct, sort_order) VALUES
-    ('Starter',  0,    0.40, 1),   -- 40% off MSRP → buy at 60%
-    ('Growth',   50,   0.50, 2),   -- 50% off MSRP → buy at 50%
-    ('Scale',    200,  0.55, 3),   -- 55% off MSRP → buy at 45%
-    ('Volume',   500,  0.60, 4)    -- 60% off MSRP → buy at 40%
+-- Seed default tiers (cost + fixed dollar markup)
+INSERT INTO wholesale_pricing_tiers (name, min_monthly_units, discount_pct, markup_amount, sort_order) VALUES
+    ('Standard',  0,    0, 40, 1),   -- cost + $40
+    ('Growth',    50,   0, 30, 2),   -- cost + $30
+    ('Volume',    200,  0, 20, 3)    -- cost + $20
 ON CONFLICT DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────────

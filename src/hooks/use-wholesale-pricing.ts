@@ -7,23 +7,25 @@ export interface WholesaleTier {
     name: string;
     min_monthly_units: number;
     discount_pct: number;
+    markup_amount: number;
     sort_order: number;
     active: boolean;
 }
 
 // ── Pure pricing functions ──
 
-export function calculateWholesalePrice(retailPrice: number, discountPct: number): number {
-    return +(retailPrice * (1 - discountPct)).toFixed(2);
+/** Wholesale price = base cost + fixed tier markup (e.g. $9 cost + $20 markup = $29) */
+export function calculateWholesalePrice(baseCost: number, markupAmount: number): number {
+    return +(baseCost + markupAmount).toFixed(2);
 }
 
-export function calculateMargin(retailPrice: number, wholesalePrice: number): number {
-    return +(retailPrice - wholesalePrice).toFixed(2);
+export function calculateMargin(sellingPrice: number, wholesalePrice: number): number {
+    return +(sellingPrice - wholesalePrice).toFixed(2);
 }
 
-export function calculateMarginPct(retailPrice: number, wholesalePrice: number): number {
-    if (retailPrice <= 0) return 0;
-    return +((retailPrice - wholesalePrice) / retailPrice * 100).toFixed(1);
+export function calculateMarginPct(sellingPrice: number, wholesalePrice: number): number {
+    if (sellingPrice <= 0) return 0;
+    return +((sellingPrice - wholesalePrice) / sellingPrice * 100).toFixed(1);
 }
 
 // ── Hooks ──

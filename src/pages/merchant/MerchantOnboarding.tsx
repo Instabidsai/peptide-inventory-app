@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useSubdomainCheck } from '@/hooks/use-wholesale-pricing';
-import MarginCalculator from '@/components/wholesale/MarginCalculator';
+// MarginCalculator available at '@/components/wholesale/MarginCalculator' for future use
 import {
     Loader2, Building2, Rocket, ArrowRight, ArrowLeft, Check,
     LogOut, Globe, Palette, CreditCard, PartyPopper,

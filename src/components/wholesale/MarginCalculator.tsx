@@ -17,13 +17,11 @@ import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 interface MarginCalculatorProps {
     /** Override tier instead of reading from org config (for onboarding preview) */
     previewTier?: WholesaleTier;
-    /** Override markup multiplier for "Set Your Markup" step */
-    markupMultiplier?: number;
     /** Compact mode hides summary cards */
     compact?: boolean;
 }
 
-export default function MarginCalculator({ previewTier, markupMultiplier, compact }: MarginCalculatorProps) {
+export default function MarginCalculator({ previewTier, compact }: MarginCalculatorProps) {
     const { data: peptides, isLoading: peptidesLoading } = usePeptides();
     const { data: orgTierData, isLoading: tierLoading } = useOrgWholesaleTier();
     const { data: allTiers } = useWholesaleTiers();
@@ -31,9 +29,11 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
     const tier = previewTier ?? orgTierData?.tier ?? null;
     const isLoading = peptidesLoading || (!previewTier && tierLoading);
 
-    // Filter to peptides that have a retail price
+    // Filter to peptides that have a base cost set (supplier cost)
     const pricedPeptides = useMemo(
-        () => (peptides ?? []).filter((p): p is Peptide & { retail_price: number } => (p.retail_price ?? 0) > 0),
+        () => (peptides ?? []).filter((p): p is Peptide & { base_cost: number; retail_price: number } =>
+            (p.base_cost ?? 0) > 0 && (p.retail_price ?? 0) > 0
+        ),
         [peptides],
     );
 
@@ -41,14 +41,14 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
     const rows = useMemo(() => {
         if (!tier || pricedPeptides.length === 0) return [];
         return pricedPeptides.map(p => {
-            const msrp = p.retail_price;
-            const wholesaleCost = calculateWholesalePrice(msrp, tier.discount_pct);
-            const sellingPrice = markupMultiplier ? +(wholesaleCost * markupMultiplier).toFixed(2) : msrp;
-            const margin = calculateMargin(sellingPrice, wholesaleCost);
-            const marginPct = calculateMarginPct(sellingPrice, wholesaleCost);
-            return { id: p.id, name: p.name, sku: p.sku, msrp, wholesaleCost, sellingPrice, margin, marginPct };
+            const baseCost = p.base_cost;
+            const yourPrice = calculateWholesalePrice(baseCost, tier.markup_amount);
+            const retailPrice = p.retail_price;
+            const margin = calculateMargin(retailPrice, yourPrice);
+            const marginPct = calculateMarginPct(retailPrice, yourPrice);
+            return { id: p.id, name: p.name, sku: p.sku, baseCost, yourPrice, retailPrice, margin, marginPct };
         });
-    }, [tier, pricedPeptides, markupMultiplier]);
+    }, [tier, pricedPeptides]);
 
     // Aggregates
     const summary = useMemo(() => {
@@ -133,7 +133,7 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
                     <CardTitle className="text-base">Wholesale Pricing Breakdown</CardTitle>
                     <CardDescription>
                         At your <Badge variant="secondary" className="mx-1">{tier.name}</Badge> tier,
-                        you get {(tier.discount_pct * 100).toFixed(0)}% off MSRP on every product.
+                        you pay cost + ${tier.markup_amount.toFixed(0)} per product.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="px-0 pb-0">
@@ -141,9 +141,8 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Product</TableHead>
-                                <TableHead className="text-right">MSRP</TableHead>
                                 <TableHead className="text-right">Your Cost</TableHead>
-                                {markupMultiplier && <TableHead className="text-right">Sell Price</TableHead>}
+                                <TableHead className="text-right">Retail Price</TableHead>
                                 <TableHead className="text-right">Margin</TableHead>
                                 <TableHead className="text-right">Margin %</TableHead>
                             </TableRow>
@@ -157,13 +156,10 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
                                             <span className="ml-2 text-xs text-muted-foreground">{row.sku}</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right tabular-nums">{fmt(row.msrp)}</TableCell>
                                     <TableCell className="text-right tabular-nums font-medium text-emerald-600">
-                                        {fmt(row.wholesaleCost)}
+                                        {fmt(row.yourPrice)}
                                     </TableCell>
-                                    {markupMultiplier && (
-                                        <TableCell className="text-right tabular-nums">{fmt(row.sellingPrice)}</TableCell>
-                                    )}
+                                    <TableCell className="text-right tabular-nums">{fmt(row.retailPrice)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{fmt(row.margin)}</TableCell>
                                     <TableCell className="text-right tabular-nums">
                                         <Badge
@@ -182,7 +178,6 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
                                     <TableCell className="font-semibold">Average</TableCell>
                                     <TableCell />
                                     <TableCell />
-                                    {markupMultiplier && <TableCell />}
                                     <TableCell />
                                     <TableCell className="text-right font-semibold">{summary.avgMarginPct}%</TableCell>
                                 </TableRow>
@@ -201,7 +196,7 @@ export default function MarginCalculator({ previewTier, markupMultiplier, compac
                                 Upgrade to <span className="text-primary">{nextTier.name}</span> tier
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Order {nextTier.min_monthly_units}+ units/month to save {(nextTier.discount_pct * 100).toFixed(0)}% off MSRP
+                                Order {nextTier.min_monthly_units}+ units/month — pay only cost + ${nextTier.markup_amount.toFixed(0)} per unit
                             </p>
                         </div>
                         <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />
