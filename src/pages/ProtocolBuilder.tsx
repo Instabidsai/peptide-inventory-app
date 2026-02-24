@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProtocolBuilder } from '@/hooks/use-protocol-builder';
 import { useProtocols } from '@/hooks/use-protocols';
@@ -15,9 +16,11 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
     Search, Plus, X, Copy, Printer, Mail, Wand2, FlaskConical, Trash2, Save, Check,
     ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package, FolderOpen, Droplets,
+    CalendarPlus,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -32,8 +35,10 @@ export default function ProtocolBuilder() {
     const builder = useProtocolBuilder();
     const { createProtocol } = useProtocols(builder.selectedContactId || undefined);
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [saved, setSaved] = useState(false);
+    const [sentToCalendar, setSentToCalendar] = useState(false);
     const previewRef = useRef<HTMLDivElement>(null);
 
     const scrollToPreview = () => {
@@ -59,6 +64,35 @@ export default function ProtocolBuilder() {
         queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+    };
+
+    const handleSendToCalendar = async () => {
+        if (builder.items.length === 0) return;
+        if (!builder.selectedContactId) {
+            toast.error('Select a client first to send to their calendar');
+            return;
+        }
+        await createProtocol.mutateAsync({
+            name: builder.protocolName,
+            description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
+            contact_id: builder.selectedContactId,
+            items: builder.items.map(item => ({
+                peptide_id: item.peptideId,
+                dosage_amount: item.doseAmount,
+                dosage_unit: item.doseUnit,
+                frequency: item.frequency,
+                timing: item.timing,
+                notes: item.notes || undefined,
+                duration_days: 56,
+            })),
+        });
+        queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
+        queryClient.invalidateQueries({ queryKey: ['protocols'] });
+        setSentToCalendar(true);
+        toast.success(`Protocol sent to ${builder.clientName || 'client'}'s calendar!`);
+        setTimeout(() => {
+            navigate(`/contacts/${builder.selectedContactId}`);
+        }, 1500);
     };
 
     const SUPPLY_ICONS: Record<string, React.ElementType> = {
@@ -90,27 +124,15 @@ export default function ProtocolBuilder() {
                     </p>
                 </div>
                 {builder.items.length > 0 && (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant={saved ? 'outline' : 'default'}
-                            size="sm"
-                            onClick={handleSaveProtocol}
-                            disabled={createProtocol.isPending || saved}
-                        >
-                            {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
-                            {saved ? 'Saved!' : 'Save Protocol'}
-                        </Button>
-                        <Separator orientation="vertical" className="h-6" />
-                        <Button variant="outline" size="sm" onClick={builder.copyHtml}>
-                            <Copy className="h-4 w-4 mr-1.5" /> Copy
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={builder.printProtocol}>
-                            <Printer className="h-4 w-4 mr-1.5" /> Print
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={builder.openMailto} disabled={!builder.clientEmail}>
-                            <Mail className="h-4 w-4 mr-1.5" /> Email {builder.clientName || 'Client'}
-                        </Button>
-                    </div>
+                    <Button
+                        variant={saved ? 'outline' : 'default'}
+                        size="sm"
+                        onClick={handleSaveProtocol}
+                        disabled={createProtocol.isPending || saved}
+                    >
+                        {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
+                        {saved ? 'Saved!' : 'Save Protocol'}
+                    </Button>
                 )}
             </div>
 
@@ -419,6 +441,48 @@ export default function ProtocolBuilder() {
                     />
                 </div>
             </div>
+
+            {/* Bottom Action Bar */}
+            {builder.items.length > 0 && (
+                <Card className="sticky bottom-4 z-20 shadow-lg border-primary/20">
+                    <CardContent className="py-4">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Button
+                                    onClick={handleSendToCalendar}
+                                    disabled={createProtocol.isPending || sentToCalendar || !builder.selectedContactId}
+                                    className="bg-green-600 hover:bg-green-700"
+                                >
+                                    {sentToCalendar
+                                        ? <><Check className="h-4 w-4 mr-1.5" /> Sent!</>
+                                        : <><CalendarPlus className="h-4 w-4 mr-1.5" /> Send to {builder.clientName ? `${builder.clientName}'s` : "Client's"} Calendar</>
+                                    }
+                                </Button>
+                                <Button
+                                    variant={saved ? 'outline' : 'default'}
+                                    onClick={handleSaveProtocol}
+                                    disabled={createProtocol.isPending || saved}
+                                >
+                                    {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
+                                    {saved ? 'Saved!' : 'Save Protocol'}
+                                </Button>
+                            </div>
+                            <Separator orientation="vertical" className="h-8 hidden sm:block" />
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Button variant="outline" onClick={builder.copyHtml}>
+                                    <Copy className="h-4 w-4 mr-1.5" /> Copy
+                                </Button>
+                                <Button variant="outline" onClick={builder.printProtocol}>
+                                    <Printer className="h-4 w-4 mr-1.5" /> Print
+                                </Button>
+                                <Button variant="outline" onClick={builder.openMailto} disabled={!builder.clientEmail}>
+                                    <Mail className="h-4 w-4 mr-1.5" /> Email {builder.clientName || 'Client'}
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
