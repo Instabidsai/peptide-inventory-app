@@ -34,6 +34,8 @@ import {
 import { PeptideSuggestions } from '@/components/peptides/PeptideSuggestions';
 import { QueryError } from '@/components/ui/query-error';
 import { PeptideHistoryDialog } from '@/components/peptides/PeptideHistoryDialog';
+import SupplierOrderDialog from '@/components/merchant/SupplierOrderDialog';
+import MarginCalculator from '@/components/wholesale/MarginCalculator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -164,7 +166,9 @@ export default function Peptides() {
           <h1 className="text-2xl font-bold tracking-tight">Peptides</h1>
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
-        {canEdit && (
+        <div className="flex gap-2">
+          {canEdit && <SupplierOrderDialog />}
+          {canEdit && (
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -249,6 +253,7 @@ export default function Peptides() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <Card className="bg-card border-border/60">
@@ -617,6 +622,9 @@ export default function Peptides() {
         peptideId={historyPeptide?.id || null}
         peptideName={historyPeptide?.name || ''}
       />
+
+      {/* Wholesale Margin Calculator — only visible to admins with a supplier connection */}
+      {canEdit && <MarginCalculator />}
     </div >
   );
 }

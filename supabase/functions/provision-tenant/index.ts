@@ -289,17 +289,17 @@ Deno.serve(async (req) => {
         // ── Step 11: Assign Wholesale Tier + Supplier ──
         const supplierOrgId = Deno.env.get('SUPPLIER_ORG_ID');
         if (supplierOrgId) {
-            // Default new merchants to Starter tier
-            const { data: starterTier } = await supabase
+            // Default new merchants to Standard tier (cost + $40)
+            const { data: standardTier } = await supabase
                 .from('wholesale_pricing_tiers')
                 .select('id')
-                .eq('name', 'Starter')
+                .eq('name', 'Standard')
                 .eq('active', true)
                 .single();
 
-            if (starterTier) {
+            if (standardTier) {
                 const updatePayload: Record<string, any> = {
-                    wholesale_tier_id: starterTier.id,
+                    wholesale_tier_id: standardTier.id,
                     supplier_org_id: supplierOrgId,
                 };
                 if (body.onboarding_path) updatePayload.onboarding_path = body.onboarding_path;
@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
 
                 if (tierUpdateError) console.warn(`Wholesale tier assignment warning: ${tierUpdateError.message}`);
                 else results.wholesale_tier_assigned = true;
-                console.log(`  Assigned wholesale tier: Starter, supplier: ${supplierOrgId}`);
+                console.log(`  Assigned wholesale tier: Standard, supplier: ${supplierOrgId}`);
             }
         }
 

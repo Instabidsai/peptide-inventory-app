@@ -165,7 +165,7 @@ const PLANS = [
     { name: 'enterprise', display: 'Enterprise', price: 1299, desc: 'Full Jarvis AI ecosystem, autonomous operations, unlimited users, white-label, SLA.' },
 ];
 
-function PlanStep({ value, onChange, onNext, onBack }: StepProps & { value: string; onChange: (v: string) => void }) {
+function PlanStep({ value, onChange, onNext, onBack, submitting }: StepProps & { value: string; onChange: (v: string) => void; submitting?: boolean }) {
     return (
         <div className="space-y-4">
             <div>
@@ -177,7 +177,7 @@ function PlanStep({ value, onChange, onNext, onBack }: StepProps & { value: stri
                     <Card
                         key={plan.name}
                         className={`cursor-pointer transition-all ${value === plan.name ? 'border-primary ring-2 ring-primary/20' : 'hover:border-muted-foreground/30'}`}
-                        onClick={() => onChange(plan.name)}
+                        onClick={() => !submitting && onChange(plan.name)}
                     >
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
@@ -193,9 +193,9 @@ function PlanStep({ value, onChange, onNext, onBack }: StepProps & { value: stri
                 ))}
             </div>
             <div className="flex gap-3">
-                {onBack && <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>}
-                <Button className="flex-1" disabled={!value} onClick={onNext}>
-                    Continue <ArrowRight className="h-4 w-4 ml-1" />
+                {onBack && <Button variant="outline" onClick={onBack} disabled={submitting}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>}
+                <Button className="flex-1" disabled={!value || submitting} onClick={onNext}>
+                    {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Setting up...</> : <>Launch My Business <ArrowRight className="h-4 w-4 ml-1" /></>}
                 </Button>
             </div>
         </div>
@@ -305,8 +305,8 @@ export default function MerchantOnboarding() {
         navigate('/auth', { replace: true });
     };
 
-    // Progress indicator
-    const progress = step === 0 ? 0 : Math.round((step / totalSteps) * 100);
+    // Progress indicator — last input step (4) should show 100%
+    const progress = step === 0 ? 0 : Math.round((step / (totalSteps - 1)) * 100);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
@@ -359,20 +359,13 @@ export default function MerchantOnboarding() {
 
                     {/* Step 4: Choose plan */}
                     {step === 4 && (
-                        <div className="space-y-4">
-                            <PlanStep
-                                value={planName}
-                                onChange={setPlanName}
-                                onNext={handleCreate}
-                                onBack={() => setStep(3)}
-                            />
-                            {isCreating && (
-                                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="text-sm">Setting up your business...</span>
-                                </div>
-                            )}
-                        </div>
+                        <PlanStep
+                            value={planName}
+                            onChange={setPlanName}
+                            onNext={handleCreate}
+                            onBack={() => setStep(3)}
+                            submitting={isCreating}
+                        />
                     )}
 
                     {/* Step 5: Success */}

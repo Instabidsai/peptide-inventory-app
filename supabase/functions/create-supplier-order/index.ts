@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
         const peptideIds = body.items.map(i => i.peptide_id);
         const { data: validPeptides } = await supabase
             .from('peptides')
-            .select('id, name, retail_price')
+            .select('id, name, retail_price, base_cost')
             .eq('org_id', merchantOrgId)
             .in('id', peptideIds);
 
@@ -96,18 +96,26 @@ Deno.serve(async (req) => {
             throw new Error('Some products are not in your catalog');
         }
 
-        // Validate quantities
+        // Build lookup for server-side price enforcement
+        const peptideLookup = new Map(validPeptides.map(p => [p.id, p]));
+
+        // Validate quantities and enforce server-side pricing
+        const pricedItems: typeof body.items = [];
         for (const item of body.items) {
             if (!item.quantity || item.quantity < 1 || !Number.isInteger(item.quantity)) {
                 throw new Error('Invalid quantity');
             }
-            if (!item.unit_price || item.unit_price < 0) {
-                throw new Error('Invalid unit price');
+            const peptide = peptideLookup.get(item.peptide_id);
+            if (!peptide?.base_cost || peptide.base_cost <= 0) {
+                throw new Error(`Product "${peptide?.name || item.peptide_id}" has no base cost set`);
             }
+            // Server-calculated wholesale price — ignore client-sent unit_price
+            const serverPrice = +(peptide.base_cost + markupAmount).toFixed(2);
+            pricedItems.push({ ...item, unit_price: serverPrice });
         }
 
-        // Calculate total
-        const totalAmount = body.items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+        // Calculate total using server-enforced prices
+        const totalAmount = pricedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
 
         // Create the supplier order — use a dummy client_id (the merchant admin user)
         const { data: order, error: orderError } = await supabase
@@ -131,8 +139,8 @@ Deno.serve(async (req) => {
 
         if (orderError) throw new Error(`Order creation failed: ${orderError.message}`);
 
-        // Insert line items
-        const lineItems = body.items.map(item => ({
+        // Insert line items (using server-enforced prices)
+        const lineItems = pricedItems.map(item => ({
             sales_order_id: order.id,
             peptide_id: item.peptide_id,
             quantity: item.quantity,
@@ -154,7 +162,7 @@ Deno.serve(async (req) => {
             success: true,
             order_id: order.id,
             total_amount: totalAmount,
-            item_count: body.items.length,
+            item_count: pricedItems.length,
         });
 
     } catch (error: any) {

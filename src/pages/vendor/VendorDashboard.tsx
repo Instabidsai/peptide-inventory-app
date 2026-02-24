@@ -214,7 +214,7 @@ export default function VendorDashboard() {
             </div>
 
             {/* Quick Links */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/vendor/tenants')}>
                     <CardContent className="flex items-center justify-between p-4">
                         <div>
@@ -238,6 +238,15 @@ export default function VendorDashboard() {
                         <div>
                             <p className="font-medium">Onboarding Pipeline</p>
                             <p className="text-sm text-muted-foreground">Track tenant setup progress</p>
+                        </div>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                    </CardContent>
+                </Card>
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/vendor/supply-orders')}>
+                    <CardContent className="flex items-center justify-between p-4">
+                        <div>
+                            <p className="font-medium">Supply Orders</p>
+                            <p className="text-sm text-muted-foreground">Wholesale orders from merchants</p>
                         </div>
                         <ArrowRight className="h-5 w-5 text-muted-foreground" />
                     </CardContent>
