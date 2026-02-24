@@ -264,7 +264,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const data = await findPeptides(supabase, orgId, args.query);
         if (!data?.length) return "No peptides found matching '" + args.query + "'. Try a different spelling or use list_all_peptides to see everything.";
         const withStock = await Promise.all(data.map(async (p: any) => {
-          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("peptide_id", p.id).eq("status", "in_stock");
+          const { count } = await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("lots.peptide_id", p.id).eq("status", "in_stock");
           return (p.name || "Unnamed") + " | Stock: " + (count || 0) + " bottles | MSRP: $" + Number(p.retail_price).toFixed(2) + " | ID: " + p.id;
         }));
         return withStock.join("\n");
@@ -273,7 +273,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { data } = await supabase.from("peptides").select("id, name, retail_price").eq("org_id", orgId).order("name");
         if (!data?.length) return "No peptides found.";
         const withStock = await Promise.all(data.map(async (p: any) => {
-          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("peptide_id", p.id).eq("status", "in_stock");
+          const { count } = await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("lots.peptide_id", p.id).eq("status", "in_stock");
           return (p.name || "Unnamed") + " | Stock: " + (count || 0) + " | MSRP: $" + Number(p.retail_price).toFixed(2) + " | ID: " + p.id;
         }));
         return withStock.join("\n");
@@ -310,7 +310,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const stats: any = {};
         for (const status of statuses) {
           if (peptideIds.length === 0) { stats[status] = 0; continue; }
-          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", status).in("peptide_id", peptideIds);
+          const { count } = await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("status", status).in("lots.peptide_id", peptideIds);
           stats[status] = count || 0;
         }
         const total = Object.values(stats).reduce((s: number, c: any) => s + c, 0);
@@ -318,9 +318,9 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
       }
       case "list_lots": {
         const limit = args.limit || 20;
-        const { data } = await supabase.from("lots").select("id, peptide_id, quantity, cost_per_unit, payment_status, expiry_date, peptides!inner(name, org_id)").eq("peptides.org_id", orgId).order("created_at", { ascending: false }).limit(limit);
+        const { data } = await supabase.from("lots").select("id, peptide_id, quantity_received, cost_per_unit, payment_status, expiry_date, peptides!inner(name, org_id)").eq("peptides.org_id", orgId).order("created_at", { ascending: false }).limit(limit);
         if (!data?.length) return "No lots found.";
-        return data.map((l: any) => "#" + l.id.slice(0, 8) + " | " + (l.peptides?.name || "?") + " | " + l.quantity + " units @ $" + Number(l.cost_per_unit).toFixed(2) + " | Payment: " + l.payment_status + " | Expiry: " + (l.expiry_date || "N/A")).join("\n");
+        return data.map((l: any) => "#" + l.id.slice(0, 8) + " | " + (l.peptides?.name || "?") + " | " + l.quantity_received + " units @ $" + Number(l.cost_per_unit).toFixed(2) + " | Payment: " + l.payment_status + " | Expiry: " + (l.expiry_date || "N/A")).join("\n");
       }
       case "add_inventory": {
         // Direct inventory creation: lot + bottles in one step
@@ -331,7 +331,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         }).select().single();
         if (lotErr) return "Error creating lot: " + lotErr.message;
         const bottles = Array(args.quantity).fill(null).map(() => ({
-          lot_id: lot.id, peptide_id: args.peptide_id, status: "in_stock", created_at: new Date().toISOString(),
+          lot_id: lot.id, org_id: orgId, status: "in_stock", created_at: new Date().toISOString(),
         }));
         const { error: bottleErr } = await supabase.from("bottles").insert(bottles);
         if (bottleErr) return "Lot created but bottle generation failed: " + bottleErr.message;
@@ -366,7 +366,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (!order) return "PO not found.";
         const { data: lot, error: lotErr } = await supabase.from("lots").insert({ org_id: orgId, peptide_id: order.peptide_id, quantity_received: args.actual_quantity, cost_per_unit: args.actual_cost_per_unit, lot_number: args.lot_number, expiry_date: args.expiry_date || null, payment_status: "unpaid" }).select().single();
         if (lotErr) return "Error creating lot: " + lotErr.message;
-        const bottleInserts = Array(args.actual_quantity).fill(null).map(() => ({ lot_id: lot.id, peptide_id: order.peptide_id, status: "in_stock", created_at: new Date().toISOString() }));
+        const bottleInserts = Array(args.actual_quantity).fill(null).map(() => ({ lot_id: lot.id, org_id: orgId, status: "in_stock", created_at: new Date().toISOString() }));
         await supabase.from("bottles").insert(bottleInserts);
         await supabase.from("orders").update({ status: "received" }).eq("id", resolvedId);
         return "PO received! Created lot '" + args.lot_number + "' with " + args.actual_quantity + " bottles.";
@@ -549,7 +549,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { data: orgPeps } = await supabase.from("peptides").select("id").eq("org_id", orgId);
         const pepIds = orgPeps?.map((p: any) => p.id) || [];
         const { count: stockCount } = pepIds.length > 0
-          ? await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock").in("peptide_id", pepIds)
+          ? await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("status", "in_stock").in("lots.peptide_id", pepIds)
           : { count: 0 };
         return "=== FINANCIAL SUMMARY ===\nInventory Value: $" + inventoryValue.toFixed(2) + " (" + (stockCount || 0) + " bottles in stock)\n\nSales Revenue: $" + revenue.toFixed(2) + "\nCOGS: $" + orderCogs.toFixed(2) + "\nGross Profit: $" + (revenue - orderCogs).toFixed(2) + "\n\nCommissions: $" + totalCommission.toFixed(2) + "\nMerchant Fees: $" + merchantFees.toFixed(2) + "\nOrder-based Net Profit: $" + orderProfit.toFixed(2) + "\n\nExpenses - Inventory: $" + inventoryExp.toFixed(2) + " | Operating: $" + operatingExp.toFixed(2) + " | Total: $" + (inventoryExp + operatingExp).toFixed(2) + "\n\nCash Flow Profit: $" + (revenue - orderCogs - operatingExp - inventoryExp).toFixed(2);
       }
@@ -593,10 +593,10 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { data: dashPeptides } = await supabase.from("peptides").select("id").eq("org_id", orgId);
         const dashPepIds = dashPeptides?.map((p: any) => p.id) || [];
         const { count: totalStock } = dashPepIds.length > 0
-          ? await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("status", "in_stock").in("peptide_id", dashPepIds)
+          ? await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("status", "in_stock").in("lots.peptide_id", dashPepIds)
           : { count: 0 };
         const { count: totalContacts } = await supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId);
-        const { count: pendingRequests } = await supabase.from("requests").select("id", { count: "exact", head: true }).eq("status", "pending").in("peptide_id", dashPepIds.length > 0 ? dashPepIds : ["00000000-0000-0000-0000-000000000000"]);
+        const pendingRequests = 0; // requests table not yet created
         const { count: pendingPOs } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending");
         return "Dashboard:\n  Orders today: " + (todayOrders || 0) + "\n  Orders this week: " + (weekOrders || 0) + "\n  Revenue this week: $" + revenue.toFixed(2) + "\n  Bottles in stock: " + (totalStock || 0) + "\n  Total contacts: " + (totalContacts || 0) + "\n  Pending client requests: " + (pendingRequests || 0) + "\n  Pending purchase orders: " + (pendingPOs || 0);
       }
@@ -618,7 +618,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (!peptides?.length) return "No active peptides.";
         const lowStock: string[] = [];
         for (const p of peptides) {
-          const { count } = await supabase.from("bottles").select("id", { count: "exact", head: true }).eq("peptide_id", p.id).eq("status", "in_stock");
+          const { count } = await supabase.from("bottles").select("id, lots!inner(peptide_id)", { count: "exact", head: true }).eq("lots.peptide_id", p.id).eq("status", "in_stock");
           const stock = count || 0;
           if (stock <= threshold) lowStock.push(p.name + " | Stock: " + stock + (stock === 0 ? " *** OUT OF STOCK ***" : " (low)") + " | ID: " + p.id);
         }
@@ -844,13 +844,13 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
   ] = await Promise.all([
     supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", orgId).order("name"),
     supabase.from("lots").select("peptide_id, cost_per_unit, quantity_received").eq("org_id", orgId),
-    supabase.from("bottles").select("peptide_id").eq("status", "in_stock"),
+    supabase.from("bottles").select("lot_id, lots!inner(peptide_id)").eq("status", "in_stock"),
     supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
     supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10),
   ]);
 
   const stockMap: Record<string, number> = {};
-  stockBottles?.forEach((b: any) => { stockMap[b.peptide_id] = (stockMap[b.peptide_id] || 0) + 1; });
+  stockBottles?.forEach((b: any) => { const pid = b.lots?.peptide_id; if (pid) stockMap[pid] = (stockMap[pid] || 0) + 1; });
 
   const costMap: Record<string, { totalCost: number; totalQty: number }> = {};
   allLots?.forEach((l: any) => {
