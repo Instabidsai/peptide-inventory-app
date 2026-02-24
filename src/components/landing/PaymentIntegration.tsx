@@ -5,7 +5,7 @@ import { fadeInUp, scrollTo } from "./constants";
 
 export function PaymentIntegration() {
   const methods = [
-    { icon: CreditCard, name: "PsiFi Credit Card Processing", desc: "Full credit & debit card processing powered by PsiFi — already live and accepting payments today", badge: "Live" },
+    { icon: CreditCard, name: "PsiFi Credit Card Processing", desc: "Full merchant account setup and credit card processing powered by PsiFi — pre-configured and ready to accept payments on day one", badge: "Pre-Configured" },
     { icon: Wallet, name: "Zelle", desc: "Direct bank transfers with automated reconciliation", badge: "No Fee" },
     { icon: Wallet, name: "CashApp", desc: "Mobile-first payments your clients already use", badge: "No Fee" },
     { icon: Wallet, name: "Venmo", desc: "Social payments with instant confirmation", badge: "No Fee" },
@@ -31,9 +31,15 @@ export function PaymentIntegration() {
             PsiFi Payment Processing, Built In
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Real credit card processing powered by PsiFi — already live and taking payments.
-            Your merchant account, your rates, your revenue. Plus Zelle, CashApp, and Venmo built right in.
+            Real credit card processing powered by PsiFi — merchant account setup and integration
+            pre-configured with every plan. Your rates, your revenue. Plus Zelle, CashApp, and Venmo built right in.
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <CreditCard className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-medium text-emerald-400">
+              Merchant account setup included — no separate integration fees
+            </span>
+          </div>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-10 items-start">

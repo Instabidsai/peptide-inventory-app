@@ -20,12 +20,13 @@ export function Pricing() {
       id: "1",
       name: "starter",
       display_name: "Starter",
-      price_monthly: 34900,
-      price_yearly: 349900,
+      price_monthly: 49900,
+      price_yearly: 499900,
       max_users: 5,
       max_peptides: 50,
       max_orders_per_month: 500,
       features: [
+        "PsiFi payment processing pre-configured",
         "Pre-loaded supplier catalog",
         "AI Chat Assistant",
         "Branded client portal",
@@ -42,8 +43,8 @@ export function Pricing() {
       id: "2",
       name: "professional",
       display_name: "Professional",
-      price_monthly: 49900,
-      price_yearly: 499900,
+      price_monthly: 89900,
+      price_yearly: 899900,
       max_users: 25,
       max_peptides: 200,
       max_orders_per_month: 2000,
@@ -99,7 +100,7 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            Software + supplier catalog + fulfillment — all in one monthly price. No hidden fees. Every plan includes AI.
+            Software + supplier catalog + fulfillment + PsiFi payment processing — all in one price. No hidden fees, no setup costs. Every plan includes AI.
           </p>
 
           {/* Premium toggle */}
