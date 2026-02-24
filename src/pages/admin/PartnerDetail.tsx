@@ -832,7 +832,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                     phone: newClient.phone.trim() || null,
                     address: newClient.address.trim() || null,
                     notes: newClient.notes.trim() || null,
-                    type: partnerTier === 'referral' ? 'preferred' : 'customer',
+                    type: 'customer',
                     assigned_rep_id: repId,
                     org_id: repProfile?.org_id || null,
                 })
@@ -977,9 +977,9 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                                     <TableCell>
                                         <Badge
                                             variant={client.type === 'partner' ? 'secondary' : 'default'}
-                                            className={`capitalize ${client.type === 'preferred' ? 'bg-sky-900/20 text-sky-400 border-sky-500/40' : ''}`}
+                                            className="capitalize"
                                         >
-                                            {client.type === 'preferred' ? 'preferred client' : client.type}
+                                            {client.type}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{client.email || '-'}</TableCell>

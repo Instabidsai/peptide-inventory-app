@@ -126,7 +126,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 if (existing) {
                     await supabase.from('tenant_subscriptions').update({
-                        status: sub.status === 'active' ? 'active' : sub.status === 'past_due' ? 'past_due' : sub.status,
+                        status: sub.status === 'active' ? 'active'
+                            : sub.status === 'past_due' ? 'past_due'
+                            : sub.status === 'trialing' ? 'trialing'
+                            : 'canceled',
                         cancel_at_period_end: sub.cancel_at_period_end,
                         current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
                         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
