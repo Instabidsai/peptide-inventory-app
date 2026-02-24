@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink } from 'lucide-react';
+import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink, Truck, Globe, Wand2 } from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -37,6 +37,8 @@ function BrandingTab({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeUrl, setScrapeUrl] = useState('');
   const [brand, setBrand] = useState({
     brand_name: '',
     admin_brand_name: '',
@@ -82,16 +84,78 @@ function BrandingTab({ orgId }: { orgId: string }) {
     }
   };
 
+  const handleScrape = async () => {
+    if (!scrapeUrl.trim()) return;
+    setScraping(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const resp = await supabase.functions.invoke('scrape-brand', {
+        body: { url: scrapeUrl, persist: true },
+      });
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+      if (result?.brand) {
+        const b = result.brand;
+        setBrand(prev => ({
+          ...prev,
+          brand_name: b.company_name || prev.brand_name,
+          logo_url: b.logo_url || prev.logo_url,
+          primary_color: b.primary_color || prev.primary_color,
+        }));
+        queryClient.invalidateQueries({ queryKey: ['tenant-config-settings'] });
+        invalidateTenantConfigCache();
+        toast({
+          title: 'Brand imported',
+          description: `Found ${result.peptides?.length || 0} peptides. Branding fields updated — review and save.`,
+        });
+      }
+    } catch (err) {
+      toast({ title: 'Scrape failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setScraping(false);
+    }
+  };
+
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Branding</CardTitle>
-        <CardDescription>Customize how your portal looks to clients and staff</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="h-5 w-5" /> Import from Website
+          </CardTitle>
+          <CardDescription>
+            Paste your existing website URL to auto-fill branding and detect your peptide catalog
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Input
+              value={scrapeUrl}
+              onChange={e => setScrapeUrl(e.target.value)}
+              placeholder="https://yourpeptideco.com"
+              className="flex-1"
+            />
+            <Button onClick={handleScrape} disabled={scraping || !scrapeUrl.trim()}>
+              {scraping ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+              {scraping ? 'Scanning...' : 'Import'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            We'll extract your brand name, colors, logo, and product catalog using AI.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Branding</CardTitle>
+          <CardDescription>Customize how your portal looks to clients and staff</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Client-Facing Brand Name</Label>
             <Input value={brand.brand_name} onChange={e => setBrand(b => ({ ...b, brand_name: e.target.value }))} placeholder="My Peptide Co" />
@@ -132,6 +196,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
         </Button>
       </CardContent>
     </Card>
+    </div>
   );
 }
 
@@ -143,6 +208,9 @@ const API_KEY_SERVICES = [
   { key: 'stripe_publishable_key', label: 'Stripe Publishable Key (optional)', placeholder: 'pk_live_...' },
   { key: 'shippo_api_key', label: 'Shippo API Key', placeholder: 'shippo_live_...' },
   { key: 'openai_api_key', label: 'OpenAI API Key (AI Chat)', placeholder: 'sk-...' },
+  { key: 'woo_url', label: 'WooCommerce Store URL', placeholder: 'https://yourstore.com' },
+  { key: 'woo_user', label: 'WooCommerce Username', placeholder: 'admin@yourstore.com' },
+  { key: 'woo_app_pass', label: 'WooCommerce App Password', placeholder: 'xxxx xxxx xxxx xxxx' },
 ] as const;
 
 const OAUTH_SERVICES = [
@@ -356,6 +424,116 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
             <li>Click <strong>Save webhook</strong> — WooCommerce will send a test ping</li>
           </ol>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Shipping Config Section ───
+function ShippingConfigSection({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [ship, setShip] = useState({
+    ship_from_name: '',
+    ship_from_street: '',
+    ship_from_city: '',
+    ship_from_state: '',
+    ship_from_zip: '',
+    ship_from_phone: '',
+    ship_from_email: '',
+  });
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ['tenant-config-shipping', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_phone, ship_from_email')
+        .eq('org_id', orgId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (config) setShip(prev => ({ ...prev, ...config }));
+  }, [config]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({ ...ship, ship_from_country: 'US' })
+        .eq('org_id', orgId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['tenant-config-shipping'] });
+      invalidateTenantConfigCache();
+      toast({ title: 'Ship-from address saved' });
+    } catch (err) {
+      toast({ title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isFilled = ship.ship_from_name && ship.ship_from_street && ship.ship_from_city && ship.ship_from_state && ship.ship_from_zip;
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Truck className="h-5 w-5" /> Ship-From Address
+        </CardTitle>
+        <CardDescription>
+          Return address printed on shipping labels. Required before creating labels.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Business / Sender Name</Label>
+          <Input value={ship.ship_from_name} onChange={e => setShip(s => ({ ...s, ship_from_name: e.target.value }))} placeholder="My Peptide Company LLC" />
+        </div>
+        <div className="space-y-2">
+          <Label>Street Address</Label>
+          <Input value={ship.ship_from_street} onChange={e => setShip(s => ({ ...s, ship_from_street: e.target.value }))} placeholder="123 Main St, Suite 100" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-2">
+            <Label>City</Label>
+            <Input value={ship.ship_from_city} onChange={e => setShip(s => ({ ...s, ship_from_city: e.target.value }))} placeholder="Tampa" />
+          </div>
+          <div className="space-y-2">
+            <Label>State</Label>
+            <Input value={ship.ship_from_state} onChange={e => setShip(s => ({ ...s, ship_from_state: e.target.value.toUpperCase().slice(0, 2) }))} placeholder="FL" maxLength={2} />
+          </div>
+          <div className="space-y-2">
+            <Label>ZIP Code</Label>
+            <Input value={ship.ship_from_zip} onChange={e => setShip(s => ({ ...s, ship_from_zip: e.target.value }))} placeholder="33601" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input value={ship.ship_from_phone} onChange={e => setShip(s => ({ ...s, ship_from_phone: e.target.value }))} placeholder="(555) 123-4567" />
+          </div>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input type="email" value={ship.ship_from_email} onChange={e => setShip(s => ({ ...s, ship_from_email: e.target.value }))} placeholder="shipping@example.com" />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Address
+        </Button>
+        {!isFilled && (
+          <p className="text-xs text-amber-500">Fill in all address fields to enable shipping label creation.</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -677,6 +855,7 @@ export default function Settings() {
 
         {isAdmin && organization?.id && (
           <TabsContent value="integrations" className="space-y-6">
+            <ShippingConfigSection orgId={organization.id} />
             <WooCommerceSetupSection orgId={organization.id} />
             <OAuthConnectionsSection />
             <IntegrationsTab orgId={organization.id} />
