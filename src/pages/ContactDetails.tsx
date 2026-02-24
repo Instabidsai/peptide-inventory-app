@@ -1,13 +1,11 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useContact } from '@/hooks/use-contacts';
 import { useProtocols } from '@/hooks/use-protocols';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useMovements } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/sb_client/client';
-import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
-import { Loader2, Calculator, Wand2 } from 'lucide-react';
-import { autoGenerateProtocol } from '@/lib/auto-protocol';
-import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, Calculator, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
@@ -20,7 +18,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from '@/hooks/use-toast';
 import { FinancialOverview } from "@/components/regimen/FinancialOverview";
 import { useState } from 'react';
 import { Separator } from '@/components/ui/separator';
@@ -53,67 +50,14 @@ export default function ContactDetails() {
     } = useProtocols(id);
     const { protocols: templates } = useProtocols(undefined); // Fetch global templates
     const { data: peptides } = usePeptides();
-    const queryClient = useQueryClient();
     const { data: movements } = useMovements(id);
 
-    // Auth context for org_id
-    const { profile: authProfile } = useAuth();
+    const navigate = useNavigate();
 
     // Confirm dialog state (replaces browser confirm())
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(
         { open: false, title: '', description: '', action: () => {} }
     );
-
-    // Auto-generate protocol from sales orders
-    const autoGenProtocol = useMutation({
-        mutationFn: async () => {
-            if (!id || !authProfile?.org_id) throw new Error('Missing contact or org');
-            const { data: orders, error: ordErr } = await supabase
-                .from('sales_orders')
-                .select('id')
-                .eq('client_id', id)
-                .in('status', ['fulfilled', 'paid', 'completed']);
-            if (ordErr) throw ordErr;
-            if (!orders || orders.length === 0) throw new Error('No fulfilled orders found for this contact');
-
-            const orderIds = orders.map(o => o.id);
-            const { data: items, error: itemErr } = await supabase
-                .from('sales_order_items')
-                .select('peptide_id, peptides(name)')
-                .in('order_id', orderIds);
-            if (itemErr) throw itemErr;
-            if (!items || items.length === 0) throw new Error('No peptide items found in orders');
-
-            const seen = new Set<string>();
-            const peptideItems: Array<{ peptideId: string; peptideName: string }> = [];
-            for (const item of items) {
-                if (item.peptide_id && !seen.has(item.peptide_id)) {
-                    seen.add(item.peptide_id);
-                    peptideItems.push({
-                        peptideId: item.peptide_id,
-                        peptideName: (item.peptides as { name: string } | null)?.name || 'Unknown',
-                    });
-                }
-            }
-
-            return autoGenerateProtocol({
-                contactId: id,
-                orgId: authProfile.org_id,
-                items: peptideItems,
-            });
-        },
-        onSuccess: (result) => {
-            queryClient.invalidateQueries({ queryKey: ['protocols'] });
-            if (result.created) {
-                toast({ title: 'Protocol generated', description: `Created protocol with ${result.protocolItemMap.size} peptide(s) from orders.` });
-            } else {
-                toast({ title: 'Protocol already exists', description: 'A matching protocol was already found for this contact.' });
-            }
-        },
-        onError: (error: Error) => {
-            toast({ variant: 'destructive', title: 'Failed to generate protocol', description: error.message });
-        },
-    });
 
     // Customer order stats
     const { data: orderStats } = useQuery({
@@ -170,11 +114,10 @@ export default function ContactDetails() {
                     {dialogsJSX}
                     <Button
                         variant="outline"
-                        onClick={() => autoGenProtocol.mutate()}
-                        disabled={autoGenProtocol.isPending}
+                        onClick={() => navigate(`/protocol-builder?contact=${id}`)}
                     >
-                        {autoGenProtocol.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                        Auto Protocol
+                        <FlaskConical className="mr-2 h-4 w-4" />
+                        Build Protocol
                     </Button>
                 </ContactInfoCard>
 
