@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Copy, Printer, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const FONT_SIZES = [
@@ -16,23 +13,11 @@ const FONT_SIZES = [
 interface RichProtocolPreviewProps {
     html: string;
     itemCount: number;
-    onCopy: () => void;
-    onPrint: () => void;
-    onEmail: () => void;
-    canEmail: boolean;
-    clientName: string;
-    hasClient: boolean;
 }
 
 export function RichProtocolPreview({
     html,
     itemCount,
-    onCopy,
-    onPrint,
-    onEmail,
-    canEmail,
-    clientName,
-    hasClient,
 }: RichProtocolPreviewProps) {
     const [fontSize, setFontSize] = useState('13px');
 
@@ -87,37 +72,6 @@ export function RichProtocolPreview({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                    <Button className="flex-1" variant="outline" size="sm" onClick={onCopy}>
-                        <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
-                    </Button>
-                    <Button className="flex-1" variant="outline" size="sm" onClick={onPrint}>
-                        <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
-                    </Button>
-                    <Button
-                        className="flex-1"
-                        size="sm"
-                        onClick={onEmail}
-                        disabled={!canEmail}
-                    >
-                        <Mail className="h-3.5 w-3.5 mr-1.5" />
-                        Email{clientName ? ` ${clientName}` : ''}
-                    </Button>
-                </div>
-
-                {!hasClient && (
-                    <p className="text-[11px] text-muted-foreground text-center">
-                        Select a client above to enable email.
-                    </p>
-                )}
-                {hasClient && !canEmail && (
-                    <p className="text-[11px] text-amber-500 text-center">
-                        No email on file for this client.
-                    </p>
-                )}
-
-                <Separator />
 
                 {/* HTML Preview */}
                 <div

@@ -61,24 +61,24 @@ export function useProtocols(contactId?: string) {
             if (!user.user) throw new Error('Not authenticated');
 
             // Fetch profile to get org_id reliably
-            const { data: profile } = await supabase
+            const { data: fetchedProfile } = await supabase
                 .from('profiles')
                 .select('org_id')
                 .eq('user_id', user.user.id)
                 .single();
 
-            if (!profile?.org_id) throw new Error('Organization ID not found');
+            if (!fetchedProfile?.org_id) throw new Error('Organization ID not found');
 
             const { data: protocol, error } = await supabase
                 .from('protocols')
-                .insert({ name, description, contact_id, org_id: profile.org_id })
+                .insert({ name, description, contact_id, org_id: fetchedProfile.org_id })
                 .select()
                 .single();
 
             if (error) throw error;
 
             if (items && items.length > 0) {
-                const itemsToInsert = items.map(item => ({
+                const itemsToInsert = items.map(({ notes, ...item }) => ({
                     ...item,
                     protocol_id: protocol.id,
                     // Fix for legacy schema requirement: if duration_days is present, ensure duration_weeks is also set (approx)

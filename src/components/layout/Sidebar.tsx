@@ -97,7 +97,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border/50 transform transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border/50 transform transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:translate-x-0 flex flex-col',
         open ? 'translate-x-0 shadow-2xl shadow-black/30' : '-translate-x-full'
       )}
     >
@@ -139,7 +139,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navigation.filter(item => {
           // Feature flag check — hide items whose feature is disabled
           const featureKey = SIDEBAR_FEATURE_MAP[item.name];

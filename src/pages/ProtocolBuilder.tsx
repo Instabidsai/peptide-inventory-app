@@ -432,12 +432,6 @@ export default function ProtocolBuilder() {
                     <RichProtocolPreview
                         html={builder.html}
                         itemCount={builder.items.length}
-                        onCopy={builder.copyHtml}
-                        onPrint={builder.printProtocol}
-                        onEmail={builder.openMailto}
-                        canEmail={!!builder.clientEmail}
-                        clientName={builder.clientName}
-                        hasClient={!!builder.selectedContactId}
                     />
                 </div>
             </div>
