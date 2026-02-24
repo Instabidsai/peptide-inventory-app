@@ -43,6 +43,22 @@ export function AiShowcase() {
           role: "ai",
           text: "Your analytics dashboard is live with daily orders, revenue by peptide, and 30-day trends. It auto-refreshes every 5 minutes.",
         },
+        {
+          role: "user",
+          text: "Can you add a comparison to last month?",
+        },
+        {
+          role: "ai",
+          text: "Done — added month-over-month comparison with growth percentages highlighted in green. BPC-157 is up 23% and TB-500 is up 18%.",
+        },
+        {
+          role: "user",
+          text: "Perfect. Email me this report every Monday morning.",
+        },
+        {
+          role: "ai",
+          text: "Scheduled! You'll receive a PDF summary every Monday at 8 AM with the week's revenue breakdown, top sellers, and trend alerts.",
+        },
       ],
       buildSteps: [
         "Analyzing your data schema...",
@@ -96,6 +112,22 @@ export function AiShowcase() {
         {
           role: "ai",
           text: "Here's your BPC-157 inventory by lot. LOT-2024-C is highlighted and editable — adjust the count directly. Changes sync across all systems instantly.",
+        },
+        {
+          role: "user",
+          text: "Update LOT-2024-C to 380 vials. We just did a recount.",
+        },
+        {
+          role: "ai",
+          text: "Updated! LOT-2024-C now shows 380 vials. I've logged the adjustment with your name and timestamp for audit trail. Previous count was 450.",
+        },
+        {
+          role: "user",
+          text: "Which lots expire in the next 90 days?",
+        },
+        {
+          role: "ai",
+          text: "LOT-2024-A expires Aug 15 (840 vials remaining). I'd recommend running a promotion to move that stock. Want me to flag it on the dashboard?",
         },
       ],
       buildSteps: [
@@ -157,6 +189,22 @@ export function AiShowcase() {
           role: "ai",
           text: "Order #4521 complete! Payment captured ($347.00), USPS Priority label generated via Shippo, and customer notified with tracking number 9400111899223456789.",
         },
+        {
+          role: "user",
+          text: "The customer wants to add 2 more vials of TB-500. Can you update it?",
+        },
+        {
+          role: "ai",
+          text: "Updated! Added 2x TB-500 ($89 each). New total is $525.00. I've charged the difference to the card on file and updated the shipping label weight.",
+        },
+        {
+          role: "user",
+          text: "Show me all unfulfilled orders from this week.",
+        },
+        {
+          role: "ai",
+          text: "You have 7 unfulfilled orders this week totaling $4,230. Three are Priority shipping — want me to batch-print labels for all of them?",
+        },
       ],
       buildSteps: [
         "Verifying order details...",
@@ -216,6 +264,22 @@ export function AiShowcase() {
           role: "ai",
           text: "Automation active! When stock dips below 200, your team gets email + in-app alerts with a one-click reorder button. I'm monitoring all 24 peptide SKUs.",
         },
+        {
+          role: "user",
+          text: "Also alert me if any COA expires within 30 days.",
+        },
+        {
+          role: "ai",
+          text: "Added! COA expiration alerts are now active. I'll notify you 30 days before expiry with the lot number, peptide, and a link to upload the renewal.",
+        },
+        {
+          role: "user",
+          text: "What automations are currently running?",
+        },
+        {
+          role: "ai",
+          text: "You have 3 active automations: low stock alerts (200-unit threshold), COA expiration warnings (30-day), and daily order summary emails. All running smoothly — no issues in the last 7 days.",
+        },
       ],
       buildSteps: [
         "Analyzing inventory thresholds...",
@@ -262,6 +326,22 @@ export function AiShowcase() {
         {
           role: "ai",
           text: 'Your Protocols module is live! I created a database table with fields for peptide, dose, frequency, duration, and notes. Built the form, list view, and client assignment panel. It\'s in your sidebar under "Protocols".',
+        },
+        {
+          role: "user",
+          text: "Add a field for injection site rotation and make it required.",
+        },
+        {
+          role: "ai",
+          text: 'Done — added "Injection Site" as a required select field with options: deltoid, abdomen, thigh, and glute. Updated the form validation and list view columns.',
+        },
+        {
+          role: "user",
+          text: "Can clients see their assigned protocols in their portal?",
+        },
+        {
+          role: "ai",
+          text: "Yes! I've enabled protocol visibility in the client portal. They can view their active schedule, dosing instructions, and next injection date. They can't edit — view only.",
         },
       ],
       buildSteps: [
@@ -326,6 +406,22 @@ export function AiShowcase() {
         {
           role: "ai",
           text: "Your compliance report is ready — COA status for all active lots, expiring items flagged by severity, and an exportable PDF for auditors.",
+        },
+        {
+          role: "user",
+          text: "Break down revenue by sales rep for this quarter.",
+        },
+        {
+          role: "ai",
+          text: "Here's your Q1 breakdown: Sarah ($34,200, 47 orders), Mike ($28,900, 38 orders), Lisa ($22,100, 31 orders). Sarah's conversion rate is 12% above average.",
+        },
+        {
+          role: "user",
+          text: "Export that as a PDF and email it to my accountant.",
+        },
+        {
+          role: "ai",
+          text: "PDF generated and sent to accounting@yourcompany.com. Includes revenue breakdown, commission calculations, and a summary chart. I'll auto-send this at the end of each quarter.",
         },
       ],
       buildSteps: [
@@ -424,7 +520,7 @@ export function AiShowcase() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <div className="min-h-[440px]">
+            <div className="min-h-[520px]">
               {Object.entries(demos).map(([key, demo]) => (
                 <TabsContent key={key} value={key}>
                   <div className="max-w-2xl mx-auto">

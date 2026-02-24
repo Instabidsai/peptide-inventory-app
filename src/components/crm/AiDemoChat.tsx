@@ -42,6 +42,7 @@ export function AiDemoChat({
   const [buildPhaseForPreview, setBuildPhaseForPreview] = useState(-1);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const buildStepsShownRef = useRef(false);
   const reset = useCallback(() => {
     setVisibleMessages([]);
     setShowResult(false);
@@ -51,6 +52,7 @@ export function AiDemoChat({
     setShowThinking(false);
     setBuildStep(-1);
     setBuildPhaseForPreview(-1);
+    buildStepsShownRef.current = false;
   }, []);
 
   // Auto-scroll chat area when new content appears
@@ -80,7 +82,9 @@ export function AiDemoChat({
     const msg = messages[currentIndex];
 
     if (msg.role === "ai") {
-      if (buildSteps && buildSteps.length > 0) {
+      // Only show build steps for the FIRST AI message
+      if (buildSteps && buildSteps.length > 0 && !buildStepsShownRef.current) {
+        buildStepsShownRef.current = true;
         // Show step-by-step build progress
         setBuildStep(0);
         setBuildPhaseForPreview(0);
@@ -109,7 +113,7 @@ export function AiDemoChat({
           clearTimeout(finalTimer);
         };
       } else {
-        // Simple thinking dots
+        // Simple thinking dots for follow-up AI messages
         setShowThinking(true);
         const thinkTimer = setTimeout(() => {
           setShowThinking(false);
@@ -123,7 +127,7 @@ export function AiDemoChat({
       const delay = setTimeout(() => {
         setIsTyping(true);
         setTypedText("");
-      }, 500);
+      }, currentIndex === 0 ? 500 : 1000);
       return () => clearTimeout(delay);
     }
   }, [currentIndex, messages, loop, reset, buildSteps]);
@@ -176,7 +180,7 @@ export function AiDemoChat({
       </div>
 
       {/* ── Chat messages area (scrollable, compact) ── */}
-      <div className="p-4 space-y-3 min-h-[80px] max-h-[200px] overflow-y-auto">
+      <div className="p-4 space-y-3 min-h-[80px] max-h-[280px] overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div
