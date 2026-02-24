@@ -85,14 +85,16 @@ export function useProtocols(contactId?: string) {
                     duration_weeks: item.duration_days ? Math.ceil(item.duration_days / 7) : (item.duration_weeks || 1)
                 }));
 
-                const { error: itemsError } = await supabase
+                const { data: createdItems, error: itemsError } = await supabase
                     .from('protocol_items')
-                    .insert(itemsToInsert);
+                    .insert(itemsToInsert)
+                    .select('id, peptide_id');
 
                 if (itemsError) throw itemsError;
+                return { ...protocol, protocol_items: createdItems || [] };
             }
 
-            return protocol;
+            return { ...protocol, protocol_items: [] as Array<{ id: string; peptide_id: string }> };
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['protocols'] });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProtocolBuilder } from '@/hooks/use-protocol-builder';
 import { useProtocols } from '@/hooks/use-protocols';
+import { supabase } from '@/integrations/sb_client/client';
 import { lookupKnowledge, RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, CATEGORY_META } from '@/data/protocol-knowledge';
 import { TemplatePicker } from '@/components/protocol-builder/TemplatePicker';
 import { ProtocolItemEditor } from '@/components/protocol-builder/ProtocolItemEditor';
@@ -72,7 +73,7 @@ export default function ProtocolBuilder() {
             toast.error('Select a client first to send to their calendar');
             return;
         }
-        await createProtocol.mutateAsync({
+        const result = await createProtocol.mutateAsync({
             name: builder.protocolName,
             description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
             contact_id: builder.selectedContactId,
@@ -86,8 +87,68 @@ export default function ProtocolBuilder() {
                 duration_days: 56,
             })),
         });
+
+        // Configure inventory items for Protocol Calendar tracking
+        try {
+            const createdItems = result?.protocol_items || [];
+            if (createdItems.length > 0 && builder.selectedContactId) {
+                // Fetch client's active inventory
+                const { data: inventory } = await supabase
+                    .from('client_inventory')
+                    .select('id, peptide_id, concentration_mg_ml')
+                    .eq('contact_id', builder.selectedContactId)
+                    .eq('status', 'active');
+
+                if (inventory && inventory.length > 0) {
+                    // Map protocol frequency to inventory dose_frequency
+                    const mapFrequency = (freq: string): { dose_frequency: string; dose_days?: string[]; dose_interval?: number } => {
+                        const f = freq.toLowerCase().trim();
+                        if (f === 'daily' || f === 'twice daily' || f === '2x daily') return { dose_frequency: 'daily' };
+                        if (f === 'every other day') return { dose_frequency: 'every_other_day' };
+                        if (f === '3x weekly' || f === 'three times weekly') return { dose_frequency: 'specific_days', dose_days: ['Mon', 'Wed', 'Fri'] };
+                        if (f === 'weekly' || f === 'once weekly') return { dose_frequency: 'every_x_days', dose_interval: 7 };
+                        if (f === '2x weekly' || f === 'twice weekly') return { dose_frequency: 'specific_days', dose_days: ['Mon', 'Thu'] };
+                        if (f === '5x weekly') return { dose_frequency: 'specific_days', dose_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] };
+                        return { dose_frequency: 'daily' }; // default
+                    };
+
+                    // For each protocol item, find matching inventory and update
+                    for (const builderItem of builder.items) {
+                        const protocolItem = createdItems.find((pi: { id: string; peptide_id: string }) => pi.peptide_id === builderItem.peptideId);
+                        if (!protocolItem) continue;
+
+                        const matchingVials = inventory.filter(v => v.peptide_id === builderItem.peptideId);
+                        if (matchingVials.length === 0) continue;
+
+                        const freqConfig = mapFrequency(builderItem.frequency);
+                        const doseAmountMg = builderItem.doseUnit === 'mcg'
+                            ? builderItem.doseAmount / 1000
+                            : builderItem.doseAmount;
+
+                        for (const vial of matchingVials) {
+                            await supabase
+                                .from('client_inventory')
+                                .update({
+                                    in_fridge: true,
+                                    dose_amount_mg: doseAmountMg,
+                                    dose_frequency: freqConfig.dose_frequency,
+                                    ...(freqConfig.dose_days ? { dose_days: freqConfig.dose_days } : {}),
+                                    ...(freqConfig.dose_interval ? { dose_interval: freqConfig.dose_interval } : {}),
+                                    protocol_item_id: protocolItem.id,
+                                })
+                                .eq('id', vial.id);
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to configure inventory for calendar:', e);
+            // Non-blocking — protocol was still created successfully
+        }
+
         queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
         queryClient.invalidateQueries({ queryKey: ['protocols'] });
+        queryClient.invalidateQueries({ queryKey: ['client-inventory-calendar-view'] });
         setSentToCalendar(true);
         toast.success(`Protocol sent to ${builder.clientName || 'client'}'s calendar!`);
         setTimeout(() => {
