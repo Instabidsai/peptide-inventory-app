@@ -11,11 +11,11 @@ export function Faq() {
   const items = [
     {
       q: "What makes this different from HubSpot or Salesforce?",
-      a: `${PLATFORM.name} is purpose-built for peptide businesses — lot tracking, COA management, expiry alerts, and protocol management come built-in. But the real difference is the AI: where generic CRMs require expensive consultants and months of customization, our AI builds custom dashboards, automations, and modules in minutes from a plain-English description. One AI handles everything — operating your CRM, managing inventory, processing orders, and building new features on demand.`,
+      a: `${PLATFORM.name} is purpose-built for peptide businesses — lot tracking, COA management, expiry alerts, and protocol management come built-in. Where generic CRMs require expensive consultants and months of customization, our platform builds custom dashboards, automations, and modules in minutes from a plain-English description. One system handles everything — managing inventory, processing orders, tracking compliance, and building new features on demand.`,
     },
     {
-      q: "How does the AI actually control my entire CRM?",
-      a: "The AI has full access to your CRM data and actions. It can look up inventory levels, process orders, generate shipping labels, send customer notifications, create reports, and manage contacts — all through natural conversation. Ask it 'process order #4521 and notify the customer' and it handles every step: payment, label, email. It goes further — creating new database tables, building custom forms, setting up automations, and adding entirely new modules to your sidebar.",
+      q: "How does the platform work day-to-day?",
+      a: "You interact through a chat interface connected to your entire CRM — inventory levels, orders, shipping labels, customer notifications, reports, and contacts. Type 'process order #4521 and notify the customer' and it handles every step: payment, label, email. Need something new? Describe it and it builds custom dashboards, forms, automations, and modules — all added to your sidebar, ready to use.",
     },
     {
       q: "Is my data secure? What about compliance?",

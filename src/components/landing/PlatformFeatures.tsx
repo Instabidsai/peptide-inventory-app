@@ -33,7 +33,7 @@ export function PlatformFeatures() {
         { icon: Bot, title: "AI Chat Assistant", desc: "AI-powered chat with RAG knowledge base. Ask about inventory, protocols, client health — get instant answers with citations." },
         { icon: Wand2, title: "AI Feature Builder", desc: "Describe what you need in plain English. The AI creates custom dashboards, data fields, entities, and automations — deployed in minutes." },
         { icon: Zap, title: "Smart Automations", desc: "Automated payment matching, email scanning, restock alerts, and custom workflow triggers. Set rules once, the AI handles the rest." },
-        { icon: Sparkles, title: "AI Agent Framework", desc: "Extensible agent framework. New specialized AI agents deploy as your business grows — each one built for a specific task." },
+        { icon: Sparkles, title: "Extensible Automation", desc: "New specialized capabilities deploy as your business grows — each one built for a specific task, from restock alerts to compliance checks." },
       ],
     },
     {
@@ -98,7 +98,7 @@ export function PlatformFeatures() {
           </p>
         </motion.div>
 
-        <Tabs defaultValue="ai" className="w-full">
+        <Tabs defaultValue="inventory" className="w-full">
           <TabsList className="flex w-full max-w-3xl mx-auto mb-8 h-auto gap-1 flex-wrap justify-center">
             {categories.map((cat) => (
               <TabsTrigger key={cat.id} value={cat.id} className="text-xs sm:text-sm px-3 py-2.5 gap-1.5">
@@ -137,7 +137,7 @@ export function PlatformFeatures() {
 
         <motion.div {...fadeInUp} className="text-center mt-10">
           <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-semibold">100+ features</span> across 5 categories — and the AI builds more on demand.
+            <span className="text-primary font-semibold">100+ features</span> across 5 categories — and new ones are built on demand.
           </p>
         </motion.div>
       </div>

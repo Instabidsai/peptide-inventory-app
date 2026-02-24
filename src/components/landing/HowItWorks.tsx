@@ -6,13 +6,13 @@ export function HowItWorks() {
   const steps = [
     {
       icon: MessageSquare,
-      title: "Tell the AI What You Need",
-      desc: 'Describe your workflow in plain English. "I need a reorder alert when BPC-157 drops below 500 vials."',
+      title: "Describe What You Need",
+      desc: 'Type it in plain English: "I need a reorder alert when BPC-157 drops below 500 vials."',
     },
     {
       icon: Wand2,
-      title: "Watch It Build in Real Time",
-      desc: "Our AI architect designs, codes, and deploys your custom feature — dashboards, automations, reports — in minutes.",
+      title: "We Build It in Minutes",
+      desc: "Custom dashboards, automations, reports — designed, built, and deployed while you watch. No consultants, no dev team required.",
     },
     {
       icon: Rocket,

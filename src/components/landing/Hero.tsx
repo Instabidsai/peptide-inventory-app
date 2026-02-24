@@ -132,7 +132,7 @@ export function Hero() {
                 onClick={() => scrollTo("ai-showcase")}
                 className="text-base px-8 py-3 h-auto border-border/60 hover:border-primary/50"
               >
-                Watch AI Build Live
+                See It In Action
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>

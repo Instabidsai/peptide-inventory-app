@@ -494,15 +494,15 @@ export function AiShowcase() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
-            The Differentiator
+            Live Demo
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Watch Your AI Control the Entire CRM
+            See How It Handles Real Workflows
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Not just reports and dashboards — your AI manages inventory,
-            processes orders, builds new modules, and automates workflows.
-            Click each tab to see it in action.
+            Not just reports and dashboards — manage inventory, process
+            orders, build new modules, and automate workflows, all from
+            one conversation. Click each tab to see it in action.
           </p>
         </motion.div>
 

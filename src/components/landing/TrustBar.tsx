@@ -17,9 +17,9 @@ export function TrustBar() {
     },
     {
       icon: Zap,
-      value: 60,
-      suffix: "s",
-      label: "Avg. AI Response",
+      value: 5,
+      suffix: "-Min",
+      label: "Avg. Setup Time",
     },
     {
       icon: Shield,

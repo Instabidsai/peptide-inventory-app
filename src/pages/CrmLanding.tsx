@@ -34,13 +34,13 @@ export default function CrmLanding() {
       <TwoPathFork />
       <TrustBar />
       <PainPoints />
-      <HowItWorks />
-      <StartABusinessSteps />
-      <TwoAiBrains />
       <PlatformFeatures />
-      <AiShowcase />
-      <PaymentIntegration />
+      <StartABusinessSteps />
       <SupplyChain />
+      <PaymentIntegration />
+      <HowItWorks />
+      <AiShowcase />
+      <TwoAiBrains />
       <Testimonials />
       <Pricing />
       <Faq />

@@ -73,8 +73,8 @@ export function Pricing() {
       max_orders_per_month: 999999,
       features: [
         "Everything in Professional",
-        "Full AI agent ecosystem",
-        "Autonomous operations",
+        "Full automation suite",
+        "Hands-free operations",
         "Multi-location support",
         "Custom integrations & API",
         "Dedicated account manager",

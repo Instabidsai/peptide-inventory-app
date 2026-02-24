@@ -16,18 +16,18 @@ export function TwoAiBrains() {
     },
     {
       icon: Blocks,
-      title: "Adds Agentic Capabilities",
-      desc: "New AI agents are added to your CRM as your business grows — each one specialized for a specific task.",
+      title: "Grows With Your Business",
+      desc: "New capabilities are added to your CRM as you scale — each one specialized for a specific workflow or task.",
     },
   ];
 
   const sdkFeatures = [
-    "Autonomous order processing & fulfillment",
-    "Intelligent client health monitoring",
+    "Hands-free order processing & fulfillment",
+    "Client health monitoring & dose tracking",
     "Protocol optimization from real-time data",
     "Automated compliance & reporting",
     "Smart restock alerts & supplier management",
-    "Custom workflow agents built on demand",
+    "Custom workflows built on demand",
   ];
 
   return (
@@ -35,15 +35,15 @@ export function TwoAiBrains() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
           <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
-            AI-Native Architecture
+            Platform Architecture
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            One AI. Infinite Capabilities.
+            One Platform. Infinite Possibilities.
           </h2>
           <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
-            Other platforms bolt on a chatbot. Ours is different — a single AI
-            controls your entire CRM, continuously builds new features, and
-            deploys specialized agents as your business evolves.
+            Other platforms bolt on a chatbot. Ours is different — one integrated
+            system runs your daily operations, continuously builds new features,
+            and adds specialized capabilities as your business evolves.
           </p>
         </motion.div>
 
@@ -103,8 +103,8 @@ export function TwoAiBrains() {
                 <Sparkles className="w-4.5 h-4.5 text-primary" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-foreground">AI Agent Framework</h4>
-                <p className="text-xs text-muted-foreground">Agentic capabilities that grow with your business</p>
+                <h4 className="text-sm font-semibold text-foreground">Operational Automation</h4>
+                <p className="text-xs text-muted-foreground">Built-in capabilities that grow with your business</p>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-2">
