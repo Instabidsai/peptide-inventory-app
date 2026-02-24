@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
 export interface Lot {
   id: string;
@@ -37,17 +38,20 @@ export interface CreateLotInput {
   payment_method?: string;
 }
 
-export function useLots() {
+export function useLots(pagination?: PaginationState) {
   const { user, profile } = useAuth();
+  const page = pagination?.page ?? 0;
+  const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
 
   return useQuery({
-    queryKey: ['lots', profile?.org_id],
+    queryKey: ['lots', profile?.org_id, page, pageSize],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lots')
         .select('*, peptides(id, name)')
         .eq('org_id', profile!.org_id!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1);
 
       if (error) throw error;
       return data as Lot[];

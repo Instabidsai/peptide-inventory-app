@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseVialSize } from '@/lib/supply-calculations';
 import { autoGenerateProtocol } from '@/lib/auto-protocol';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 import type { BottleStatus } from './use-bottles';
 
 export type MovementType = 'sale' | 'giveaway' | 'internal_use' | 'loss' | 'return';
@@ -113,18 +114,21 @@ const movementTypeToBottleStatus: Record<MovementType, BottleStatus> = {
   return: 'returned',
 };
 
-export function useMovements(contactId?: string) {
+export function useMovements(contactId?: string, pagination?: PaginationState) {
   const { profile } = useAuth();
   const orgId = profile?.org_id;
+  const page = pagination?.page ?? 0;
+  const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
   return useQuery({
-    queryKey: ['movements', orgId, contactId],
+    queryKey: ['movements', orgId, contactId, page, pageSize],
     queryFn: async () => {
       // 1. Fetch Movements (scoped to tenant)
       let query = supabase
         .from('movements')
         .select('*, contacts(id, name), profiles(id, full_name)')
         .eq('org_id', orgId!)
-        .order('movement_date', { ascending: false });
+        .order('movement_date', { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1);
 
       if (contactId) {
         query = query.eq('contact_id', contactId);

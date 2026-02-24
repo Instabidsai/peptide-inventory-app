@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
 export interface Peptide {
   id: string;
@@ -36,18 +37,21 @@ export interface UpdatePeptideInput extends Partial<CreatePeptideInput> {
   active?: boolean;
 }
 
-export function usePeptides() {
+export function usePeptides(pagination?: PaginationState) {
   const { user, profile } = useAuth();
+  const page = pagination?.page ?? 0;
+  const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
 
   return useQuery({
-    queryKey: ['peptides', profile?.org_id],
+    queryKey: ['peptides', profile?.org_id, page, pageSize],
     queryFn: async () => {
-      // 1. Fetch all peptides independent of bottles
+      // 1. Fetch peptides (paginated)
       const { data: peptidesData, error: peptidesError } = await supabase
         .from('peptides')
         .select('*')
         .eq('org_id', profile!.org_id!)
-        .order('name');
+        .order('name')
+        .range(page * pageSize, page * pageSize + pageSize - 1);
 
       if (peptidesError) throw peptidesError;
 

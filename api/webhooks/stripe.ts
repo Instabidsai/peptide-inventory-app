@@ -76,6 +76,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`[Stripe Webhook] Event: ${event.type}, ID: ${event.id}`);
 
+        // Deduplication: skip if we've already processed this exact Stripe event
+        const { data: existing } = await supabase
+            .from('billing_events')
+            .select('id')
+            .eq('stripe_event_id', event.id)
+            .maybeSingle();
+        if (existing) {
+            console.log(`[Stripe Webhook] Duplicate event ${event.id}, skipping`);
+            return res.status(200).json({ received: true, duplicate: true });
+        }
+
         // Log the billing event
         const logEvent = async (orgId: string | null, amountCents?: number) => {
             const { error: logErr } = await supabase.from('billing_events').insert({

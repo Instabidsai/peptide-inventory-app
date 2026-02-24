@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
 export type BottleStatus = 'in_stock' | 'sold' | 'given_away' | 'internal_use' | 'lost' | 'returned' | 'expired';
 
@@ -34,17 +35,20 @@ export interface UpdateBottleInput {
   notes?: string;
 }
 
-export function useBottles(filters?: { status?: BottleStatus; peptide_id?: string }) {
+export function useBottles(filters?: { status?: BottleStatus; peptide_id?: string }, pagination?: PaginationState) {
   const { user, profile } = useAuth();
+  const page = pagination?.page ?? 0;
+  const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
 
   return useQuery({
-    queryKey: ['bottles', filters?.status, filters?.peptide_id, profile?.org_id],
+    queryKey: ['bottles', filters?.status, filters?.peptide_id, profile?.org_id, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('bottles')
         .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('org_id', profile!.org_id!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1);
 
       if (filters?.status) {
         query = query.eq('status', filters.status);

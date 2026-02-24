@@ -228,11 +228,17 @@ async function expandBundleItems(
 
 async function calculateCogs(
     supabase: SupabaseClient,
-    items: { peptide_id: string; quantity: number }[]
+    items: { peptide_id: string; quantity: number }[],
+    orgId: string
 ): Promise<number> {
+    const peptideIds = items.map(i => i.peptide_id);
+    if (peptideIds.length === 0) return 0;
+
     const { data: lots } = await supabase
         .from('lots')
-        .select('peptide_id, cost_per_unit, quantity_received');
+        .select('peptide_id, cost_per_unit, quantity_received')
+        .eq('org_id', orgId)
+        .in('peptide_id', peptideIds);
 
     // Weighted average: SUM(cost × qty) / SUM(qty)
     const grouped: Record<string, { totalCost: number; totalQty: number }> = {};
@@ -350,7 +356,7 @@ async function syncSingleWooOrder(
         }
     }
 
-    const cogsAmount = await calculateCogs(supabase, lineItems);
+    const cogsAmount = await calculateCogs(supabase, lineItems, orgId);
     const totalAmount = parseFloat(woo.total);
     const shippingFromWoo = parseFloat(woo.shipping_total || '0');
     const merchantFee = paymentStatus === 'paid' ? totalAmount * 0.05 : 0;
@@ -408,6 +414,40 @@ async function syncSingleWooOrder(
     return { action: 'created', orderId: order.id, orderNumber: woo.number };
 }
 
+// ── Resolve org + secret (multi-tenant or legacy single-tenant) ──────────────
+
+async function resolveOrg(
+    req: VercelRequest,
+    supabase: SupabaseClient
+): Promise<{ orgId: string; webhookSecret: string | null }> {
+    // Multi-tenant: ?org=ORG_UUID in the webhook URL
+    const orgParam = req.query.org as string | undefined;
+    if (orgParam && /^[0-9a-f-]{36}$/i.test(orgParam)) {
+        // Verify org exists
+        const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('id', orgParam)
+            .maybeSingle();
+        if (!org) throw new Error(`Unknown org: ${orgParam}`);
+
+        // Look up per-tenant webhook secret
+        const { data: keyRow } = await supabase
+            .from('tenant_api_keys')
+            .select('api_key')
+            .eq('org_id', orgParam)
+            .eq('service', 'woo_webhook_secret')
+            .maybeSingle();
+
+        return { orgId: orgParam, webhookSecret: keyRow?.api_key || null };
+    }
+
+    // Legacy single-tenant fallback
+    const orgId = process.env.DEFAULT_ORG_ID;
+    if (!orgId) throw new Error('No org specified and DEFAULT_ORG_ID not set');
+    return { orgId, webhookSecret: process.env.WOO_WEBHOOK_SECRET || null };
+}
+
 // ── Webhook Handler ──────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -418,13 +458,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const webhookSecret = process.env.WOO_WEBHOOK_SECRET;
-        const orgId = process.env.DEFAULT_ORG_ID;
 
-        if (!supabaseUrl || !supabaseServiceKey || !orgId) {
+        if (!supabaseUrl || !supabaseServiceKey) {
             console.error('[WooCommerce Webhook] Missing Supabase env vars');
             return res.status(500).json({ error: 'Server configuration error' });
         }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Resolve which tenant this webhook is for
+        const { orgId, webhookSecret } = await resolveOrg(req, supabase);
 
         // Read raw body from stream (body parser disabled for signature verification)
         const chunks: Buffer[] = [];
@@ -437,7 +480,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (webhookSecret) {
             const signature = req.headers['x-wc-webhook-signature'] as string;
             if (!signature || !verifyWooSignature(rawBody, signature, webhookSecret)) {
-                console.error('[WooCommerce Webhook] Signature verification failed');
+                console.error(`[WooCommerce Webhook] Signature verification failed for org ${orgId}`);
                 return res.status(401).json({ error: 'Invalid signature' });
             }
         }
@@ -447,7 +490,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const resource = req.headers['x-wc-webhook-resource'] as string;
 
         if (!rawBody || rawBody === '{}') {
-            console.log('[WooCommerce Webhook] Ping received, acknowledging');
+            console.log(`[WooCommerce Webhook] Ping received for org ${orgId}, acknowledging`);
             return res.status(200).json({ received: true, action: 'ping' });
         }
 
@@ -463,9 +506,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json({ received: true, action: 'skipped' });
         }
 
-        console.log(`[WooCommerce Webhook] ${topic || 'order'} #${wooOrder.number || wooOrder.id}, status: ${wooOrder.status}`);
+        console.log(`[WooCommerce Webhook] org=${orgId} ${topic || 'order'} #${wooOrder.number || wooOrder.id}, status: ${wooOrder.status}`);
 
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const result = await syncSingleWooOrder(supabase, wooOrder, orgId);
 
         console.log(`[WooCommerce Webhook] Order #${result.orderNumber}: ${result.action}`);

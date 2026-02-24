@@ -111,7 +111,8 @@ const HealthTracking = lazyRetry(() => import("./pages/client/HealthTracking"));
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
-            staleTime: 30_000,
+            staleTime: 60_000,        // 1 min default (was 30s — too aggressive for scale)
+            gcTime: 5 * 60_000,       // keep unused cache for 5 min
             retry: 1,
             refetchOnWindowFocus: false,
         },

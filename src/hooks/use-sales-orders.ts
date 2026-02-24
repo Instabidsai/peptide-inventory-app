@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { recalculateOrderProfit } from '@/lib/order-profit';
 import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import { parseVialSize } from '@/lib/supply-calculations';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded' | 'commission_offset';
@@ -118,10 +119,12 @@ export interface CreateSalesOrderInput {
     }[];
 }
 
-export function useSalesOrders(status?: SalesOrderStatus) {
+export function useSalesOrders(status?: SalesOrderStatus, pagination?: PaginationState) {
     const { profile } = useAuth();
+    const page = pagination?.page ?? 0;
+    const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
     return useQuery({
-        queryKey: ['sales_orders', status, profile?.org_id],
+        queryKey: ['sales_orders', status, profile?.org_id, page, pageSize],
         queryFn: async () => {
             let query = supabase
                 .from('sales_orders')
@@ -135,7 +138,8 @@ export function useSalesOrders(status?: SalesOrderStatus) {
           )
         `)
                 .eq('org_id', profile!.org_id!)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .range(page * pageSize, page * pageSize + pageSize - 1);
 
             if (status) {
                 query = query.eq('status', status);

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
 export type ContactType = 'customer' | 'partner' | 'internal';
 
@@ -43,11 +44,13 @@ export interface CreateContactInput {
   assigned_rep_id?: string | null;
 }
 
-export function useContacts(type?: ContactType) {
+export function useContacts(type?: ContactType, pagination?: PaginationState) {
   const { user, profile } = useAuth();
+  const page = pagination?.page ?? 0;
+  const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
 
   return useQuery({
-    queryKey: ['contacts', type, profile?.org_id],
+    queryKey: ['contacts', type, profile?.org_id, page, pageSize],
     queryFn: async () => {
       if (!user) throw new Error('Not authenticated');
       if (!profile?.org_id) throw new Error('No organization found');
@@ -63,7 +66,8 @@ export function useContacts(type?: ContactType) {
           sales_orders:sales_orders!client_id (id, created_at)
         `)
         .eq('org_id', profile.org_id)
-        .order('name');
+        .order('name')
+        .range(page * pageSize, page * pageSize + pageSize - 1);
 
       if (type) {
         query = query.eq('type', type);

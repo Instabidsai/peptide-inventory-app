@@ -137,8 +137,10 @@ function BrandingTab({ orgId }: { orgId: string }) {
 
 // ─── Integrations / API Keys Tab ───
 const API_KEY_SERVICES = [
-  { key: 'stripe_secret_key', label: 'Stripe Secret Key', placeholder: 'sk_live_...' },
-  { key: 'stripe_publishable_key', label: 'Stripe Publishable Key', placeholder: 'pk_live_...' },
+  { key: 'psifi_api_key', label: 'PsiFi API Key', placeholder: 'psifi_...' },
+  { key: 'psifi_webhook_secret', label: 'PsiFi Webhook Secret', placeholder: 'whsec_...' },
+  { key: 'stripe_secret_key', label: 'Stripe Secret Key (optional fallback)', placeholder: 'sk_live_...' },
+  { key: 'stripe_publishable_key', label: 'Stripe Publishable Key (optional)', placeholder: 'pk_live_...' },
   { key: 'shippo_api_key', label: 'Shippo API Key', placeholder: 'shippo_live_...' },
   { key: 'openai_api_key', label: 'OpenAI API Key (AI Chat)', placeholder: 'sk-...' },
 ] as const;
@@ -210,6 +212,149 @@ function OAuthConnectionsSection() {
               </div>
             );
           })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── WooCommerce Setup Section ───
+function WooCommerceSetupSection({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+
+  // Fetch existing WooCommerce webhook secret
+  const { data: wooSecret } = useQuery({
+    queryKey: ['tenant-api-keys', orgId, 'woo_webhook_secret'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_api_keys')
+        .select('api_key, api_key_masked, updated_at')
+        .eq('org_id', orgId)
+        .eq('service', 'woo_webhook_secret')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  // The webhook URL for this tenant
+  const webhookUrl = `${window.location.origin}/api/webhooks/woocommerce?org=${orgId}`;
+
+  const generateSecret = async () => {
+    setGenerating(true);
+    try {
+      // Generate a random 32-byte secret
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      const masked = secret.slice(0, 8) + '...' + secret.slice(-4);
+
+      const { error } = await supabase
+        .from('tenant_api_keys')
+        .upsert({
+          org_id: orgId,
+          service: 'woo_webhook_secret',
+          api_key: secret,
+          api_key_masked: masked,
+        }, { onConflict: 'org_id,service' });
+
+      if (error) throw error;
+
+      // Copy secret to clipboard immediately
+      await navigator.clipboard.writeText(secret);
+      queryClient.invalidateQueries({ queryKey: ['tenant-api-keys', orgId, 'woo_webhook_secret'] });
+      toast({ title: 'Webhook secret generated & copied', description: 'Paste this into your WooCommerce webhook settings. It won\'t be shown again in full.' });
+    } catch (err) {
+      toast({ title: 'Failed to generate secret', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, type: 'url' | 'secret') => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const input = document.createElement('input');
+      input.value = text;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+    if (type === 'url') {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } else {
+      setCopiedSecret(true);
+      setTimeout(() => setCopiedSecret(false), 2000);
+    }
+    toast({ title: `${type === 'url' ? 'Webhook URL' : 'Secret'} copied` });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <span className="text-xl">🛒</span> WooCommerce Integration
+        </CardTitle>
+        <CardDescription>
+          Connect your WooCommerce store to automatically sync orders, contacts, and inventory
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Webhook URL */}
+        <div className="space-y-1.5">
+          <Label>Webhook Delivery URL</Label>
+          <div className="flex gap-2">
+            <Input value={webhookUrl} readOnly className="text-xs font-mono" />
+            <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookUrl, 'url')}>
+              {copiedUrl ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Webhook Secret */}
+        <div className="space-y-1.5">
+          <Label>Webhook Secret</Label>
+          {wooSecret ? (
+            <div className="flex items-center gap-2">
+              <Input value={wooSecret.api_key_masked} readOnly className="text-xs font-mono flex-1" />
+              <Badge variant="default" className="bg-emerald-600 text-xs whitespace-nowrap">Active</Badge>
+              <Button variant="outline" size="sm" onClick={generateSecret} disabled={generating}>
+                Regenerate
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={generateSecret} disabled={generating} variant="default" size="sm">
+              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
+              Generate Webhook Secret
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">
+            The full secret is shown only once when generated. Copy it into WooCommerce immediately.
+          </p>
+        </div>
+
+        {/* Setup Instructions */}
+        <div className="rounded-lg bg-secondary/30 border border-border/40 p-4 space-y-2">
+          <p className="text-sm font-medium">Setup in WooCommerce:</p>
+          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Go to <span className="font-mono">WooCommerce → Settings → Advanced → Webhooks</span></li>
+            <li>Click <strong>Add webhook</strong></li>
+            <li>Name: <span className="font-mono">ThePeptideAI Order Sync</span></li>
+            <li>Status: <strong>Active</strong></li>
+            <li>Topic: <strong>Order updated</strong> (fires on both create and update)</li>
+            <li>Delivery URL: paste the URL above</li>
+            <li>Secret: paste the generated secret</li>
+            <li>API Version: <strong>WP REST API Integration v3</strong></li>
+            <li>Click <strong>Save webhook</strong> — WooCommerce will send a test ping</li>
+          </ol>
         </div>
       </CardContent>
     </Card>
@@ -532,6 +677,7 @@ export default function Settings() {
 
         {isAdmin && organization?.id && (
           <TabsContent value="integrations" className="space-y-6">
+            <WooCommerceSetupSection orgId={organization.id} />
             <OAuthConnectionsSection />
             <IntegrationsTab orgId={organization.id} />
           </TabsContent>

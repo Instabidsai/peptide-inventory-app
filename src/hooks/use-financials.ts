@@ -57,10 +57,9 @@ export function useFinancialMetrics() {
                 supabase.rpc('get_inventory_valuation'),
                 supabase.from('movements').select('id, amount_paid').eq('org_id', orgId!).eq('type', 'sale'),
                 supabase.from('movements').select('id').eq('org_id', orgId!).in('type', ['internal_use', 'giveaway', 'loss']),
-                // expenses table has no org_id column — RLS scopes via has_role(admin/staff)
-                supabase.from('expenses').select('amount, category'),
-                // commissions table has NO org_id column — RLS scopes via sale_id → sales_orders
-                supabase.from('commissions').select('amount, status, sale_id'),
+                supabase.from('expenses').select('amount, category').eq('org_id', orgId!),
+                // Scope commissions to org by joining through sales_orders (commissions has no org_id column)
+                supabase.from('commissions').select('amount, status, sale_id, sales_orders!sale_id!inner(org_id)').eq('sales_orders.org_id', orgId!),
                 supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').eq('org_id', orgId!).neq('status', 'cancelled'),
                 supabase.from('sales_orders').select('total_amount, cogs_amount').eq('org_id', orgId!).eq('payment_status', 'commission_offset').neq('status', 'cancelled'),
             ]);
