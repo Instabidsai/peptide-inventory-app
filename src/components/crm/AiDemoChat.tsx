@@ -41,6 +41,7 @@ export function AiDemoChat({
   // Keep the final build phase visible while AI types its response
   const [buildPhaseForPreview, setBuildPhaseForPreview] = useState(-1);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const buildStepsShownRef = useRef(false);
   const reset = useCallback(() => {
@@ -55,9 +56,12 @@ export function AiDemoChat({
     buildStepsShownRef.current = false;
   }, []);
 
-  // Auto-scroll chat area when new content appears
+  // Auto-scroll chat area when new content appears (scroll container only, not page)
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const container = chatContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
   }, [visibleMessages, typedText, buildStep, showThinking]);
 
   // Drive the message sequence
@@ -180,7 +184,7 @@ export function AiDemoChat({
       </div>
 
       {/* ── Chat messages area (scrollable, compact) ── */}
-      <div className="p-4 space-y-3 min-h-[80px] max-h-[280px] overflow-y-auto">
+      <div ref={chatContainerRef} className="p-4 space-y-3 min-h-[80px] max-h-[280px] overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg, i) => (
             <motion.div

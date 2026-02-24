@@ -15,11 +15,27 @@ export function Hero() {
   const heroMessages = [
     {
       role: "user" as const,
-      text: 'Create a live dashboard for BPC-157 — show inventory by lot, expiry alerts, and a reorder button when stock drops below 200.',
+      text: 'Create a live dashboard for BPC-157 — show inventory by lot, expiry alerts, and reorder buttons.',
     },
     {
       role: "ai" as const,
-      text: "Your BPC-157 command dashboard is live! Real-time stock by lot, color-coded expiry alerts at 30/60/90 days, and one-click reorder buttons. I've also added it to your sidebar for quick access.",
+      text: "Dashboard is live — 2,450 vials across 8 lots. LOT-2024-A expires in 28 days, flagged amber. Reorder buttons active. Added to your sidebar.",
+    },
+    {
+      role: "user" as const,
+      text: "What's my top seller this month?",
+    },
+    {
+      role: "ai" as const,
+      text: "BPC-157 leads at $12,450 (340 vials), then TB-500 at $9,100. BPC-157 is up 18% vs last month.",
+    },
+    {
+      role: "user" as const,
+      text: "TB-500 is getting low. Set up a reorder alert at 200 units.",
+    },
+    {
+      role: "ai" as const,
+      text: "Done — TB-500 alert is live. Current stock: 147 units, so you'll get notified immediately. I've also drafted a PO for your top supplier.",
     },
   ];
 
