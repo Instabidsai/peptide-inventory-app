@@ -78,7 +78,7 @@ export function useProtocols(contactId?: string) {
             if (error) throw error;
 
             if (items && items.length > 0) {
-                const itemsToInsert = items.map(({ notes, ...item }) => ({
+                const itemsToInsert = items.map(({ notes, timing, ...item }) => ({
                     ...item,
                     protocol_id: protocol.id,
                     // Fix for legacy schema requirement: if duration_days is present, ensure duration_weeks is also set (approx)
