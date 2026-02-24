@@ -11,7 +11,8 @@ import { useSubdomainCheck } from '@/hooks/use-wholesale-pricing';
 // MarginCalculator available at '@/components/wholesale/MarginCalculator' for future use
 import {
     Loader2, Building2, Rocket, ArrowRight, ArrowLeft, Check,
-    LogOut, Globe, Palette, CreditCard, PartyPopper,
+    LogOut, Globe, Palette, CreditCard, PartyPopper, LinkIcon, Sparkles,
+    X, ExternalLink, FlaskConical,
 } from 'lucide-react';
 
 type OnboardingPath = 'new' | 'existing' | null;
@@ -19,6 +20,286 @@ type OnboardingPath = 'new' | 'existing' | null;
 interface StepProps {
     onNext: () => void;
     onBack?: () => void;
+}
+
+// ── Scraped brand data types ──
+interface ScrapedBrand {
+    company_name: string;
+    primary_color: string;
+    secondary_color: string;
+    font_family: string;
+    logo_url: string;
+    favicon_url: string;
+    tagline: string;
+}
+
+interface ScrapedPeptide {
+    name: string;
+    price: number | null;
+    description: string;
+    image_url: string;
+    confidence: number;
+}
+
+interface ScrapeResult {
+    brand: ScrapedBrand;
+    peptides: ScrapedPeptide[];
+}
+
+// ── Step: Website URL Input ──
+function WebsiteScrapeStep({
+    onResult,
+    onSkip,
+    onBack,
+}: {
+    onResult: (result: ScrapeResult, url: string) => void;
+    onSkip: () => void;
+    onBack: () => void;
+}) {
+    const [url, setUrl] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleScrape = async () => {
+        if (!url.trim()) return;
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const { data, error: fnErr } = await supabase.functions.invoke('scrape-brand', {
+                body: { url: url.trim(), persist: false },
+            });
+
+            if (fnErr) throw fnErr;
+            if (data?.error) throw new Error(data.error);
+
+            onResult(
+                { brand: data.brand, peptides: data.peptides },
+                url.trim()
+            );
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to scrape website. Try again or skip this step.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                    <LinkIcon className="h-5 w-5" /> Enter Your Website
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                    We'll extract your branding, colors, and peptide catalog automatically.
+                </p>
+            </div>
+            <div className="space-y-2">
+                <Label>Website URL</Label>
+                <Input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://yourpeptideshop.com"
+                    autoFocus
+                    disabled={isLoading}
+                    onKeyDown={(e) => e.key === 'Enter' && url.trim() && handleScrape()}
+                />
+                {error && (
+                    <p className="text-xs text-destructive">{error}</p>
+                )}
+            </div>
+            <div className="flex gap-3">
+                <Button variant="outline" onClick={onBack} disabled={isLoading}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back
+                </Button>
+                <Button
+                    className="flex-1"
+                    disabled={!url.trim() || isLoading}
+                    onClick={handleScrape}
+                >
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Scanning your site...
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles className="h-4 w-4 mr-1" /> Extract My Brand
+                        </>
+                    )}
+                </Button>
+            </div>
+            <button
+                onClick={onSkip}
+                disabled={isLoading}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center mt-1"
+            >
+                Skip — I'll set up branding manually
+            </button>
+        </div>
+    );
+}
+
+// ── Step: Scraped Preview (review extracted brand + peptides) ──
+function ScrapedPreviewStep({
+    scrapeResult,
+    websiteUrl,
+    onAccept,
+    onBack,
+}: {
+    scrapeResult: ScrapeResult;
+    websiteUrl: string;
+    onAccept: (brand: ScrapedBrand, peptides: ScrapedPeptide[]) => void;
+    onBack: () => void;
+}) {
+    const { brand, peptides } = scrapeResult;
+    const [selectedPeptides, setSelectedPeptides] = useState<Set<number>>(
+        new Set(peptides.map((_, i) => i))
+    );
+
+    const togglePeptide = (idx: number) => {
+        setSelectedPeptides((prev) => {
+            const next = new Set(prev);
+            if (next.has(idx)) next.delete(idx);
+            else next.add(idx);
+            return next;
+        });
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-emerald-500" /> We Found Your Brand
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Review what we extracted from{' '}
+                    <a href={websiteUrl} target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                        your website <ExternalLink className="h-3 w-3" />
+                    </a>
+                </p>
+            </div>
+
+            {/* Brand preview */}
+            <Card className="border-primary/30">
+                <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                        {brand.logo_url && (
+                            <img
+                                src={brand.logo_url}
+                                alt="Logo"
+                                className="w-10 h-10 rounded-lg object-contain bg-muted"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                        )}
+                        <div>
+                            <p className="font-semibold">{brand.company_name || 'Your Company'}</p>
+                            {brand.tagline && (
+                                <p className="text-xs text-muted-foreground">{brand.tagline}</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: brand.primary_color || '#7c3aed' }} />
+                            <span className="text-xs text-muted-foreground">Primary</span>
+                        </div>
+                        {brand.secondary_color && (
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: brand.secondary_color }} />
+                                <span className="text-xs text-muted-foreground">Secondary</span>
+                            </div>
+                        )}
+                        {brand.font_family && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted">{brand.font_family}</span>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Peptide catalog preview */}
+            {peptides.length > 0 && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-1.5">
+                            <FlaskConical className="h-3.5 w-3.5" />
+                            Peptides Found ({selectedPeptides.size} of {peptides.length} selected)
+                        </Label>
+                        <button
+                            onClick={() =>
+                                setSelectedPeptides(
+                                    selectedPeptides.size === peptides.length
+                                        ? new Set()
+                                        : new Set(peptides.map((_, i) => i))
+                                )
+                            }
+                            className="text-xs text-primary hover:underline"
+                        >
+                            {selectedPeptides.size === peptides.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        {peptides.map((p, i) => (
+                            <div
+                                key={i}
+                                onClick={() => togglePeptide(i)}
+                                className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
+                                    selectedPeptides.has(i)
+                                        ? 'border-primary/50 bg-primary/5'
+                                        : 'border-border/40 opacity-50'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div
+                                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                            selectedPeptides.has(i) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                                        }`}
+                                    >
+                                        {selectedPeptides.has(i) && <Check className="h-3 w-3 text-white" />}
+                                    </div>
+                                    <span className="text-sm font-medium truncate">{p.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    {p.price != null && (
+                                        <span className="text-sm text-emerald-600 font-medium">
+                                            ${p.price.toFixed(2)}
+                                        </span>
+                                    )}
+                                    <span
+                                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                            p.confidence >= 0.8
+                                                ? 'bg-emerald-500/10 text-emerald-500'
+                                                : p.confidence >= 0.5
+                                                ? 'bg-yellow-500/10 text-yellow-600'
+                                                : 'bg-muted text-muted-foreground'
+                                        }`}
+                                    >
+                                        {Math.round(p.confidence * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex gap-3">
+                <Button variant="outline" onClick={onBack}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Re-scan
+                </Button>
+                <Button
+                    className="flex-1"
+                    onClick={() =>
+                        onAccept(
+                            brand,
+                            peptides.filter((_, i) => selectedPeptides.has(i))
+                        )
+                    }
+                >
+                    Use This Brand <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+            </div>
+        </div>
+    );
 }
 
 // ── Step 0: Choose Your Path ──
@@ -241,6 +522,11 @@ export default function MerchantOnboarding() {
     const [subdomain, setSubdomain] = useState('');
     const [planName, setPlanName] = useState('');
 
+    // Website scraping state (for "existing" path)
+    const [websiteUrl, setWebsiteUrl] = useState('');
+    const [scrapeResult, setScrapeResult] = useState<ScrapeResult | null>(null);
+    const [acceptedPeptides, setAcceptedPeptides] = useState<ScrapedPeptide[]>([]);
+
     // If user already has org, redirect
     useEffect(() => {
         if (profile?.org_id) {
@@ -248,7 +534,9 @@ export default function MerchantOnboarding() {
         }
     }, [profile?.org_id, navigate]);
 
-    const totalSteps = 5; // Both paths: path choice + name + branding + subdomain + plan
+    // "existing" path: 0=choose, 1=website, 2=preview, 3=name, 4=branding, 5=subdomain, 6=plan, 7=success
+    // "new" path:      0=choose, 1=name, 2=branding, 3=subdomain, 4=plan, 5=success
+    const totalSteps = path === 'existing' ? 7 : 5;
 
     if (profile?.org_id) return null;
 
@@ -279,11 +567,47 @@ export default function MerchantOnboarding() {
                     onboarding_path: path,
                 };
                 if (subdomain) updates.subdomain = subdomain;
+                if (websiteUrl) updates.website_url = websiteUrl;
+                if (scrapeResult) {
+                    updates.scraped_brand_data = scrapeResult;
+                    if (scrapeResult.brand.secondary_color) {
+                        updates.secondary_color = scrapeResult.brand.secondary_color;
+                    }
+                    if (scrapeResult.brand.font_family) {
+                        updates.font_family = scrapeResult.brand.font_family;
+                    }
+                    if (scrapeResult.brand.favicon_url) {
+                        updates.favicon_url = scrapeResult.brand.favicon_url;
+                    }
+                    if (scrapeResult.brand.logo_url) {
+                        updates.logo_url = scrapeResult.brand.logo_url;
+                    }
+                }
 
                 await supabase
                     .from('tenant_config')
                     .update(updates)
                     .eq('org_id', data.org_id);
+
+                // Insert accepted scraped peptides for import
+                if (acceptedPeptides.length > 0) {
+                    await supabase.from('scraped_peptides').insert(
+                        acceptedPeptides.map((p) => ({
+                            org_id: data.org_id,
+                            name: p.name,
+                            price: p.price,
+                            description: p.description || '',
+                            image_url: p.image_url || '',
+                            source_url: websiteUrl,
+                            confidence: p.confidence,
+                            status: 'pending',
+                            raw_data: p,
+                        }))
+                    );
+                }
+
+                // Seed default feature flags
+                await supabase.rpc('seed_default_features', { p_org_id: data.org_id });
             }
 
             sessionStorage.removeItem('selected_plan');
@@ -327,48 +651,134 @@ export default function MerchantOnboarding() {
                     {/* Step 0: Choose path */}
                     {step === 0 && <ChoosePathStep onSelect={handleSelectPath} />}
 
-                    {/* Step 1: Company name */}
-                    {step === 1 && (
-                        <CompanyNameStep
-                            value={companyName}
-                            onChange={setCompanyName}
-                            onNext={() => setStep(2)}
-                            onBack={() => { setStep(0); setPath(null); }}
-                        />
+                    {/* ── "EXISTING" PATH: website → preview → name → branding → subdomain → plan ── */}
+                    {path === 'existing' && (
+                        <>
+                            {/* Step 1: Website URL */}
+                            {step === 1 && (
+                                <WebsiteScrapeStep
+                                    onResult={(result, url) => {
+                                        setScrapeResult(result);
+                                        setWebsiteUrl(url);
+                                        // Pre-fill from scraped data
+                                        if (result.brand.company_name) setCompanyName(result.brand.company_name);
+                                        if (result.brand.primary_color) setPrimaryColor(result.brand.primary_color);
+                                        setStep(2);
+                                    }}
+                                    onSkip={() => {
+                                        setScrapeResult(null);
+                                        setWebsiteUrl('');
+                                        setStep(3); // skip to name step
+                                    }}
+                                    onBack={() => { setStep(0); setPath(null); }}
+                                />
+                            )}
+
+                            {/* Step 2: Preview scraped data */}
+                            {step === 2 && scrapeResult && (
+                                <ScrapedPreviewStep
+                                    scrapeResult={scrapeResult}
+                                    websiteUrl={websiteUrl}
+                                    onAccept={(brand, peptides) => {
+                                        setAcceptedPeptides(peptides);
+                                        if (brand.company_name) setCompanyName(brand.company_name);
+                                        if (brand.primary_color) setPrimaryColor(brand.primary_color);
+                                        setStep(3);
+                                    }}
+                                    onBack={() => setStep(1)}
+                                />
+                            )}
+
+                            {/* Step 3: Company name */}
+                            {step === 3 && (
+                                <CompanyNameStep
+                                    value={companyName}
+                                    onChange={setCompanyName}
+                                    onNext={() => setStep(4)}
+                                    onBack={() => setStep(scrapeResult ? 2 : 1)}
+                                />
+                            )}
+
+                            {/* Step 4: Branding */}
+                            {step === 4 && (
+                                <BrandingStep
+                                    color={primaryColor}
+                                    onColorChange={setPrimaryColor}
+                                    onNext={() => setStep(5)}
+                                    onBack={() => setStep(3)}
+                                />
+                            )}
+
+                            {/* Step 5: Subdomain */}
+                            {step === 5 && (
+                                <SubdomainStep
+                                    value={subdomain}
+                                    onChange={setSubdomain}
+                                    onNext={() => setStep(6)}
+                                    onBack={() => setStep(4)}
+                                />
+                            )}
+
+                            {/* Step 6: Choose plan */}
+                            {step === 6 && (
+                                <PlanStep
+                                    value={planName}
+                                    onChange={setPlanName}
+                                    onNext={handleCreate}
+                                    onBack={() => setStep(5)}
+                                    submitting={isCreating}
+                                />
+                            )}
+                        </>
                     )}
 
-                    {/* Step 2: Branding */}
-                    {step === 2 && (
-                        <BrandingStep
-                            color={primaryColor}
-                            onColorChange={setPrimaryColor}
-                            onNext={() => setStep(3)}
-                            onBack={() => setStep(1)}
-                        />
+                    {/* ── "NEW" PATH: name → branding → subdomain → plan ── */}
+                    {path === 'new' && (
+                        <>
+                            {/* Step 1: Company name */}
+                            {step === 1 && (
+                                <CompanyNameStep
+                                    value={companyName}
+                                    onChange={setCompanyName}
+                                    onNext={() => setStep(2)}
+                                    onBack={() => { setStep(0); setPath(null); }}
+                                />
+                            )}
+
+                            {/* Step 2: Branding */}
+                            {step === 2 && (
+                                <BrandingStep
+                                    color={primaryColor}
+                                    onColorChange={setPrimaryColor}
+                                    onNext={() => setStep(3)}
+                                    onBack={() => setStep(1)}
+                                />
+                            )}
+
+                            {/* Step 3: Subdomain */}
+                            {step === 3 && (
+                                <SubdomainStep
+                                    value={subdomain}
+                                    onChange={setSubdomain}
+                                    onNext={() => setStep(4)}
+                                    onBack={() => setStep(2)}
+                                />
+                            )}
+
+                            {/* Step 4: Choose plan */}
+                            {step === 4 && (
+                                <PlanStep
+                                    value={planName}
+                                    onChange={setPlanName}
+                                    onNext={handleCreate}
+                                    onBack={() => setStep(3)}
+                                    submitting={isCreating}
+                                />
+                            )}
+                        </>
                     )}
 
-                    {/* Step 3: Subdomain */}
-                    {step === 3 && (
-                        <SubdomainStep
-                            value={subdomain}
-                            onChange={setSubdomain}
-                            onNext={() => setStep(4)}
-                            onBack={() => setStep(2)}
-                        />
-                    )}
-
-                    {/* Step 4: Choose plan */}
-                    {step === 4 && (
-                        <PlanStep
-                            value={planName}
-                            onChange={setPlanName}
-                            onNext={handleCreate}
-                            onBack={() => setStep(3)}
-                            submitting={isCreating}
-                        />
-                    )}
-
-                    {/* Step 5: Success */}
+                    {/* Success step (same for both paths) */}
                     {step === totalSteps && <SuccessStep />}
                 </CardContent>
 

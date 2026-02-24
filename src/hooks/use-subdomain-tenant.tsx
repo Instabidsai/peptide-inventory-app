@@ -24,11 +24,61 @@ function hexToHsl(hex: string): string | null {
     return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+/** Apply all branding CSS variables, favicon, and document title */
+function applyBranding(tenant: SubdomainTenant) {
+    const root = document.documentElement;
+
+    // Primary color → HSL for Tailwind --primary variable
+    if (tenant.primary_color) {
+        const hsl = hexToHsl(tenant.primary_color);
+        if (hsl) root.style.setProperty('--primary', hsl);
+    }
+
+    // Secondary/accent color → --accent variable
+    if (tenant.secondary_color) {
+        const hsl = hexToHsl(tenant.secondary_color);
+        if (hsl) root.style.setProperty('--accent', hsl);
+    }
+
+    // Font family
+    if (tenant.font_family) {
+        root.style.setProperty('--font-sans', `"${tenant.font_family}", ui-sans-serif, system-ui, sans-serif`);
+        // Load the font from Google Fonts if not already present
+        const fontId = `tenant-font-${tenant.font_family.replace(/\s+/g, '-').toLowerCase()}`;
+        if (!document.getElementById(fontId)) {
+            const link = document.createElement('link');
+            link.id = fontId;
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(tenant.font_family)}:wght@400;500;600;700&display=swap`;
+            document.head.appendChild(link);
+        }
+    }
+
+    // Favicon
+    if (tenant.favicon_url) {
+        let faviconEl = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+        if (!faviconEl) {
+            faviconEl = document.createElement('link');
+            faviconEl.rel = 'icon';
+            document.head.appendChild(faviconEl);
+        }
+        faviconEl.href = tenant.favicon_url;
+    }
+
+    // Document title
+    if (tenant.brand_name) {
+        document.title = tenant.brand_name;
+    }
+}
+
 export interface SubdomainTenant {
     org_id: string;
     brand_name: string;
     logo_url: string;
     primary_color: string;
+    secondary_color: string | null;
+    font_family: string | null;
+    favicon_url: string | null;
     subdomain: string;
 }
 
@@ -64,7 +114,7 @@ export function SubdomainTenantProvider({ children }: { children: ReactNode }) {
 
         supabase
             .from('tenant_config')
-            .select('org_id, brand_name, logo_url, primary_color, subdomain')
+            .select('org_id, brand_name, logo_url, primary_color, secondary_color, font_family, favicon_url, subdomain')
             .eq('subdomain', subdomain)
             .single()
             .then(({ data, error }) => {
@@ -72,17 +122,7 @@ export function SubdomainTenantProvider({ children }: { children: ReactNode }) {
                     console.warn(`[SubdomainTenant] No tenant found for subdomain: ${subdomain}`);
                 } else {
                     setTenant(data as SubdomainTenant);
-
-                    // Apply tenant branding — convert hex to HSL for Tailwind compatibility
-                    if (data.primary_color) {
-                        const hsl = hexToHsl(data.primary_color);
-                        if (hsl) {
-                            document.documentElement.style.setProperty('--primary', hsl);
-                        }
-                    }
-                    if (data.brand_name) {
-                        document.title = data.brand_name;
-                    }
+                    applyBranding(data as SubdomainTenant);
                 }
                 setIsLoading(false);
             });
