@@ -1,5 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
 // Create a fresh QueryClient for each test — prevents cross-test leakage
 export function createTestQueryClient() {
@@ -17,7 +18,7 @@ export function createTestQueryClient() {
   });
 }
 
-// Wrapper component for renderHook
+// Wrapper component for renderHook (no router needed)
 export function createWrapper() {
   const queryClient = createTestQueryClient();
 
@@ -25,6 +26,21 @@ export function createWrapper() {
     return (
       <QueryClientProvider client={queryClient}>
         {children}
+      </QueryClientProvider>
+    );
+  };
+}
+
+// Wrapper for page render tests — includes MemoryRouter
+export function createPageWrapper(initialEntries: string[] = ['/']) {
+  const queryClient = createTestQueryClient();
+
+  return function PageWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={initialEntries}>
+          {children}
+        </MemoryRouter>
       </QueryClientProvider>
     );
   };
