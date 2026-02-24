@@ -43,8 +43,21 @@ export function AiDemoChat({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Stable refs for props that are inline arrays (new reference every render)
+  // This prevents useEffect cleanup/re-run cycles that freeze the animation
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const buildStepsRef = useRef(buildSteps);
+  buildStepsRef.current = buildSteps;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   const buildStepsShownRef = useRef(false);
+  // Ref for the "advance to next message" timer — must survive typing effect cleanup
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const reset = useCallback(() => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     setVisibleMessages([]);
     setShowResult(false);
     setCurrentIndex(0);
@@ -56,6 +69,11 @@ export function AiDemoChat({
     buildStepsShownRef.current = false;
   }, []);
 
+  // Clean up advance timer on unmount
+  useEffect(() => {
+    return () => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); };
+  }, []);
+
   // Auto-scroll chat area when new content appears (scroll container only, not page)
   useEffect(() => {
     const container = chatContainerRef.current;
@@ -65,13 +83,17 @@ export function AiDemoChat({
   }, [visibleMessages, typedText, buildStep, showThinking]);
 
   // Drive the message sequence
+  // IMPORTANT: uses refs for messages/buildSteps to avoid re-running when inline array props change reference
   useEffect(() => {
-    if (currentIndex >= messages.length) {
+    const msgs = messagesRef.current;
+    const steps = buildStepsRef.current;
+
+    if (currentIndex >= msgs.length) {
       // All messages shown — show result then optionally loop
       const timer = setTimeout(() => {
         setBuildPhaseForPreview(-1); // Hide preview, show final result
         setShowResult(true);
-        onComplete?.();
+        onCompleteRef.current?.();
       }, 400);
       let loopTimer: ReturnType<typeof setTimeout>;
       if (loop) {
@@ -83,18 +105,18 @@ export function AiDemoChat({
       };
     }
 
-    const msg = messages[currentIndex];
+    const msg = msgs[currentIndex];
 
     if (msg.role === "ai") {
       // Only show build steps for the FIRST AI message
-      if (buildSteps && buildSteps.length > 0 && !buildStepsShownRef.current) {
+      if (steps && steps.length > 0 && !buildStepsShownRef.current) {
         buildStepsShownRef.current = true;
         // Show step-by-step build progress
         setBuildStep(0);
         setBuildPhaseForPreview(0);
         setShowThinking(true);
         const stepTimers: ReturnType<typeof setTimeout>[] = [];
-        buildSteps.forEach((_, i) => {
+        steps.forEach((_, i) => {
           if (i > 0) {
             stepTimers.push(setTimeout(() => {
               setBuildStep(i);
@@ -108,10 +130,10 @@ export function AiDemoChat({
           setShowThinking(false);
           setBuildStep(-1);
           // Keep buildPhaseForPreview at last step
-          setBuildPhaseForPreview(buildSteps.length - 1);
+          setBuildPhaseForPreview(steps.length - 1);
           setIsTyping(true);
           setTypedText("");
-        }, buildSteps.length * 800 + 400);
+        }, steps.length * 800 + 400);
         return () => {
           stepTimers.forEach(clearTimeout);
           clearTimeout(finalTimer);
@@ -134,13 +156,16 @@ export function AiDemoChat({
       }, currentIndex === 0 ? 500 : 1000);
       return () => clearTimeout(delay);
     }
-  }, [currentIndex, messages, loop, reset, buildSteps]);
+  }, [currentIndex, loop, reset]);
 
   // Character-by-character typing
+  // IMPORTANT: The advance timer uses a ref so that when setIsTyping(false) triggers
+  // effect cleanup, the advance timer is NOT canceled (that was the animation-freeze bug).
   useEffect(() => {
-    if (!isTyping || currentIndex >= messages.length) return;
+    const msgs = messagesRef.current;
+    if (!isTyping || currentIndex >= msgs.length) return;
 
-    const msg = messages[currentIndex];
+    const msg = msgs[currentIndex];
     if (typedText.length < msg.text.length) {
       const timer = setTimeout(() => {
         setTypedText(msg.text.slice(0, typedText.length + 1));
@@ -155,9 +180,10 @@ export function AiDemoChat({
       { role: msg.role, text: msg.text, complete: true },
     ]);
     setTypedText("");
-    const next = setTimeout(() => setCurrentIndex((i) => i + 1), 300);
-    return () => clearTimeout(next);
-  }, [isTyping, typedText, currentIndex, messages, typingSpeed]);
+    // Store in ref so effect cleanup (triggered by isTyping change) doesn't cancel it
+    advanceTimerRef.current = setTimeout(() => setCurrentIndex((i) => i + 1), 300);
+    // No cleanup return for the advance timer — it's managed by the ref
+  }, [isTyping, typedText, currentIndex, typingSpeed]);
 
   const showBuildPreview = buildPreview && buildPhaseForPreview >= 0 && !showResult;
 
