@@ -80,16 +80,27 @@ function parseAddress(raw: string) {
     return { street1, city, state, zip, country: 'US' };
 }
 
-function getFromAddress() {
+interface TenantShipConfig {
+    ship_from_name?: string;
+    ship_from_street?: string;
+    ship_from_city?: string;
+    ship_from_state?: string;
+    ship_from_zip?: string;
+    ship_from_country?: string;
+    ship_from_phone?: string;
+    ship_from_email?: string;
+}
+
+function getFromAddress(tenantConfig?: TenantShipConfig) {
     return {
-        name: process.env.SHIP_FROM_NAME || '',
-        street1: process.env.SHIP_FROM_STREET || '',
-        city: process.env.SHIP_FROM_CITY || '',
-        state: process.env.SHIP_FROM_STATE || '',
-        zip: process.env.SHIP_FROM_ZIP || '',
-        country: process.env.SHIP_FROM_COUNTRY || 'US',
-        phone: process.env.SHIP_FROM_PHONE || '',
-        email: process.env.SHIP_FROM_EMAIL || '',
+        name: tenantConfig?.ship_from_name || process.env.SHIP_FROM_NAME || '',
+        street1: tenantConfig?.ship_from_street || process.env.SHIP_FROM_STREET || '',
+        city: tenantConfig?.ship_from_city || process.env.SHIP_FROM_CITY || '',
+        state: tenantConfig?.ship_from_state || process.env.SHIP_FROM_STATE || '',
+        zip: tenantConfig?.ship_from_zip || process.env.SHIP_FROM_ZIP || '',
+        country: tenantConfig?.ship_from_country || process.env.SHIP_FROM_COUNTRY || 'US',
+        phone: tenantConfig?.ship_from_phone || process.env.SHIP_FROM_PHONE || '',
+        email: tenantConfig?.ship_from_email || process.env.SHIP_FROM_EMAIL || '',
     };
 }
 
@@ -131,10 +142,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const shippoApiKey = process.env.SHIPPO_API_KEY;
 
-        if (!supabaseUrl || !supabaseServiceKey || !shippoApiKey) {
-            console.error('Missing environment variables');
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error('Missing SUPABASE environment variables');
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
@@ -175,6 +185,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Order must be fulfilled before shipping' });
         }
 
+        // Fetch tenant config for ship-from address
+        const { data: tenantConfig } = await supabase
+            .from('tenant_config')
+            .select('ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email')
+            .eq('org_id', order.org_id)
+            .maybeSingle();
+
+        // Fetch tenant-specific Shippo API key (falls back to env var)
+        const { data: shippoKeyRow } = await supabase
+            .from('tenant_api_keys')
+            .select('api_key')
+            .eq('org_id', order.org_id)
+            .eq('service', 'shippo_api_key')
+            .maybeSingle();
+        const shippoApiKey = shippoKeyRow?.api_key || process.env.SHIPPO_API_KEY;
+
+        if (!shippoApiKey) {
+            return res.status(500).json({ error: 'No Shippo API key configured' });
+        }
+
         // Parse shipping address
         const rawAddress = order.shipping_address || (order.contacts as any)?.address;
         if (!rawAddress) {
@@ -188,7 +218,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        const fromAddress = getFromAddress();
+        const fromAddress = getFromAddress(tenantConfig || undefined);
 
         // Estimate weight
         const totalItems = (order.sales_order_items || [])

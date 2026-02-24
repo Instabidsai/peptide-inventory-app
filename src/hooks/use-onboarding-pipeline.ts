@@ -13,7 +13,7 @@ export interface OnboardingStatus {
         added_peptide: boolean;
         added_contact: boolean;
         first_order: boolean;
-        stripe_connected: boolean;
+        payment_connected: boolean;
         automation_enabled: boolean;
     };
     stage: 'signed_up' | 'configured' | 'catalog_ready' | 'customers_added' | 'active';
@@ -42,11 +42,12 @@ export function useOnboardingPipeline() {
                 .select('org_id, brand_name, logo_url, primary_color');
             const configMap = new Map((configs || []).map(c => [c.org_id, c]));
 
-            // Fetch subscriptions
-            const { data: subs } = await supabase
-                .from('tenant_subscriptions')
-                .select('org_id, stripe_customer_id');
-            const subMap = new Map((subs || []).map(s => [s.org_id, s]));
+            // Fetch payment provider keys (PsiFi or Stripe)
+            const { data: paymentKeys } = await supabase
+                .from('tenant_api_keys')
+                .select('org_id, service')
+                .in('service', ['psifi_api_key', 'stripe_secret_key']);
+            const paymentOrgIds = new Set((paymentKeys || []).map(k => k.org_id));
 
             // Fetch counts for all orgs in a single RPC call (no N+1)
             const { data: counts } = await supabase.rpc('get_org_counts');
@@ -56,14 +57,13 @@ export function useOnboardingPipeline() {
 
             const statuses = orgs.map((org) => {
                 const config = configMap.get(org.id);
-                const sub = subMap.get(org.id);
                 const c = countMap.get(org.id);
 
                 const hasBranding = config && (config.logo_url || config.primary_color !== '#7c3aed');
                 const hasPeptide = Number(c?.peptide_count) > 0;
                 const hasContact = Number(c?.contact_count) > 0;
                 const hasOrder = Number(c?.order_count) > 0;
-                const hasStripe = !!sub?.stripe_customer_id;
+                const hasPayment = paymentOrgIds.has(org.id);
                 const hasAutomation = Number(c?.automation_count) > 0;
 
                 const milestones = {
@@ -72,7 +72,7 @@ export function useOnboardingPipeline() {
                     added_peptide: hasPeptide,
                     added_contact: hasContact,
                     first_order: hasOrder,
-                    stripe_connected: hasStripe,
+                    payment_connected: hasPayment,
                     automation_enabled: hasAutomation,
                 };
 

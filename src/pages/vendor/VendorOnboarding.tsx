@@ -19,7 +19,7 @@ const milestoneLabels: Record<string, string> = {
     added_peptide: 'First Peptide Added',
     added_contact: 'First Contact Added',
     first_order: 'First Order Placed',
-    stripe_connected: 'Stripe Connected',
+    payment_connected: 'Payment Connected',
     automation_enabled: 'Automation Enabled',
 };
 
