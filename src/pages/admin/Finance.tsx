@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Plus, Trash2, PieChart, TrendingDown, ArrowRight, AlertCircle, CreditCard, Users, TrendingUp, Receipt, Banknote, Download } from 'lucide-react';
@@ -35,6 +36,7 @@ export default function Finance() {
     const createExpense = useCreateExpense();
     const deleteExpense = useDeleteExpense();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
 
     // Expense filter
     const [expenseFilter, setExpenseFilter] = useState<string>('all');
@@ -819,7 +821,7 @@ export default function Finance() {
                                         ${expense.amount.toFixed(2)}
                                     </TableCell>
                                     <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="Delete expense" onClick={() => deleteExpense.mutate(expense.id)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="Delete expense" onClick={() => setExpenseToDelete(expense.id)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </TableCell>
@@ -832,6 +834,20 @@ export default function Finance() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Delete Expense Confirmation */}
+            <AlertDialog open={!!expenseToDelete} onOpenChange={(open) => { if (!open) setExpenseToDelete(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently remove this expense record. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (expenseToDelete) { deleteExpense.mutate(expenseToDelete); setExpenseToDelete(null); } }}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

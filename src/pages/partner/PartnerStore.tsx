@@ -75,6 +75,7 @@ export default function PartnerStore() {
     });
     const [copiedZelle, setCopiedZelle] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
+    const [orderTotal, setOrderTotal] = useState(0); // Saved total for confirmation display
     const [placingOrder, setPlacingOrder] = useState(false);
 
     // Persist cart state to localStorage
@@ -170,6 +171,11 @@ export default function PartnerStore() {
     const MAX_ITEM_QTY = 10;
 
     const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
+        const stock = stockCounts?.[peptide.id] ?? null;
+        if (stock !== null && stock <= 0) {
+            toast({ title: 'Out of Stock', description: `${peptide.name} is currently out of stock.`, variant: 'destructive' });
+            return;
+        }
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
@@ -207,8 +213,17 @@ export default function PartnerStore() {
     const retailTotal = cart.reduce((sum, i) => sum + (i.retailPrice * i.quantity), 0);
     const totalSavings = retailTotal - cartTotal;
 
-    const copyZelleEmail = () => {
-        navigator.clipboard.writeText(ZELLE_EMAIL);
+    const copyZelleEmail = async () => {
+        try {
+            await navigator.clipboard.writeText(ZELLE_EMAIL);
+        } catch {
+            const input = document.createElement('input');
+            input.value = ZELLE_EMAIL;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
         setCopiedZelle(true);
         setTimeout(() => setCopiedZelle(false), 2000);
     };
@@ -219,7 +234,6 @@ export default function PartnerStore() {
     const handleCardCheckout = () => {
         if (!partnerProfile) return;
 
-        clearCartStorage(); // Clear before redirect to external payment
         checkout.mutate({
             items: cart.map(i => ({
                 peptide_id: i.peptide_id,
@@ -227,6 +241,8 @@ export default function PartnerStore() {
             })),
             shipping_address: shippingAddress || undefined,
             notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}.\n${notes}`,
+        }, {
+            onSuccess: () => clearCartStorage(), // Only clear cart after successful redirect
         });
     };
 
@@ -247,6 +263,7 @@ export default function PartnerStore() {
                 notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
                 payment_method: paymentMethod,
             });
+            setOrderTotal(result.total_amount);
             setOrderPlaced(true);
             setCart([]);
             setNotes('');
@@ -393,10 +410,11 @@ export default function PartnerStore() {
                                                 <Button
                                                     size="default"
                                                     onClick={() => addToCart(peptide)}
+                                                    disabled={stock === 0}
                                                     className="flex items-center gap-1"
                                                 >
                                                     <Plus className="h-4 w-4" />
-                                                    Add
+                                                    {stock === 0 ? 'Sold Out' : 'Add'}
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -515,9 +533,9 @@ export default function PartnerStore() {
                                             <div className="grid grid-cols-2 gap-2">
                                                 {([
                                                     { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
-                                                    { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
+                                                    ...(ZELLE_EMAIL ? [{ id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote }] : []),
                                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
-                                                    { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
+                                                    ...(VENMO_HANDLE ? [{ id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone }] : []),
                                                 ]).map(m => (
                                                     <Button
                                                         key={m.id}
@@ -607,7 +625,7 @@ export default function PartnerStore() {
                                             <div>
                                                 <p className="font-semibold text-green-600">Order Placed!</p>
                                                 <p className="text-sm text-muted-foreground mt-1">
-                                                    Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
+                                                    Send <strong>${orderTotal.toFixed(2)}</strong> via{' '}
                                                     {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}
                                                     {paymentMethod === 'zelle' && (
                                                         <> to <strong>{ZELLE_EMAIL}</strong></>

@@ -27,8 +27,17 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
     const [isGeneratingLink, setIsGeneratingLink] = useState(false);
     const [linkEmail, setLinkEmail] = useState('');
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            const input = document.createElement('input');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
         toast({ title: 'Copied to clipboard' });
     };
 
@@ -109,10 +118,10 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
                                 onChange={(e) => setLinkEmail(e.target.value)}
                                 className="border-amber-900/50 focus-visible:ring-amber-900"
                             />
-                            <Button size="sm" onClick={() => {
+                            <Button size="sm" disabled={updateContact.isPending} onClick={() => {
                                 if (linkEmail) updateContact.mutate({ id: contact.id, email: linkEmail });
                             }}>
-                                Save Email
+                                {updateContact.isPending ? 'Saving...' : 'Save Email'}
                             </Button>
                         </div>
                     </div>

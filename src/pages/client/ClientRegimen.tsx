@@ -1,5 +1,15 @@
 
 import { useEffect, useState } from "react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { useProtocols } from "@/hooks/use-protocols";
 import { useInventoryOwnerId } from "@/hooks/use-inventory-owner";
@@ -33,6 +43,7 @@ export default function ClientRegimen() {
 
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [selectedRefillPeptide, setSelectedRefillPeptide] = useState<{ id: string, name: string } | undefined>(undefined);
+    const [vialToDelete, setVialToDelete] = useState<string | null>(null);
 
     // Standalone inventory refresh — uses household owner's contact for shared fridge
     // Returns the fetched items so callers can use fresh data without waiting for state flush
@@ -352,7 +363,7 @@ export default function ClientRegimen() {
                         protocols={protocols}
                         onAddVial={handleAddVial}
                         onReconstitute={() => toast({ title: 'Reconstitution guide coming soon' })}
-                        onDelete={handleDeleteVial}
+                        onDelete={(id) => setVialToDelete(id)}
                         onRequestRefill={(peptide) => {
                             setSelectedRefillPeptide({ id: peptide.id, name: peptide.name });
                             setRequestModalOpen(true);
@@ -378,6 +389,19 @@ export default function ClientRegimen() {
                     onSuccess={() => setSelectedRefillPeptide(undefined)}
                 />
             </div>
+
+            <AlertDialog open={!!vialToDelete} onOpenChange={(open) => { if (!open) setVialToDelete(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Vial</AlertDialogTitle>
+                        <AlertDialogDescription>This will archive this vial and remove it from your active fridge. You can't undo this.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (vialToDelete) { handleDeleteVial(vialToDelete); setVialToDelete(null); } }}>Remove</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
 

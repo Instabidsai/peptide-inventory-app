@@ -292,7 +292,8 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const canEdit = !!order; // Partners can edit orders in any status
+    const NON_EDITABLE_STATUSES = ['shipped', 'delivered', 'cancelled', 'voided'];
+    const canEdit = !!order && !NON_EDITABLE_STATUSES.includes(order.status || '');
 
     const startEditing = () => {
         if (!order) return;
@@ -338,12 +339,20 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
         }
     };
 
-    const copyOrderId = () => {
-        if (order?.id) {
-            navigator.clipboard.writeText(order.id);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+    const copyOrderId = async () => {
+        if (!order?.id) return;
+        try {
+            await navigator.clipboard.writeText(order.id);
+        } catch {
+            const input = document.createElement('input');
+            input.value = order.id;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
         }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     const updateItemQty = (itemId: string, delta: number) => {

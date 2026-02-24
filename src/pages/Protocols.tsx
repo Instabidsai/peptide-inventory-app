@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { QueryError } from '@/components/ui/query-error';
 import { Loader2, Plus, Trash2, Pencil } from 'lucide-react';
@@ -21,6 +22,7 @@ export default function Protocols() {
     const [description, setDescription] = useState('');
 
     const [editingProtocolId, setEditingProtocolId] = useState<string | null>(null);
+    const [protocolToDelete, setProtocolToDelete] = useState<{ id: string; name: string } | null>(null);
     const originalItemIds = useRef<string[]>([]);
 
     // Builder State
@@ -380,7 +382,7 @@ export default function Protocols() {
                                             variant="ghost"
                                             size="sm"
                                             className="h-7 text-xs text-destructive hover:text-destructive"
-                                            onClick={() => { if (confirm(`Delete "${protocol.name}"?`)) deleteProtocol.mutate(protocol.id); }}
+                                            onClick={() => setProtocolToDelete({ id: protocol.id, name: protocol.name })}
                                         >
                                             <Trash2 className="h-3 w-3 mr-1" /> Delete
                                         </Button>
@@ -391,6 +393,20 @@ export default function Protocols() {
                     })}
                 </div>
             )}
+
+            {/* Delete Protocol Confirmation */}
+            <AlertDialog open={!!protocolToDelete} onOpenChange={(open) => { if (!open) setProtocolToDelete(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Protocol</AlertDialogTitle>
+                        <AlertDialogDescription>Delete "{protocolToDelete?.name}"? This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (protocolToDelete) { deleteProtocol.mutate(protocolToDelete.id); setProtocolToDelete(null); } }}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

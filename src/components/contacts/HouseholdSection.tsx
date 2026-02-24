@@ -55,11 +55,15 @@ export function HouseholdSection({ contactId }: HouseholdSectionProps) {
     };
 
     const handleResendInvite = async (memberId: string, memberEmail: string) => {
-        const result = await inviteHouseholdMember.mutateAsync({
-            contactId: memberId,
-            email: memberEmail,
-        });
-        setLastMemberInviteLink(result.action_link);
+        try {
+            const result = await inviteHouseholdMember.mutateAsync({
+                contactId: memberId,
+                email: memberEmail,
+            });
+            setLastMemberInviteLink(result.action_link);
+        } catch {
+            // Error already toasted by hook's onError
+        }
     };
 
     return (
@@ -150,8 +154,17 @@ export function HouseholdSection({ contactId }: HouseholdSectionProps) {
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => {
-                                    navigator.clipboard.writeText(lastMemberInviteLink);
+                                onClick={async () => {
+                                    try {
+                                        await navigator.clipboard.writeText(lastMemberInviteLink);
+                                    } catch {
+                                        const input = document.createElement('input');
+                                        input.value = lastMemberInviteLink;
+                                        document.body.appendChild(input);
+                                        input.select();
+                                        document.execCommand('copy');
+                                        document.body.removeChild(input);
+                                    }
                                     toast({ title: 'Copied!' });
                                 }}
                             >

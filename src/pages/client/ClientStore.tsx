@@ -203,8 +203,17 @@ export default function ClientStore() {
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    const copyZelleEmail = () => {
-        navigator.clipboard.writeText(ZELLE_EMAIL);
+    const copyZelleEmail = async () => {
+        try {
+            await navigator.clipboard.writeText(ZELLE_EMAIL);
+        } catch {
+            const input = document.createElement('input');
+            input.value = ZELLE_EMAIL;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
         setCopiedZelle(true);
         setTimeout(() => setCopiedZelle(false), 2000);
     };
@@ -218,9 +227,6 @@ export default function ClientStore() {
             return;
         }
 
-        // Clear saved cart before redirect
-        localStorage.removeItem('peptide_cart');
-
         checkout.mutate({
             items: cart.map(i => ({
                 peptide_id: i.peptide_id,
@@ -228,6 +234,8 @@ export default function ClientStore() {
             })),
             shipping_address: shippingAddress || undefined,
             notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
+        }, {
+            onSuccess: () => { localStorage.removeItem('peptide_cart'); },
         });
     };
 

@@ -146,7 +146,9 @@ export default function ClientMenu() {
                     <Button
                         variant="ghost"
                         className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => signOut()}
+                        onClick={async () => {
+                            try { await signOut(); } catch { /* auth error handled by context */ }
+                        }}
                     >
                         <LogOut className="h-4 w-4 mr-2" />
                         Sign Out

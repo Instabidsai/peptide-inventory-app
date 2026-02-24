@@ -25,7 +25,7 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                     {isEditingDetails ? (
                         <>
                             <Button size="sm" variant="ghost" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
-                            <Button size="sm" onClick={() => {
+                            <Button size="sm" disabled={updateContact.isPending} onClick={() => {
                                 updateContact.mutate({
                                     id: contactId,
                                     name: editForm.name,
@@ -33,9 +33,10 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                                     phone: editForm.phone,
                                     company: editForm.company,
                                     address: editForm.address
+                                }, {
+                                    onSuccess: () => setIsEditingDetails(false),
                                 });
-                                setIsEditingDetails(false);
-                            }}>Save</Button>
+                            }}>{updateContact.isPending ? 'Saving...' : 'Save'}</Button>
                         </>
                     ) : (
                         <Button variant="ghost" size="icon" aria-label="Edit contact details" onClick={() => {

@@ -48,23 +48,27 @@ export default function ProtocolBuilder() {
 
     const handleSaveProtocol = async () => {
         if (builder.items.length === 0) return;
-        await createProtocol.mutateAsync({
-            name: builder.protocolName,
-            description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
-            contact_id: builder.selectedContactId || undefined,
-            items: builder.items.map(item => ({
-                peptide_id: item.peptideId,
-                dosage_amount: item.doseAmount,
-                dosage_unit: item.doseUnit,
-                frequency: item.frequency,
-                timing: item.timing,
-                notes: item.notes || undefined,
-                duration_days: 56, // 8 weeks default
-            })),
-        });
-        queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        try {
+            await createProtocol.mutateAsync({
+                name: builder.protocolName,
+                description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
+                contact_id: builder.selectedContactId || undefined,
+                items: builder.items.map(item => ({
+                    peptide_id: item.peptideId,
+                    dosage_amount: item.doseAmount,
+                    dosage_unit: item.doseUnit,
+                    frequency: item.frequency,
+                    timing: item.timing,
+                    notes: item.notes || undefined,
+                    duration_days: 56, // 8 weeks default
+                })),
+            });
+            queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch {
+            // Hook's onError handles toast
+        }
     };
 
     const handleSendToCalendar = async () => {
@@ -73,20 +77,26 @@ export default function ProtocolBuilder() {
             toast.error('Select a client first to send to their calendar');
             return;
         }
-        const result = await createProtocol.mutateAsync({
-            name: builder.protocolName,
-            description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
-            contact_id: builder.selectedContactId,
-            items: builder.items.map(item => ({
-                peptide_id: item.peptideId,
-                dosage_amount: item.doseAmount,
-                dosage_unit: item.doseUnit,
-                frequency: item.frequency,
-                timing: item.timing,
-                notes: item.notes || undefined,
-                duration_days: 56,
-            })),
-        });
+        let result;
+        try {
+            result = await createProtocol.mutateAsync({
+                name: builder.protocolName,
+                description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
+                contact_id: builder.selectedContactId,
+                items: builder.items.map(item => ({
+                    peptide_id: item.peptideId,
+                    dosage_amount: item.doseAmount,
+                    dosage_unit: item.doseUnit,
+                    frequency: item.frequency,
+                    timing: item.timing,
+                    notes: item.notes || undefined,
+                    duration_days: 56,
+                })),
+            });
+        } catch {
+            // Hook's onError handles toast
+            return;
+        }
 
         // Configure inventory items for Protocol Calendar tracking
         try {

@@ -597,8 +597,17 @@ export default function OrderDetails() {
                                         </code>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
                                             aria-label="Copy tracking number"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(order.tracking_number);
+                                            onClick={async () => {
+                                                try {
+                                                    await navigator.clipboard.writeText(order.tracking_number);
+                                                } catch {
+                                                    const input = document.createElement('input');
+                                                    input.value = order.tracking_number;
+                                                    document.body.appendChild(input);
+                                                    input.select();
+                                                    document.execCommand('copy');
+                                                    document.body.removeChild(input);
+                                                }
                                                 toast({ title: 'Copied tracking number' });
                                             }}>
                                             <Copy className="h-3 w-3" />

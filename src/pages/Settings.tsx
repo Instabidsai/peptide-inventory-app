@@ -324,9 +324,18 @@ export default function Settings() {
   const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const handleCopyInviteLink = () => {
+  const handleCopyInviteLink = async () => {
     const signupUrl = `${window.location.origin}/auth`;
-    navigator.clipboard.writeText(signupUrl);
+    try {
+      await navigator.clipboard.writeText(signupUrl);
+    } catch {
+      const input = document.createElement('input');
+      input.value = signupUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
     setCopiedLink(true);
     toast({ title: 'Invite link copied to clipboard' });
     setTimeout(() => setCopiedLink(false), 2000);

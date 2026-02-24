@@ -15,6 +15,16 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -121,6 +131,7 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
 
 function ResourceList({ contactId }: { contactId: string }) {
     const queryClient = useQueryClient();
+    const [resourceToDelete, setResourceToDelete] = useState<string | null>(null);
     const { data: resources, isLoading } = useQuery({
         queryKey: ['resources', contactId],
         queryFn: async () => {
@@ -155,25 +166,39 @@ function ResourceList({ contactId }: { contactId: string }) {
     }
 
     return (
-        <div className="space-y-2">
-            {resources.map(r => (
-                <div key={r.id} className="flex items-center justify-between p-2 border border-border/60 rounded-lg bg-muted/50 text-sm">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        {r.type === 'video' ? <FlaskConical className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                        <span className="truncate">{r.title}</span>
+        <>
+            <div className="space-y-2">
+                {resources.map(r => (
+                    <div key={r.id} className="flex items-center justify-between p-2 border border-border/60 rounded-lg bg-muted/50 text-sm">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            {r.type === 'video' ? <FlaskConical className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                            <span className="truncate">{r.title}</span>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete resource"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            disabled={deleteResource.isPending}
+                            onClick={() => setResourceToDelete(r.id)}
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Delete resource"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        disabled={deleteResource.isPending}
-                        onClick={() => deleteResource.mutate(r.id)}
-                    >
-                        <Trash2 className="h-3 w-3" />
-                    </Button>
-                </div>
-            ))}
-        </div>
+                ))}
+            </div>
+            <AlertDialog open={!!resourceToDelete} onOpenChange={(open) => { if (!open) setResourceToDelete(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Resource</AlertDialogTitle>
+                        <AlertDialogDescription>This will remove this resource from the contact. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (resourceToDelete) { deleteResource.mutate(resourceToDelete); setResourceToDelete(null); } }}>Remove</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }

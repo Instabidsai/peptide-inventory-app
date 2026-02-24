@@ -256,7 +256,18 @@ export default function Bottles() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(bottle.uid)}>
+                            <DropdownMenuItem onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(bottle.uid);
+                              } catch {
+                                const input = document.createElement('input');
+                                input.value = bottle.uid;
+                                document.body.appendChild(input);
+                                input.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(input);
+                              }
+                            }}>
                               Copy UID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />

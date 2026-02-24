@@ -4,6 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MessageSquare, Loader2, Send, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useContactNotes, useCreateContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes';
@@ -17,6 +27,7 @@ export function NotesSection({ contactId }: NotesSectionProps) {
     const createNote = useCreateContactNote();
     const deleteNote = useDeleteContactNote();
     const [newNoteContent, setNewNoteContent] = useState('');
+    const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
     return (
         <AccordionItem value="notes" className="border border-border/60 rounded-lg bg-card px-4">
@@ -80,7 +91,7 @@ export function NotesSection({ contactId }: NotesSectionProps) {
                                     size="sm"
                                     variant="ghost"
                                     className="text-muted-foreground hover:text-destructive shrink-0 h-7 w-7 p-0"
-                                    onClick={() => deleteNote.mutate({ id: note.id, contact_id: contactId })}
+                                    onClick={() => setNoteToDelete(note.id)}
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -93,6 +104,19 @@ export function NotesSection({ contactId }: NotesSectionProps) {
                         <p className="text-sm text-muted-foreground/70">No notes yet. Add your first note above.</p>
                     </div>
                 )}
+
+                <AlertDialog open={!!noteToDelete} onOpenChange={(open) => { if (!open) setNoteToDelete(null); }}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                            <AlertDialogDescription>This will permanently delete this note. This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (noteToDelete) { deleteNote.mutate({ id: noteToDelete, contact_id: contactId }); setNoteToDelete(null); } }}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </AccordionContent>
         </AccordionItem>
     );

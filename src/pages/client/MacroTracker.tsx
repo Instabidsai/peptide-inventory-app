@@ -101,6 +101,8 @@ export default function MacroTracker() {
     };
 
     const [showSettings, setShowSettings] = useState(false);
+    const [savingGoals, setSavingGoals] = useState(false);
+    const [loggingMeal, setLoggingMeal] = useState(false);
     const [goals, setGoals] = useState({
         calories: 2000,
         protein: 150,
@@ -135,25 +137,32 @@ export default function MacroTracker() {
     }, []);
 
     const saveGoals = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        setSavingGoals(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
 
-        const { error } = await supabase
-            .from('daily_macro_goals')
-            .upsert({
-                user_id: session.user.id,
-                calories_target: goals.calories,
-                protein_target: goals.protein,
-                carbs_target: goals.carbs,
-                fat_target: goals.fat,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
+            const { error } = await supabase
+                .from('daily_macro_goals')
+                .upsert({
+                    user_id: session.user.id,
+                    calories_target: goals.calories,
+                    protein_target: goals.protein,
+                    carbs_target: goals.carbs,
+                    fat_target: goals.fat,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
 
-        if (error) {
+            if (error) {
+                toast.error("Failed to save goals");
+            } else {
+                toast.success("Goals updated!");
+                setShowSettings(false);
+            }
+        } catch {
             toast.error("Failed to save goals");
-        } else {
-            toast.success("Goals updated!");
-            setShowSettings(false);
+        } finally {
+            setSavingGoals(false);
         }
     };
 
@@ -288,6 +297,7 @@ export default function MacroTracker() {
 
     const logMeal = async () => {
         if (!result) return;
+        setLoggingMeal(true);
 
         try {
             // Check for user session manually if useAuth isn't ready or just use supabase auth
@@ -326,6 +336,8 @@ export default function MacroTracker() {
         } catch (error) {
             console.error("Error logging meal:", error);
             toast.error("Failed to log meal.");
+        } finally {
+            setLoggingMeal(false);
         }
     };
 
@@ -401,7 +413,9 @@ export default function MacroTracker() {
                                 <Input type="number" value={goals.fat} onChange={e => setGoals({ ...goals, fat: Number(e.target.value) })} />
                             </div>
                         </div>
-                        <Button className="w-full mt-4" onClick={saveGoals}>Save Goals</Button>
+                        <Button className="w-full mt-4" onClick={saveGoals} disabled={savingGoals}>
+                            {savingGoals ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : 'Save Goals'}
+                        </Button>
                     </CardContent>
                 </GlassCard>
             )}
@@ -585,9 +599,9 @@ export default function MacroTracker() {
                             </CardContent>
                         </Card>
 
-                        <Button className="flex-1" onClick={logMeal}>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Log Meal
+                        <Button className="flex-1" onClick={logMeal} disabled={loggingMeal}>
+                            {loggingMeal ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                            {loggingMeal ? 'Logging...' : 'Log Meal'}
                         </Button>
                     </div>
                 )
