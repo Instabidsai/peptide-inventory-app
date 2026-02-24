@@ -30,12 +30,12 @@ function StatWidget({ config, orgId }: { config: Record<string, any>; orgId: str
     queryKey: ['widget-stat', orgId, config.query],
     queryFn: async () => {
       if (!config.query) return { value: '—' };
-      const { data, error } = await supabase.rpc('run_readonly_query', {
+      const { data: result, error } = await supabase.rpc('run_readonly_query', {
         query_text: config.query,
         p_org_id: orgId,
       });
       if (error) return { value: 'Error' };
-      const row = Array.isArray(data) ? data[0] : data;
+      const row = Array.isArray(result) ? result[0] : result;
       return { value: row?.value ?? row?.count ?? '—' };
     },
     enabled: !!config.query,

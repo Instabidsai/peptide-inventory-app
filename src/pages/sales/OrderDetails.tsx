@@ -193,7 +193,7 @@ export default function OrderDetails() {
             // Delete removed items
             const currentIds = editItems.map(i => i.id);
             const originalIds = (order.sales_order_items || []).map(i => i.id);
-            const removedIds = originalIds.filter(id => !currentIds.includes(id));
+            const removedIds = originalIds.filter(itemId => !currentIds.includes(itemId));
             for (const rid of removedIds) {
                 await supabase.from('sales_order_items').delete().eq('id', rid);
             }

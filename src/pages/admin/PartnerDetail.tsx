@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query'; // Added useQueryClient
 import { supabase } from '@/integrations/sb_client/client';
@@ -19,7 +19,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
 
 // Referral Activity Card — shows total referrals, total spend, per-customer breakdown
 function ReferralActivityCard({ repId }: { repId: string }) {

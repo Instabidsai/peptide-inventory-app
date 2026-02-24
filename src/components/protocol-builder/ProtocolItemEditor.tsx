@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import type { EnrichedProtocolItem, IncludeSections } from '@/lib/protocol-html-generator';
-import { calcMl, calcUnits, formatMl, formatFrequencyShort } from '@/lib/protocol-html-generator';
+import { calcMl, calcUnits, formatMl, formatFrequencyShort, type EnrichedProtocolItem, type IncludeSections } from '@/lib/protocol-html-generator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

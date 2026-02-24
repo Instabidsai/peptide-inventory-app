@@ -63,11 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError(null);
 
       // Fetch profile
-      let { data: profileData, error: profileError } = await supabase
+      const profileResult = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+      let profileData = profileResult.data;
+      const profileError = profileResult.error;
 
       if (profileError) {
         const msg = `Failed to load user profile: ${profileError.message}`;

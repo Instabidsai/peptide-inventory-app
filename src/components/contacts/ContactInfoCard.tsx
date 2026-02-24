@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Edit } from 'lucide-react';
-import type { Contact } from '@/hooks/use-contacts';
-import { useUpdateContact } from '@/hooks/use-contacts';
+import { useUpdateContact, type Contact } from '@/hooks/use-contacts';
 
 interface ContactInfoCardProps {
     contact: Contact;

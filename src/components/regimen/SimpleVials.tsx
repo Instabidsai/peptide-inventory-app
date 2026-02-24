@@ -12,11 +12,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
-import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, TIME_OF_DAY_OPTIONS, isDoseDay, getScheduleLabel } from '@/types/regimen';
-import type { DoseFrequency, DoseTimeOfDay } from '@/types/regimen';
+import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, TIME_OF_DAY_OPTIONS, isDoseDay, getScheduleLabel, type DoseFrequency, type DoseTimeOfDay, type ClientInventoryItem } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { ClientInventoryItem } from '@/types/regimen';
 import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
 import { calculateDoseUnits } from '@/utils/dose-utils';
 import { vialDailyUsage, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';

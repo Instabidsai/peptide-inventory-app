@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Loader2, RefreshCcw } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
-import { useUpdateContact } from '@/hooks/use-contacts';
+import { useUpdateContact, type Contact } from '@/hooks/use-contacts';
 import { toast } from '@/hooks/use-toast';
-import type { Contact } from '@/hooks/use-contacts';
 
 interface ClientPortalCardProps {
     contact: Contact;

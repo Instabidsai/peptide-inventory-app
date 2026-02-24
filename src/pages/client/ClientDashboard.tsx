@@ -32,13 +32,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { QueryError } from "@/components/ui/query-error";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 
-import { PeptideRings, RING_COLORS } from '@/components/gamified/PeptideRings';
-import type { RingDose } from '@/components/gamified/PeptideRings';
-import { DueNowCards } from '@/components/gamified/DueNowCards';
-import type { DueNowDose } from '@/components/gamified/DueNowCards';
+import { PeptideRings, RING_COLORS, type RingDose } from '@/components/gamified/PeptideRings';
+import { DueNowCards, type DueNowDose } from '@/components/gamified/DueNowCards';
 import { HouseholdDoseSection } from '@/components/gamified/HouseholdDoseSection';
-import { ComplianceHeatmap } from '@/components/gamified/ComplianceHeatmap';
-import type { DayCompletion } from '@/components/gamified/ComplianceHeatmap';
+import { ComplianceHeatmap, type DayCompletion } from '@/components/gamified/ComplianceHeatmap';
 
 type TimeWindow = 'morning' | 'afternoon' | 'evening';
 

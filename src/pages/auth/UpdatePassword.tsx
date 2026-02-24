@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, FlaskConical, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
 
 export default function UpdatePassword() {
     const [password, setPassword] = useState("");
@@ -65,9 +64,9 @@ export default function UpdatePassword() {
             return;
         }
         setLoading(true);
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) {
-            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        const { error: updateErr } = await supabase.auth.updateUser({ password });
+        if (updateErr) {
+            toast({ variant: "destructive", title: "Update Failed", description: updateErr.message });
         } else {
             toast({ title: "Success", description: "Your password has been updated!" });
             navigate("/");

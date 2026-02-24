@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { UserPlus, Loader2 } from 'lucide-react';
-import { TIER_INFO, EMPTY_PERSON } from './types';
-import type { PartnerNode } from './types';
+import { TIER_INFO, EMPTY_PERSON, type PartnerNode } from './types';
 
 interface NewPerson {
     name: string;

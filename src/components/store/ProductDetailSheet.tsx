@@ -14,8 +14,7 @@ import {
     Clock,
     Repeat,
 } from 'lucide-react';
-import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
-import type { ProtocolTemplate } from '@/data/protocol-knowledge';
+import { lookupKnowledge, PROTOCOL_TEMPLATES, type ProtocolTemplate } from '@/data/protocol-knowledge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import { getPeptideDescription, getRelatedStacks } from './utils';

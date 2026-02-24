@@ -1,8 +1,7 @@
 import { User, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { DueNowCards } from './DueNowCards';
-import type { DueNowDose } from './DueNowCards';
+import { DueNowCards, type DueNowDose } from './DueNowCards';
 
 const MEMBER_COLORS = [
     'text-primary',

@@ -7,17 +7,13 @@ import { Package, CalendarDays, Eye, Flame, Target, Pill } from 'lucide-react';
 import { format, isSameDay, subDays } from 'date-fns';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
 import { ProtocolCalendar } from '@/components/regimen/ProtocolCalendar';
-import { PeptideRings, RING_COLORS } from '@/components/gamified/PeptideRings';
-import type { RingDose } from '@/components/gamified/PeptideRings';
-import { DueNowCards } from '@/components/gamified/DueNowCards';
-import type { DueNowDose } from '@/components/gamified/DueNowCards';
-import { ComplianceHeatmap } from '@/components/gamified/ComplianceHeatmap';
-import type { DayCompletion } from '@/components/gamified/ComplianceHeatmap';
+import { PeptideRings, RING_COLORS, type RingDose } from '@/components/gamified/PeptideRings';
+import { DueNowCards, type DueNowDose } from '@/components/gamified/DueNowCards';
+import { ComplianceHeatmap, type DayCompletion } from '@/components/gamified/ComplianceHeatmap';
 import { SupplyOverview } from '@/components/regimen/SupplyOverview';
 import { calculateDoseUnits } from '@/utils/dose-utils';
-import { isDoseDay } from '@/types/regimen';
+import { isDoseDay, type Protocol, type ClientInventoryItem } from '@/types/regimen';
 import { ClientInventoryList } from './ClientInventoryList';
-import type { Protocol, ClientInventoryItem } from '@/types/regimen';
 
 interface DigitalFridgeSectionProps {
     contactId: string;

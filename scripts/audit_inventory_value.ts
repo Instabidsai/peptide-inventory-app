@@ -79,7 +79,7 @@ async function auditInventory() {
     let totalActValue = 0;
     let totalSoldValue = 0;
     let totalUsedValue = 0;
-    let totalMissingValue = 0;
+    const totalMissingValue = 0;
 
     for (const item of EXPECTED_INVENTORY) {
         // Find peptide ID

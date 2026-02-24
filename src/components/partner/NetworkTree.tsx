@@ -1,8 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { User } from 'lucide-react';
-import { TIER_INFO } from './types';
-import type { PartnerNode, DownlineClient } from './types';
+import { TIER_INFO, type PartnerNode, type DownlineClient } from './types';
 
 interface NetworkTreeProps {
     rootName: string;

@@ -22,8 +22,10 @@ import {
     CheckoutConfirmDialog,
     ProtocolDetailSheet,
     ProductDetailSheet,
+    type CartItem,
+    type PaymentMethod,
+    type SelectedProtocol,
 } from '@/components/store';
-import type { CartItem, PaymentMethod, SelectedProtocol } from '@/components/store';
 import { canSeePeptide, calculateClientPrice } from '@/components/store/utils';
 import { MAX_ITEM_QTY } from '@/components/store/constants';
 

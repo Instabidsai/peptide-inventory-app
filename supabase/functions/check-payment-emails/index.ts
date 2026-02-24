@@ -95,7 +95,7 @@ function extractSenderName(text: string, method: string): string | null {
     if (method === 'psifi') {
         let m = cleaned.match(/from\s+(@\S+)/i);
         if (m) return m[1].trim();
-        m = cleaned.match(/payment from\s+(.+?)(?:\s+|\.|\!|$)/i);
+        m = cleaned.match(/payment from\s+(.+?)(?:\s+|\.|!|$)/i);
         if (m) return m[1].trim();
     }
 

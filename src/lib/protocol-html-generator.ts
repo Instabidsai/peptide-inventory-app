@@ -2,8 +2,7 @@
 // Generates professional HTML + plain-text protocol documents
 // for email, print, and clipboard delivery.
 
-import type { SupplementNote, DosingTier } from '@/data/protocol-knowledge';
-import { RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL } from '@/data/protocol-knowledge';
+import { RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, type SupplementNote, type DosingTier } from '@/data/protocol-knowledge';
 
 // ── Types ──────────────────────────────────────────────────────
 

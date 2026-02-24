@@ -117,6 +117,13 @@ export default function AdminDashboard() {
         },
     });
 
+    const lowStock = useMemo(() =>
+        peptides
+            ?.filter(p => (p.stock_count ?? 0) <= 10 && p.active)
+            .sort((a, b) => (a.stock_count ?? 0) - (b.stock_count ?? 0)) || [],
+        [peptides]
+    );
+
     if (financialsError) {
         console.error("Financials Error:", financialsError);
     }
@@ -131,12 +138,6 @@ export default function AdminDashboard() {
     const hasPartialFailure = financialErrors.length > 0;
 
     const recentMovements = movements?.slice(0, 5) || [];
-    const lowStock = useMemo(() =>
-        peptides
-            ?.filter(p => (p.stock_count ?? 0) <= 10 && p.active)
-            .sort((a, b) => (a.stock_count ?? 0) - (b.stock_count ?? 0)) || [],
-        [peptides]
-    );
 
     // Calculated fields for Full Investment View
     const totalExpensesWithLiability = (financials?.overhead ?? 0) +

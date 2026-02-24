@@ -649,10 +649,10 @@ async function buildHealthContext(supabase: any, contact: { id: string; name: st
 
     if (meals?.length) {
         const mealLines = meals.map((m: any) => {
-            const parts: string[] = [];
-            if (m.calories) parts.push(`${m.calories} cal`);
-            if (m.protein_g) parts.push(`${m.protein_g}g protein`);
-            return `- ${m.log_date || 'Recent'}: ${parts.join(', ')}`;
+            const msgParts: string[] = [];
+            if (m.calories) msgParts.push(`${m.calories} cal`);
+            if (m.protein_g) msgParts.push(`${m.protein_g}g protein`);
+            return `- ${m.log_date || 'Recent'}: ${msgParts.join(', ')}`;
         });
         parts.push(`### Recent Nutrition\n${mealLines.join('\n')}`);
     }

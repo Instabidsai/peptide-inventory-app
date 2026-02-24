@@ -75,6 +75,11 @@ export default function Peptides() {
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
 
+  const form = useForm<PeptideFormData>({
+    resolver: zodResolver(peptideSchema),
+    defaultValues: { name: '', description: '', sku: '', retail_price: 0 },
+  });
+
   const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
 
   const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isPartner;
@@ -105,11 +110,6 @@ export default function Peptides() {
       </div>
     )
   }
-
-  const form = useForm<PeptideFormData>({
-    resolver: zodResolver(peptideSchema),
-    defaultValues: { name: '', description: '', sku: '', retail_price: 0 },
-  });
 
   const filteredPeptides = peptides?.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

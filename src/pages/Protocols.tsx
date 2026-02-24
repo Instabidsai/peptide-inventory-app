@@ -315,14 +315,14 @@ export default function Protocols() {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {protocols?.map((protocol) => {
-                        const items = protocol.protocol_items || [];
+                        const protocolItems = protocol.protocol_items || [];
                         const supps = protocol.protocol_supplements || [];
                         const freqLabel = (f: string) => ({
                             daily: 'Daily', daily_am_pm: '2x/day', weekly: 'Weekly',
                             biweekly: '2x/week', monthly: 'Monthly', every_other_day: 'EOD',
                         }[f] || f);
-                        const totalDuration = items.length > 0
-                            ? Math.max(...items.map(i => i.duration_days || (i.duration_weeks * 7) || 0))
+                        const totalDuration = protocolItems.length > 0
+                            ? Math.max(...protocolItems.map(i => i.duration_days || (i.duration_weeks * 7) || 0))
                             : 0;
                         return (
                             <Card key={protocol.id} className="flex flex-col">
@@ -337,7 +337,7 @@ export default function Protocols() {
                                     </div>
                                     <div className="flex items-center gap-1.5 ml-2 shrink-0">
                                         <Badge variant="secondary" className="text-[10px]">
-                                            {items.length} peptide{items.length !== 1 ? 's' : ''}
+                                            {protocolItems.length} peptide{protocolItems.length !== 1 ? 's' : ''}
                                         </Badge>
                                         {totalDuration > 0 && (
                                             <Badge variant="outline" className="text-[10px]">
@@ -347,9 +347,9 @@ export default function Protocols() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 flex flex-col">
-                                    {items.length > 0 && (
+                                    {protocolItems.length > 0 && (
                                         <div className="space-y-1.5 flex-1">
-                                            {items.slice(0, 4).map((item) => (
+                                            {protocolItems.slice(0, 4).map((item) => (
                                                 <div key={item.id} className="flex items-center justify-between gap-2 py-1 px-2 rounded-md bg-muted/30">
                                                     <span className="text-xs font-medium truncate">{item.peptides?.name || 'Unknown'}</span>
                                                     <span className="text-[10px] text-muted-foreground whitespace-nowrap">
@@ -357,12 +357,12 @@ export default function Protocols() {
                                                     </span>
                                                 </div>
                                             ))}
-                                            {items.length > 4 && (
-                                                <div className="text-[10px] text-muted-foreground pl-2">+{items.length - 4} more</div>
+                                            {protocolItems.length > 4 && (
+                                                <div className="text-[10px] text-muted-foreground pl-2">+{protocolItems.length - 4} more</div>
                                             )}
                                         </div>
                                     )}
-                                    {items.length === 0 && (
+                                    {protocolItems.length === 0 && (
                                         <div className="flex-1 flex items-center justify-center py-3">
                                             <span className="text-xs text-muted-foreground">No items added yet</span>
                                         </div>

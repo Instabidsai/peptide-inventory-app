@@ -28,8 +28,9 @@ import {
     AmountOwedSheet,
     EarningsSheet,
     AddPersonSheet,
+    type SheetView,
+    type OwedMovement,
 } from '@/components/partner';
-import type { SheetView, OwedMovement } from '@/components/partner';
 
 export default function PartnerDashboard() {
     const navigate = useNavigate();
