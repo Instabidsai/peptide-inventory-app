@@ -22,7 +22,8 @@ import {
     DollarSign,
     PieChart,
     ClipboardList,
-    Users
+    Users,
+    Thermometer
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState, useEffect } from 'react';
+import { vialDailyUsage } from '@/lib/supply-calculations';
 
 const staggerContainer = {
     hidden: {},
@@ -123,6 +125,66 @@ export default function AdminDashboard() {
             .sort((a, b) => (a.stock_count ?? 0) - (b.stock_count ?? 0)) || [],
         [peptides]
     );
+
+    // Client supply alerts — scan all fridge items and compute days remaining
+    const { data: clientSupplyAlerts } = useQuery({
+        queryKey: ['client_supply_alerts'],
+        queryFn: async () => {
+            const { data: items, error } = await supabase
+                .from('client_inventory')
+                .select(`
+                    id, contact_id, peptide_id, in_fridge,
+                    dose_amount_mg, dose_frequency, dose_interval, dose_off_days, dose_days,
+                    current_quantity_mg, initial_quantity_mg,
+                    peptides ( name ),
+                    contacts ( name )
+                `)
+                .eq('in_fridge', true)
+                .not('dose_amount_mg', 'is', null)
+                .not('dose_frequency', 'is', null)
+                .gt('dose_amount_mg', 0);
+
+            if (error) throw error;
+            if (!items?.length) return [];
+
+            // Group by contact+peptide
+            type FridgeItem = typeof items[number];
+            const groups = new Map<string, FridgeItem[]>();
+            for (const item of items) {
+                const key = `${item.contact_id}::${item.peptide_id}`;
+                const existing = groups.get(key) || [];
+                existing.push(item);
+                groups.set(key, existing);
+            }
+
+            const alerts: { contactId: string; contactName: string; peptide: string; daysLeft: number; status: 'low' | 'critical' | 'depleted' }[] = [];
+
+            for (const [, vials] of groups) {
+                const first = vials[0];
+                const daily = vialDailyUsage(first);
+                if (daily <= 0) continue;
+
+                const totalMg = vials.reduce((sum, v) => {
+                    const qty = v.current_quantity_mg ?? v.initial_quantity_mg ?? 0;
+                    return sum + (Number.isFinite(qty) ? Number(qty) : 0);
+                }, 0);
+
+                const daysLeft = Math.floor(totalMg / daily);
+                if (daysLeft >= 7) continue;
+
+                alerts.push({
+                    contactId: first.contact_id,
+                    contactName: (first.contacts as { name: string } | null)?.name || 'Unknown',
+                    peptide: (first.peptides as { name: string } | null)?.name || 'Unknown',
+                    daysLeft,
+                    status: daysLeft <= 0 ? 'depleted' : daysLeft < 3 ? 'critical' : 'low',
+                });
+            }
+
+            return alerts.sort((a, b) => a.daysLeft - b.daysLeft);
+        },
+        refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    });
 
     if (financialsError) {
         console.error("Financials Error:", financialsError);
@@ -665,6 +727,54 @@ export default function AdminDashboard() {
                                 {lowStock.length > 8 && (
                                     <p className="text-xs text-muted-foreground text-center pt-1">
                                         +{lowStock.length - 8} more
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Client Supply Alerts — clients running low */}
+                <Card className={`md:col-span-1 bg-card border-border/60 ${(clientSupplyAlerts?.length || 0) > 0 ? 'border-orange-500/30' : ''}`}>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Thermometer className={`h-4 w-4 ${(clientSupplyAlerts?.length || 0) > 0 ? 'text-orange-500' : 'text-muted-foreground/40'}`} />
+                                Client Supply {(clientSupplyAlerts?.length || 0) > 0 && `(${clientSupplyAlerts!.length})`}
+                            </CardTitle>
+                        </div>
+                        <CardDescription>Client peptides under 7 days supply</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {!clientSupplyAlerts?.length ? (
+                            <div className="text-center py-4">
+                                <Package className="h-6 w-6 mx-auto mb-1.5 text-green-500/40" />
+                                <p className="text-sm text-muted-foreground">All clients well-supplied</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {clientSupplyAlerts.slice(0, 8).map((alert, i) => (
+                                    <Link
+                                        key={`${alert.contactId}-${alert.peptide}-${i}`}
+                                        to={`/contacts/${alert.contactId}`}
+                                        className="flex items-center justify-between text-sm hover:bg-secondary/50 rounded px-1 -mx-1 py-0.5 transition-colors"
+                                    >
+                                        <div className="flex flex-col min-w-0 mr-2">
+                                            <span className="truncate font-medium">{alert.contactName}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{alert.peptide}</span>
+                                        </div>
+                                        <span className={`font-mono font-medium shrink-0 ${
+                                            alert.status === 'depleted' ? 'text-red-500' :
+                                            alert.status === 'critical' ? 'text-orange-500' :
+                                            'text-amber-500'
+                                        }`}>
+                                            {alert.daysLeft <= 0 ? 'OUT' : `${alert.daysLeft}d`}
+                                        </span>
+                                    </Link>
+                                ))}
+                                {clientSupplyAlerts.length > 8 && (
+                                    <p className="text-xs text-muted-foreground text-center pt-1">
+                                        +{clientSupplyAlerts.length - 8} more
                                     </p>
                                 )}
                             </div>
