@@ -23,10 +23,14 @@ import {
     PieChart,
     ClipboardList,
     Users,
-    Thermometer
+    Thermometer,
+    UserPlus,
+    Building2,
+    Rocket,
+    Mail
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
@@ -186,6 +190,27 @@ export default function AdminDashboard() {
         refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
     });
 
+    // CRM Lead Submissions from landing page
+    const { data: leadSubmissions, isLoading: leadsLoading } = useQuery({
+        queryKey: ['lead_submissions'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('lead_submissions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            if (error) throw error;
+            return data as { id: string; name: string | null; email: string; business_status: string | null; expected_volume: string | null; created_at: string }[];
+        },
+        refetchInterval: 30_000, // Check every 30s for new leads
+    });
+
+    const newLeadsToday = leadSubmissions?.filter(l => {
+        const created = new Date(l.created_at);
+        const now = new Date();
+        return created.toDateString() === now.toDateString();
+    }).length ?? 0;
+
     if (financialsError) {
         console.error("Financials Error:", financialsError);
     }
@@ -278,6 +303,89 @@ export default function AdminDashboard() {
                     </Button>
                 </div>
             </motion.div>
+
+            {/* CRM Lead Submissions */}
+            {(leadSubmissions?.length ?? 0) > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
+                >
+                    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-primary/5">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-emerald-500/15">
+                                        <UserPlus className="h-5 w-5 text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-base">CRM Signups</CardTitle>
+                                        <CardDescription>
+                                            {leadSubmissions?.length ?? 0} total application{(leadSubmissions?.length ?? 0) !== 1 ? 's' : ''}
+                                            {newLeadsToday > 0 && (
+                                                <span className="ml-2 text-emerald-400 font-medium">
+                                                    +{newLeadsToday} today
+                                                </span>
+                                            )}
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {leadSubmissions?.slice(0, 5).map((lead) => (
+                                    <div
+                                        key={lead.id}
+                                        className="flex items-center justify-between p-3 rounded-lg bg-background/60 border border-border/30"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
+                                                {lead.business_status === 'new' ? (
+                                                    <Rocket className="h-3.5 w-3.5 text-emerald-400" />
+                                                ) : lead.business_status === 'existing' ? (
+                                                    <Building2 className="h-3.5 w-3.5 text-primary" />
+                                                ) : (
+                                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium truncate">
+                                                    {lead.name || 'No name'}{' '}
+                                                    <span className="text-muted-foreground font-normal">
+                                                        &middot; {lead.email}
+                                                    </span>
+                                                </p>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    {lead.business_status && (
+                                                        <span className="capitalize">
+                                                            {lead.business_status === 'new' ? 'New business' : 'Existing business'}
+                                                        </span>
+                                                    )}
+                                                    {lead.expected_volume && (
+                                                        <>
+                                                            <span>&middot;</span>
+                                                            <span>{lead.expected_volume} orders/mo</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                                            {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            {(leadSubmissions?.length ?? 0) > 5 && (
+                                <p className="text-xs text-center text-muted-foreground mt-3">
+                                    +{(leadSubmissions?.length ?? 0) - 5} more applications
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
 
             {/* Financial View Toggle */}
             <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg w-fit border border-border/50">
