@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
+import { BugReportButton } from '@/components/BugReportButton';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
 // Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
 import { motion } from 'framer-motion';
@@ -68,6 +69,8 @@ export function AppLayout() {
       <AdminAIChat />
       {/* Partner AI Chat (sales_rep only) */}
       <PartnerAIChat />
+      {/* Bug report floating button */}
+      <BugReportButton />
 
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (

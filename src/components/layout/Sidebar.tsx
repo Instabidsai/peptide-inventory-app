@@ -17,6 +17,7 @@ import {
   Zap,
   Bot,
   ToggleRight,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -51,6 +52,7 @@ const navigation = [
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Customizations', href: '/customizations', icon: Wand2, roles: ['admin'] },
   { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
+  { name: 'System Health', href: '/admin/health', icon: Activity, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
   { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },

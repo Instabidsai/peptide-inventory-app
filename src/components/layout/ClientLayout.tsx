@@ -11,6 +11,7 @@ import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FloatingHelpWidget } from '@/components/client/FloatingHelpWidget';
+import { BugReportButton } from '@/components/BugReportButton';
 
 export function ClientLayout() {
     const navigate = useNavigate();
@@ -131,6 +132,8 @@ export function ClientLayout() {
 
             {/* Floating Help Widget */}
             <FloatingHelpWidget />
+            {/* Bug report floating button */}
+            <BugReportButton />
 
             {/* Bottom Navigation (Mobile First) */}
             <div className="fixed bottom-0 left-0 right-0 border-t border-primary/10 bg-background/60 backdrop-blur-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>

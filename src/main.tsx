@@ -16,6 +16,18 @@ if (sentryDsn) {
   });
 }
 
+// ─── Console Error Capture (for bug reports) ─────────────────────────────
+;(function captureConsoleErrors() {
+  const errors: string[] = [];
+  const origError = console.error;
+  console.error = (...args: any[]) => {
+    errors.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    if (errors.length > 20) errors.shift();
+    origError.apply(console, args);
+  };
+  (window as any).__recentConsoleErrors = errors;
+})();
+
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────
 // Supabase implicit OAuth puts tokens in the URL hash (#access_token=xxx&...)
 // which conflicts with HashRouter (also uses the hash for routing).
