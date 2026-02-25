@@ -43,10 +43,10 @@ export default function TenantUserList({ orgId }: { orgId: string }) {
             if (error) throw error;
             if (!profiles?.length) return [];
 
-            // Get last sign-in from user_roles (which may have updated_at)
+            // Get role from user_roles table
             const { data: roles } = await supabase
                 .from('user_roles')
-                .select('user_id, role, updated_at')
+                .select('user_id, role, created_at')
                 .eq('org_id', orgId);
 
             const roleMap = new Map(roles?.map(r => [r.user_id, r]) || []);
@@ -57,7 +57,7 @@ export default function TenantUserList({ orgId }: { orgId: string }) {
                 email: p.email || '',
                 role: roleMap.get(p.user_id)?.role || p.role || 'staff',
                 created_at: p.created_at,
-                last_sign_in_at: roleMap.get(p.user_id)?.updated_at || null,
+                last_sign_in_at: null,
             }));
         },
         enabled: !!orgId,

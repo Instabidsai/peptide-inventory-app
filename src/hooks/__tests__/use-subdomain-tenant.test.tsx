@@ -7,25 +7,36 @@ vi.mock('@/lib/subdomain', () => ({
     getSubdomain: vi.fn(() => null),
 }));
 
-// Mock supabase client
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockSingle = vi.fn();
-const mockThen = vi.fn();
+// Mock logger
+vi.mock('@/lib/logger', () => ({
+    logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+    },
+}));
+
+// Mock supabase client with the correct chain: from().select().eq().maybeSingle().then()
+const mockMaybeSingle = vi.fn();
 
 vi.mock('@/integrations/sb_client/client', () => ({
     supabase: {
         from: vi.fn(() => ({
-            select: mockSelect.mockReturnThis(),
-            eq: mockEq.mockReturnThis(),
-            single: mockSingle.mockReturnThis(),
-            then: mockThen,
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockReturnValue({
+                        then: mockMaybeSingle,
+                    }),
+                }),
+            }),
         })),
     },
 }));
 
 import { useSubdomainTenant, SubdomainTenantProvider } from '../use-subdomain-tenant';
 import { getSubdomain } from '@/lib/subdomain';
+import { logger } from '@/lib/logger';
 
 function wrapper({ children }: { children: ReactNode }) {
     return <SubdomainTenantProvider>{children}</SubdomainTenantProvider>;
@@ -34,6 +45,8 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('useSubdomainTenant', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Default: .then() does not resolve (simulates pending query)
+        mockMaybeSingle.mockImplementation(() => {});
     });
 
     it('returns null tenant when no subdomain', () => {
@@ -48,7 +61,6 @@ describe('useSubdomainTenant', () => {
 
     it('sets isLoading true when subdomain exists', () => {
         (getSubdomain as ReturnType<typeof vi.fn>).mockReturnValue('acmepeptides');
-        mockThen.mockImplementation(() => {}); // Don't resolve yet
 
         const { result } = renderHook(() => useSubdomainTenant(), { wrapper });
 
@@ -69,7 +81,7 @@ describe('useSubdomainTenant', () => {
         };
 
         (getSubdomain as ReturnType<typeof vi.fn>).mockReturnValue('acmepeptides');
-        mockThen.mockImplementation((callback: any) => {
+        mockMaybeSingle.mockImplementation((callback: any) => {
             callback({ data: mockTenant, error: null });
         });
 
@@ -84,11 +96,9 @@ describe('useSubdomainTenant', () => {
 
     it('handles query error gracefully', async () => {
         (getSubdomain as ReturnType<typeof vi.fn>).mockReturnValue('badstore');
-        mockThen.mockImplementation((callback: any) => {
+        mockMaybeSingle.mockImplementation((callback: any) => {
             callback({ data: null, error: { message: 'Not found' } });
         });
-
-        const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         const { result } = renderHook(() => useSubdomainTenant(), { wrapper });
 
@@ -97,16 +107,17 @@ describe('useSubdomainTenant', () => {
         });
 
         expect(result.current.tenant).toBeNull();
-        expect(consoleWarn).toHaveBeenCalledWith(
-            '[app]',
+        expect(logger.warn).toHaveBeenCalledWith(
             expect.stringContaining('No tenant found for subdomain: badstore')
         );
-
-        consoleWarn.mockRestore();
     });
 });
 
 describe('applyBranding (via SubdomainTenantProvider)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
     it('applies primary color as CSS variable', async () => {
         const mockTenant = {
             org_id: 'org-1',
@@ -120,7 +131,7 @@ describe('applyBranding (via SubdomainTenantProvider)', () => {
         };
 
         (getSubdomain as ReturnType<typeof vi.fn>).mockReturnValue('testco');
-        mockThen.mockImplementation((callback: any) => {
+        mockMaybeSingle.mockImplementation((callback: any) => {
             callback({ data: mockTenant, error: null });
         });
 
@@ -145,7 +156,7 @@ describe('applyBranding (via SubdomainTenantProvider)', () => {
         };
 
         (getSubdomain as ReturnType<typeof vi.fn>).mockReturnValue('mypeptides');
-        mockThen.mockImplementation((callback: any) => {
+        mockMaybeSingle.mockImplementation((callback: any) => {
             callback({ data: mockTenant, error: null });
         });
 

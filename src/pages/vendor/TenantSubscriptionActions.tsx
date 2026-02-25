@@ -29,9 +29,9 @@ export default function TenantSubscriptionActions({ orgId, subscription }: { org
         queryFn: async () => {
             const { data } = await supabase
                 .from('subscription_plans')
-                .select('id, name, display_name, monthly_price, annual_price')
+                .select('id, name, display_name, price_monthly, price_yearly')
                 .eq('active', true)
-                .order('monthly_price');
+                .order('price_monthly');
             return data || [];
         },
     });
@@ -173,7 +173,7 @@ export default function TenantSubscriptionActions({ orgId, subscription }: { org
                                         <SelectContent>
                                             {plans.map(p => (
                                                 <SelectItem key={p.id} value={p.id} className="text-xs">
-                                                    {p.display_name || p.name} — ${p.monthly_price}/mo
+                                                    {p.display_name || p.name} — ${p.price_monthly}/mo
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
