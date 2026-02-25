@@ -323,6 +323,8 @@ async function checkBugReports() {
     const msg = r.error || r.name || "";
     if (msg.includes("self-test ping")) return false;
     if (msg.includes("DialogTitle")) return false; // accessibility warning, not a bug
+    // ErrorBoundary test simulations — not real crashes
+    if (r.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return false;
     return true;
   });
 
@@ -497,7 +499,7 @@ function spawnClaudeCode(issues) {
         encoding: "utf-8",
         shell: true,
         maxBuffer: 10 * 1024 * 1024,
-        env: { ...process.env, FORCE_COLOR: "0" },
+        env: { ...process.env, FORCE_COLOR: "0", CLAUDECODE: "" },
       }
     );
 

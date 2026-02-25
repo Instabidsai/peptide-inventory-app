@@ -67,7 +67,7 @@ export function usePeptides(pagination?: PaginationState) {
 
       // 3. Fetch in-stock bottle counts via RPC (Bypass 1000-row limit)
       const { data: stockCounts, error: stockError } = await supabase
-        .rpc('get_peptide_stock_counts');
+        .rpc('get_peptide_stock_counts', { p_org_id: profile!.org_id! });
 
       if (stockError) {
         logger.error('Failed to fetch stock counts:', stockError);

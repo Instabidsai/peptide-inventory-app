@@ -174,7 +174,7 @@ export function useBottleStats() {
   return useQuery({
     queryKey: ['bottles', 'stats', profile?.org_id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_bottle_stats');
+      const { data, error } = await supabase.rpc('get_bottle_stats', { p_org_id: profile!.org_id! });
 
       if (error) throw error;
 

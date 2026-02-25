@@ -175,6 +175,7 @@ export default function AdminDashboard() {
                     peptides ( name ),
                     contacts ( name )
                 `)
+                .eq('org_id', orgId!)
                 .eq('in_fridge', true)
                 .not('dose_amount_mg', 'is', null)
                 .not('dose_frequency', 'is', null)
