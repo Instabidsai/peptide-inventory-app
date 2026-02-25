@@ -11,15 +11,21 @@
  * How it works:
  *  - Listens for window 'error' and 'unhandledrejection' events
  *  - Debounces + deduplicates to avoid spamming the database
- *  - Writes to `audit_log` table with action='auto_error'
+ *  - Writes to `bug_reports` table via raw fetch() (bypasses supabase client)
  *  - Auto-heal pipeline reads these entries and can fix the underlying code
  *
  * Rate limiting:
- *  - Max 5 errors per 60-second window per session
+ *  - Max 10 errors per 60-second window per session
  *  - Identical errors (same message) are deduped within the window
+ *
+ * IMPORTANT: Uses raw fetch() to PostgREST — NOT the supabase JS client.
+ * The supabase client's auth state can silently block inserts via RLS.
  */
 
 import { supabase } from '@/integrations/sb_client/client';
+
+const SB_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 interface ErrorEntry {
   message: string;
@@ -31,7 +37,7 @@ interface ErrorEntry {
 }
 
 const WINDOW_MS = 60_000; // 1-minute dedup window
-const MAX_PER_WINDOW = 5; // max errors to report per window
+const MAX_PER_WINDOW = 10; // max errors to report per window
 const recentMessages = new Set<string>();
 let reportedInWindow = 0;
 let windowStart = Date.now();
@@ -42,6 +48,24 @@ function resetWindowIfNeeded() {
     reportedInWindow = 0;
     windowStart = Date.now();
   }
+}
+
+/** Try to get a JWT from localStorage (supabase stores session there). */
+function getSessionToken(): string | null {
+  try {
+    // Supabase stores the session under a key like sb-<project-ref>-auth-token
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return parsed?.access_token || null;
+        }
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
 async function sendErrorToDb(entry: ErrorEntry) {
@@ -55,47 +79,73 @@ async function sendErrorToDb(entry: ErrorEntry) {
   recentMessages.add(key);
   reportedInWindow++;
 
+  // Use the session JWT if available, otherwise anon key
+  const jwt = getSessionToken() || SB_ANON_KEY;
+
+  // Try bug_reports first — simpler RLS, more reliable
   try {
-    // Get current user info if available (don't block on this)
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { error: insertError } = await supabase.from('audit_log').insert({
-      action: 'auto_error',
-      table_name: 'app',
-      record_id: crypto.randomUUID(),
-      user_id: user?.id || null,
-      new_data: {
-        message: entry.message,
-        source: entry.source,
-        page: entry.page,
-        stack: entry.stack?.slice(0, 2000), // truncate long stacks
-        extra: entry.extra || {},
-        user_agent: navigator.userAgent,
-        timestamp: entry.timestamp,
+    const resp = await fetch(`${SB_URL}/rest/v1/bug_reports`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_ANON_KEY,
+        'Authorization': `Bearer ${jwt}`,
+        'Prefer': 'return=minimal',
       },
-    });
-
-    if (insertError) {
-      console.warn('[AutoErrorReporter] Failed to write to audit_log:', insertError.message);
-      // Fallback: try bug_reports table (has different RLS)
-      await supabase.from('bug_reports').insert({
-        description: `[AUTO] ${entry.source}: ${entry.message}`,
+      body: JSON.stringify({
+        description: `[AUTO] ${entry.source}: ${entry.message}`.slice(0, 500),
         page_url: entry.page,
         user_agent: navigator.userAgent,
-        user_id: user?.id || null,
-        user_email: user?.email || null,
         status: 'new',
         console_errors: JSON.stringify({
           source: entry.source,
           stack: entry.stack?.slice(0, 2000),
-          extra: entry.extra,
+          extra: entry.extra || {},
           timestamp: entry.timestamp,
         }),
-      });
+      }),
+    });
+    if (resp.ok) {
+      console.info('[AutoErrorReporter] Error captured in bug_reports');
+      return;
     }
-  } catch {
-    // If we can't report the error, don't throw — that would cause infinite loop
-    console.warn('[AutoErrorReporter] Could not report error (both tables failed)');
+    console.warn('[AutoErrorReporter] bug_reports insert failed:', resp.status, await resp.text().catch(() => ''));
+  } catch (e) {
+    console.warn('[AutoErrorReporter] bug_reports fetch failed:', e);
+  }
+
+  // Fallback: try audit_log
+  try {
+    const resp = await fetch(`${SB_URL}/rest/v1/audit_log`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SB_ANON_KEY,
+        'Authorization': `Bearer ${jwt}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        action: 'auto_error',
+        table_name: 'app',
+        record_id: crypto.randomUUID(),
+        new_data: {
+          message: entry.message,
+          source: entry.source,
+          page: entry.page,
+          stack: entry.stack?.slice(0, 2000),
+          extra: entry.extra || {},
+          user_agent: navigator.userAgent,
+          timestamp: entry.timestamp,
+        },
+      }),
+    });
+    if (resp.ok) {
+      console.info('[AutoErrorReporter] Error captured in audit_log');
+      return;
+    }
+    console.warn('[AutoErrorReporter] audit_log insert failed:', resp.status, await resp.text().catch(() => ''));
+  } catch (e) {
+    console.warn('[AutoErrorReporter] audit_log fetch failed:', e);
   }
 }
 
