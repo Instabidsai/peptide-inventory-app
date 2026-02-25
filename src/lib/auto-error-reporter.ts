@@ -103,6 +103,37 @@ async function sendErrorToDb(entry: ErrorEntry) {
  * Call this once at app startup (main.tsx) to install global error listeners.
  */
 export function installAutoErrorReporter() {
+  // 0. Wrap supabase.functions.invoke to auto-capture edge function errors
+  //    This catches errors EVEN when the calling code has try/catch.
+  const origInvoke = supabase.functions.invoke.bind(supabase.functions);
+  (supabase.functions as any).invoke = async (functionName: string, options?: any) => {
+    try {
+      const result = await origInvoke(functionName, options);
+      if (result.error) {
+        sendErrorToDb({
+          message: `Edge function '${functionName}' failed: ${result.error.message || JSON.stringify(result.error)}`,
+          source: 'edge_function',
+          page: window.location.hash || '/',
+          stack: result.error instanceof Error ? result.error.stack : undefined,
+          extra: { functionName, context: result.error.context },
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return result;
+    } catch (err: any) {
+      // Network-level failure (couldn't even reach the function)
+      sendErrorToDb({
+        message: `Edge function '${functionName}' network error: ${err?.message || String(err)}`,
+        source: 'edge_function',
+        page: window.location.hash || '/',
+        stack: err instanceof Error ? err.stack : undefined,
+        extra: { functionName },
+        timestamp: new Date().toISOString(),
+      });
+      throw err; // Re-throw so the calling code's catch still works
+    }
+  };
+
   // 1. Unhandled promise rejections (covers failed fetch, edge function errors, etc.)
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
