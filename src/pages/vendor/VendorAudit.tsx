@@ -19,6 +19,58 @@ interface BillingEvent {
     org: OrgJoin | null;
 }
 
+function PlatformStatsGrid({ stats, isLoading }: { stats: ReturnType<typeof usePlatformStats>['data']; isLoading: boolean }) {
+    if (isLoading) {
+        return (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+            </div>
+        );
+    }
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <StatCard label="Organizations" value={stats?.organizations || 0} icon={Building2} />
+            <StatCard label="Users" value={stats?.profiles || 0} icon={Users} />
+            <StatCard label="Peptides" value={stats?.peptides || 0} icon={FlaskConical} />
+            <StatCard label="Bottles" value={stats?.bottles || 0} icon={Package} />
+            <StatCard label="Orders" value={stats?.sales_orders || 0} icon={ShoppingCart} />
+            <StatCard label="Contacts" value={stats?.contacts || 0} icon={UserCheck} />
+        </div>
+    );
+}
+
+function FailedPaymentsCard({ payments }: { payments: BillingEvent[] }) {
+    if (!payments.length) return null;
+    return (
+        <Card className="border-red-500/20">
+            <CardHeader>
+                <CardTitle className="text-lg text-red-500">
+                    <AlertTriangle className="h-4 w-4 inline mr-2" />
+                    Failed Payments ({payments.length})
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-2">
+                    {payments.map((e) => (
+                        <div key={e.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                            <div className="flex items-center gap-3">
+                                <Badge variant="destructive" className="text-[10px]">{e.event_type}</Badge>
+                                <span className="text-muted-foreground">{e.org?.name || 'Unknown'}</span>
+                                {e.amount_cents != null && (
+                                    <span className="font-medium">${(e.amount_cents / 100).toFixed(2)}</span>
+                                )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                                {format(new Date(e.created_at), 'MMM d, h:mm a')}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function VendorAudit() {
     const [orgFilter, setOrgFilter] = useState<string | undefined>(undefined);
     const [tableFilter, setTableFilter] = useState<string | undefined>(undefined);
@@ -36,52 +88,8 @@ export default function VendorAudit() {
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">System & Audit</h1>
-
-            {/* Platform Scale */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {statsLoading ? (
-                    [...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)
-                ) : (
-                    <>
-                        <StatCard label="Organizations" value={stats?.organizations || 0} icon={Building2} />
-                        <StatCard label="Users" value={stats?.profiles || 0} icon={Users} />
-                        <StatCard label="Peptides" value={stats?.peptides || 0} icon={FlaskConical} />
-                        <StatCard label="Bottles" value={stats?.bottles || 0} icon={Package} />
-                        <StatCard label="Orders" value={stats?.sales_orders || 0} icon={ShoppingCart} />
-                        <StatCard label="Contacts" value={stats?.contacts || 0} icon={UserCheck} />
-                    </>
-                )}
-            </div>
-
-            {/* Failed Payments */}
-            {failedPayments && failedPayments.length > 0 && (
-                <Card className="border-red-500/20">
-                    <CardHeader>
-                        <CardTitle className="text-lg text-red-500">
-                            <AlertTriangle className="h-4 w-4 inline mr-2" />
-                            Failed Payments ({failedPayments.length})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            {(failedPayments as BillingEvent[]).map((e) => (
-                                <div key={e.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                                    <div className="flex items-center gap-3">
-                                        <Badge variant="destructive" className="text-[10px]">{e.event_type}</Badge>
-                                        <span className="text-muted-foreground">{e.org?.name || 'Unknown'}</span>
-                                        {e.amount_cents != null && (
-                                            <span className="font-medium">${(e.amount_cents / 100).toFixed(2)}</span>
-                                        )}
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                        {format(new Date(e.created_at), 'MMM d, h:mm a')}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            <PlatformStatsGrid stats={stats} isLoading={statsLoading} />
+            <FailedPaymentsCard payments={(failedPayments as BillingEvent[]) || []} />
 
             {/* Global Audit Log */}
             <Card>
