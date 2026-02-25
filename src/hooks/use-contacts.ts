@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 
-export type ContactType = 'customer' | 'partner' | 'internal';
+export type ContactType = 'customer' | 'preferred' | 'partner' | 'internal';
 
 export type ContactSource = 'manual' | 'woocommerce' | 'import';
 
@@ -26,6 +26,7 @@ export interface Contact {
   tier?: 'family' | 'network' | 'public';
   invite_link?: string | null;
   assigned_rep_id?: string | null;
+  discount_percent?: number | null;
   // Joined data from useContacts list query
   assigned_rep?: { id: string; full_name: string | null } | null;
   sales_orders?: { id: string; created_at: string }[];
@@ -42,6 +43,7 @@ export interface CreateContactInput {
   linked_user_id?: string | null;
   tier?: 'family' | 'network' | 'public';
   assigned_rep_id?: string | null;
+  discount_percent?: number | null;
 }
 
 export function useContacts(type?: ContactType, pagination?: PaginationState) {

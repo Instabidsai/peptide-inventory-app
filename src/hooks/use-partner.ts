@@ -182,7 +182,7 @@ export function useFullNetwork() {
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
                 .not('assigned_rep_id', 'is', null)
-                .eq('type', 'customer')
+                .in('type', ['customer', 'preferred'])
                 .eq('org_id', profile!.org_id!)
                 .order('name');
 
@@ -269,7 +269,7 @@ export function useDownlineClients(repIds: string[]) {
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
                 .in('assigned_rep_id', repIds)
-                .eq('type', 'customer')
+                .in('type', ['customer', 'preferred'])
                 .order('name');
             if (error) throw error;
             return (data || []) as DownlineClient[];

@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Edit, Star, Percent } from 'lucide-react';
 import { useUpdateContact, type Contact } from '@/hooks/use-contacts';
 
 interface ContactInfoCardProps {
@@ -15,7 +16,7 @@ interface ContactInfoCardProps {
 export function ContactInfoCard({ contact, contactId, children }: ContactInfoCardProps) {
     const updateContact = useUpdateContact();
     const [isEditingDetails, setIsEditingDetails] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', address: '' });
+    const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', address: '', discount_percent: '' });
 
     return (
         <Card className="md:col-span-1 h-fit">
@@ -26,14 +27,18 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                         <>
                             <Button size="sm" variant="ghost" onClick={() => setIsEditingDetails(false)}>Cancel</Button>
                             <Button size="sm" disabled={updateContact.isPending} onClick={() => {
-                                updateContact.mutate({
+                                const updates: Record<string, unknown> = {
                                     id: contactId,
                                     name: editForm.name,
                                     email: editForm.email,
                                     phone: editForm.phone,
                                     company: editForm.company,
-                                    address: editForm.address
-                                }, {
+                                    address: editForm.address,
+                                };
+                                if (contact.type === 'preferred') {
+                                    updates.discount_percent = editForm.discount_percent ? Number(editForm.discount_percent) : 0;
+                                }
+                                updateContact.mutate(updates as Parameters<typeof updateContact.mutate>[0], {
                                     onSuccess: () => setIsEditingDetails(false),
                                 });
                             }}>{updateContact.isPending ? 'Saving...' : 'Save'}</Button>
@@ -45,7 +50,8 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                                 email: contact.email || '',
                                 phone: contact.phone || '',
                                 company: contact.company || '',
-                                address: contact.address || ''
+                                address: contact.address || '',
+                                discount_percent: String(contact.discount_percent || 0),
                             });
                             setIsEditingDetails(true);
                         }}>
@@ -77,6 +83,21 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                             <Label>Address</Label>
                             <Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="Enter address..." />
                         </div>
+                        {contact.type === 'preferred' && (
+                            <div className="grid gap-1">
+                                <Label className="flex items-center gap-1.5">
+                                    <Percent className="h-3.5 w-3.5" /> Discount %
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={editForm.discount_percent}
+                                    onChange={e => setEditForm({ ...editForm, discount_percent: e.target.value })}
+                                    placeholder="e.g. 10"
+                                />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -96,6 +117,15 @@ export function ContactInfoCard({ contact, contactId, children }: ContactInfoCar
                             <span className="font-semibold text-foreground">Address:</span>
                             {contact.address || 'N/A'}
                         </div>
+                        {contact.type === 'preferred' && (
+                            <div className="flex items-center gap-3">
+                                <span className="font-semibold text-foreground">Discount:</span>
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                    <Star className="h-3 w-3 mr-1 fill-amber-500 text-amber-500" />
+                                    {contact.discount_percent || 0}% off
+                                </Badge>
+                            </div>
+                        )}
                     </>
                 )}
             </CardContent>

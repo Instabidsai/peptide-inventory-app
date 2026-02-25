@@ -1,12 +1,23 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Star } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Contact } from '@/hooks/use-contacts';
+import { useUpdateContact, type Contact, type ContactType } from '@/hooks/use-contacts';
+import { useAuth } from '@/contexts/AuthContext';
 import type { OrderStats } from './types';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ContactDetailsHeaderProps {
     contact: Contact;
@@ -15,6 +26,15 @@ interface ContactDetailsHeaderProps {
 
 function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderProps) {
     const navigate = useNavigate();
+    const { userRole } = useAuth();
+    const updateContact = useUpdateContact();
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff' || userRole?.role === 'sales_rep';
+
+    const handleUpgrade = async () => {
+        await updateContact.mutateAsync({ id: contact.id, type: 'preferred' as ContactType });
+        setShowUpgrade(false);
+    };
 
     return (
         <>
@@ -31,17 +51,60 @@ function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderP
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{contact.name}</h1>
                     <div className="flex items-center gap-2 mt-2">
-                        <Badge variant={contact.type === 'customer' ? 'default' : 'secondary'} className="text-md px-3 py-1 capitalize">
-                            {contact.type}
-                        </Badge>
+                        {contact.type === 'preferred' ? (
+                            <Badge className="text-md px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white">
+                                <Star className="h-3.5 w-3.5 mr-1 fill-current" /> Preferred
+                            </Badge>
+                        ) : (
+                            <Badge variant={contact.type === 'customer' ? 'default' : 'secondary'} className="text-md px-3 py-1 capitalize">
+                                {contact.type}
+                            </Badge>
+                        )}
                         {contact.source === 'woocommerce' && (
                             <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
                                 Website Customer
                             </Badge>
                         )}
+                        {contact.type === 'preferred' && contact.discount_percent != null && contact.discount_percent > 0 && (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                {contact.discount_percent}% off
+                            </Badge>
+                        )}
                     </div>
                 </div>
+                {canEdit && contact.type === 'customer' && (
+                    <Button
+                        variant="outline"
+                        className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                        onClick={() => setShowUpgrade(true)}
+                    >
+                        <Star className="h-4 w-4 mr-2" /> Upgrade to Preferred
+                    </Button>
+                )}
             </div>
+
+            {/* Upgrade Confirmation */}
+            <AlertDialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Upgrade to Preferred Customer?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Upgrade "{contact.name}" to a Preferred Customer. You can then set
+                            their discount percentage from the details card below.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleUpgrade}
+                            disabled={updateContact.isPending}
+                            className="bg-amber-600 text-white hover:bg-amber-700"
+                        >
+                            {updateContact.isPending ? 'Upgrading...' : 'Upgrade'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Customer Stats */}
             {orderStats && (

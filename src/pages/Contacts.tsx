@@ -27,7 +27,7 @@ import { QueryError } from '@/components/ui/query-error';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -44,7 +44,7 @@ const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
-  type: z.enum(['customer', 'partner', 'internal']).default('customer'),
+  type: z.enum(['customer', 'preferred', 'partner', 'internal']).default('customer'),
   company: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
@@ -55,12 +55,14 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 const typeLabels: Record<ContactType, string> = {
   customer: 'Customer',
+  preferred: 'Preferred',
   partner: 'Partner',
   internal: 'Internal',
 };
 
 const typeColors: Record<ContactType, 'default' | 'secondary' | 'outline'> = {
   customer: 'default',
+  preferred: 'secondary',
   partner: 'secondary',
   internal: 'outline',
 };
@@ -84,6 +86,7 @@ export default function Contacts() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
+  const [upgradingContact, setUpgradingContact] = useState<Contact | null>(null);
 
   const isSalesRep = userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep';
   const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
@@ -160,6 +163,17 @@ export default function Contacts() {
     try {
       await deleteContact.mutateAsync(deletingContact.id);
       setDeletingContact(null);
+    } catch { /* onError in hook shows toast */ }
+  };
+
+  const handleUpgradeToPreferred = async () => {
+    if (!upgradingContact) return;
+    try {
+      await updateContact.mutateAsync({
+        id: upgradingContact.id,
+        type: 'preferred' as ContactType,
+      });
+      setUpgradingContact(null);
     } catch { /* onError in hook shows toast */ }
   };
 
@@ -266,6 +280,7 @@ export default function Contacts() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="customer">Customer</SelectItem>
+                              <SelectItem value="preferred">Preferred</SelectItem>
                               <SelectItem value="partner">Partner</SelectItem>
                               <SelectItem value="internal">Internal</SelectItem>
                             </SelectContent>
@@ -406,6 +421,7 @@ export default function Contacts() {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="customer">Customers</SelectItem>
+                <SelectItem value="preferred">Preferred</SelectItem>
                 <SelectItem value="partner">Partners</SelectItem>
                 <SelectItem value="internal">Internal</SelectItem>
               </SelectContent>
@@ -585,6 +601,18 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
+                        {canEdit && contact.type === 'customer' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Upgrade to preferred"
+                            title="Upgrade to Preferred Customer"
+                            className="text-amber-500 hover:text-amber-600"
+                            onClick={() => setUpgradingContact(contact)}
+                          >
+                            <Star className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canEdit && (
                           <Button
                             variant="ghost"
@@ -655,6 +683,7 @@ export default function Contacts() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="customer">Customer</SelectItem>
+                          <SelectItem value="preferred">Preferred</SelectItem>
                           <SelectItem value="partner">Partner</SelectItem>
                           <SelectItem value="internal">Internal</SelectItem>
                         </SelectContent>
@@ -766,6 +795,30 @@ export default function Contacts() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Upgrade to Preferred Confirmation */}
+      <AlertDialog open={!!upgradingContact} onOpenChange={() => setUpgradingContact(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upgrade to Preferred Customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Upgrade "{upgradingContact?.name}" to a Preferred Customer. Preferred customers
+              can receive special discounts on their orders. You can set their discount percentage
+              from their contact detail page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUpgradeToPreferred}
+              disabled={updateContact.isPending}
+              className="bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {updateContact.isPending ? 'Upgrading...' : 'Upgrade'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingContact} onOpenChange={() => setDeletingContact(null)}>
