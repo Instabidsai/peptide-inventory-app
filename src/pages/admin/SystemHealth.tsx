@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud, Wrench, Terminal } from "lucide-react";
 
 interface HealthCheck {
   name: string;
@@ -226,6 +226,51 @@ export default function SystemHealth() {
           </CardContent>
         </Card>
       )}
+
+      {/* Auto-Heal Pipeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Wrench className="h-5 w-5" />
+            Auto-Heal Pipeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            The auto-heal pipeline detects issues (missing RPCs, edge functions, TypeScript errors, test failures, user bug reports) and spawns a Claude Code session to fix them automatically. Results are emailed to you.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Terminal className="h-4 w-4" />
+                Detect Only
+              </div>
+              <code className="text-xs block bg-muted px-2 py-1 rounded">npm run auto-heal:detect</code>
+              <p className="text-xs text-muted-foreground">Scan for issues without fixing</p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Wrench className="h-4 w-4" />
+                Auto-Fix
+              </div>
+              <code className="text-xs block bg-muted px-2 py-1 rounded">npm run auto-heal</code>
+              <p className="text-xs text-muted-foreground">Detect + Claude Code fixes locally</p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <RefreshCw className="h-4 w-4" />
+                Fix + Deploy
+              </div>
+              <code className="text-xs block bg-muted px-2 py-1 rounded">npm run auto-heal:push</code>
+              <p className="text-xs text-muted-foreground">Fix + commit + push to production</p>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Email reports</strong>: Set <code className="bg-muted px-1 rounded">HEAL_EMAIL</code> and <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> in .env</p>
+            <p><strong>Schedule</strong>: Add to Windows Task Scheduler or cron to run automatically</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

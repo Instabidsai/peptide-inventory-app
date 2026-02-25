@@ -37,13 +37,7 @@ Deno.serve(async (req) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         if (authError || !user) return json({ error: 'Invalid token' }, 401);
 
-        // ── Self-signup gate: disabled by default (invite-only mode) ──
-        const allowSelfSignup = Deno.env.get('ALLOW_SELF_SIGNUP') === 'true';
-        if (!allowSelfSignup) {
-            return json({
-                error: 'Self-service signup is currently disabled. Contact hello@thepeptideai.com to get started.',
-            }, 403);
-        }
+        // ── Self-signup: allowed for merchant onboarding flow ──
 
         // Check that this user does NOT already have an org
         const { data: existingProfile } = await supabase
@@ -161,7 +155,7 @@ Deno.serve(async (req) => {
 
             if (plan) {
                 const trialEnd = new Date();
-                trialEnd.setDate(trialEnd.getDate() + 14); // 14-day trial
+                trialEnd.setDate(trialEnd.getDate() + 7); // 7-day trial
 
                 const { error: subError } = await supabase
                     .from('tenant_subscriptions')

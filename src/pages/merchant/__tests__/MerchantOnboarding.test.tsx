@@ -181,7 +181,7 @@ describe('MerchantOnboarding', () => {
     });
 
     describe('"new" path flow', () => {
-        it('goes through name → branding → subdomain → plan', () => {
+        it('goes through name → subdomain → confirm', () => {
             renderOnboarding();
             // Choose path
             fireEvent.click(screen.getByText('Start a Business'));
@@ -193,11 +193,7 @@ describe('MerchantOnboarding', () => {
             });
             fireEvent.click(screen.getByText(/Continue/));
 
-            // Branding step
-            expect(screen.getByText('Brand Your Store')).toBeInTheDocument();
-            fireEvent.click(screen.getByText(/Continue/));
-
-            // Subdomain step
+            // Subdomain step (no branding step in "new" path)
             expect(screen.getByText('Choose Your Subdomain')).toBeInTheDocument();
         });
     });

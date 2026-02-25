@@ -298,8 +298,19 @@ export default function Auth() {
   const planParam = searchParams.get('plan');
   const emailParam = searchParams.get('email');
 
-  // Determine if this visitor has a valid referral (the ONLY path to signup)
-  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref'));
+  // Merchant self-signup flow — ?signup=merchant allows direct onboarding
+  const signupParam = searchParams.get('signup');
+  const isMerchantSignup = signupParam === 'merchant' || sessionStorage.getItem('merchant_signup') === 'true';
+
+  // Persist merchant signup flag across OAuth redirects
+  useEffect(() => {
+    if (signupParam === 'merchant') {
+      sessionStorage.setItem('merchant_signup', 'true');
+    }
+  }, [signupParam]);
+
+  // Determine if this visitor has a valid referral OR is a merchant self-signup
+  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isMerchantSignup);
 
   // Auto-switch to signup when plan param present — BUT only if they have a referral
   useEffect(() => {
@@ -379,7 +390,12 @@ export default function Auth() {
       navigate(from, { replace: true });
     } else {
       if (refParam) storeSessionReferral(refParam, roleParam);
-      navigate('/onboarding', { replace: true });
+      // Merchant self-signup → go to merchant onboarding wizard
+      if (isMerchantSignup) {
+        navigate('/merchant-onboarding', { replace: true });
+      } else {
+        navigate('/onboarding', { replace: true });
+      }
     }
   }, [loading, user, profile, navigate, from, refParam]);
 
@@ -467,10 +483,18 @@ export default function Auth() {
     }
 
     setIsLoading(false);
-    toast({
-      title: 'Account created!',
-      description: 'Please check your email to confirm your account, or log in if email confirmation is disabled.',
-    });
+    // Merchant signup — tell them to confirm email then they'll land in the wizard
+    if (isMerchantSignup) {
+      toast({
+        title: 'Account created!',
+        description: 'Check your email to confirm, then log in to set up your business.',
+      });
+    } else {
+      toast({
+        title: 'Account created!',
+        description: 'Please check your email to confirm your account, or log in if email confirmation is disabled.',
+      });
+    }
     setMode('login');
   };
 
@@ -565,16 +589,22 @@ export default function Auth() {
               transition={{ delay: 0.25 }}
             >
               <CardTitle className="text-2xl font-bold text-foreground">
-                {refParam
-                  ? isPartnerInvite ? 'Join as a Partner' : "You've Been Invited"
-                  : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                {isMerchantSignup
+                  ? mode === 'login' ? 'Welcome Back' : 'Start Your Business'
+                  : refParam
+                    ? isPartnerInvite ? 'Join as a Partner' : "You've Been Invited"
+                    : mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-1">
-                {refParam
-                  ? isPartnerInvite
-                    ? 'Create your partner account to start earning'
-                    : 'Create an account to access exclusive partner pricing'
-                  : 'Sign in to your account'}
+                {isMerchantSignup
+                  ? mode === 'login'
+                    ? 'Sign in to continue setting up your business'
+                    : 'Create your account to get started with ThePeptideAI'
+                  : refParam
+                    ? isPartnerInvite
+                      ? 'Create your partner account to start earning'
+                      : 'Create an account to access exclusive partner pricing'
+                    : 'Sign in to your account'}
               </CardDescription>
             </motion.div>
           </CardHeader>
@@ -670,6 +700,17 @@ export default function Auth() {
                 <a href="mailto:hello@thepeptideai.com" className="text-primary/80 hover:text-primary transition-colors underline underline-offset-2">
                   Contact us
                 </a>{' '}
+                or{' '}
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('merchant_signup', 'true');
+                    window.location.hash = '/auth?signup=merchant';
+                    window.location.reload();
+                  }}
+                  className="text-primary/80 hover:text-primary transition-colors underline underline-offset-2"
+                >
+                  sign up as a merchant
+                </button>{' '}
                 to get started.
               </p>
             )}

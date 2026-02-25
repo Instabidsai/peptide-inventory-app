@@ -22,7 +22,10 @@
     "deploy": "node scripts/deploy.mjs",
     "deploy:dry": "node scripts/deploy.mjs --dry-run",
     "deploy:quick": "node scripts/deploy.mjs --skip-tests --skip-migrations",
-    "migrate:mark": "node scripts/deploy.mjs --mark-applied"
+    "migrate:mark": "node scripts/deploy.mjs --mark-applied",
+    "auto-heal": "node scripts/auto-heal.mjs",
+    "auto-heal:detect": "node scripts/auto-heal.mjs --detect-only",
+    "auto-heal:push": "node scripts/auto-heal.mjs --auto-push"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

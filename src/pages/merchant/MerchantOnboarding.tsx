@@ -23,8 +23,6 @@ import {
     Check,
     LogOut,
     Globe,
-    Palette,
-    CreditCard,
     PartyPopper,
     LinkIcon,
     Sparkles,
@@ -389,36 +387,7 @@ function CompanyNameStep({ value, onChange, onNext, onBack }: StepProps & { valu
     );
 }
 
-// ── Step 2: Branding ──
-function BrandingStep({ color, onColorChange, onNext, onBack }: StepProps & { color: string; onColorChange: (v: string) => void }) {
-    return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-xl font-bold flex items-center gap-2"><Palette className="h-5 w-5" /> Brand Your Store</h2>
-                <p className="text-sm text-muted-foreground mt-1">Pick your brand color. You can upload a logo and customize further later.</p>
-            </div>
-            <div className="flex items-center gap-4">
-                <Label>Brand Color</Label>
-                <input
-                    type="color"
-                    value={color}
-                    onChange={e => onColorChange(e.target.value)}
-                    className="h-12 w-16 rounded-lg border border-input cursor-pointer"
-                />
-                <span className="text-sm text-muted-foreground">{color}</span>
-            </div>
-            <div className="h-3 rounded-full" style={{ backgroundColor: color }} />
-            <div className="flex gap-3">
-                {onBack && <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>}
-                <Button className="flex-1" onClick={onNext}>
-                    Continue <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-            </div>
-        </div>
-    );
-}
-
-// ── Step 3: Subdomain ──
+// ── Step: Subdomain ──
 function SubdomainStep({ value, onChange, onNext, onBack }: StepProps & { value: string; onChange: (v: string) => void }) {
     const { data: check, isLoading: checking } = useSubdomainCheck(value);
 
@@ -456,44 +425,45 @@ function SubdomainStep({ value, onChange, onNext, onBack }: StepProps & { value:
     );
 }
 
-// ── Step 4: Choose Plan ──
-const PLANS = [
-    { name: 'starter', display: 'Starter', price: 349, desc: 'Full inventory management, AI chat, client portal, supplier catalog, 5 team members.' },
-    { name: 'professional', display: 'Professional', price: 499, desc: 'Everything in Starter + advanced fulfillment, partner network, automations, 25 team members.' },
-    { name: 'enterprise', display: 'Enterprise', price: 1299, desc: 'Full Jarvis AI ecosystem, autonomous operations, unlimited users, white-label, SLA.' },
-];
-
-function PlanStep({ value, onChange, onNext, onBack, submitting }: StepProps & { value: string; onChange: (v: string) => void; submitting?: boolean }) {
+// ── Step: Confirm & Launch (single plan — $500/mo, 7-day trial) ──
+function ConfirmLaunchStep({ onNext, onBack, submitting }: StepProps & { submitting?: boolean }) {
     return (
         <div className="space-y-4">
             <div>
-                <h2 className="text-xl font-bold flex items-center gap-2"><CreditCard className="h-5 w-5" /> Choose a Plan</h2>
-                <p className="text-sm text-muted-foreground mt-1">All plans include a 14-day free trial. No credit card required.</p>
+                <h2 className="text-xl font-bold flex items-center gap-2"><Rocket className="h-5 w-5" /> Ready to Launch</h2>
+                <p className="text-sm text-muted-foreground mt-1">You're almost there. Review your plan and launch your business.</p>
             </div>
-            <div className="space-y-3">
-                {PLANS.map(plan => (
-                    <Card
-                        key={plan.name}
-                        className={`cursor-pointer transition-all ${value === plan.name ? 'border-primary ring-2 ring-primary/20' : 'hover:border-muted-foreground/30'}`}
-                        onClick={() => !submitting && onChange(plan.name)}
-                    >
-                        <CardContent className="p-4 flex items-center justify-between">
-                            <div>
-                                <p className="font-semibold">{plan.display}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
-                            </div>
-                            <div className="text-right shrink-0 ml-4">
-                                <p className="text-lg font-bold">${plan.price}</p>
-                                <p className="text-xs text-muted-foreground">/month</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+            <Card className="border-primary ring-2 ring-primary/20">
+                <CardContent className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div>
+                            <p className="font-semibold text-lg">ThePeptideAI Platform</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Everything you need to run your peptide business</p>
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                            <p className="text-2xl font-bold">$500</p>
+                            <p className="text-xs text-muted-foreground">/month</p>
+                        </div>
+                    </div>
+                    <div className="border-t border-border/50 pt-3 space-y-1.5">
+                        <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                            <Check className="h-3.5 w-3.5" /> 7-day free trial — no payment required today
+                        </p>
+                        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> AI-powered inventory</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Client portal & store</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Partner network</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Fulfillment & shipping</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Automations & workflows</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Unlimited team members</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
             <div className="flex gap-3">
                 {onBack && <Button variant="outline" onClick={onBack} disabled={submitting}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>}
-                <Button className="flex-1" disabled={!value || submitting} onClick={onNext}>
-                    {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Setting up...</> : <>Launch My Business <ArrowRight className="h-4 w-4 ml-1" /></>}
+                <Button className="flex-1" disabled={submitting} onClick={onNext}>
+                    {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Setting up...</> : <>Launch My Business <Rocket className="h-4 w-4 ml-1" /></>}
                 </Button>
             </div>
         </div>
@@ -537,23 +507,29 @@ export default function MerchantOnboarding() {
     const [companyName, setCompanyName] = useState('');
     const [primaryColor, setPrimaryColor] = useState('#7c3aed');
     const [subdomain, setSubdomain] = useState('');
-    const [planName, setPlanName] = useState('');
 
     // Website scraping state (for "existing" path)
     const [websiteUrl, setWebsiteUrl] = useState('');
     const [scrapeResult, setScrapeResult] = useState<ScrapeResult | null>(null);
     const [acceptedPeptides, setAcceptedPeptides] = useState<ScrapedPeptide[]>([]);
 
-    // If user already has org, redirect
+    // If no user, redirect to auth with merchant signup flag
+    useEffect(() => {
+        if (!user) {
+            navigate('/auth?signup=merchant', { replace: true });
+        }
+    }, [user, navigate]);
+
+    // If user already has org, redirect to dashboard
     useEffect(() => {
         if (profile?.org_id) {
             navigate('/', { replace: true });
         }
     }, [profile?.org_id, navigate]);
 
-    // "existing" path: 0=choose, 1=website, 2=preview, 3=name, 4=branding, 5=subdomain, 6=plan, 7=success
-    // "new" path:      0=choose, 1=name, 2=branding, 3=subdomain, 4=plan, 5=success
-    const totalSteps = path === 'existing' ? 7 : 5;
+    // "existing" path: 0=choose, 1=website, 2=preview, 3=name, 4=subdomain, 5=confirm → 6=success
+    // "new" path:      0=choose, 1=name, 2=subdomain, 3=confirm → 4=success
+    const totalSteps = path === 'existing' ? 6 : 4;
 
     if (profile?.org_id) return null;
 
@@ -570,7 +546,7 @@ export default function MerchantOnboarding() {
             const { data, error } = await supabase.functions.invoke('self-signup', {
                 body: {
                     org_name: companyName.trim(),
-                    plan_name: planName || '',
+                    plan_name: 'platform',
                 },
             });
 
@@ -628,6 +604,7 @@ export default function MerchantOnboarding() {
             }
 
             sessionStorage.removeItem('selected_plan');
+            sessionStorage.removeItem('merchant_signup');
             await refreshProfile();
 
             toast({ title: 'Welcome aboard!', description: `${companyName.trim()} is ready to go.` });
@@ -642,6 +619,7 @@ export default function MerchantOnboarding() {
 
     const handleSignOut = async () => {
         sessionStorage.removeItem('selected_plan');
+        sessionStorage.removeItem('merchant_signup');
         await signOut();
         navigate('/auth', { replace: true });
     };
@@ -668,7 +646,7 @@ export default function MerchantOnboarding() {
                     {/* Step 0: Choose path */}
                     {step === 0 && <ChoosePathStep onSelect={handleSelectPath} />}
 
-                    {/* ── "EXISTING" PATH: website → preview → name → branding → subdomain → plan ── */}
+                    {/* ── "EXISTING" PATH: website → preview → name → subdomain → confirm ── */}
                     {path === 'existing' && (
                         <>
                             {/* Step 1: Website URL */}
@@ -677,7 +655,6 @@ export default function MerchantOnboarding() {
                                     onResult={(result, url) => {
                                         setScrapeResult(result);
                                         setWebsiteUrl(url);
-                                        // Pre-fill from scraped data
                                         if (result.brand.company_name) setCompanyName(result.brand.company_name);
                                         if (result.brand.primary_color) setPrimaryColor(result.brand.primary_color);
                                         setStep(2);
@@ -685,7 +662,7 @@ export default function MerchantOnboarding() {
                                     onSkip={() => {
                                         setScrapeResult(null);
                                         setWebsiteUrl('');
-                                        setStep(3); // skip to name step
+                                        setStep(3);
                                     }}
                                     onBack={() => { setStep(0); setPath(null); }}
                                 />
@@ -716,40 +693,28 @@ export default function MerchantOnboarding() {
                                 />
                             )}
 
-                            {/* Step 4: Branding */}
+                            {/* Step 4: Subdomain */}
                             {step === 4 && (
-                                <BrandingStep
-                                    color={primaryColor}
-                                    onColorChange={setPrimaryColor}
+                                <SubdomainStep
+                                    value={subdomain}
+                                    onChange={setSubdomain}
                                     onNext={() => setStep(5)}
                                     onBack={() => setStep(3)}
                                 />
                             )}
 
-                            {/* Step 5: Subdomain */}
+                            {/* Step 5: Confirm & Launch */}
                             {step === 5 && (
-                                <SubdomainStep
-                                    value={subdomain}
-                                    onChange={setSubdomain}
-                                    onNext={() => setStep(6)}
-                                    onBack={() => setStep(4)}
-                                />
-                            )}
-
-                            {/* Step 6: Choose plan */}
-                            {step === 6 && (
-                                <PlanStep
-                                    value={planName}
-                                    onChange={setPlanName}
+                                <ConfirmLaunchStep
                                     onNext={handleCreate}
-                                    onBack={() => setStep(5)}
+                                    onBack={() => setStep(4)}
                                     submitting={isCreating}
                                 />
                             )}
                         </>
                     )}
 
-                    {/* ── "NEW" PATH: name → branding → subdomain → plan ── */}
+                    {/* ── "NEW" PATH: name → subdomain → confirm ── */}
                     {path === 'new' && (
                         <>
                             {/* Step 1: Company name */}
@@ -762,33 +727,21 @@ export default function MerchantOnboarding() {
                                 />
                             )}
 
-                            {/* Step 2: Branding */}
+                            {/* Step 2: Subdomain */}
                             {step === 2 && (
-                                <BrandingStep
-                                    color={primaryColor}
-                                    onColorChange={setPrimaryColor}
+                                <SubdomainStep
+                                    value={subdomain}
+                                    onChange={setSubdomain}
                                     onNext={() => setStep(3)}
                                     onBack={() => setStep(1)}
                                 />
                             )}
 
-                            {/* Step 3: Subdomain */}
+                            {/* Step 3: Confirm & Launch */}
                             {step === 3 && (
-                                <SubdomainStep
-                                    value={subdomain}
-                                    onChange={setSubdomain}
-                                    onNext={() => setStep(4)}
-                                    onBack={() => setStep(2)}
-                                />
-                            )}
-
-                            {/* Step 4: Choose plan */}
-                            {step === 4 && (
-                                <PlanStep
-                                    value={planName}
-                                    onChange={setPlanName}
+                                <ConfirmLaunchStep
                                     onNext={handleCreate}
-                                    onBack={() => setStep(3)}
+                                    onBack={() => setStep(2)}
                                     submitting={isCreating}
                                 />
                             )}

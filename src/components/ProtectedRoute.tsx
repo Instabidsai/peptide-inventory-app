@@ -22,13 +22,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/crm" state={{ from: location }} replace />;
   }
 
-  // User exists but no org — check for pending referral first
-  if (!profile?.org_id && location.pathname !== '/onboarding') {
+  // User exists but no org — check for pending referral or merchant signup first
+  if (!profile?.org_id && location.pathname !== '/onboarding' && location.pathname !== '/merchant-onboarding') {
     // If there's a referral waiting, send to /auth to process it (not onboarding)
     const pendingRef = sessionStorage.getItem('partner_ref');
     if (pendingRef) {
       const role = sessionStorage.getItem('partner_ref_role') || 'customer';
       return <Navigate to={`/auth?ref=${encodeURIComponent(pendingRef)}&role=${encodeURIComponent(role)}`} replace />;
+    }
+    // Merchant self-signup → go to merchant onboarding wizard
+    if (sessionStorage.getItem('merchant_signup') === 'true') {
+      return <Navigate to="/merchant-onboarding" replace />;
     }
     return <Navigate to="/onboarding" replace />;
   }

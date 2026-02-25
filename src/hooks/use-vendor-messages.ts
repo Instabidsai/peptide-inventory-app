@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 
 export function useVendorMessages() {
@@ -26,6 +27,7 @@ export function useVendorMessages() {
 export function useSendVendorMessage() {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { toast } = useToast();
 
     return useMutation({
         mutationFn: async (payload: {
@@ -48,6 +50,7 @@ export function useSendVendorMessage() {
         },
         onError: (error: Error) => {
             logger.error('Failed to send vendor message:', error);
+            toast({ title: 'Send Failed', description: error.message, variant: 'destructive' });
         },
     });
 }

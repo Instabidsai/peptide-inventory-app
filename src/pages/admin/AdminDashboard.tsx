@@ -27,7 +27,10 @@ import {
     UserPlus,
     Building2,
     Rocket,
-    Mail
+    Mail,
+    Copy,
+    Check,
+    Share2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -59,6 +62,27 @@ export default function AdminDashboard() {
     const handleSetViewMode = (mode: 'operations' | 'investment') => {
         setViewMode(mode);
         localStorage.setItem('dashboard_view_mode', mode);
+    };
+
+    // Merchant onboarding link copy state
+    const [linkCopied, setLinkCopied] = useState(false);
+    const merchantSignupLink = `${window.location.origin}/#/auth?signup=merchant`;
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(merchantSignupLink);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        } catch {
+            // Fallback for insecure contexts
+            const ta = document.createElement('textarea');
+            ta.value = merchantSignupLink;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        }
     };
 
     // One-time welcome modal for new users
@@ -313,6 +337,52 @@ export default function AdminDashboard() {
                     </Button>
                 </div>
             </motion.div>
+
+            {/* Merchant Onboarding Link — admin only */}
+            {profile?.role === 'admin' && (
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.05, ease: [0.23, 1, 0.32, 1] }}
+                >
+                    <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 rounded-lg bg-primary/15">
+                                    <Share2 className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-sm">Merchant Onboarding Link</p>
+                                    <p className="text-xs text-muted-foreground">Share this link with prospects to sign up directly</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={merchantSignupLink}
+                                        className="w-full px-3 py-2 text-xs rounded-md border border-border bg-background/80 text-foreground truncate font-mono"
+                                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                                    />
+                                </div>
+                                <Button
+                                    variant={linkCopied ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={handleCopyLink}
+                                    className="shrink-0 gap-1.5"
+                                >
+                                    {linkCopied ? (
+                                        <><Check className="h-3.5 w-3.5" /> Copied</>
+                                    ) : (
+                                        <><Copy className="h-3.5 w-3.5" /> Copy Link</>
+                                    )}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
 
             {/* CRM Lead Submissions */}
             {(leadSubmissions?.length ?? 0) > 0 && (
