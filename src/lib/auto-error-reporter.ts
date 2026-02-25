@@ -27,6 +27,10 @@ import { supabase } from '@/integrations/sb_client/client';
 const SB_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+// Save the REAL fetch before any interceptors wrap it.
+// sendErrorToDb MUST use this to avoid infinite loops with the fetch interceptor.
+const _rawFetch = window.fetch.bind(window);
+
 interface ErrorEntry {
   message: string;
   source: string; // 'unhandled_rejection' | 'uncaught_error' | 'edge_function' | 'react_boundary'
@@ -84,7 +88,7 @@ async function sendErrorToDb(entry: ErrorEntry) {
 
   // Try bug_reports first — simpler RLS, more reliable
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/bug_reports`, {
+    const resp = await _rawFetch(`${SB_URL}/rest/v1/bug_reports`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,7 +120,7 @@ async function sendErrorToDb(entry: ErrorEntry) {
 
   // Fallback: try audit_log
   try {
-    const resp = await fetch(`${SB_URL}/rest/v1/audit_log`, {
+    const resp = await _rawFetch(`${SB_URL}/rest/v1/audit_log`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -191,7 +195,11 @@ export function installAutoErrorReporter() {
     origConsoleError.apply(console, args);
     try {
       const msg = args
-        .map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : JSON.stringify(a)))
+        .map((a) => {
+          if (typeof a === 'string') return a;
+          if (a instanceof Error) return a.message;
+          try { return JSON.stringify(a); } catch { return String(a); }
+        })
         .join(' ')
         .slice(0, 500);
       // Skip React internal noise and our own messages
@@ -205,6 +213,43 @@ export function installAutoErrorReporter() {
         timestamp: new Date().toISOString(),
       });
     } catch { /* never throw from here */ }
+  };
+
+  // 0c. Intercept global fetch() — catches ALL failed HTTP requests including
+  //     edge function calls that bypass supabase.functions.invoke
+  const origFetch = window.fetch;
+  window.fetch = async (...fetchArgs: Parameters<typeof fetch>) => {
+    try {
+      const resp = await origFetch(...fetchArgs);
+      if (!resp.ok) {
+        const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
+        // Only report Supabase-related failures (edge functions, REST API)
+        if (url.includes('supabase') || url.includes('functions/v1')) {
+          const bodyText = await resp.clone().text().catch(() => '');
+          sendErrorToDb({
+            message: `HTTP ${resp.status} ${resp.statusText}: ${url.split('?')[0]}`.slice(0, 300),
+            source: 'fetch_error',
+            page: window.location.hash || '/',
+            extra: { url: url.split('?')[0], status: resp.status, body: bodyText.slice(0, 500) },
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+      return resp;
+    } catch (err) {
+      // Network error (couldn't even connect)
+      const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
+      if (url.includes('supabase') || url.includes('functions/v1')) {
+        sendErrorToDb({
+          message: `Fetch failed: ${err instanceof Error ? err.message : String(err)} — ${url.split('?')[0]}`.slice(0, 300),
+          source: 'fetch_error',
+          page: window.location.hash || '/',
+          extra: { url: url.split('?')[0] },
+          timestamp: new Date().toISOString(),
+        });
+      }
+      throw err;
+    }
   };
 
   // 1. Unhandled promise rejections (covers failed fetch, edge function errors, etc.)
