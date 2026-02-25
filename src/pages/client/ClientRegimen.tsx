@@ -249,7 +249,7 @@ export default function ClientRegimen() {
         return (
             <div className="p-8 text-center text-red-400 border-2 border-dashed border-red-900/20 rounded-xl m-8">
                 <h2 className="text-xl font-semibold mb-2">Error Loading Profile</h2>
-                <p>{profileErrorObj instanceof Error ? profileErrorObj.message : "Unknown error occurred"}</p>
+                <p>{(profileErrorObj as any)?.message || "Unknown error occurred"}</p>
             </div>
         );
     }

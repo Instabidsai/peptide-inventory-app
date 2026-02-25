@@ -236,7 +236,7 @@ export default function OrderDetails() {
             setEditing(false);
             toast({ title: 'Order updated successfully' });
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error' });
+            toast({ variant: 'destructive', title: 'Failed to save', description: (err as any)?.message || 'Unknown error' });
         } finally {
             setSaving(false);
         }

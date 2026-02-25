@@ -43,7 +43,7 @@ export function AddSupplementForm({ protocolId, onAdd, onCancel }: AddSupplement
             });
             onCancel();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to add supplement');
+            toast.error((e as any)?.message || 'Failed to add supplement');
         } finally {
             setIsSubmitting(false);
         }

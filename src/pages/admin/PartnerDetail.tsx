@@ -612,7 +612,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
             });
         } catch (err) {
             logger.error('Apply to balance error:', err);
-            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to apply commission to balance.', variant: 'destructive' });
+            toast({ title: 'Error', description: (err as any)?.message || 'Failed to apply commission to balance.', variant: 'destructive' });
         } finally {
             setApplyingId(null);
         }
@@ -896,7 +896,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
             toast({
                 variant: 'destructive',
                 title: 'Failed to add client',
-                description: err instanceof Error ? err.message : 'Something went wrong.',
+                description: (err as any)?.message || 'Something went wrong.',
             });
         } finally {
             setIsAdding(false);
@@ -934,7 +934,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
             toast({
                 variant: 'destructive',
                 title: "Promotion Failed",
-                description: err instanceof Error ? err.message : "Could not promote contact."
+                description: (err as any)?.message || "Could not promote contact."
             });
         } finally {
             setIsPromoting(false);

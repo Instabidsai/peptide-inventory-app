@@ -131,7 +131,7 @@ export default function PartnerDashboard() {
             refreshProfile?.();
         },
         onError: (err) => {
-            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            toast({ title: 'Error', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
         }
     });
 
@@ -156,7 +156,7 @@ export default function PartnerDashboard() {
             refreshProfile?.();
         },
         onError: (err) => {
-            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            toast({ title: 'Error', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
         }
     });
 

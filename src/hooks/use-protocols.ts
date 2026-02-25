@@ -131,7 +131,7 @@ export function useProtocols(contactId?: string) {
     });
 
     const updateProtocolItem = useMutation({
-        mutationFn: async ({ id, ...updates }: { id: string; dosage_amount?: number; dosage_unit?: string; frequency?: string; duration_weeks?: number; duration_days?: number; cost_multiplier?: number; timing?: string; notes?: string }) => {
+        mutationFn: async ({ id, timing: _timing, ...updates }: { id: string; dosage_amount?: number; dosage_unit?: string; frequency?: string; duration_weeks?: number; duration_days?: number; cost_multiplier?: number; timing?: string; notes?: string }) => {
             const { error } = await supabase
                 .from('protocol_items')
                 .update(updates)

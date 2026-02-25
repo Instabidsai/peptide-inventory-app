@@ -375,7 +375,7 @@ function LogDoseModal({ vial, protocols, onRefresh }: { vial: ClientInventoryIte
             toast({
                 variant: "destructive",
                 title: "Error logging dose",
-                description: error instanceof Error ? error.message : "Unknown error"
+                description: (error as any)?.message || "Unknown error"
             });
         }
     };
@@ -493,7 +493,7 @@ function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", cl
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: error instanceof Error ? error.message : "Unknown error"
+                description: (error as any)?.message || "Unknown error"
             });
         }
     };

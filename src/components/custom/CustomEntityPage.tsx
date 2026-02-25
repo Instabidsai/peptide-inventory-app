@@ -44,7 +44,7 @@ export default function CustomEntityPage() {
       setDialogOpen(false);
       toast({ title: 'Record created' });
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Error', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     }
   };
 
@@ -53,7 +53,7 @@ export default function CustomEntityPage() {
       await deleteRecord.mutateAsync(id);
       toast({ title: 'Record deleted' });
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Error', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     }
   };
 

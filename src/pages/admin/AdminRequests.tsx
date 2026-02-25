@@ -102,7 +102,7 @@ export default function AdminRequests() {
             toast.success(`Request ${newStatus}`);
             refetch();
         } catch (error) {
-            toast.error("Error updating request: " + (error instanceof Error ? error.message : 'Unknown error'));
+            toast.error("Error updating request: " + ((error as any)?.message || 'Unknown error'));
         } finally {
             setProcessingId(null);
         }

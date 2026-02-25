@@ -68,7 +68,7 @@ function ComposeDialog() {
             setForm({ to_org_id: '', subject: '', body: '', message_type: 'announcement' });
             setOpen(false);
         } catch (err: unknown) {
-            toast({ title: 'Failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            toast({ title: 'Failed', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
         }
     };
 

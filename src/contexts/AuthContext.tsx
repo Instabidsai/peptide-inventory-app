@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         partner_tier: profileData?.partner_tier,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error loading user data';
+      const msg = (err as any)?.message || 'Unknown error loading user data';
       logger.error('AuthProvider: Unexpected error in fetchUserData:', msg);
       setAuthError(msg);
       setProfile(null);

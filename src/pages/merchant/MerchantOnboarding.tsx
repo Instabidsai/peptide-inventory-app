@@ -93,7 +93,7 @@ function WebsiteScrapeStep({
                 url.trim()
             );
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to scrape website. Try again or skip this step.');
+            setError((err as any)?.message || 'Failed to scrape website. Try again or skip this step.');
         } finally {
             setIsLoading(false);
         }
@@ -617,7 +617,7 @@ export default function MerchantOnboarding() {
             toast({ title: 'Welcome aboard!', description: `${companyName.trim()} is ready to go.` });
             setStep(totalSteps);
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Could not create your organization.';
+            const message = (err as any)?.message || 'Could not create your organization.';
             toast({ variant: 'destructive', title: 'Setup failed', description: message });
         } finally {
             setIsCreating(false);

@@ -399,7 +399,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             logger.error("Apply commission error:", err);
             toast({
                 title: "Commission Apply Failed",
-                description: err instanceof Error ? err.message : "Could not apply commissions.",
+                description: (err as any)?.message || "Could not apply commissions.",
                 variant: "destructive",
             });
         } finally {
@@ -463,7 +463,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             logger.error("Payment error:", err);
             toast({
                 title: "Payment Failed",
-                description: err instanceof Error ? err.message : "Could not update payment.",
+                description: (err as any)?.message || "Could not update payment.",
                 variant: "destructive",
             });
         } finally {
@@ -525,7 +525,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             logger.error("Bulk payment error:", err);
             toast({
                 title: "Payment Failed",
-                description: err instanceof Error ? err.message : "Could not update payments.",
+                description: (err as any)?.message || "Could not update payments.",
                 variant: "destructive",
             });
         } finally {

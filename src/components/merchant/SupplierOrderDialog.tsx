@@ -157,7 +157,7 @@ export default function SupplierOrderDialog() {
             toast({
                 variant: 'destructive',
                 title: 'Order failed',
-                description: err instanceof Error ? err.message : 'Could not place order',
+                description: (err as any)?.message || 'Could not place order',
             });
         }
     };

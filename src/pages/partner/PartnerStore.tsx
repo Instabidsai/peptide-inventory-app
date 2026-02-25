@@ -270,7 +270,7 @@ export default function PartnerStore() {
             clearCartStorage();
             toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Order failed', description: err instanceof Error ? err.message : 'Unknown error' });
+            toast({ variant: 'destructive', title: 'Order failed', description: (err as any)?.message || 'Unknown error' });
         } finally {
             setPlacingOrder(false);
         }

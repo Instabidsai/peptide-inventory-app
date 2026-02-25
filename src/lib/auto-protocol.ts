@@ -88,8 +88,9 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
             dosage_unit: standardTier?.doseUnit ?? knowledge?.defaultDoseUnit ?? 'mcg',
             frequency: standardTier?.frequency ?? knowledge?.defaultFrequency ?? 'daily',
             duration_weeks: 8,
-            timing: standardTier?.timing ?? knowledge?.defaultTiming ?? 'none',
-            notes: standardTier?.notes ?? null,
+            notes: standardTier?.notes
+                ? `${standardTier.notes} | Timing: ${standardTier?.timing ?? knowledge?.defaultTiming ?? 'none'}`
+                : `Timing: ${standardTier?.timing ?? knowledge?.defaultTiming ?? 'none'}`,
         };
     });
 

@@ -98,7 +98,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
       invalidateTenantConfigCache();
       toast({ title: 'Branding updated' });
     } catch (err) {
-      toast({ title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Failed to save', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -131,7 +131,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
         });
       }
     } catch (err) {
-      toast({ title: 'Scrape failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Scrape failed', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setScraping(false);
     }
@@ -366,7 +366,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
       queryClient.invalidateQueries({ queryKey: ['tenant-api-keys', orgId, 'woo_webhook_secret'] });
       toast({ title: 'Webhook secret generated & copied', description: 'Paste this into your WooCommerce webhook settings. It won\'t be shown again in full.' });
     } catch (err) {
-      toast({ title: 'Failed to generate secret', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Failed to generate secret', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
@@ -493,7 +493,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
                 } catch (err) {
                   toast({
                     title: 'Product sync failed',
-                    description: err instanceof Error ? err.message : 'Unknown error',
+                    description: (err as any)?.message || 'Unknown error',
                     variant: 'destructive',
                   });
                 } finally {
@@ -606,7 +606,7 @@ function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
       queryClient.invalidateQueries({ queryKey: ['peptides'] });
       toast({ title: `Imported "${item.name}"` });
     } catch (err) {
-      toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Import failed', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setImporting(null);
     }
@@ -791,7 +791,7 @@ function ShippingConfigSection({ orgId }: { orgId: string }) {
       invalidateTenantConfigCache();
       toast({ title: 'Ship-from address saved' });
     } catch (err) {
-      toast({ title: 'Failed to save', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Failed to save', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -896,7 +896,7 @@ function IntegrationsTab({ orgId }: { orgId: string }) {
       setKeys({});
       toast({ title: 'API keys saved' });
     } catch (err) {
-      toast({ title: 'Failed to save keys', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Failed to save keys', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -1023,7 +1023,7 @@ export default function Settings() {
       await refreshProfile();
       toast({ title: 'Profile updated successfully' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Failed to update profile', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'Failed to update profile', description: (error as any)?.message || 'Unknown error' });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -1044,7 +1044,7 @@ export default function Settings() {
       await refreshProfile();
       toast({ title: 'Organization updated successfully' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Failed to update organization', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'Failed to update organization', description: (error as any)?.message || 'Unknown error' });
     } finally {
       setIsUpdatingOrg(false);
     }

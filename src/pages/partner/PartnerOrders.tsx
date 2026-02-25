@@ -332,7 +332,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
             setEditing(false);
             onUpdated();
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Update failed', description: err instanceof Error ? err.message : 'Unknown error' });
+            toast({ variant: 'destructive', title: 'Update failed', description: (err as any)?.message || 'Unknown error' });
         } finally {
             setSaving(false);
         }

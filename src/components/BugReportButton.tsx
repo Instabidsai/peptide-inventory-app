@@ -56,7 +56,7 @@ export function BugReportButton() {
       toast({
         variant: "destructive",
         title: "Failed to submit",
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: (err as any)?.message || "Please try again.",
       });
     } finally {
       setSubmitting(false);

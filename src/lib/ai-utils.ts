@@ -2,7 +2,7 @@
 
 /** Map raw error objects to user-friendly messages */
 export function friendlyError(error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
+  const msg = (error as any)?.message || String(error);
   const lower = msg.toLowerCase();
   if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed'))
     return "Looks like you're offline or the server is unreachable. Check your connection and try again.";

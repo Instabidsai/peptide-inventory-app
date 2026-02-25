@@ -311,7 +311,7 @@ export function useProtocolBuilder() {
 
         const { data: savedItems, error } = await supabase
             .from('protocol_items')
-            .select('peptide_id, dosage_amount, dosage_unit, frequency, timing, notes')
+            .select('peptide_id, dosage_amount, dosage_unit, frequency, notes')
             .eq('protocol_id', protocolId);
 
         if (error || pErr) {
@@ -335,7 +335,6 @@ export function useProtocolBuilder() {
                 if (si.dosage_amount) item.doseAmount = si.dosage_amount;
                 if (si.dosage_unit) item.doseUnit = si.dosage_unit;
                 if (si.frequency) item.frequency = si.frequency;
-                if (si.timing) item.timing = si.timing;
                 if (si.notes) item.notes = si.notes;
                 newItems.push(item);
             }

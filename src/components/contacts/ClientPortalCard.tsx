@@ -67,7 +67,7 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
 
         } catch (err) {
             logger.error('Invite failed:', err);
-            const errMsg = err instanceof Error ? err.message : String(err);
+            const errMsg = (err as any)?.message || String(err);
             if (errMsg?.includes('FunctionsFetchError') || errMsg?.includes('Failed to send request')) {
                 toast({
                     variant: 'destructive',

@@ -377,7 +377,7 @@ export default function ClientSettings() {
             await refreshProfile();
             toast({ title: 'Profile updated successfully' });
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Failed to update profile', description: error instanceof Error ? error.message : 'Unknown error' });
+            toast({ variant: 'destructive', title: 'Failed to update profile', description: (error as any)?.message || 'Unknown error' });
         } finally {
             setIsUpdatingProfile(false);
         }

@@ -106,7 +106,7 @@ export default function Onboarding() {
 
       navigate('/', { replace: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not create your organization. Please try again.';
+      const message = (err as any)?.message || 'Could not create your organization. Please try again.';
       toast({
         variant: 'destructive',
         title: 'Setup failed',

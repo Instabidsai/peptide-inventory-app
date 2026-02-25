@@ -74,7 +74,7 @@ export default function SystemHealth() {
       const latencyMs = Math.round(performance.now() - start);
       updateCheck("Supabase Connection", error ? { status: "fail", error: error.message, latencyMs } : { status: "pass", latencyMs });
     } catch (err) {
-      updateCheck("Supabase Connection", { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
+      updateCheck("Supabase Connection", { status: "fail", error: (err as any)?.message || "Unknown" });
     }
 
     // 2. Auth service check
@@ -84,7 +84,7 @@ export default function SystemHealth() {
       const latencyMs = Math.round(performance.now() - start);
       updateCheck("Auth Service", error ? { status: "fail", error: error.message, latencyMs } : { status: "pass", latencyMs });
     } catch (err) {
-      updateCheck("Auth Service", { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
+      updateCheck("Auth Service", { status: "fail", error: (err as any)?.message || "Unknown" });
     }
 
     // 3. RPC function existence check — probe each individually
@@ -108,7 +108,7 @@ export default function SystemHealth() {
           updateCheck(`RPC: ${fn}`, { status: "pass", latencyMs });
         }
       } catch (err) {
-        updateCheck(`RPC: ${fn}`, { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
+        updateCheck(`RPC: ${fn}`, { status: "fail", error: (err as any)?.message || "Unknown" });
       }
     }
 
@@ -129,7 +129,7 @@ export default function SystemHealth() {
           updateCheck(`Edge: ${fn}`, { status: "pass", latencyMs });
         }
       } catch (err) {
-        updateCheck(`Edge: ${fn}`, { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
+        updateCheck(`Edge: ${fn}`, { status: "fail", error: (err as any)?.message || "Unknown" });
       }
     }
 

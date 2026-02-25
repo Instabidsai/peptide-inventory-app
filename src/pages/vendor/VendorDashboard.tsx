@@ -75,7 +75,7 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
             setOpen(false);
             onSuccess();
         } catch (err: unknown) {
-            toast({ title: 'Provisioning failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            toast({ title: 'Provisioning failed', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
         }
     };
 

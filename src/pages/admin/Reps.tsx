@@ -61,6 +61,7 @@ export default function Reps() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile: currentProfile } = useAuth();
     const { data: reps, isLoading, isError: repsError, refetch: repsRefetch } = useReps();
     const { data: networkData, isLoading: networkLoading } = useFullNetwork();
     const updateProfile = useUpdateProfile();
@@ -160,7 +161,7 @@ export default function Reps() {
                     address: newClient.address.trim() || null,
                     type: 'customer',
                     assigned_rep_id: addingToRep.id,
-                    org_id: repProfile?.org_id || null,
+                    org_id: repProfile?.org_id || currentProfile?.org_id || null,
                 });
             if (error) throw error;
 
@@ -171,7 +172,7 @@ export default function Reps() {
             setNewClient({ name: '', email: '', phone: '', address: '' });
             setAddingToRep(null);
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Failed to add client', description: err instanceof Error ? err.message : 'Unknown error' });
+            toast({ variant: 'destructive', title: 'Failed to add client', description: (err as any)?.message || 'Unknown error' });
         } finally {
             setIsAddingClient(false);
         }
@@ -859,7 +860,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
             setSelectedContactId('');
             setParentRepId('');
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Promotion Failed', description: err instanceof Error ? err.message : String(err) });
+            toast({ variant: 'destructive', title: 'Promotion Failed', description: (err as any)?.message || String(err) });
         } finally {
             setIsPromotingCustomer(false);
         }

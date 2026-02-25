@@ -415,7 +415,7 @@ export function useCreateSalesOrder() {
                 logger.warn('Auto-fulfillment failed:', fulfillErr);
                 toast({
                     title: "Order created — fulfillment pending",
-                    description: fulfillErr instanceof Error ? fulfillErr.message : "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
+                    description: (fulfillErr as any)?.message || "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
                     variant: "destructive",
                 });
             }
