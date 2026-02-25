@@ -54,8 +54,8 @@ interface WooCredentials {
     wooAppPass: string;
 }
 
-async function getWooCredentials(supabase: SupabaseClient, orgId: string): Promise<WooCredentials | null> {
-    const { data: org } = await supabase
+async function getWooCredentials(sb: SupabaseClient, orgId: string): Promise<WooCredentials | null> {
+    const { data: org } = await sb
         .from('organizations')
         .select('id, name')
         .eq('id', orgId)
@@ -66,7 +66,7 @@ async function getWooCredentials(supabase: SupabaseClient, orgId: string): Promi
         return null;
     }
 
-    const { data: keys } = await supabase
+    const { data: keys } = await sb
         .from('tenant_api_keys')
         .select('service, api_key')
         .eq('org_id', orgId)
@@ -87,9 +87,9 @@ async function getWooCredentials(supabase: SupabaseClient, orgId: string): Promi
     return { orgId: org.id, orgName: org.name, wooUrl, wooUser, wooAppPass };
 }
 
-async function getAllWooTenants(supabase: SupabaseClient): Promise<WooCredentials[]> {
+async function getAllWooTenants(sb: SupabaseClient): Promise<WooCredentials[]> {
     // Find all orgs that have woo_url configured
-    const { data: wooKeys } = await supabase
+    const { data: wooKeys } = await sb
         .from('tenant_api_keys')
         .select('org_id')
         .eq('service', 'woo_url');
@@ -101,7 +101,7 @@ async function getAllWooTenants(supabase: SupabaseClient): Promise<WooCredential
 
     const results: WooCredentials[] = [];
     for (const key of wooKeys) {
-        const creds = await getWooCredentials(supabase, key.org_id);
+        const creds = await getWooCredentials(sb, key.org_id);
         if (creds) results.push(creds);
     }
     return results;

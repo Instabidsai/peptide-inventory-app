@@ -129,13 +129,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             case 'customer.subscription.updated': {
                 const sub = event.data.object;
-                const { data: existing } = await supabase
+                const { data: updatedSub } = await supabase
                     .from('tenant_subscriptions')
                     .select('org_id')
                     .eq('stripe_subscription_id', sub.id)
                     .single();
 
-                if (existing) {
+                if (updatedSub) {
                     await supabase.from('tenant_subscriptions').update({
                         status: sub.status === 'active' ? 'active'
                             : sub.status === 'past_due' ? 'past_due'
@@ -146,27 +146,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
                     }).eq('stripe_subscription_id', sub.id);
 
-                    await logEvent(existing.org_id);
-                    console.log(`[Stripe Webhook] Subscription updated for org ${existing.org_id}: ${sub.status}`);
+                    await logEvent(updatedSub.org_id);
+                    console.log(`[Stripe Webhook] Subscription updated for org ${updatedSub.org_id}: ${sub.status}`);
                 }
                 break;
             }
 
             case 'customer.subscription.deleted': {
                 const sub = event.data.object;
-                const { data: existing } = await supabase
+                const { data: deletedSub } = await supabase
                     .from('tenant_subscriptions')
                     .select('org_id')
                     .eq('stripe_subscription_id', sub.id)
                     .single();
 
-                if (existing) {
+                if (deletedSub) {
                     await supabase.from('tenant_subscriptions').update({
                         status: 'canceled',
                     }).eq('stripe_subscription_id', sub.id);
 
-                    await logEvent(existing.org_id);
-                    console.log(`[Stripe Webhook] Subscription canceled for org ${existing.org_id}`);
+                    await logEvent(deletedSub.org_id);
+                    console.log(`[Stripe Webhook] Subscription canceled for org ${deletedSub.org_id}`);
                 }
                 break;
             }
@@ -176,19 +176,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const subId = invoice.subscription;
                 if (!subId) break;
 
-                const { data: existing } = await supabase
+                const { data: paidSub } = await supabase
                     .from('tenant_subscriptions')
                     .select('org_id')
                     .eq('stripe_subscription_id', subId)
                     .single();
 
-                if (existing) {
+                if (paidSub) {
                     await supabase.from('tenant_subscriptions').update({
                         status: 'active',
                     }).eq('stripe_subscription_id', subId);
 
-                    await logEvent(existing.org_id, invoice.amount_paid);
-                    console.log(`[Stripe Webhook] Payment succeeded for org ${existing.org_id}: $${(invoice.amount_paid / 100).toFixed(2)}`);
+                    await logEvent(paidSub.org_id, invoice.amount_paid);
+                    console.log(`[Stripe Webhook] Payment succeeded for org ${paidSub.org_id}: $${(invoice.amount_paid / 100).toFixed(2)}`);
                 }
                 break;
             }
@@ -198,19 +198,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const subId = invoice.subscription;
                 if (!subId) break;
 
-                const { data: existing } = await supabase
+                const { data: failedSub } = await supabase
                     .from('tenant_subscriptions')
                     .select('org_id')
                     .eq('stripe_subscription_id', subId)
                     .single();
 
-                if (existing) {
+                if (failedSub) {
                     await supabase.from('tenant_subscriptions').update({
                         status: 'past_due',
                     }).eq('stripe_subscription_id', subId);
 
-                    await logEvent(existing.org_id, invoice.amount_due);
-                    console.log(`[Stripe Webhook] Payment FAILED for org ${existing.org_id}`);
+                    await logEvent(failedSub.org_id, invoice.amount_due);
+                    console.log(`[Stripe Webhook] Payment FAILED for org ${failedSub.org_id}`);
                 }
                 break;
             }
