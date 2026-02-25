@@ -136,13 +136,15 @@ export default function Finance() {
             toast({ variant: 'destructive', title: 'Invalid amount', description: 'Please enter a valid expense amount.' });
             return;
         }
-        await createExpense.mutateAsync({
-            ...formData,
-            amount: parsedAmount,
-            status: 'paid'
-        });
-        setIsAddOpen(false);
-        setFormData({ ...formData, amount: '', description: '', recipient: '' });
+        try {
+            await createExpense.mutateAsync({
+                ...formData,
+                amount: parsedAmount,
+                status: 'paid'
+            });
+            setIsAddOpen(false);
+            setFormData({ ...formData, amount: '', description: '', recipient: '' });
+        } catch { /* onError in hook shows toast */ }
     };
 
     // Expense category chart data
@@ -308,7 +310,7 @@ export default function Finance() {
                     <h1 className="text-3xl font-bold tracking-tight">Financials</h1>
                     <p className="text-muted-foreground">Track expenses, supplier payments, and overhead.</p>
                 </div>
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) setFormData(f => ({ ...f, amount: '', description: '', recipient: '' })); }}>
                     <DialogTrigger asChild>
                         <Button className="gap-2">
                             <Plus className="h-4 w-4" /> Add Expense
@@ -361,7 +363,7 @@ export default function Finance() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button className="w-full mt-4" onClick={handleSubmit}>Record Expense</Button>
+                            <Button className="w-full mt-4" onClick={handleSubmit} disabled={createExpense.isPending}>{createExpense.isPending ? 'Saving...' : 'Record Expense'}</Button>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -675,7 +677,7 @@ export default function Finance() {
                             </Button>
                         )}
 
-                        <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
+                        <Dialog open={isBulkPayOpen} onOpenChange={(open) => { setIsBulkPayOpen(open); if (!open) setBulkPayData(d => ({ ...d, note: '' })); }}>
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>Bulk Payment</DialogTitle>

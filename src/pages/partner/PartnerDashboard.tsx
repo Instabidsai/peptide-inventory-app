@@ -158,7 +158,7 @@ export default function PartnerDashboard() {
         }
     });
 
-    const closeSheet = () => setActiveSheet(null);
+    const closeSheet = () => { setActiveSheet(null); setNewPerson(EMPTY_PERSON); };
 
     const handleAddPerson = async (person: typeof EMPTY_PERSON) => {
         const assignedTo = person.assignedTo || myProfileId || undefined;

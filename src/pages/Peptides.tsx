@@ -169,7 +169,7 @@ export default function Peptides() {
         <div className="flex gap-2">
           {canEdit && <SupplierOrderDialog />}
           {canEdit && (
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) form.reset(); }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />

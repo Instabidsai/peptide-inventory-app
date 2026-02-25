@@ -475,7 +475,7 @@ export default function AdminResources() {
             )}
 
             {/* Theme Dialog */}
-            <Dialog open={isThemeDialogOpen} onOpenChange={(open) => !open && setIsThemeDialogOpen(false)}>
+            <Dialog open={isThemeDialogOpen} onOpenChange={(open) => { if (!open) { setIsThemeDialogOpen(false); setThemeForm({ name: "", description: "" }); setEditingTheme(null); } }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingTheme ? 'Edit Theme' : 'Create New Theme'}</DialogTitle>

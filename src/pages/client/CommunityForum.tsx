@@ -190,7 +190,7 @@ export default function CommunityForum() {
                             </div>
                         </div>
 
-                        <Dialog open={newTopicOpen} onOpenChange={setNewTopicOpen}>
+                        <Dialog open={newTopicOpen} onOpenChange={(open) => { setNewTopicOpen(open); if (!open) { setNewTopicTitle(""); setNewTopicContent(""); } }}>
                             <DialogTrigger asChild>
                                 <Button className="gap-2">
                                     <Plus className="h-4 w-4" /> New Topic
