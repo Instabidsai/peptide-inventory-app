@@ -49,10 +49,8 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             roleName = previewRole;
         }
 
-        // Super-admins go to vendor dashboard by default
-        if (roleName === 'super_admin' && location.pathname === '/') {
-            return <Navigate to="/vendor" replace />;
-        }
+        // super_admin lands on their normal admin dashboard (not auto-redirected)
+        // They can switch to /vendor via the sidebar mode switcher
 
         // Block clients/customers from admin areas
         if (roleName === 'client' || roleName === 'customer') {

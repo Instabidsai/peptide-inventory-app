@@ -1,4 +1,4 @@
-import { NavLink, useSearchParams } from 'react-router-dom';
+import { NavLink, useSearchParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -18,11 +18,14 @@ import {
   Bot,
   ToggleRight,
   Activity,
+  ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { SIDEBAR_FEATURE_MAP } from '@/lib/feature-registry';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { BugReportButton } from '@/components/BugReportButton';
 
 interface SidebarProps {
   open: boolean;
@@ -60,6 +63,7 @@ const navigation = [
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const navigate = useNavigate();
   const { organization, userRole, user, profile: authProfile } = useAuth();
   const { isEnabled } = useOrgFeatures();
   const { brand_name, logo_url, admin_brand_name } = useTenantConfig();
@@ -139,6 +143,28 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </Button>
       </div>
 
+      {/* Mode Switcher — super_admin only */}
+      {userRole?.role === 'super_admin' && (
+        <div className="px-3 pt-3 pb-1">
+          <div className="flex rounded-lg bg-muted/50 p-0.5 ring-1 ring-border/50">
+            <button
+              onClick={() => { navigate('/'); onClose(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all bg-background text-foreground shadow-sm ring-1 ring-border/50"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              My Company
+            </button>
+            <button
+              onClick={() => { navigate('/vendor'); onClose(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              SaaS Admin
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navigation.filter(item => {
@@ -146,11 +172,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           const featureKey = SIDEBAR_FEATURE_MAP[item.name];
           if (featureKey && !isEnabled(featureKey)) return false;
 
+          // super_admin inherits admin access for sidebar visibility
+          const roleForNav = effectiveRole === 'super_admin' ? 'admin' : effectiveRole;
+
           // Standard Role Check
-          if (item.roles && !item.roles.includes(organization?.role || effectiveRole || '')) {
+          if (item.roles && !item.roles.includes(organization?.role || roleForNav || '')) {
             // Allow if allowedRoles matches
-            if (!effectiveRole) return false;
-            if (!item.roles.includes(effectiveRole)) return false;
+            if (!roleForNav) return false;
+            if (!item.roles.includes(roleForNav)) return false;
           }
 
           // Special: Sales Rep Restriction
@@ -202,7 +231,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
 
         {/* Partner Portal Switcher */}
-        {(userRole?.role === 'admin' || userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') && (
+        {(userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') && (
           <div className="mt-2 px-3">
             <NavLink
               to="/partner"
@@ -231,6 +260,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </NavLink>
         </div>}
       </nav>
+
+      {/* Bug Report — pinned to bottom */}
+      <div className="px-3 py-3 border-t border-sidebar-border/20">
+        <BugReportButton />
+      </div>
     </aside>
   );
 }
