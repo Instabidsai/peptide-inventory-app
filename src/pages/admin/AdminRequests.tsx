@@ -222,7 +222,7 @@ function RequestCard({ req, onUpdate, onFulfill, processing }: { req: ClientRequ
                                 className="group relative block w-16 h-16 rounded border overflow-hidden hover:ring-2 ring-primary"
                             >
                                 {att.type?.startsWith('image/') ? (
-                                    <img src={att.url} alt={att.name || 'Attachment'} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    <img src={att.url} alt={att.name || 'Attachment'} className="w-full h-full object-cover" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-muted text-xs text-center p-1 break-all">
                                         {att.name}

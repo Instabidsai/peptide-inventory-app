@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
@@ -9,6 +10,7 @@ import {
     AlertTriangle,
     CheckCircle,
     XCircle,
+    ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +22,7 @@ import { motion } from "framer-motion";
 
 export default function ClientNotifications() {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const { data: notifications, isLoading, isError, refetch } = useQuery({
         queryKey: ['notifications', user?.id],
@@ -147,9 +150,33 @@ export default function ClientNotifications() {
                                     <p className="text-sm text-muted-foreground leading-relaxed">
                                         {notification.message}
                                     </p>
-                                    {!notification.is_read && (
-                                        <Badge variant="secondary" className="mt-2 text-[10px] h-5">Tap to dismiss</Badge>
-                                    )}
+                                    <div className="flex items-center gap-2 mt-2">
+                                        {notification.link && (
+                                            <Button
+                                                size="sm"
+                                                variant="default"
+                                                className="h-7 text-xs gap-1.5"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    markOneRead(notification.id);
+                                                    // Navigate to reorder link (strip origin if it's a full URL)
+                                                    const url = notification.link;
+                                                    try {
+                                                        const parsed = new URL(url);
+                                                        navigate(parsed.pathname + parsed.search);
+                                                    } catch {
+                                                        navigate(url);
+                                                    }
+                                                }}
+                                            >
+                                                <ShoppingCart className="h-3 w-3" />
+                                                Reorder Now
+                                            </Button>
+                                        )}
+                                        {!notification.is_read && !notification.link && (
+                                            <Badge variant="secondary" className="text-[10px] h-5">Tap to dismiss</Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

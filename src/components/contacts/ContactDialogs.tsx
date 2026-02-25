@@ -442,7 +442,7 @@ export function ContactDialogs({
                                 <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-emerald-50/50 border-emerald-100">
                                     <div className="flex items-center gap-3">
                                         {s.supplements.image_url ? (
-                                            <img src={s.supplements.image_url} alt={s.supplements.name} className="w-10 h-10 rounded object-cover" />
+                                            <img src={s.supplements.image_url} alt={s.supplements.name} className="w-10 h-10 rounded object-cover" loading="lazy" />
                                         ) : (
                                             <div className="w-10 h-10 rounded bg-emerald-100 flex items-center justify-center text-emerald-600">
                                                 <Pill className="h-5 w-5" />

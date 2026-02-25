@@ -199,7 +199,7 @@ function BrandingTab({ orgId }: { orgId: string }) {
           <div className="space-y-2">
             <Label>Logo URL</Label>
             <Input value={brand.logo_url} onChange={e => setBrand(b => ({ ...b, logo_url: e.target.value }))} placeholder="https://example.com/logo.png" />
-            {brand.logo_url && <img src={brand.logo_url} alt="Logo preview" className="h-10 mt-1 rounded" />}
+            {brand.logo_url && <img src={brand.logo_url} alt="Logo preview" className="h-10 mt-1 rounded" loading="lazy" />}
           </div>
           <div className="space-y-2">
             <Label>Primary Color</Label>
@@ -695,7 +695,7 @@ function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
           {pending.map(item => (
             <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/40">
               {item.image_url && (
-                <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded object-cover" />
+                <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded object-cover" loading="lazy" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.name}</p>

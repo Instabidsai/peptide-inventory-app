@@ -63,7 +63,7 @@ export default function TenantDetail() {
                     </Button>
                     <div className="flex items-center gap-3">
                         {tenant.config?.logo_url ? (
-                            <img src={tenant.config.logo_url} alt={tenant.config?.brand_name || tenant.org_name} className="h-12 w-12 rounded-lg object-cover" />
+                            <img src={tenant.config.logo_url} alt={tenant.config?.brand_name || tenant.org_name} className="h-12 w-12 rounded-lg object-cover" loading="lazy" />
                         ) : (
                             <div className="h-12 w-12 rounded-lg flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: tenant.config?.primary_color || '#7c3aed' }}>
                                 {tenant.org_name.charAt(0).toUpperCase()}

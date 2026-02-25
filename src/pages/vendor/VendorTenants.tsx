@@ -24,7 +24,7 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
             <TableCell>
                 <div className="flex items-center gap-3">
                     {tenant.logo_url ? (
-                        <img src={tenant.logo_url} alt={tenant.brand_name || tenant.org_name} className="h-8 w-8 rounded object-cover" />
+                        <img src={tenant.logo_url} alt={tenant.brand_name || tenant.org_name} className="h-8 w-8 rounded object-cover" loading="lazy" />
                     ) : (
                         <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: tenant.primary_color }}>
                             {tenant.org_name.charAt(0).toUpperCase()}

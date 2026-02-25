@@ -68,7 +68,7 @@ export default function AdminSupplements() {
                     <Card key={item.id} className="overflow-hidden flex flex-col group hover:shadow-card-hover transition-shadow">
                         <div className="h-48 bg-card relative p-4 border-b">
                             {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
                                     <Pill className="h-12 w-12 opacity-20" />
@@ -220,7 +220,7 @@ function SupplementDialog({ open, onOpenChange, onSubmit, initialData, title, is
                                     placeholder="https://..."
                                     className="flex-1"
                                 />
-                                {formData.image_url && <img src={formData.image_url} alt="Preview" className="h-10 w-10 rounded object-cover border bg-white" onError={(e) => e.currentTarget.style.display = 'none'} />}
+                                {formData.image_url && <img src={formData.image_url} alt="Preview" className="h-10 w-10 rounded object-cover border bg-white" loading="lazy" onError={(e) => e.currentTarget.style.display = 'none'} />}
                             </div>
                             <p className="text-xs text-muted-foreground">Use Unsplash or direct image links for best results.</p>
                         </div>

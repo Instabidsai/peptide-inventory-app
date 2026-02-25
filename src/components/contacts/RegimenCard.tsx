@@ -282,7 +282,7 @@ export function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement
                             <div key={supp.id} className="relative group border border-border/60 rounded-lg p-3 hover:bg-accent/30 hover:shadow-card transition-all">
                                 <div className="flex gap-3">
                                     {supp.supplements?.image_url ? (
-                                        <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt={supp.supplements.name} />
+                                        <img src={supp.supplements.image_url} className="h-10 w-10 rounded object-cover bg-muted" alt={supp.supplements.name} loading="lazy" />
                                     ) : (
                                         <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                             <Pill className="h-5 w-5 opacity-20" />

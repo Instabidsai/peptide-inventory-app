@@ -63,3 +63,19 @@ if (sentryDsn) {
 })();
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// ─── Web Vitals ─────────────────────────────────────────────────────────────
+import { onCLS, onFID, onLCP, onTTFB, onINP } from 'web-vitals';
+
+function reportVital(metric: { name: string; value: number; id: string }) {
+  // In production, send to Sentry as custom measurement
+  if (import.meta.env.PROD && sentryDsn) {
+    Sentry.metrics?.distribution(metric.name, metric.value, { unit: 'millisecond', tags: { id: metric.id } });
+  }
+}
+
+onCLS(reportVital);
+onFID(reportVital);
+onLCP(reportVital);
+onTTFB(reportVital);
+onINP(reportVital);

@@ -248,7 +248,7 @@ export default function ClientResources() {
                                 </div>
                                 <div className="relative aspect-video md:aspect-auto min-h-[200px] bg-gradient-to-br from-card to-background flex items-center justify-center">
                                     {featuredResource.thumbnail_url ? (
-                                        <img src={featuredResource.thumbnail_url} alt={featuredResource.title || 'Featured resource'} className="w-full h-full object-cover opacity-80" />
+                                        <img src={featuredResource.thumbnail_url} alt={featuredResource.title || 'Featured resource'} className="w-full h-full object-cover opacity-80" loading="lazy" />
                                     ) : (
                                         <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur flex items-center justify-center border border-white/20">
                                             <Play className="h-10 w-10 text-white ml-1" />
@@ -552,7 +552,7 @@ export default function ClientResources() {
                                 >
                                     <div className="aspect-video bg-card flex items-center justify-center relative">
                                         {resource.thumbnail_url ? (
-                                            <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" />
+                                            <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" loading="lazy" />
                                         ) : (
                                             <Play className="h-10 w-10 text-muted-foreground/40" />
                                         )}

@@ -37,7 +37,7 @@ export function SupplementStack({ items }: SupplementStackProps) {
                             {/* Image */}
                             <div className="shrink-0 w-20 h-20 rounded-lg bg-muted overflow-hidden border">
                                 {item.image_url ? (
-                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
                                         <Pill className="h-8 w-8" />

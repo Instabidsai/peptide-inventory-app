@@ -178,7 +178,7 @@ export default function BodyComposition() {
                         <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted"
                             onClick={() => document.getElementById('photo-upload')?.click()}>
                             {imagePreview ? (
-                                <img src={imagePreview} alt="Preview" className="h-40 object-cover rounded-md" />
+                                <img src={imagePreview} alt="Preview" className="h-40 object-cover rounded-md" loading="lazy" />
                             ) : (
                                 <div className="text-center text-muted-foreground">
                                     <Camera className="h-8 w-8 mx-auto mb-2" />
