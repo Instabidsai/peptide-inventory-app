@@ -44,9 +44,25 @@ export function useSendVendorMessage() {
                 });
 
             if (error) throw error;
+            return payload;
         },
-        onSuccess: () => {
+        onSuccess: (payload) => {
             queryClient.invalidateQueries({ queryKey: ['vendor-messages'] });
+
+            // Also send email copy to admin@thepeptideai.com (fire-and-forget)
+            supabase.functions.invoke('send-email', {
+                body: {
+                    to: 'admin@thepeptideai.com',
+                    subject: `[Vendor] ${payload.subject}`,
+                    html: `<div style="font-family:sans-serif;max-width:600px">
+                        <h2 style="color:#7c3aed">${payload.subject}</h2>
+                        <p style="white-space:pre-wrap">${payload.body}</p>
+                        <hr style="border:none;border-top:1px solid #eee;margin:16px 0" />
+                        <p style="color:#888;font-size:12px">Type: ${payload.message_type} | To org: ${payload.to_org_id || 'all'}</p>
+                    </div>`,
+                    from_name: 'ThePeptideAI Platform',
+                },
+            }).catch((err) => logger.error('Vendor message email failed:', err));
         },
         onError: (error: Error) => {
             logger.error('Failed to send vendor message:', error);
