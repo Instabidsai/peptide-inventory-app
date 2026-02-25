@@ -34,6 +34,7 @@ import {
     MapPin,
     Pencil,
     ClipboardList,
+    Store,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,7 +63,7 @@ export default function OrderList() {
     const navigate = useNavigate();
     const isMobile = useIsMobile();
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
-    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce'>('all');
+    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'wholesale'>('all');
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
     const [filterShipping, setFilterShipping] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +78,7 @@ export default function OrderList() {
 
     const rawOrders = isRep ? myOrders : allOrders;
     const orders = rawOrders
-        ?.filter(o => filterSource === 'all' || (o.order_source || 'app') === filterSource)
+        ?.filter(o => filterSource === 'all' || (filterSource === 'wholesale' ? o.is_supplier_order : (o.order_source || 'app') === filterSource))
         ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment)
         ?.filter(o => filterShipping === 'all' || (o.shipping_status || 'none') === filterShipping)
         ?.filter(o => {
@@ -254,6 +255,7 @@ export default function OrderList() {
                             <SelectItem value="all">All Sources</SelectItem>
                             <SelectItem value="app">App Orders</SelectItem>
                             <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                            <SelectItem value="wholesale">Wholesale</SelectItem>
                         </SelectContent>
                     </Select>
                 )}
@@ -294,6 +296,11 @@ export default function OrderList() {
                                         {order.delivery_method === 'local_pickup' && (
                                             <Badge variant="outline" className="text-xs bg-orange-500/15 text-orange-400 border-orange-500/30">
                                                 <MapPin className="h-2.5 w-2.5 mr-0.5" /> Pickup
+                                            </Badge>
+                                        )}
+                                        {order.is_supplier_order && (
+                                            <Badge variant="outline" className="text-xs bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
+                                                <Store className="h-2.5 w-2.5 mr-0.5" /> Wholesale
                                             </Badge>
                                         )}
                                         {order.order_source === 'woocommerce' && (
@@ -349,6 +356,11 @@ export default function OrderList() {
                                     <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" role="link" tabIndex={0} aria-label={`View order ${order.id.slice(0, 8)}`} onClick={() => navigate(`/sales/${order.id}`)} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/sales/${order.id}`); } }}>
                                         <TableCell className="font-mono text-xs">
                                             {order.id.slice(0, 8)}...
+                                            {order.is_supplier_order && (
+                                                <Badge variant="outline" className="ml-1 text-xs py-0 bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
+                                                    <Store className="h-2.5 w-2.5 mr-0.5" /> Wholesale
+                                                </Badge>
+                                            )}
                                             {order.order_source === 'woocommerce' && (
                                                 <Badge variant="outline" className="ml-1 text-xs py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
                                             )}
