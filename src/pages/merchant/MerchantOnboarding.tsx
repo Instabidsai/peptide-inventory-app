@@ -553,7 +553,7 @@ export default function MerchantOnboarding() {
             const { data, error } = await supabase.functions.invoke('self-signup', {
                 body: {
                     org_name: companyName.trim(),
-                    plan_name: 'platform',
+                    plan_name: 'professional',
                 },
             });
 
