@@ -783,8 +783,8 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
 
         setIsPromotingCustomer(true);
         try {
-            // If customer already has a login, promote their profile too
             if (contact.linked_user_id) {
+                // Customer already has a login — promote their existing profile
                 const { data: existingProfile, error: profileErr } = await supabase
                     .from('profiles')
                     .select('id')
@@ -803,23 +803,53 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                     })
                     .eq('id', existingProfile.id);
                 if (updateErr) throw updateErr;
-            }
 
-            // Always update contact type to partner
-            const { error: contactErr } = await supabase
-                .from('contacts')
-                .update({ type: 'partner' })
-                .eq('id', contact.id);
-            if (contactErr) throw contactErr;
+                // Update contact type to partner
+                await supabase.from('contacts').update({ type: 'partner' }).eq('id', contact.id);
 
-            if (contact.linked_user_id) {
                 toast({ title: 'Partner Created', description: `${contact.name} is now a partner.` });
             } else {
-                toast({
-                    title: 'Partner Created',
-                    description: `${contact.name} is now a partner. Send them an invite link from their customer profile to connect their account.`,
-                    duration: 8000,
+                // Customer has no account — create one via invite-user edge function
+                if (!contact.email) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Email Required',
+                        description: 'Add an email to this customer first, then try again.',
+                    });
+                    return;
+                }
+
+                const { data, error } = await supabase.functions.invoke('invite-user', {
+                    body: {
+                        email: contact.email,
+                        contact_id: contact.id,
+                        role: 'sales_rep',
+                        parent_rep_id: parentRepId || undefined,
+                        redirect_origin: `${window.location.origin}/update-password`,
+                    }
                 });
+
+                if (error) throw error;
+                if (!data?.success) throw new Error(data?.error || 'Failed to create partner account');
+
+                // Update contact type to partner
+                await supabase.from('contacts').update({ type: 'partner' }).eq('id', contact.id);
+
+                // Copy invite link so they can send it
+                if (data.action_link) {
+                    try {
+                        await navigator.clipboard.writeText(data.action_link);
+                        toast({
+                            title: 'Partner Created — Link Copied',
+                            description: `${contact.name} is now a partner. Their login link has been copied to your clipboard — send it to them.`,
+                            duration: 10000,
+                        });
+                    } catch {
+                        toast({ title: 'Partner Created', description: data.action_link, duration: 15000 });
+                    }
+                } else {
+                    toast({ title: 'Partner Created', description: `${contact.name} is now a partner.` });
+                }
             }
 
             queryClient.invalidateQueries({ queryKey: ['reps'] });
