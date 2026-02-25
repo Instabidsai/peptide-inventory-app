@@ -89,6 +89,13 @@ export function useTenantConfig(): TenantConfigResult {
             return;
         }
 
+        // Org changed (impersonation switch) — reset to defaults while fetching
+        setConfig(DEFAULTS);
+        setIsLoaded(false);
+        setIsError(false);
+        cachedConfig = null;
+        cachedOrgId = null;
+
         supabase
             .from('tenant_config')
             .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes, wholesale_tier_id, supplier_org_id, subdomain, onboarding_path, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email')
