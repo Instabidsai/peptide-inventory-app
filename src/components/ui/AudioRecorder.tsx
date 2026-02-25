@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useReactMediaRecorder } from 'react-media-recorder';
 import { LiveAudioVisualizer } from 'react-audio-visualize';
-import { Mic, Square, Trash2, Check, Play, Pause, Loader2 } from 'lucide-react';
+import {
+    Mic,
+    Square,
+    Trash2,
+    Check,
+    Loader2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { format } from "date-fns";
 
 interface AudioRecorderProps {
     onRecordingComplete: (blob: Blob) => void;

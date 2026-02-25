@@ -210,6 +210,7 @@ export default function SupplierOrderDialog() {
                                                             variant="outline"
                                                             size="icon"
                                                             className="h-7 w-7"
+                                                            aria-label={`Decrease quantity of ${p.name}`}
                                                             onClick={() => updateQty(p, -1)}
                                                             disabled={qty === 0}
                                                         >
@@ -226,6 +227,7 @@ export default function SupplierOrderDialog() {
                                                             variant="outline"
                                                             size="icon"
                                                             className="h-7 w-7"
+                                                            aria-label={`Increase quantity of ${p.name}`}
                                                             onClick={() => updateQty(p, 1)}
                                                         >
                                                             <Plus className="h-3 w-3" />

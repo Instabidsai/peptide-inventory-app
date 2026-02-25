@@ -3,8 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link2, Copy, Check } from 'lucide-react';
 
-/** Tiers that can recruit new partners */
-const CAN_RECRUIT_TIERS = ['senior', 'director', 'executive'];
+/** Only Senior partners can recruit new partners */
+const CAN_RECRUIT_TIERS = ['senior'];
 
 interface ReferralLinkCardProps {
     profileId: string | undefined;

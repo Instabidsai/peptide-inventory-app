@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -12,12 +12,26 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, LogOut, User, Lock, ChevronRight, Shield, Users, UserPlus, Copy, Trash2, Crown, Syringe, Refrigerator, ClipboardList } from 'lucide-react';
+import {
+    Loader2,
+    LogOut,
+    Lock,
+    ChevronRight,
+    Users,
+    UserPlus,
+    Copy,
+    Trash2,
+    Crown,
+    Syringe,
+    Refrigerator,
+    ClipboardList,
+} from 'lucide-react';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useHouseholdMembers, useAddHouseholdMember, useRemoveHouseholdMember, useInviteHouseholdMember } from '@/hooks/use-household';
 import { toast as sonnerToast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 const profileSchema = z.object({
     full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -193,6 +207,7 @@ function HouseholdSection() {
                                                         disabled={inviteMember.isPending}
                                                         onClick={() => handleInvite(member.id, member.email!)}
                                                         title="Send invite link"
+                                                        aria-label="Send invite link"
                                                     >
                                                         <Copy className="h-3 w-3 text-muted-foreground/60" />
                                                     </Button>
@@ -224,6 +239,7 @@ function HouseholdSection() {
                                                         className="h-7 w-7"
                                                         onClick={() => setConfirmRemoveId(member.id)}
                                                         title="Remove member"
+                                                        aria-label="Remove member"
                                                     >
                                                         <Trash2 className="h-3 w-3 text-muted-foreground/40" />
                                                     </Button>
@@ -372,7 +388,7 @@ export default function ClientSettings() {
             await signOut();
             navigate('/auth');
         } catch (error) {
-            console.error("Sign out error", error);
+            logger.error("Sign out error", error);
         }
     };
 

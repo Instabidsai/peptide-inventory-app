@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
+import { logger } from '@/lib/logger';
 
 export interface Peptide {
   id: string;
@@ -68,7 +69,7 @@ export function usePeptides(pagination?: PaginationState) {
         .rpc('get_peptide_stock_counts');
 
       if (stockError) {
-        console.error('Failed to fetch stock counts:', stockError);
+        logger.error('Failed to fetch stock counts:', stockError);
         // Don't throw, just show 0 stock to avoid crashing app if RPC is missing
       }
 

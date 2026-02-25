@@ -1,6 +1,7 @@
 import { Navigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 interface RoleBasedRedirectProps {
     children: React.ReactNode;
@@ -83,7 +84,7 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
         return <>{children}</>;
     } catch (err) {
-        console.error("RoleBasedRedirect error:", err);
+        logger.error("RoleBasedRedirect error:", err);
         return <Navigate to="/" replace />;
     }
 }

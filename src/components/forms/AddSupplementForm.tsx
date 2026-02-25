@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useSupplements, Supplement } from "@/hooks/use-supplements";
+import { useSupplements } from "@/hooks/use-supplements";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

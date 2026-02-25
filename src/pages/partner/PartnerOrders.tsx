@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUpdateSalesOrder } from '@/hooks/use-sales-orders';
+import { useUpdateSalesOrder, type SalesOrder, type SalesOrderItem } from '@/hooks/use-sales-orders';
 import { useToast } from '@/hooks/use-toast';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,6 @@ import {
     XCircle,
     ShoppingBag,
     DollarSign,
-    TrendingUp,
     Users,
     ChevronRight,
     Wand2,
@@ -43,6 +41,7 @@ import {
 import { format } from 'date-fns';
 import { getTrackingUrl } from '@/lib/tracking';
 import { QueryError } from '@/components/ui/query-error';
+import { logger } from '@/lib/logger';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
@@ -102,7 +101,7 @@ export default function PartnerOrders() {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error('Partner orders query error:', error);
+                logger.error('Partner orders query error:', error);
                 throw error;
             }
 
@@ -281,7 +280,7 @@ export default function PartnerOrders() {
 
 /* ── Order Detail / Edit Sheet ─────────────────────────────── */
 
-function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: () => void; onUpdated: () => void }) {
+function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; onClose: () => void; onUpdated: () => void }) {
     const updateOrder = useUpdateSalesOrder();
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -299,7 +298,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
         if (!order) return;
         setEditShipping(order.shipping_address || '');
         setEditNotes(order.notes || '');
-        setEditItems((order.sales_order_items || []).map((i: any) => ({
+        setEditItems((order.sales_order_items || []).map((i: SalesOrderItem) => ({
             id: i.id,
             peptide_name: i.peptides?.name || 'Unknown',
             quantity: i.quantity,
@@ -317,7 +316,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                 id: order.id,
                 shipping_address: editShipping || null,
                 notes: editNotes || null,
-            } as any);
+            });
 
             // Update individual item quantities
             for (const item of editItems) {
@@ -392,7 +391,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border">
                         <span className="text-xs text-muted-foreground">Order ID:</span>
                         <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyOrderId}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>
                             {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
                         </Button>
                     </div>
@@ -447,11 +446,11 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                                             <p className="text-xs text-muted-foreground">${item.unit_price.toFixed(2)} each</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQty(item.id, -1)}>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Decrease quantity of ${item.peptide_name}`} onClick={() => updateItemQty(item.id, -1)}>
                                                 <Minus className="h-3.5 w-3.5" />
                                             </Button>
                                             <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateItemQty(item.id, 1)}>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Increase quantity of ${item.peptide_name}`} onClick={() => updateItemQty(item.id, 1)}>
                                                 <Plus className="h-3.5 w-3.5" />
                                             </Button>
                                             <span className="w-16 text-right text-sm font-semibold">${(item.quantity * item.unit_price).toFixed(2)}</span>
@@ -464,7 +463,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                             </div>
                         ) : (
                             <div className="space-y-1.5">
-                                {items.map((i: any) => (
+                                {items.map((i: SalesOrderItem) => (
                                     <div key={i.id} className="flex justify-between text-sm p-2 rounded-lg bg-muted/20">
                                         <span>{i.peptides?.name || 'Unknown'} × {i.quantity}</span>
                                         <span className="font-medium">${(Number(i.unit_price) * i.quantity).toFixed(2)}</span>
@@ -485,10 +484,11 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     {/* Shipping Address — editable */}
                     {editing ? (
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold flex items-center gap-1.5">
+                            <label htmlFor="partner-order-shipping-address" className="text-sm font-semibold flex items-center gap-1.5">
                                 <MapPin className="h-3.5 w-3.5" /> Shipping Address
                             </label>
                             <Textarea
+                                id="partner-order-shipping-address"
                                 value={editShipping}
                                 onChange={e => setEditShipping(e.target.value)}
                                 rows={2}
@@ -507,10 +507,11 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: any; onClose: 
                     {/* Notes — editable */}
                     {editing ? (
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold flex items-center gap-1.5">
+                            <label htmlFor="partner-order-notes" className="text-sm font-semibold flex items-center gap-1.5">
                                 <FileText className="h-3.5 w-3.5" /> Notes
                             </label>
                             <Textarea
+                                id="partner-order-notes"
                                 value={editNotes}
                                 onChange={e => setEditNotes(e.target.value)}
                                 rows={2}

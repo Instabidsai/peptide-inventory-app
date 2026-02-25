@@ -25,7 +25,7 @@ if (sentryDsn) {
     if (errors.length > 20) errors.shift();
     origError.apply(console, args);
   };
-  (window as any).__recentConsoleErrors = errors;
+  (window as unknown as { __recentConsoleErrors: string[] }).__recentConsoleErrors = errors;
 })();
 
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────

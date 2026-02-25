@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Droplets, Plus, Trash2 } from 'lucide-react';
-import { MACRO_COLORS } from '@/lib/colors';
 
 interface WaterLog {
     id: string;

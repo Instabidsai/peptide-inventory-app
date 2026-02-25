@@ -33,11 +33,11 @@ export function ProtocolDetailSheet({
                     const { template, matched } = selectedProtocol;
                     const Icon = ICON_MAP[template.icon] || Package;
                     const catStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.healing;
-                    const bundlePrice = matched.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
-                    const uniqueMatched = [...new Map(matched.map((p: any) => [p.id, p])).values()] as any[];
+                    const bundlePrice = matched.reduce((sum, p) => sum + getClientPrice(p), 0);
+                    const uniqueMatched = [...new Map(matched.map(p => [p.id, p])).values()];
                     const qtyMap: Record<string, number> = {};
-                    matched.forEach((p: any) => { qtyMap[p.id] = (qtyMap[p.id] || 0) + 1; });
-                    const allInCart = uniqueMatched.length > 0 && uniqueMatched.every((p: any) => {
+                    matched.forEach(p => { qtyMap[p.id] = (qtyMap[p.id] || 0) + 1; });
+                    const allInCart = uniqueMatched.length > 0 && uniqueMatched.every(p => {
                         const inCart = cart.find(c => c.peptide_id === p.id);
                         return inCart && inCart.quantity >= (qtyMap[p.id] || 1);
                     });
@@ -63,7 +63,7 @@ export function ProtocolDetailSheet({
                             <div className="space-y-5 pb-8">
                                 <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.15em]">What's Included</p>
                                 <div className="space-y-3">
-                                    {uniqueMatched.map((p: any, idx: number) => {
+                                    {uniqueMatched.map((p, idx) => {
                                         const qty = qtyMap[p.id] || 1;
                                         const price = getClientPrice(p) * qty;
                                         const knowledge = lookupKnowledge(p.name);
@@ -129,7 +129,7 @@ export function ProtocolDetailSheet({
                                 {/* Total + Add All */}
                                 <div className="border-t border-white/[0.06] pt-5 space-y-4">
                                     {(() => {
-                                        const sheetRetail = matched.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
+                                        const sheetRetail = matched.reduce((sum, p) => sum + Number(p.retail_price || 0), 0);
                                         const sheetHasDiscount = bundlePrice < sheetRetail && sheetRetail > 0;
                                         const sheetPct = sheetHasDiscount ? Math.round((1 - bundlePrice / sheetRetail) * 100) : 0;
                                         const isCustomerSheet = !isPartner;
@@ -171,7 +171,7 @@ export function ProtocolDetailSheet({
                                             size="lg"
                                             className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
                                             onClick={() => {
-                                                matched.forEach((p: any) => addToCart(p));
+                                                matched.forEach(p => addToCart(p));
                                             }}
                                         >
                                             <Plus className="h-5 w-5 mr-2" />

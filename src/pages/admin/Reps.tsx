@@ -26,7 +26,19 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
-import { Pencil, UserPlus, Users, Eye, Loader2, Network, DollarSign, ShoppingCart, UserX, Link2, Copy, Check, QrCode } from 'lucide-react';
+import {
+    Pencil,
+    UserPlus,
+    Users,
+    Eye,
+    Loader2,
+    Network,
+    ShoppingCart,
+    UserX,
+    Link2,
+    Copy,
+    Check,
+} from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -646,7 +658,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <Link2 className="h-5 w-5" /> Partner Invite Links
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                        Each partner has a <strong>customer</strong> link. Only <strong>senior+</strong> partners can also recruit new partners.
+                        Each partner has a <strong>customer</strong> link. Only <strong>Senior</strong> partners can also recruit new partners.
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -657,7 +669,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                             {reps.map(rep => {
                                 const customerUrl = `${window.location.origin}/#/auth?ref=${rep.id}`;
                                 const partnerUrl = `${window.location.origin}/#/auth?ref=${rep.id}&role=partner`;
-                                const canRecruit = ['senior', 'director', 'executive'].includes(rep.partner_tier || '');
+                                const canRecruit = rep.partner_tier === 'senior';
                                 return (
                                     <div
                                         key={rep.id}
@@ -907,11 +919,9 @@ function EditRepDialog({
 function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
     // Tier → default commission rate and price multiplier
     const TIER_DEFAULTS: Record<string, { commission: number; multiplier: number; label: string }> = {
-        senior: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },
-        standard: { commission: 7.5, multiplier: 0.65, label: '35% off retail · 7.5% commission' },
-        associate: { commission: 7.5, multiplier: 0.75, label: '25% off retail · 7.5% commission' },
-        executive: { commission: 10, multiplier: 0.50, label: '50% off retail · 10% commission' },
-        referral: { commission: 0, multiplier: 0.50, label: '50% off retail · 0% commission (referral only)' },
+        senior: { commission: 10, multiplier: 2.0, label: '2x cost pricing · 10% commission · Can recruit' },
+        standard: { commission: 10, multiplier: 2.0, label: '2x cost pricing · 10% commission' },
+        referral: { commission: 0, multiplier: 2.0, label: '2x cost pricing · 0% commission (referral only)' },
     };
 
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
@@ -942,8 +952,6 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     <SelectContent>
                         <SelectItem value="senior">🥇 Senior Partner</SelectItem>
                         <SelectItem value="standard">🥈 Standard Partner</SelectItem>
-                        <SelectItem value="associate">🥉 Associate Partner</SelectItem>
-                        <SelectItem value="executive">⭐ Executive</SelectItem>
                         <SelectItem value="referral">🔗 Referral Partner</SelectItem>
                     </SelectContent>
                 </Select>
@@ -978,7 +986,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                 />
             </div>
             <p className="text-xs text-muted-foreground text-right">
-                {mult < 1 ? `${((1 - mult) * 100).toFixed(0)}% discount off retail` : 'No discount (retail price)'}
+                Partner pays {mult}x average cost per item
             </p>
 
             <div className="grid grid-cols-4 items-center gap-4">

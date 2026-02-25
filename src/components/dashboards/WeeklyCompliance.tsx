@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, subDays, startOfDay, endOfDay, isSameDay } from "date-fns";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { aggregateDailyLogs } from "@/utils/nutrition-utils";
 
 export function WeeklyCompliance() {

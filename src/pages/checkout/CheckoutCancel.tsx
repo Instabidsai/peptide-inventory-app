@@ -46,7 +46,7 @@ export default function CheckoutCancel() {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                     <span className="text-xs text-muted-foreground/60">Order ID:</span>
                     <code className="text-xs font-mono flex-1 truncate">{orderId}</code>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyOrderId}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>
                         {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
                     </Button>
                 </div>

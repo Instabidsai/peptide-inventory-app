@@ -6,11 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-    Dialog, DialogContent, DialogDescription, DialogFooter,
-    DialogHeader, DialogTitle, DialogTrigger
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Plus, Pencil, Trash2, Pill, ExternalLink, Image as ImageIcon } from "lucide-react";
+import {
+    Loader2,
+    Plus,
+    Pencil,
+    Trash2,
+    Pill,
+    ExternalLink,
+} from "lucide-react";
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger

@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/integrations/sb_client/client';
+import { logger } from '@/lib/logger';
 
 interface OrderWithItems {
     id: string;
@@ -45,7 +46,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
         .single();
 
     if (orderErr || !order) {
-        console.error('[order-profit] Failed to fetch order:', orderErr?.message);
+        logger.error('[order-profit] Failed to fetch order:', orderErr?.message);
         return;
     }
 
@@ -64,7 +65,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
 
         // Build weighted-average cost per peptide: SUM(cost × qty) / SUM(qty)
         const grouped: Record<string, { totalCost: number; totalQty: number }> = {};
-        lots?.forEach((l: any) => {
+        lots?.forEach((l: { peptide_id: string; cost_per_unit: number; quantity_received: number }) => {
             const cost = Number(l.cost_per_unit || 0);
             const qty = Number(l.quantity_received || 0);
             if (!grouped[l.peptide_id]) grouped[l.peptide_id] = { totalCost: 0, totalQty: 0 };
@@ -112,6 +113,6 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
         .eq('id', orderId);
 
     if (updateErr) {
-        console.error('[order-profit] Failed to update order:', updateErr.message);
+        logger.error('[order-profit] Failed to update order:', updateErr.message);
     }
 }

@@ -167,7 +167,7 @@ describe('Flow 3: Partner Dashboard Actions', () => {
   it('usePartnerDownline fetches downline via RPC', async () => {
     const downlineTree = [
       { id: 'rep-1', full_name: 'Sub Rep 1', partner_tier: 'standard', depth: 1 },
-      { id: 'rep-2', full_name: 'Sub Rep 2', partner_tier: 'associate', depth: 1 },
+      { id: 'rep-2', full_name: 'Sub Rep 2', partner_tier: 'standard', depth: 1 },
     ];
     setRpcResponse('get_partner_downline', downlineTree);
 

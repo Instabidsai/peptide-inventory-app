@@ -27,6 +27,7 @@ import { toast as sonnerToast } from "sonner";
 import { format } from "date-fns";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 import { calculateDoseUnits } from "@/utils/dose-utils";
+import { logger } from '@/lib/logger';
 
 export default function ClientRegimen() {
     const { data: contact, isLoading: profileLoading, isError: profileError, error: profileErrorObj } = useClientProfile();
@@ -144,7 +145,7 @@ export default function ClientRegimen() {
                 }
 
             } catch (error) {
-                console.error("Error loading regimen data:", error);
+                logger.error("Error loading regimen data:", error);
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -321,7 +322,7 @@ export default function ClientRegimen() {
 
                     return <SupplementStack items={supplementItems} />;
                 } catch (err) {
-                    console.error("Failed to render supplement stack", err);
+                    logger.error("Failed to render supplement stack", err);
                     return null;
                 }
             })()}

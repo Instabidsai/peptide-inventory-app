@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTenantDetail, useTenantAuditLog } from '@/hooks/use-tenant-detail';
 import { StatCard, BillingStatusBadge } from './vendor-shared';
 import {
@@ -59,12 +58,12 @@ export default function TenantDetail() {
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/vendor/tenants')}>
+                    <Button variant="ghost" size="icon" aria-label="Back to tenants" onClick={() => navigate('/vendor/tenants')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="flex items-center gap-3">
                         {tenant.config?.logo_url ? (
-                            <img src={tenant.config.logo_url} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                            <img src={tenant.config.logo_url} alt={tenant.config?.brand_name || tenant.org_name} className="h-12 w-12 rounded-lg object-cover" />
                         ) : (
                             <div className="h-12 w-12 rounded-lg flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: tenant.config?.primary_color || '#7c3aed' }}>
                                 {tenant.org_name.charAt(0).toUpperCase()}

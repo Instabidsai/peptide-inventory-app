@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/sb_client/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { calculateMealTotals, FoodItem } from '@/utils/nutrition-utils';
+import { FoodItem } from '@/utils/nutrition-utils';
 import { GlassCard } from "@/components/ui/glass-card";
 import confetti from "canvas-confetti";
 import { TodaysLogsList } from '@/components/dashboards/TodaysLogsList';
@@ -20,6 +19,7 @@ import { MacroBar } from "@/components/ui/MacroBar";
 import { MACRO_COLORS } from "@/lib/colors";
 import { BarcodeScanner } from "@/components/barcode/BarcodeScanner";
 import { getProductNutrition } from "@/services/openfoodfacts";
+import { logger } from '@/lib/logger';
 
 interface AnalysisResult {
     foods: FoodItem[];
@@ -74,7 +74,7 @@ export default function MacroTracker() {
             setResult(data);
             toast.success("Analysis complete!");
         } catch (error) {
-            console.error("Analysis failed:", error);
+            logger.error("Analysis failed:", error);
             toast.error("Failed to analyze food. Please try again.");
         } finally {
             setLoading(false);
@@ -288,7 +288,7 @@ export default function MacroTracker() {
 
             toast.success(`Found: ${foodItem.name}!`);
         } catch (error) {
-            console.error('Barcode scan error:', error);
+            logger.error('Barcode scan error:', error);
             toast.error("Failed to fetch product data. Try again.");
         } finally {
             setLoading(false);
@@ -334,7 +334,7 @@ export default function MacroTracker() {
             setResult(null);
             // navigate('/dashboard'); // Optional
         } catch (error) {
-            console.error("Error logging meal:", error);
+            logger.error("Error logging meal:", error);
             toast.error("Failed to log meal.");
         } finally {
             setLoggingMeal(false);

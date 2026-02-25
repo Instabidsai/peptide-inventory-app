@@ -8,9 +8,10 @@ import { Layers, Package, Plus, Check } from 'lucide-react';
 import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import type { CartItem, SelectedProtocol } from './types';
+import type { Peptide } from '@/hooks/use-peptides';
 
 interface ProtocolBundlesProps {
-    peptides: any[];
+    peptides: Peptide[];
     cart: CartItem[];
     isPartner: boolean;
     pricingMode: string;
@@ -53,11 +54,11 @@ export function ProtocolBundles({
                         const catStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.healing;
                         const matchedPeptides = template.peptideNames
                             .map(name => peptides.find(p => p.name?.toLowerCase().startsWith(name.toLowerCase())))
-                            .filter(Boolean) as any[];
-                        const uniqueMatched = [...new Map(matchedPeptides.map((p: any) => [p.id, p])).values()];
-                        const bundlePrice = matchedPeptides.reduce((sum: number, p: any) => sum + getClientPrice(p), 0);
+                            .filter((p): p is Peptide => !!p);
+                        const uniqueMatched = [...new Map(matchedPeptides.map(p => [p.id, p])).values()];
+                        const bundlePrice = matchedPeptides.reduce((sum, p) => sum + getClientPrice(p), 0);
                         const expectedQty: Record<string, number> = {};
-                        matchedPeptides.forEach((p: any) => { expectedQty[p.id] = (expectedQty[p.id] || 0) + 1; });
+                        matchedPeptides.forEach(p => { expectedQty[p.id] = (expectedQty[p.id] || 0) + 1; });
                         const allInCart = uniqueMatched.length > 0 && uniqueMatched.every(p => {
                             const inCart = cart.find(c => c.peptide_id === p.id);
                             return inCart && inCart.quantity >= (expectedQty[p.id] || 1);
@@ -93,7 +94,7 @@ export function ProtocolBundles({
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
-                                            {uniqueMatched.map((p: any) => (
+                                            {uniqueMatched.map((p) => (
                                                 <Badge key={p.id} variant="secondary" className="text-[10px] px-3 py-1 bg-white/[0.06] border border-white/[0.08] font-medium rounded-lg backdrop-blur-sm">
                                                     {expectedQty[p.id] > 1 ? `${expectedQty[p.id]}x ` : ''}{p.name}
                                                 </Badge>
@@ -102,7 +103,7 @@ export function ProtocolBundles({
                                         <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
                                             <div>
                                                 {(() => {
-                                                    const bundleRetail = matchedPeptides.reduce((sum: number, p: any) => sum + Number(p.retail_price || 0), 0);
+                                                    const bundleRetail = matchedPeptides.reduce((sum, p) => sum + Number(p.retail_price || 0), 0);
                                                     const bundleHasDiscount = bundlePrice < bundleRetail && bundleRetail > 0;
                                                     const bundleDiscountPct = bundleHasDiscount ? Math.round((1 - bundlePrice / bundleRetail) * 100) : 0;
                                                     const isCustomerBundle = !isPartner;
@@ -141,7 +142,7 @@ export function ProtocolBundles({
                                                     className="rounded-xl px-5 h-11 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 transition-all hover:scale-[1.02]"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        matchedPeptides.forEach((p: any) => addToCart(p));
+                                                        matchedPeptides.forEach(p => addToCart(p));
                                                     }}
                                                 >
                                                     <Plus className="h-4 w-4 mr-1.5" />

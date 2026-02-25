@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
     Dialog,
@@ -29,6 +28,7 @@ import { parseVialSize } from '@/lib/supply-calculations';
 import type { Protocol } from '@/types/regimen';
 import type { Peptide } from '@/hooks/use-peptides';
 import type { CalculationResult } from './types';
+import { logger } from '@/lib/logger';
 
 interface ContactDialogsProps {
     contactId: string;
@@ -220,7 +220,7 @@ export function ContactDialogs({
                 setTimeout(() => setIsAssignInventoryOpen(true), 300);
             }
         } catch (error) {
-            console.error("Failed to save regimen", error);
+            logger.error("Failed to save regimen", error);
         }
     };
 

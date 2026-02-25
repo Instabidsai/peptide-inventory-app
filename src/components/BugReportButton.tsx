@@ -67,6 +67,7 @@ export function BugReportButton() {
           size="icon"
           className="fixed bottom-4 right-4 z-50 h-10 w-10 rounded-full shadow-lg"
           title="Report a bug"
+          aria-label="Report a bug"
         >
           <Bug className="h-4 w-4" />
         </Button>

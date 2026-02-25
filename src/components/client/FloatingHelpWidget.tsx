@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Sparkles, MessageSquare, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { AIChatInterface } from '@/components/ai/AIChatInterface';
 import { ClientRequestModal } from '@/components/client/ClientRequestModal';
 

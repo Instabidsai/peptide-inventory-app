@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/ai-utils';
+import { logger } from '@/lib/logger';
 
 export type PartnerMessage = {
   id: string;
@@ -65,7 +66,7 @@ export function usePartnerAI() {
       }, 500);
     },
     onError: (error) => {
-      console.error('Partner AI chat error:', error);
+      logger.error('Partner AI chat error:', error);
       const friendly = friendlyError(error);
       setOptimisticMessages(prev => [
         ...prev.filter(m => m.role === 'user'),

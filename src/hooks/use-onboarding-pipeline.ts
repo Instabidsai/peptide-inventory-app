@@ -52,7 +52,7 @@ export function useOnboardingPipeline() {
             // Fetch counts for all orgs in a single RPC call (no N+1)
             const { data: counts } = await supabase.rpc('get_org_counts');
             const countMap = new Map(
-                (counts || []).map((c: any) => [c.org_id, c])
+                (counts || []).map((c: { org_id: string }) => [c.org_id, c])
             );
 
             const statuses = orgs.map((org) => {

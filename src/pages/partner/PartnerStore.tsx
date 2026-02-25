@@ -30,10 +30,9 @@ import {
 
 // Tier config for display
 const TIER_INFO: Record<string, { label: string; discount: string; color: string }> = {
-    senior: { label: '🥇 Senior Partner', discount: '50% off', color: 'text-amber-500' },
-    standard: { label: '🥈 Standard Partner', discount: '35% off', color: 'text-blue-500' },
-    associate: { label: '🥉 Associate Partner', discount: '25% off', color: 'text-green-500' },
-    executive: { label: '⭐ Executive', discount: '50% off', color: 'text-purple-500' },
+    senior: { label: '🥇 Senior Partner', discount: '2x cost', color: 'text-amber-500' },
+    standard: { label: '🥈 Standard Partner', discount: '2x cost', color: 'text-blue-500' },
+    referral: { label: '🔗 Referral Partner', discount: '2x cost', color: 'text-sky-500' },
 };
 
 interface CartItem {
@@ -507,8 +506,9 @@ export default function PartnerStore() {
 
                                     {/* Shipping */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Shipping Address</label>
+                                        <label htmlFor="partner-store-shipping-address" className="text-sm font-medium">Shipping Address</label>
                                         <Textarea
+                                            id="partner-store-shipping-address"
                                             placeholder="Enter shipping address..."
                                             value={shippingAddress}
                                             onChange={e => setShippingAddress(e.target.value)}
@@ -518,8 +518,9 @@ export default function PartnerStore() {
 
                                     {/* Notes */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Notes (optional)</label>
+                                        <label htmlFor="partner-store-notes" className="text-sm font-medium">Notes (optional)</label>
                                         <Input
+                                            id="partner-store-notes"
                                             placeholder="Any special instructions..."
                                             value={notes}
                                             onChange={e => setNotes(e.target.value)}
@@ -529,7 +530,7 @@ export default function PartnerStore() {
                                     {/* Payment Method Selection */}
                                     {!orderPlaced ? (
                                         <div className="space-y-3">
-                                            <label className="text-sm font-medium">Payment Method</label>
+                                            <span className="text-sm font-medium">Payment Method</span>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {([
                                                     { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },

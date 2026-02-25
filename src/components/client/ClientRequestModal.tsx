@@ -5,7 +5,7 @@ import * as z from "zod";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, Send, Pill } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { AudioRecorder } from "@/components/ui/AudioRecorder";
 
 import {
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { logger } from '@/lib/logger';
 import {
     Select,
     SelectContent,
@@ -138,7 +139,7 @@ export function ClientRequestModal({
                             url: publicUrl
                         });
                     } else {
-                        console.warn("Upload failed (Bucket likely missing):", uploadError);
+                        logger.warn("Upload failed (Bucket likely missing):", uploadError);
                     }
                 }
             }
@@ -167,7 +168,7 @@ export function ClientRequestModal({
 
             // Fallback: If Column Missing (Code 42703), retry without attachments
             if (error && error.code === '42703') {
-                console.warn("Column 'attachments' missing. Retrying without it.");
+                logger.warn("Column 'attachments' missing. Retrying without it.");
                 const retry = await supabase.from("client_requests").insert(basePayload);
                 error = retry.error;
                 if (!error) {
@@ -183,7 +184,7 @@ export function ClientRequestModal({
             onOpenChange(false);
             onSuccess?.();
         } catch (error) {
-            console.error("Error sending request:", error);
+            logger.error("Error sending request:", error);
             toast.error("Failed to send request. Please try again.");
         } finally {
             setIsSubmitting(false);

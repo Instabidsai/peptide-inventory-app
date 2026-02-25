@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/sb_client/client';
 import { getSubdomain } from '@/lib/subdomain';
+import { logger } from '@/lib/logger';
 
 /** Convert hex color to HSL string (e.g. "160 84% 39%") for Tailwind CSS variables */
 function hexToHsl(hex: string): string | null {
@@ -119,7 +120,7 @@ export function SubdomainTenantProvider({ children }: { children: ReactNode }) {
             .single()
             .then(({ data, error }) => {
                 if (error || !data) {
-                    console.warn(`[SubdomainTenant] No tenant found for subdomain: ${subdomain}`);
+                    logger.warn(`[SubdomainTenant] No tenant found for subdomain: ${subdomain}`);
                 } else {
                     setTenant(data as SubdomainTenant);
                     applyBranding(data as SubdomainTenant);

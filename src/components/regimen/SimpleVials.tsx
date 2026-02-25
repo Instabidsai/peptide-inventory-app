@@ -1,14 +1,26 @@
 import { useState, useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GlassCard } from '@/components/ui/glass-card';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
-    Droplets, ShoppingBag, Syringe, Check, Beaker,
-    ChevronDown, ChevronUp, Plus, Package, Sun, Sunset, Moon,
-    AlertTriangle, Pill, Info, CalendarClock, FlaskConical,
+    Droplets,
+    ShoppingBag,
+    Syringe,
+    Check,
+    Beaker,
+    ChevronDown,
+    ChevronUp,
+    Plus,
+    Package,
+    Sun,
+    Sunset,
+    Moon,
+    AlertTriangle,
+    Pill,
+    Info,
+    CalendarClock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVialActions } from '@/hooks/use-vial-actions';
@@ -270,7 +282,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
             {/* Dosing Tier Selector */}
             {tiers.length > 0 && (
                 <div className="space-y-2">
-                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Quick start — pick a protocol</label>
+                    <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Quick start — pick a protocol</span>
                     <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, 1fr)` }}>
                         {tiers.map(tier => {
                             const tierMg = tier.doseUnit === 'mcg' ? tier.doseAmount / 1000 : tier.doseAmount;
@@ -320,9 +332,10 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
 
             {/* Section 1: Dose */}
             <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Dose per injection</label>
+                <label htmlFor="regimen-dose" className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Dose per injection</label>
                 <div className="relative">
                     <Input
+                        id="regimen-dose"
                         type="number"
                         step="0.01"
                         min="0.01"
@@ -345,7 +358,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
 
             {/* Section 2: Frequency */}
             <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Schedule</label>
+                <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Schedule</span>
                 <div className="flex flex-wrap gap-1.5">
                     {FREQUENCY_OPTIONS.map(opt => (
                         <button
@@ -368,9 +381,10 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
             {/* Conditional frequency inputs */}
             {frequency === 'every_x_days' && (
                 <div className="space-y-2 animate-fade-in">
-                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Interval</label>
+                    <label htmlFor="regimen-interval" className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Interval</label>
                     <div className="relative">
                         <Input
+                            id="regimen-interval"
                             type="number"
                             min="1"
                             placeholder="5"
@@ -386,8 +400,9 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
             {frequency === 'x_on_y_off' && (
                 <div className="grid grid-cols-2 gap-3 animate-fade-in">
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Days on</label>
+                        <label htmlFor="regimen-days-on" className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Days on</label>
                         <Input
+                            id="regimen-days-on"
                             type="number"
                             min="1"
                             placeholder="5"
@@ -397,8 +412,9 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Days off</label>
+                        <label htmlFor="regimen-days-off" className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Days off</label>
                         <Input
+                            id="regimen-days-off"
                             type="number"
                             min="1"
                             placeholder="2"
@@ -412,7 +428,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
 
             {frequency === 'specific_days' && (
                 <div className="space-y-2 animate-fade-in">
-                    <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Which days?</label>
+                    <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Which days?</span>
                     <div className="grid grid-cols-7 gap-1.5">
                         {DAYS_OF_WEEK.map(day => (
                             <button
@@ -439,7 +455,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
 
                     {/* Section 3: Time of day */}
                     <div className="space-y-2 animate-fade-in">
-                        <label className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Time of day</label>
+                        <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Time of day</span>
                         <div className="grid grid-cols-3 gap-2">
                             {TIME_OF_DAY_OPTIONS.map(opt => {
                                 const Icon = TIME_ICONS[opt.value];

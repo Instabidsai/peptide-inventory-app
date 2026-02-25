@@ -36,9 +36,24 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, ClipboardList, Search, Filter, MoreHorizontal, Pencil, Trash2, PackageCheck, X, DollarSign, Download, Package, Clock, CheckCircle2 } from 'lucide-react';
+import {
+    Plus,
+    ClipboardList,
+    Search,
+    Filter,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    PackageCheck,
+    X,
+    DollarSign,
+    Download,
+    Clock,
+    CheckCircle2,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
+import { logger } from '@/lib/logger';
 
 const orderSchema = z.object({
     peptide_id: z.string().min(1, 'Peptide is required'),
@@ -185,7 +200,7 @@ export default function Orders() {
                 await deleteOrder.mutateAsync(orderToDelete);
                 setOrderToDelete(null);
             } catch (error) {
-                console.error("Failed to delete order:", error);
+                logger.error("Failed to delete order:", error);
                 // Toast is handled by hook onError, but catching prevents React crash
             }
         }
@@ -645,25 +660,27 @@ export default function Orders() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Amount ($)</label>
+                            <label htmlFor="payment-amount" className="text-sm font-medium">Amount ($)</label>
                             <Input
+                                id="payment-amount"
                                 type="number"
                                 value={paymentData.amount}
                                 onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Payment Date</label>
+                            <label htmlFor="payment-date" className="text-sm font-medium">Payment Date</label>
                             <Input
+                                id="payment-date"
                                 type="date"
                                 value={paymentData.date}
                                 onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Method</label>
+                            <label htmlFor="payment-method" className="text-sm font-medium">Method</label>
                             <Select value={paymentData.method} onValueChange={(v) => setPaymentData({ ...paymentData, method: v })}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger id="payment-method"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="credit_card">Credit Card</SelectItem>
                                     <SelectItem value="wire">Wire Transfer</SelectItem>
@@ -672,8 +689,9 @@ export default function Orders() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Note</label>
+                            <label htmlFor="payment-note" className="text-sm font-medium">Note</label>
                             <Input
+                                id="payment-note"
                                 value={paymentData.note}
                                 onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
                                 placeholder="Transaction ID, etc."

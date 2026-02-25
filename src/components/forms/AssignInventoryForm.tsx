@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select"; // Keeping Select for Payment Status
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { logger } from '@/lib/logger';
 
 export function AssignInventoryForm({
     contactId,
@@ -141,7 +142,7 @@ export function AssignInventoryForm({
             });
             onClose();
         } catch (error) {
-            console.error(error);
+            logger.error(error);
         }
     };
 

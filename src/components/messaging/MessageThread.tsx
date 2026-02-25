@@ -3,14 +3,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Loader2, Send, Paperclip, User, ShieldAlert } from "lucide-react";
+import {
+    Loader2,
+    Send,
+    User,
+    ShieldAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AudioRecorder } from "@/components/ui/AudioRecorder";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 // Types
 interface ReplyAttachment {
@@ -121,7 +127,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
             setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         },
         onError: (err) => {
-            console.error(err);
+            logger.error(err);
             toast.error("Failed to send message");
         }
     });

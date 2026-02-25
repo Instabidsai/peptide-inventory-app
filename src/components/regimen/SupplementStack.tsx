@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pill, ExternalLink, ShoppingBag, Info } from "lucide-react";
+import { Pill, ShoppingBag, Info } from "lucide-react";
 
 export interface SupplementItem {
     id: string;

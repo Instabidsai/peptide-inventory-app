@@ -15,7 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, Check, X, Search, ShoppingCart } from 'lucide-react';
+import {
+    ArrowLeft,
+    ArrowRight,
+    Check,
+    X,
+    Search,
+} from 'lucide-react';
 
 const movementTypes: { value: MovementType; label: string; description: string }[] = [
   { value: 'sale', label: 'Sale', description: 'Sell bottles to a customer' },

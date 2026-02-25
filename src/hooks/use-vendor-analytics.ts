@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllSubscriptions, useBillingEvents, calculateMRR } from './use-subscription';
 import { useTenants } from './use-tenants';

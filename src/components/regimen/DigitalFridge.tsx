@@ -3,7 +3,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Droplets, AlertTriangle, Syringe, Trash2, Folder, ChevronDown } from "lucide-react";
+import {
+    Plus,
+    Droplets,
+    AlertTriangle,
+    Syringe,
+    Trash2,
+    Folder,
+} from "lucide-react";
 import { ClientInventoryItem, Protocol } from "@/types/regimen";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format } from "date-fns";

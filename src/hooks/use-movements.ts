@@ -8,6 +8,7 @@ import { parseVialSize } from '@/lib/supply-calculations';
 import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 import type { BottleStatus } from './use-bottles';
+import { logger } from '@/lib/logger';
 
 export type MovementType = 'sale' | 'giveaway' | 'internal_use' | 'loss' | 'return';
 
@@ -293,7 +294,7 @@ export function useCreateMovement() {
           .in('id', bottleIds);
 
         if (error) {
-          console.error('Error fetching bottle details for inventory:', error);
+          logger.error('Error fetching bottle details for inventory:', error);
           // We don't throw blocking error here, but inventory creation might fail/skip
         } else {
           bottleDetails = (data || []) as BottleDetailRow[];
@@ -377,7 +378,7 @@ export function useCreateMovement() {
             .insert(inventoryEntries);
 
           if (inventoryError) {
-            console.error('Failed to populate client_inventory:', inventoryError);
+            logger.error('Failed to populate client_inventory:', inventoryError);
             toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but client inventory update failed.' });
           } else {
             // Auto-generate protocol if no protocol_item_ids were provided
@@ -409,7 +410,7 @@ export function useCreateMovement() {
                   }
                 }
               } catch (autoErr) {
-                console.error('Auto-protocol generation failed (non-blocking):', autoErr);
+                logger.error('Auto-protocol generation failed (non-blocking):', autoErr);
               }
             }
           }
@@ -455,7 +456,7 @@ export function useCreateMovement() {
               .single();
 
             if (soErr) {
-              console.error('Failed to create sales_order:', soErr);
+              logger.error('Failed to create sales_order:', soErr);
               toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but sales order creation failed.' });
             } else if (salesOrder) {
               // Delegate commission calculation to the revenue-based RPC
@@ -463,7 +464,7 @@ export function useCreateMovement() {
                 p_sale_id: salesOrder.id,
               });
               if (rpcErr) {
-                console.error('process_sale_commission RPC failed:', rpcErr);
+                logger.error('process_sale_commission RPC failed:', rpcErr);
               } else {
                 // Notify partners via SMS (fire and forget)
                 supabase.functions.invoke('notify-commission', { body: { sale_id: salesOrder.id } }).catch(() => {});
@@ -471,7 +472,7 @@ export function useCreateMovement() {
             }
           }
         } catch (commErr) {
-          console.error('Auto-commission failed (non-blocking):', commErr);
+          logger.error('Auto-commission failed (non-blocking):', commErr);
           toast({ variant: 'destructive', title: 'Warning', description: 'Movement recorded but commission processing failed.' });
         }
       }
@@ -480,14 +481,14 @@ export function useCreateMovement() {
 
       } catch (err) {
         // ROLLBACK: Revert bottle statuses and clean up movement data
-        console.error('Movement creation failed, attempting rollback:', err);
+        logger.error('Movement creation failed, attempting rollback:', err);
 
         if (bottleIds.length > 0) {
           await supabase
             .from('bottles')
             .update({ status: 'in_stock' })
             .in('id', bottleIds)
-            .then(({ error }) => error && console.error('Rollback bottles failed:', error));
+            .then(({ error }) => error && logger.error('Rollback bottles failed:', error));
         }
 
         if (movementId) {
@@ -495,19 +496,19 @@ export function useCreateMovement() {
             .from('client_inventory')
             .delete()
             .eq('movement_id', movementId)
-            .then(({ error }) => error && console.error('Rollback client_inventory failed:', error));
+            .then(({ error }) => error && logger.error('Rollback client_inventory failed:', error));
 
           await supabase
             .from('movement_items')
             .delete()
             .eq('movement_id', movementId)
-            .then(({ error }) => error && console.error('Rollback movement_items failed:', error));
+            .then(({ error }) => error && logger.error('Rollback movement_items failed:', error));
 
           await supabase
             .from('movements')
             .delete()
             .eq('id', movementId)
-            .then(({ error }) => error && console.error('Rollback movement failed:', error));
+            .then(({ error }) => error && logger.error('Rollback movement failed:', error));
         }
 
         throw err;
@@ -569,7 +570,7 @@ export function useDeleteMovement() {
         .delete()
         .eq('movement_id', id);
       if (invErr) {
-        console.error('Failed to cleanup client_inventory:', invErr);
+        logger.error('Failed to cleanup client_inventory:', invErr);
         toast({ variant: 'destructive', title: 'Warning', description: 'Movement deleted but client inventory cleanup failed.' });
       }
 
@@ -680,7 +681,7 @@ export function useDeleteMovement() {
               .eq('id', order.id);
           }
         } catch (commErr) {
-          console.error('Commission reversal error (non-blocking):', commErr);
+          logger.error('Commission reversal error (non-blocking):', commErr);
           toast({ variant: 'destructive', title: 'Warning', description: 'Movement deleted but commission reversal failed.' });
         }
       }

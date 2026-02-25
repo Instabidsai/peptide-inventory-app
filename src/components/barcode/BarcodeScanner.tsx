@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface BarcodeScannerProps {
     isOpen: boolean;
@@ -47,7 +48,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
             if (mountedRef.current) setIsScanning(true);
         } catch (error) {
-            console.error('Error starting scanner:', error);
+            logger.error('Error starting scanner:', error);
             if (mountedRef.current) {
                 toast.error('Failed to access camera. Please check permissions.');
                 onClose();
@@ -62,7 +63,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             await scanner.stop();
             scanner.clear();
         } catch (error) {
-            console.error('Error stopping scanner:', error);
+            logger.error('Error stopping scanner:', error);
         } finally {
             scannerRef.current = null;
             if (mountedRef.current) setIsScanning(false);
@@ -88,7 +89,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         // Ignore scan failures (they happen constantly as scanner processes frames)
         // Only log actual errors
         if (!error.includes('NotFoundException')) {
-            console.warn('Scan error:', error);
+            logger.warn('Scan error:', error);
         }
     };
 

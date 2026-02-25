@@ -1,10 +1,8 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Plus, ExternalLink, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
+import { Sparkles, ExternalLink } from 'lucide-react';
 
 export function SuggestedStack({ activePeptideIds, existingSupplementIds }: { activePeptideIds: string[], existingSupplementIds: string[] }) {
     const queryClient = useQueryClient();

@@ -519,7 +519,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                         <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
                             {/* Month nav */}
                             <div className="flex items-center justify-center gap-2 mb-3">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCurrentDate(prev => subMonths(prev, 1)); setSelectedDay(null); }}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Previous month" onClick={() => { setCurrentDate(prev => subMonths(prev, 1)); setSelectedDay(null); }}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
                                 <button
@@ -528,7 +528,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                                 >
                                     {format(currentDate, 'MMMM yyyy')}
                                 </button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCurrentDate(prev => addMonths(prev, 1)); setSelectedDay(null); }}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Next month" onClick={() => { setCurrentDate(prev => addMonths(prev, 1)); setSelectedDay(null); }}>
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>

@@ -7,18 +7,35 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, DollarSign, TrendingUp, Users, UserPlus, ShoppingCart } from 'lucide-react';
+import {
+    ArrowLeft,
+    Mail,
+    Calendar,
+    DollarSign,
+    TrendingUp,
+    Users,
+    UserPlus,
+    ShoppingCart,
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import DownlineVisualizer from './components/DownlineVisualizer'; // Corrected to default import
-import { usePartnerDownline, useCommissions, usePayCommission, PartnerNode } from '@/hooks/use-partner';
+import { usePartnerDownline, usePayCommission, PartnerNode } from '@/hooks/use-partner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { QueryError } from '@/components/ui/query-error';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { logger } from '@/lib/logger';
 
 // Referral Activity Card — shows total referrals, total spend, per-customer breakdown
 function ReferralActivityCard({ repId }: { repId: string }) {
@@ -593,7 +610,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 description: `$${appliedAmount.toFixed(2)} applied to outstanding balance.${remaining > 0 ? ` $${remaining.toFixed(2)} excess added to credit.` : ''}`
             });
         } catch (err) {
-            console.error('Apply to balance error:', err);
+            logger.error('Apply to balance error:', err);
             toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to apply commission to balance.', variant: 'destructive' });
         } finally {
             setApplyingId(null);

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChurnRisk, TenantHealth } from '@/hooks/use-vendor-analytics';
 import { StatCard, HealthBadge } from './vendor-shared';
-import { Activity, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function VendorHealth() {

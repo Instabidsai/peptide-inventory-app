@@ -1,5 +1,6 @@
 import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { PEPTIDE_CARD_DESCRIPTIONS } from './constants';
+import type { Peptide } from '@/hooks/use-peptides';
 
 export function getPeptideDescription(peptideName: string): string | null {
     // Check our curated short descriptions first (strip dosage for lookup)
@@ -25,7 +26,7 @@ export function canSeePeptide(peptide: { visible_to_user_ids?: string[] | null }
 }
 
 // Find protocol templates that include a given peptide, and return the other peptides in those stacks
-export function getRelatedStacks(peptideName: string, allPeptides: any[]): { templateName: string; category: string; icon: string; otherPeptides: string[] }[] {
+export function getRelatedStacks(peptideName: string, allPeptides: Peptide[]): { templateName: string; category: string; icon: string; otherPeptides: string[] }[] {
     const baseName = peptideName.replace(/\s+\d+mg(\/\d+mg)?$/i, '').toLowerCase();
     const stacks: { templateName: string; category: string; icon: string; otherPeptides: string[] }[] = [];
     for (const template of PROTOCOL_TEMPLATES) {
@@ -36,7 +37,7 @@ export function getRelatedStacks(peptideName: string, allPeptides: any[]): { tem
         const others = [...new Set(template.peptideNames.filter((_, i) => i !== matchIdx))];
         // Map template names back to display names from allPeptides
         const otherDisplayNames = others.map(n => {
-            const match = allPeptides?.find((p: any) => p.name?.toLowerCase().startsWith(n.toLowerCase()));
+            const match = allPeptides?.find(p => p.name?.toLowerCase().startsWith(n.toLowerCase()));
             return match?.name || n;
         });
         stacks.push({ templateName: template.name, category: template.category, icon: template.icon, otherPeptides: otherDisplayNames });

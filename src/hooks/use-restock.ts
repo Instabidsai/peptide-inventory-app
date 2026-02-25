@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { toast } from "@/hooks/use-toast";
+import { logger } from '@/lib/logger';
 
 export function useRestockInventory() {
     const queryClient = useQueryClient();
@@ -84,7 +85,7 @@ export function useRestockInventory() {
                             .eq('id', item.movement_id);
 
                         if (movementError) {
-                            console.error('Failed to update movement status:', movementError);
+                            logger.error('Failed to update movement status:', movementError);
                         }
                     }
                 }

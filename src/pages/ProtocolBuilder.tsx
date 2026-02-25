@@ -23,6 +23,7 @@ import {
     ExternalLink, Play, ShoppingCart, Syringe, TestTubes, Package, FolderOpen, Droplets,
     CalendarPlus,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -152,7 +153,7 @@ export default function ProtocolBuilder() {
                 }
             }
         } catch (e) {
-            console.error('Failed to configure inventory for calendar:', e);
+            logger.error('Failed to configure inventory for calendar:', e);
             // Non-blocking — protocol was still created successfully
         }
 

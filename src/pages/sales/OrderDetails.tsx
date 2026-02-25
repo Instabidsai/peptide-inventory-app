@@ -3,11 +3,35 @@ import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit,
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Truck, XCircle, CreditCard, DollarSign, Copy, FileDown, TrendingUp, Banknote, Printer, Package, CircleDot, MapPin, Wand2, Pencil, Save, X, Minus, Plus } from 'lucide-react';
+import {
+    CheckCircle,
+    Truck,
+    CreditCard,
+    DollarSign,
+    Copy,
+    FileDown,
+    TrendingUp,
+    Banknote,
+    Printer,
+    Package,
+    CircleDot,
+    MapPin,
+    Wand2,
+    Pencil,
+    Save,
+    X,
+    Minus,
+    Plus,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/sb_client/client';
@@ -449,8 +473,9 @@ export default function OrderDetails() {
                             {editing ? (
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="text-sm font-semibold mb-1 block">Notes</label>
+                                        <label htmlFor="order-detail-notes" className="text-sm font-semibold mb-1 block">Notes</label>
                                         <Textarea
+                                            id="order-detail-notes"
                                             value={editNotes}
                                             onChange={(e) => setEditNotes(e.target.value)}
                                             placeholder="Order notes..."
@@ -458,8 +483,9 @@ export default function OrderDetails() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-sm font-semibold mb-1 block">Shipping Address</label>
+                                        <label htmlFor="order-detail-shipping-address" className="text-sm font-semibold mb-1 block">Shipping Address</label>
                                         <Textarea
+                                            id="order-detail-shipping-address"
                                             value={editShippingAddress}
                                             onChange={(e) => setEditShippingAddress(e.target.value)}
                                             placeholder="Shipping address..."
@@ -486,7 +512,7 @@ export default function OrderDetails() {
                         <CardContent className="space-y-4">
                             {/* Payment Status */}
                             <div>
-                                <label className="text-sm font-semibold mb-1 block">Payment Status</label>
+                                <span className="text-sm font-semibold mb-1 block">Payment Status</span>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between">
@@ -513,7 +539,7 @@ export default function OrderDetails() {
 
                             {/* Order Status */}
                             <div>
-                                <label className="text-sm font-semibold mb-1 block">Order Status</label>
+                                <span className="text-sm font-semibold mb-1 block">Order Status</span>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between">

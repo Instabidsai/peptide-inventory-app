@@ -4,11 +4,25 @@ import { useClientProfile } from '@/hooks/use-client-profile';
 import { useProtocols } from '@/hooks/use-protocols';
 import { useHouseholdMembers } from '@/hooks/use-household';
 import { useInventoryOwnerId } from '@/hooks/use-inventory-owner';
-import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { ChevronRight, ChevronDown, Loader2, Sparkles, User, Users, Flame, Target, Calendar, X, Heart, MessageSquare, Bell, Scale, DollarSign } from "lucide-react";
+import {
+    ChevronRight,
+    ChevronDown,
+    Sparkles,
+    Users,
+    Flame,
+    Target,
+    Calendar,
+    X,
+    Heart,
+    MessageSquare,
+    Bell,
+    Scale,
+    DollarSign,
+} from "lucide-react";
 import { Progress } from '@/components/ui/progress';
 import { format, isSameDay, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';

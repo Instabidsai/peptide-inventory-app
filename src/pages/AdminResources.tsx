@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
-import { Plus, Pencil, Trash2, ExternalLink, Video, FileText, BookOpen, Folder, ChevronRight, ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
+import {
+    Plus,
+    Pencil,
+    Trash2,
+    Video,
+    FileText,
+    BookOpen,
+    Folder,
+    ChevronRight,
+    ArrowLeft,
+    RefreshCw,
+    Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +47,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { QueryError } from "@/components/ui/query-error";
+import { logger } from '@/lib/logger';
 
 type Resource = {
     id: string;
@@ -144,7 +157,7 @@ export default function AdminResources() {
             toast.success("Theme deleted");
         },
         onError: (error) => {
-            console.error("Delete theme error:", error);
+            logger.error("Delete theme error:", error);
             toast.error("Failed to delete theme: " + error.message);
         }
     });
@@ -171,7 +184,7 @@ export default function AdminResources() {
             toast.success(editingResource ? "Resource updated" : "Resource created");
         },
         onError: (error) => {
-            console.error("Upsert resource error:", error);
+            logger.error("Upsert resource error:", error);
             toast.error("Failed to save resource: " + error.message);
         }
     });
@@ -186,7 +199,7 @@ export default function AdminResources() {
             toast.success("Resource deleted");
         },
         onError: (error) => {
-            console.error("Delete resource error:", error);
+            logger.error("Delete resource error:", error);
             toast.error("Failed to delete resource: " + error.message);
         }
     });
@@ -294,7 +307,7 @@ export default function AdminResources() {
             }
         },
         onError: (error) => {
-            console.error("Sync themes error:", error);
+            logger.error("Sync themes error:", error);
             toast.error("Failed to sync themes");
         }
     });

@@ -34,7 +34,8 @@ export default function CustomEntityPage() {
     );
   }
 
-  const schemaFields = Array.isArray(entity.schema) ? entity.schema : (entity.schema?.fields || []);
+  const schemaFields: { name: string; label?: string; type?: string }[] =
+    Array.isArray(entity.schema) ? entity.schema : (entity.schema?.fields || []);
 
   const handleCreate = async () => {
     try {
@@ -73,7 +74,7 @@ export default function CustomEntityPage() {
               <DialogTitle>New {entity.name} Record</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              {schemaFields.map((f: any) => (
+              {schemaFields.map((f) => (
                 <div key={f.name} className="space-y-1.5">
                   <Label>{f.label || f.name}</Label>
                   <Input

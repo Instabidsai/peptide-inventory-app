@@ -14,7 +14,7 @@ import {
     Clock,
     Repeat,
 } from 'lucide-react';
-import { lookupKnowledge, PROTOCOL_TEMPLATES, type ProtocolTemplate } from '@/data/protocol-knowledge';
+import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import { getPeptideDescription, getRelatedStacks } from './utils';
@@ -135,11 +135,11 @@ export function ProductDetailSheet({
                                 {inCart ? (
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" onClick={() => updateQuantity(selectedPeptide.id, -1)}>
+                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" aria-label="Decrease quantity" onClick={() => updateQuantity(selectedPeptide.id, -1)}>
                                                 <Minus className="h-5 w-5" />
                                             </Button>
                                             <span className="text-3xl font-extrabold w-14 text-center">{inCart.quantity}</span>
-                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" onClick={() => updateQuantity(selectedPeptide.id, 1)}>
+                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" aria-label="Increase quantity" onClick={() => updateQuantity(selectedPeptide.id, 1)}>
                                                 <Plus className="h-5 w-5" />
                                             </Button>
                                         </div>

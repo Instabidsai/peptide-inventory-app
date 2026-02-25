@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { CardContent } from '@/components/ui/card';
 import { DAYS_OF_WEEK, isDoseDay, type ClientInventoryItem } from '@/types/regimen';
@@ -8,7 +9,7 @@ interface WeekStripProps {
     inventory: ClientInventoryItem[];
 }
 
-export function WeekStrip({ inventory }: WeekStripProps) {
+function WeekStripBase({ inventory }: WeekStripProps) {
     const now = new Date();
     const todayAbbr = format(now, 'EEE');
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -84,3 +85,5 @@ export function WeekStrip({ inventory }: WeekStripProps) {
         </GlassCard>
     );
 }
+
+export const WeekStrip = memo(WeekStripBase);

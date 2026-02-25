@@ -247,7 +247,7 @@ export default function ContactDetails() {
                     <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
                         {clientOrders?.map(order => {
                             const peptideNames = (order.sales_order_items || [])
-                                .map((item: any) => item.peptides?.name)
+                                .map((item: { peptides?: { name: string } | null }) => item.peptides?.name)
                                 .filter(Boolean);
                             const isSelected = selectedOrderIds.includes(order.id);
                             return (

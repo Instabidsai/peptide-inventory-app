@@ -3,7 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Plus, Clock, CheckCircle2, XCircle, Archive, ShoppingBag, HeartPulse, Trash2 } from "lucide-react";
+import {
+    MessageSquare,
+    Plus,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    Archive,
+    ShoppingBag,
+    HeartPulse,
+    Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
@@ -25,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 import { MessageThread } from "@/components/messaging/MessageThread";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { logger } from '@/lib/logger';
 
 export default function ClientMessages() {
     const { user } = useAuth();
@@ -87,7 +98,7 @@ export default function ClientMessages() {
             refetch();
         } catch (error) {
             toast.error("Failed to delete message");
-            console.error(error);
+            logger.error(error);
         } finally {
             setDeleteId(null);
         }

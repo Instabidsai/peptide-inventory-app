@@ -97,7 +97,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" role="presentation" aria-hidden="true" onClick={onClose} />
 
             {/* Panel */}
             <div className="relative w-full max-w-sm bg-card/95 backdrop-blur-xl border-l border-white/[0.06] shadow-overlay animate-in slide-in-from-right duration-200">

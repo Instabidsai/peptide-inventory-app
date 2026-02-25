@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
+import { logger } from '@/lib/logger';
 
 type AppRole = 'admin' | 'staff' | 'fulfillment' | 'viewer' | 'client' | 'customer' | 'sales_rep' | 'super_admin';
 
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileError) {
         const msg = `Failed to load user profile: ${profileError.message}`;
-        console.error('AuthProvider:', msg);
+        logger.error('AuthProvider:', msg);
         setAuthError(msg);
         setProfile(null);
         setUserRole(null);
@@ -138,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (roleError) {
           const msg = `Failed to load user role: ${roleError.message}`;
-          console.error('AuthProvider:', msg);
+          logger.error('AuthProvider:', msg);
           setAuthError(msg);
           setUserRole(null);
         } else {
@@ -154,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (orgError) {
           const msg = `Failed to load organization: ${orgError.message}`;
-          console.error('AuthProvider:', msg);
+          logger.error('AuthProvider:', msg);
           setAuthError(msg);
           setOrganization(null);
         } else {
@@ -174,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error loading user data';
-      console.error('AuthProvider: Unexpected error in fetchUserData:', msg);
+      logger.error('AuthProvider: Unexpected error in fetchUserData:', msg);
       setAuthError(msg);
       setProfile(null);
       setUserRole(null);
@@ -215,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session: existingSession }, error }) => {
       if (!mounted) return;
-      if (error) console.error("AuthProvider: GetSession Error", error);
+      if (error) logger.error("AuthProvider: GetSession Error", error);
 
       // If no existing session, check for intercepted OAuth tokens
       // (see main.tsx OAuth Hash Interceptor — stashed before HashRouter renders)
@@ -238,13 +239,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(restored.session);
             setUser(restored.session.user);
             fetchUserData(restored.session.user.id)
-              .catch(e => console.error("AuthProvider: OAuth User Data Fetch Failed", e))
+              .catch(e => logger.error("AuthProvider: OAuth User Data Fetch Failed", e))
               .finally(() => { if (mounted) setLoading(false); });
             return;
           }
 
           if (setErr) {
-            console.error("AuthProvider: Failed to restore OAuth session", setErr);
+            logger.error("AuthProvider: Failed to restore OAuth session", setErr);
           }
         }
       }
@@ -254,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (existingSession?.user) {
         fetchUserData(existingSession.user.id)
-          .catch(e => console.error("AuthProvider: User Data Fetch Failed", e))
+          .catch(e => logger.error("AuthProvider: User Data Fetch Failed", e))
           .finally(() => {
             if (mounted) setLoading(false);
           });
@@ -301,7 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
       if (profileError) {
-        console.error('Error creating profile:', profileError);
+        logger.error('Error creating profile:', profileError);
       }
     }
 

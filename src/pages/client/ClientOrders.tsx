@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -17,7 +17,6 @@ import {
     Truck,
     XCircle,
     ShoppingBag,
-    Loader2,
     RotateCcw,
 } from 'lucide-react';
 import { format } from 'date-fns';

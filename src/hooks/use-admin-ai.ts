@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/ai-utils';
+import { logger } from '@/lib/logger';
 
 export type AdminMessage = {
   id: string;
@@ -87,7 +88,7 @@ export function useAdminAI() {
       }, 500);
     },
     onError: (error) => {
-      console.error('Admin AI chat error:', error);
+      logger.error('Admin AI chat error:', error);
       const friendly = friendlyError(error);
       setOptimisticMessages(prev => [
         ...prev.filter(m => m.role === 'user'),

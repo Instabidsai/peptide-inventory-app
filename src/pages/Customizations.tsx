@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useCustomFields } from '@/hooks/use-custom-fields';
 import { useCustomEntities } from '@/hooks/use-custom-entities';
-import { useCustomDashboard } from '@/hooks/use-custom-dashboard';
 import { useAutomations, useToggleAutomation, useDeleteAutomation } from '@/hooks/use-automations';
 import { AiBuilderChat } from '@/components/custom/AiBuilderChat';
 import { CustomDashboard } from '@/components/custom/CustomDashboard';

@@ -12,7 +12,27 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, User, Building2, Users, Copy, Check, Calendar, Palette, Key, Eye, EyeOff, Save, Link2, Unlink, ExternalLink, Truck, Globe, Wand2, RefreshCw, PackageSearch } from 'lucide-react';
+import {
+    Loader2,
+    User,
+    Building2,
+    Users,
+    Copy,
+    Check,
+    Calendar,
+    Palette,
+    Key,
+    Eye,
+    EyeOff,
+    Save,
+    Link2,
+    ExternalLink,
+    Truck,
+    Globe,
+    Wand2,
+    RefreshCw,
+    PackageSearch,
+} from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -267,7 +287,7 @@ function OAuthConnectionsSection() {
                     disabled={connectService.isPending}
                     onClick={() => {
                       connectService.mutate(svc.id, {
-                        onError: (err: any) => {
+                        onError: (err: Error) => {
                           toast({ title: 'Connection failed', description: err.message, variant: 'destructive' });
                         },
                       });
@@ -518,6 +538,18 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
 }
 
 // ─── Scraped Peptides Review Section ───
+interface ScrapedPeptide {
+  id: string;
+  org_id: string;
+  name: string;
+  price: number | null;
+  description: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  imported_peptide_id: string | null;
+  source_url: string | null;
+  created_at: string;
+}
+
 function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -544,7 +576,7 @@ function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
   if (isLoading) return <Skeleton className="h-32 w-full" />;
   if (!scraped?.length) return null;
 
-  const handleImport = async (item: any) => {
+  const handleImport = async (item: ScrapedPeptide) => {
     setImporting(item.id);
     try {
       // Create peptide from scraped data

@@ -98,6 +98,7 @@ describe('useSubdomainTenant', () => {
 
         expect(result.current.tenant).toBeNull();
         expect(consoleWarn).toHaveBeenCalledWith(
+            '[app]',
             expect.stringContaining('No tenant found for subdomain: badstore')
         );
 

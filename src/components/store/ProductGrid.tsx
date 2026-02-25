@@ -9,10 +9,11 @@ import { Package, Plus, Minus, Search, Dna } from 'lucide-react';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
 import { getPeptideDescription } from './utils';
 import type { CartItem } from './types';
+import type { Peptide } from '@/hooks/use-peptides';
 
 interface ProductGridProps {
-    peptides: any[] | undefined;
-    filteredPeptides: any[] | undefined;
+    peptides: Peptide[] | undefined;
+    filteredPeptides: Peptide[] | undefined;
     isLoading: boolean;
     isError: boolean;
     searchQuery: string;
@@ -22,7 +23,7 @@ interface ProductGridProps {
     getClientPrice: (peptide: { id: string; retail_price?: number | null }) => number;
     addToCart: (peptide: { id: string; name: string; retail_price?: number | null }) => void;
     updateQuantity: (peptideId: string, delta: number) => void;
-    onSelectPeptide: (peptide: any) => void;
+    onSelectPeptide: (peptide: Peptide) => void;
 }
 
 export function ProductGrid({

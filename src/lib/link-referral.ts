@@ -4,9 +4,9 @@ import { supabase } from '@/integrations/sb_client/client';
  *  NOTE: The actual pricing is set by the link_referral RPC
  *  (cost_multiplier mode, markup=2). These are display-only defaults. */
 export const REFERRAL_PARTNER_DEFAULTS = {
-  partner_tier: 'associate' as const,
-  commission_rate: 0.075,
-  price_multiplier: 1.0,
+  partner_tier: 'standard' as const,
+  commission_rate: 0.10,
+  price_multiplier: 2.0,
   pricing_mode: 'cost_multiplier' as const,
   cost_plus_markup: 2,
 };

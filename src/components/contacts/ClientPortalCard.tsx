@@ -15,6 +15,7 @@ import { Loader2, RefreshCcw } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { useUpdateContact, type Contact } from '@/hooks/use-contacts';
 import { toast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface ClientPortalCardProps {
     contact: Contact;
@@ -65,7 +66,7 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
             }
 
         } catch (err) {
-            console.error('Invite failed:', err);
+            logger.error('Invite failed:', err);
             const errMsg = err instanceof Error ? err.message : String(err);
             if (errMsg?.includes('FunctionsFetchError') || errMsg?.includes('Failed to send request')) {
                 toast({

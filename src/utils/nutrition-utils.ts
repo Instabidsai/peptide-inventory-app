@@ -1,5 +1,5 @@
 
-import { startOfDay, endOfDay, subDays, format } from 'date-fns';
+import { subDays, format } from 'date-fns';
 
 export interface FoodItem {
     name: string;

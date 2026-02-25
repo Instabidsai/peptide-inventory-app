@@ -7,6 +7,7 @@ import { recalculateOrderProfit } from '@/lib/order-profit';
 import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import { parseVialSize } from '@/lib/supply-calculations';
 import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
+import { logger } from '@/lib/logger';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded' | 'commission_offset';
@@ -327,7 +328,7 @@ export function useCreateSalesOrder() {
                         .from('commissions')
                         .insert(commEntries);
                     if (commError) {
-                        console.error("Manual commission insert failed:", commError);
+                        logger.error("Manual commission insert failed:", commError);
                         toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
                     } else {
                         // Notify partners via SMS (fire and forget)
@@ -337,7 +338,7 @@ export function useCreateSalesOrder() {
                     // Auto commission via RPC (existing behavior)
                     const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
                     if (rpcError) {
-                        console.error("Commission processing failed:", rpcError);
+                        logger.error("Commission processing failed:", rpcError);
                         toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
                     } else {
                         // Notify partners via SMS (fire and forget)
@@ -411,7 +412,7 @@ export function useCreateSalesOrder() {
                 fulfilled = true;
             } catch (fulfillErr) {
                 // If fulfillment fails (e.g. insufficient stock), order stays as submitted
-                console.warn('Auto-fulfillment failed:', fulfillErr);
+                logger.warn('Auto-fulfillment failed:', fulfillErr);
                 toast({
                     title: "Order created — fulfillment pending",
                     description: fulfillErr instanceof Error ? fulfillErr.message : "Insufficient stock. Order saved as 'submitted' for manual fulfillment.",
@@ -520,7 +521,7 @@ export function useUpdateSalesOrder() {
                 if (orderCheck && (orderCheck.commission_amount ?? 0) > 0) {
                     const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
                     if (rpcError) {
-                        console.error("Commission processing failed:", rpcError);
+                        logger.error("Commission processing failed:", rpcError);
                         toast({ title: "Warning", description: "Order updated but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
                     }
                 }
@@ -558,7 +559,7 @@ export function useUpdateSalesOrder() {
                         });
                     }
                 } catch (notifErr) {
-                    console.error('Failed to create delivery notification:', notifErr);
+                    logger.error('Failed to create delivery notification:', notifErr);
                 }
             }
         },
@@ -723,10 +724,10 @@ export function useFulfillOrder() {
                         .insert(inventoryEntries);
 
                     if (invError) {
-                        console.error('Failed to populate client_inventory:', invError);
+                        logger.error('Failed to populate client_inventory:', invError);
                     }
                 } catch (autoErr) {
-                    console.error('Auto-protocol generation failed (non-blocking):', autoErr);
+                    logger.error('Auto-protocol generation failed (non-blocking):', autoErr);
                 }
             }
 
@@ -735,7 +736,7 @@ export function useFulfillOrder() {
             if ((order.commission_amount ?? 0) > 0) {
                 const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
                 if (rpcError) {
-                    console.error("Commission processing on fulfill failed:", rpcError);
+                    logger.error("Commission processing on fulfill failed:", rpcError);
                     toast({ title: "Warning", description: "Order fulfilled but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
                 } else {
                     // Notify partners via SMS (fire and forget)
@@ -748,14 +749,14 @@ export function useFulfillOrder() {
 
             } catch (err) {
                 // ROLLBACK: Revert bottle statuses and clean up movement data
-                console.error('Fulfillment failed, attempting rollback:', err);
+                logger.error('Fulfillment failed, attempting rollback:', err);
 
                 if (soldBottleIds.length > 0) {
                     await supabase
                         .from('bottles')
                         .update({ status: 'in_stock' })
                         .in('id', soldBottleIds)
-                        .then(({ error }) => error && console.error('Rollback bottles failed:', error));
+                        .then(({ error }) => error && logger.error('Rollback bottles failed:', error));
                 }
 
                 if (movementId) {
@@ -765,19 +766,19 @@ export function useFulfillOrder() {
                         .from('movement_items')
                         .delete()
                         .eq('movement_id', movementId)
-                        .then(({ error }) => error && console.error('Rollback movement_items failed:', error));
+                        .then(({ error }) => error && logger.error('Rollback movement_items failed:', error));
 
                     await supabase
                         .from('client_inventory')
                         .delete()
                         .eq('movement_id', movementId)
-                        .then(({ error }) => error && console.error('Rollback client_inventory failed:', error));
+                        .then(({ error }) => error && logger.error('Rollback client_inventory failed:', error));
 
                     await supabase
                         .from('movements')
                         .delete()
                         .eq('id', movementId)
-                        .then(({ error }) => error && console.error('Rollback movement failed:', error));
+                        .then(({ error }) => error && logger.error('Rollback movement failed:', error));
                 }
 
                 // Revert order status back (only if we changed it)
@@ -785,7 +786,7 @@ export function useFulfillOrder() {
                     .from('sales_orders')
                     .update({ status: order.status })
                     .eq('id', orderId)
-                    .then(({ error }) => error && console.error('Rollback order status failed:', error));
+                    .then(({ error }) => error && logger.error('Rollback order status failed:', error));
 
                 throw err;
             }
@@ -936,7 +937,7 @@ export function useCreateShippingLabel() {
                     });
                 }
             } catch (notifErr) {
-                console.error('Failed to create shipping notification:', notifErr);
+                logger.error('Failed to create shipping notification:', notifErr);
                 // Non-blocking — don't fail the label creation
             }
         },
@@ -1033,7 +1034,7 @@ export function useBuyShippingLabel() {
                     });
                 }
             } catch (notifErr) {
-                console.error('Failed to create shipping notification:', notifErr);
+                logger.error('Failed to create shipping notification:', notifErr);
             }
         },
         onError: (error: Error) => {

@@ -1,9 +1,13 @@
 
 import React from 'react';
 import { PartnerNode } from '@/hooks/use-partner';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, User, Network, Users, TrendingUp } from 'lucide-react';
+import {
+    ChevronRight,
+    ChevronDown,
+    User,
+    Network,
+    Users,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -14,16 +18,6 @@ const tierColors: Record<string, { bg: string; text: string; border: string }> =
         bg: 'bg-amber-900/20',
         text: 'text-amber-400',
         border: 'border-amber-500/40',
-    },
-    director: {
-        bg: 'bg-purple-900/20',
-        text: 'text-purple-400',
-        border: 'border-purple-500/40',
-    },
-    executive: {
-        bg: 'bg-rose-900/20',
-        text: 'text-rose-400',
-        border: 'border-rose-500/40',
     },
     referral: {
         bg: 'bg-sky-900/20',

@@ -77,7 +77,7 @@ export function ClientLayout() {
             </a>
             {/* Top Bar */}
             <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-primary/10 bg-background/40 backdrop-blur-2xl px-4 justify-between shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
-                <div className="flex items-center gap-2.5 relative group cursor-pointer" onClick={() => navigate('/dashboard')}>
+                <div className="flex items-center gap-2.5 relative group cursor-pointer" role="button" tabIndex={0} onClick={() => navigate('/dashboard')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/dashboard'); } }}>
                     <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
                     <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] overflow-hidden flex items-center justify-center">
                         <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain group-hover:scale-110 transition-transform duration-500" />

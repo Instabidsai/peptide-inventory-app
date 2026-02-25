@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/sb_client/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 export default function Join() {
     const [searchParams] = useSearchParams();
@@ -31,7 +32,7 @@ export default function Join() {
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong. Please try again or contact support.");
-            console.error("Join token exchange error:", err);
+            logger.error("Join token exchange error:", err);
         } finally {
             setIsLoading(false);
         }

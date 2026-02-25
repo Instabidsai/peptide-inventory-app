@@ -31,7 +31,7 @@ export function AiBuilderChat() {
         body: { message, history },
       });
       if (error) throw error;
-      return data as { reply: string; tool_calls?: any[] };
+      return data as { reply: string; tool_calls?: { name: string; arguments: Record<string, unknown> }[] };
     },
     onSuccess: (data) => {
       setMessages(prev => [
@@ -149,7 +149,7 @@ export function AiBuilderChat() {
             disabled={sendMutation.isPending}
             className="flex-1"
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || sendMutation.isPending}>
+          <Button type="submit" size="icon" aria-label="Send message" disabled={!input.trim() || sendMutation.isPending}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

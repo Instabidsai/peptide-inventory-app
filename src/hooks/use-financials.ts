@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 // Query result row types for type safety
 interface SaleRow { id: string; amount_paid: number }
@@ -74,31 +75,31 @@ export function useFinancialMetrics() {
 
             // Log but don't throw on individual failures
             if (valuationResult.error) {
-                console.warn("Valuation RPC failed:", valuationResult.error);
+                logger.warn("Valuation RPC failed:", valuationResult.error);
                 errors.push('inventory_valuation');
             }
             if (salesResult.error) {
-                console.warn("Sales query failed:", salesResult.error);
+                logger.warn("Sales query failed:", salesResult.error);
                 errors.push('sales');
             }
             if (overheadResult.error) {
-                console.warn("Overhead query failed:", overheadResult.error);
+                logger.warn("Overhead query failed:", overheadResult.error);
                 errors.push('overhead');
             }
             if (expensesResult.error) {
-                console.warn("Expenses query failed:", expensesResult.error);
+                logger.warn("Expenses query failed:", expensesResult.error);
                 errors.push('expenses');
             }
             if (commissionsResult.error) {
-                console.warn('Commission query failed:', commissionsResult.error);
+                logger.warn('Commission query failed:', commissionsResult.error);
                 errors.push('commissions');
             }
             if (orderAggResult.error) {
-                console.warn("Order aggregates failed:", orderAggResult.error);
+                logger.warn("Order aggregates failed:", orderAggResult.error);
                 errors.push('order_aggregates');
             }
             if (commOffsetResult.error) {
-                console.warn("Commission offset query failed:", commOffsetResult.error);
+                logger.warn("Commission offset query failed:", commOffsetResult.error);
                 errors.push('commission_offset');
             }
 
@@ -120,7 +121,7 @@ export function useFinancialMetrics() {
                     .in('movement_id', movementIds);
 
                 if (itemsError) {
-                    console.warn("Movement items query failed:", itemsError);
+                    logger.warn("Movement items query failed:", itemsError);
                     return 0;
                 }
 
@@ -133,7 +134,7 @@ export function useFinancialMetrics() {
                     .select('id, lot_id')
                     .in('id', bottleIds);
                 if (bottlesError) {
-                    console.warn("Bottles query failed:", bottlesError);
+                    logger.warn("Bottles query failed:", bottlesError);
                     return 0;
                 }
 
@@ -145,7 +146,7 @@ export function useFinancialMetrics() {
                     .select('id, cost_per_unit')
                     .in('id', lotIds);
                 if (lotsError) {
-                    console.warn("Lots query failed:", lotsError);
+                    logger.warn("Lots query failed:", lotsError);
                     return 0;
                 }
 

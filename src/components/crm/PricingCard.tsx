@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,7 @@ interface PricingCardProps {
   ctaLabel?: string;
 }
 
-export function PricingCard({
+function PricingCardBase({
   displayName,
   priceMonthly,
   priceYearly,
@@ -134,3 +135,5 @@ export function PricingCard({
     </div>
   );
 }
+
+export const PricingCard = memo(PricingCardBase);

@@ -5,10 +5,9 @@ export type { PartnerNode, DownlineClient };
 
 // Tier display config
 export const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
-    senior: { label: 'Senior Partner', discount: '70% off retail', emoji: '\u{1F947}' },
-    standard: { label: 'Standard Partner', discount: '35% off retail', emoji: '\u{1F948}' },
-    associate: { label: 'Associate Partner', discount: '25% off retail', emoji: '\u{1F949}' },
-    executive: { label: 'Executive', discount: '50% off retail', emoji: '\u2B50' },
+    senior: { label: 'Senior Partner', discount: '2x cost', emoji: '\u{1F947}' },
+    standard: { label: 'Standard Partner', discount: '2x cost', emoji: '\u{1F948}' },
+    referral: { label: 'Referral Partner', discount: '2x cost', emoji: '\u{1F517}' },
 };
 
 export type SheetView = 'balance' | 'commissions' | 'owed' | 'earnings' | 'add-person' | null;

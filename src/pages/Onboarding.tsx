@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, RefreshCw, LogOut, FlaskConical, Building2, ArrowRight } from 'lucide-react';
+import {
+    Loader2,
+    RefreshCw,
+    LogOut,
+    FlaskConical,
+    Building2,
+} from 'lucide-react';
 import { linkReferral, consumeSessionReferral, storeSessionReferral } from '@/lib/link-referral';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { User } from 'lucide-react';
 import { TIER_INFO, type PartnerNode, type DownlineClient } from './types';
@@ -11,7 +11,7 @@ interface NetworkTreeProps {
     clients: DownlineClient[];
 }
 
-export function NetworkTree({ rootName, rootTier, rootProfileId, partners, clients }: NetworkTreeProps) {
+function NetworkTreeBase({ rootName, rootTier, rootProfileId, partners, clients }: NetworkTreeProps) {
     // Exclude contacts who are also partners in the downline
     const partnerIds = new Set(partners.map(p => p.id));
     const partnerNames = new Set(partners.map(p => p.full_name?.toLowerCase()).filter(Boolean));
@@ -134,3 +134,5 @@ export function NetworkTree({ rootName, rootTier, rootProfileId, partners, clien
         </div>
     );
 }
+
+export const NetworkTree = memo(NetworkTreeBase);

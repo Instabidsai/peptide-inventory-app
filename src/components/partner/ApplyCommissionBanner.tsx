@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRightLeft, CheckCircle2, Loader2 } from 'lucide-react';
@@ -9,7 +10,7 @@ interface ApplyCommissionBannerProps {
     onApply: () => void;
 }
 
-export function ApplyCommissionBanner({ availableAmount, totalOwed, isPending, onApply }: ApplyCommissionBannerProps) {
+function ApplyCommissionBannerBase({ availableAmount, totalOwed, isPending, onApply }: ApplyCommissionBannerProps) {
     if (availableAmount <= 0 || totalOwed <= 0) return null;
 
     return (
@@ -34,3 +35,5 @@ export function ApplyCommissionBanner({ availableAmount, totalOwed, isPending, o
         </Card>
     );
 }
+
+export const ApplyCommissionBanner = memo(ApplyCommissionBannerBase);

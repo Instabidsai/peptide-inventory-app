@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { useTenants, useProvisionTenant } from '@/hooks/use-tenants';
 import { useAllSubscriptions, calculateMRR } from '@/hooks/use-subscription';
-import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from './vendor-shared';
 import {
     Building2,
@@ -21,7 +20,6 @@ import {
     ShoppingCart,
     CreditCard,
     DollarSign,
-    TrendingUp,
     ArrowRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -278,7 +276,7 @@ export default function VendorDashboard() {
                                 >
                                     <div className="flex items-center gap-3">
                                         {t.logo_url ? (
-                                            <img src={t.logo_url} alt="" className="h-8 w-8 rounded object-cover" />
+                                            <img src={t.logo_url} alt={t.brand_name || t.org_name} className="h-8 w-8 rounded object-cover" />
                                         ) : (
                                             <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: t.primary_color }}>
                                                 {t.org_name.charAt(0).toUpperCase()}

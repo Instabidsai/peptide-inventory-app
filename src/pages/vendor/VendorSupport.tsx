@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAllPartnerSuggestions, useUpdateSuggestionStatus, useAllClientRequests, useAllProtocolFeedback } from '@/hooks/use-vendor-support';
@@ -51,7 +50,7 @@ export default function VendorSupport() {
             { id, status, admin_notes: notesMap[id] },
             {
                 onSuccess: () => toast({ title: 'Updated', description: `Status set to ${status}` }),
-                onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+                onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
             }
         );
     };

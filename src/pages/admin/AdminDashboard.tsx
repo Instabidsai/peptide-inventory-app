@@ -34,7 +34,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
 
 const staggerContainer = {

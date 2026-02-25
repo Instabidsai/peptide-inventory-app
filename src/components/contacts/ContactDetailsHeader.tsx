@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ interface ContactDetailsHeaderProps {
     orderStats: OrderStats | null | undefined;
 }
 
-export function ContactDetailsHeader({ contact, orderStats }: ContactDetailsHeaderProps) {
+function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderProps) {
     const navigate = useNavigate();
 
     return (
@@ -76,3 +77,5 @@ export function ContactDetailsHeader({ contact, orderStats }: ContactDetailsHead
         </>
     );
 }
+
+export const ContactDetailsHeader = memo(ContactDetailsHeaderBase);

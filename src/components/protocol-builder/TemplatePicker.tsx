@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from '@/data/protocol-knowledge';
+import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {

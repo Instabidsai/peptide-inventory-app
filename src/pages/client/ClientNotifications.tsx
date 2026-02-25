@@ -2,7 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Loader2, Bell, Check, Info, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import {
+    Bell,
+    Check,
+    Info,
+    AlertTriangle,
+    CheckCircle,
+    XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
-import { useSalesOrders, useMySalesOrders, type SalesOrder, useUpdateSalesOrder, type SalesOrderStatus, useDeleteSalesOrder } from '@/hooks/use-sales-orders';
+import {
+    useSalesOrders,
+    useMySalesOrders,
+    type SalesOrderStatus,
+    useDeleteSalesOrder,
+} from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -18,7 +23,18 @@ import {
 } from "@/components/ui/table";
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Truck, Download, Search, Printer, Tag, MapPin, Pencil, ClipboardList } from 'lucide-react';
+import {
+    Plus,
+    Trash2,
+    Truck,
+    Download,
+    Search,
+    Printer,
+    Tag,
+    MapPin,
+    Pencil,
+    ClipboardList,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';

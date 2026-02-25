@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { useBottles, useDeleteBottle, type BottleStatus, type Bottle } from '@/hooks/use-bottles';
+import { useBottles, useDeleteBottle, type BottleStatus } from '@/hooks/use-bottles';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePageTitle } from '@/hooks/use-page-title';

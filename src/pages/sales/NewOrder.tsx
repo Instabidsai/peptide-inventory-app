@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 import { useContacts } from '@/hooks/use-contacts';
@@ -29,13 +29,9 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-    PopoverTrigger as PopoverTriggerOriginal,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 interface CartItem {
     peptide: Peptide;
@@ -394,7 +390,7 @@ export default function NewOrder() {
             });
             navigate('/sales');
         } catch (error) {
-            console.error("Failed to create order", error);
+            logger.error("Failed to create order", error);
         }
     };
 
@@ -488,11 +484,11 @@ export default function NewOrder() {
 
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-6">
                     <div className="space-y-3">
-                        <label className="text-sm font-semibold flex items-center gap-2">
+                        <label htmlFor="new-order-customer" className="text-sm font-semibold flex items-center gap-2">
                             <User className="h-4 w-4" /> Customer
                         </label>
                         <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                            <SelectTrigger>
+                            <SelectTrigger id="new-order-customer">
                                 <SelectValue placeholder="Select Customer" />
                             </SelectTrigger>
                             <SelectContent>
@@ -522,10 +518,11 @@ export default function NewOrder() {
                     <Separator />
 
                     <div className="space-y-3">
-                        <label className="text-sm font-semibold">Add Product</label>
+                        <label htmlFor="new-order-add-product" className="text-sm font-semibold">Add Product</label>
                         <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
                             <PopoverTrigger asChild>
                                 <Button
+                                    id="new-order-add-product"
                                     variant="outline"
                                     role="combobox"
                                     aria-expanded={openCombobox}
@@ -643,7 +640,7 @@ export default function NewOrder() {
 
                     <div className="space-y-3">
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold">Delivery Method</label>
+                            <span className="text-sm font-semibold">Delivery Method</span>
                             <div className="flex gap-2">
                                 <Button
                                     type="button"
@@ -667,8 +664,9 @@ export default function NewOrder() {
                         </div>
                         {deliveryMethod === 'ship' && (
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold">Shipping Address</label>
+                                <label htmlFor="new-order-shipping-address" className="text-sm font-semibold">Shipping Address</label>
                                 <Textarea
+                                    id="new-order-shipping-address"
                                     placeholder="Enter shipping address if different..."
                                     value={shippingAddress}
                                     onChange={e => setShippingAddress(e.target.value)}
@@ -677,8 +675,9 @@ export default function NewOrder() {
                             </div>
                         )}
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold">Notes</label>
+                            <label htmlFor="new-order-notes" className="text-sm font-semibold">Notes</label>
                             <Textarea
+                                id="new-order-notes"
                                 placeholder="Order notes..."
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}

@@ -104,7 +104,7 @@ export async function getProductNutrition(barcode: string): Promise<ParsedNutrit
         const data = await fetchProductByBarcode(barcode);
         return parseProductNutrition(data);
     } catch (error) {
-        console.error('Error fetching product nutrition:', error);
+        logger.error('Error fetching product nutrition:', error);
         throw error;
     }
 }

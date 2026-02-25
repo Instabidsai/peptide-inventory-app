@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 
 export const RING_COLORS = [
@@ -22,7 +23,7 @@ interface PeptideRingsProps {
     size?: number;
 }
 
-export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
+function PeptideRingsBase({ doses, size = 180 }: PeptideRingsProps) {
     const strokeWidth = 10;
     const gap = 4;
     const ringStep = strokeWidth + gap;
@@ -112,3 +113,5 @@ export function PeptideRings({ doses, size = 180 }: PeptideRingsProps) {
         </div>
     );
 }
+
+export const PeptideRings = memo(PeptideRingsBase);

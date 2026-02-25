@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export interface TenantSummary {
     org_id: string;
@@ -46,7 +47,7 @@ export function useTenants() {
             // Fetch counts for all orgs in a single RPC call (no N+1)
             const { data: counts } = await supabase.rpc('get_org_counts');
             const countMap = new Map(
-                (counts || []).map((c: any) => [c.org_id, c])
+                (counts || []).map((c: { org_id: string }) => [c.org_id, c])
             );
 
             return orgs.map((org) => {
@@ -108,7 +109,7 @@ export function useProvisionTenant() {
             queryClient.invalidateQueries({ queryKey: ['vendor-tenants'] });
         },
         onError: (error: Error) => {
-            console.error('Tenant provisioning failed:', error);
+            logger.error('Tenant provisioning failed:', error);
         },
     });
 }

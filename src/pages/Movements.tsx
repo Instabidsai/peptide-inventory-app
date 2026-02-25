@@ -14,7 +14,15 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, ArrowLeftRight, Trash2, Eye, Filter, X, Download, Search } from 'lucide-react';
+import {
+    Plus,
+    ArrowLeftRight,
+    Trash2,
+    Eye,
+    X,
+    Download,
+    Search,
+} from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import { Link, useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -324,9 +332,10 @@ function MovementDetailsDialog({
               {!isPaid && (
                 <>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-muted-foreground w-28 shrink-0">Add Payment</label>
+                    <label htmlFor="movement-payment-amount" className="text-sm text-muted-foreground w-28 shrink-0">Add Payment</label>
                     <span className="text-sm">$</span>
                     <Input
+                      id="movement-payment-amount"
                       type="number"
                       min={0}
                       step={0.01}
@@ -346,9 +355,9 @@ function MovementDetailsDialog({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-muted-foreground w-28 shrink-0">Method</label>
+                    <label htmlFor="movement-payment-method" className="text-sm text-muted-foreground w-28 shrink-0">Method</label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger id="movement-payment-method" className="h-8 text-sm">
                         <SelectValue placeholder="Select method" />
                       </SelectTrigger>
                       <SelectContent>
@@ -377,8 +386,9 @@ function MovementDetailsDialog({
 
           {/* Notes */}
           <div>
-            <label className="text-sm text-muted-foreground">Notes</label>
+            <label htmlFor="movement-notes" className="text-sm text-muted-foreground">Notes</label>
             <textarea
+              id="movement-notes"
               className="w-full mt-1 rounded-lg border border-input bg-card/50 px-4 py-2.5 text-sm shadow-inset ring-offset-background placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               rows={2}
               value={notes}

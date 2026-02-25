@@ -4,14 +4,12 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
-import { lookupKnowledge, PROTOCOL_TEMPLATES, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
+import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import {
     type EnrichedProtocolItem,
     type IncludeSections,
     generateProtocolHtml,
     generateProtocolPlainText,
-    calcMl,
-    calcUnits,
 } from '@/lib/protocol-html-generator';
 import { toast } from 'sonner';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
@@ -66,7 +64,7 @@ export function useProtocolBuilder() {
                 name: p.name,
                 createdAt: p.created_at,
                 contactId: p.contact_id,
-                itemCount: (p.protocol_items as any)?.[0]?.count ?? 0,
+                itemCount: (p.protocol_items as { count: number }[] | null)?.[0]?.count ?? 0,
             }));
         },
         enabled: !!profile?.org_id,

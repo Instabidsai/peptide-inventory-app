@@ -125,8 +125,9 @@ export default function UpdatePassword() {
                 <form onSubmit={handleUpdate}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">New Password</label>
+                            <label htmlFor="new-password" className="text-sm font-medium">New Password</label>
                             <Input
+                                id="new-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -137,8 +138,9 @@ export default function UpdatePassword() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Confirm Password</label>
+                            <label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</label>
                             <Input
+                                id="confirm-password"
                                 type="password"
                                 value={confirm}
                                 onChange={(e) => setConfirm(e.target.value)}

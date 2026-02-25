@@ -136,8 +136,9 @@ export function CartSummary({
 
                     {/* Shipping */}
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold">Shipping Address</label>
+                        <label htmlFor="cart-shipping" className="text-sm font-semibold">Shipping Address</label>
                         <Textarea
+                            id="cart-shipping"
                             placeholder="Enter your shipping address..."
                             value={shippingAddress}
                             onChange={e => onShippingAddressChange(e.target.value)}
@@ -147,8 +148,9 @@ export function CartSummary({
 
                     {/* Notes */}
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold">Notes (optional)</label>
+                        <label htmlFor="cart-notes" className="text-sm font-semibold">Notes (optional)</label>
                         <Input
+                            id="cart-notes"
                             placeholder="Any special instructions..."
                             value={notes}
                             onChange={e => onNotesChange(e.target.value)}
@@ -158,7 +160,7 @@ export function CartSummary({
                     {/* Payment Method Selection */}
                     {!orderPlaced ? (
                         <div className="space-y-3">
-                            <label className="text-sm font-semibold">Payment Method</label>
+                            <span className="text-sm font-semibold">Payment Method</span>
                             <div className="grid grid-cols-2 gap-2">
                                 {([
                                     { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },

@@ -178,7 +178,7 @@ export default function ClientStore() {
                 JSON.parse(decodeURIComponent(reorderParam));
             const added: string[] = [];
             for (const item of items) {
-                const product = peptides.find((p: any) =>
+                const product = peptides.find(p =>
                     p.id === item.peptide_id ||
                     (item.peptide_name && p.name?.toLowerCase().includes(item.peptide_name.toLowerCase()))
                 );

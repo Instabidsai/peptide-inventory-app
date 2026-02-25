@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Percent, Search } from 'lucide-react';
@@ -9,7 +9,7 @@ interface StoreHeaderProps {
     onSearchChange: (query: string) => void;
 }
 
-export function StoreHeader({ priceMultiplier, searchQuery, onSearchChange }: StoreHeaderProps) {
+function StoreHeaderBase({ priceMultiplier, searchQuery, onSearchChange }: StoreHeaderProps) {
     return (
         <>
             {/* Header */}
@@ -54,3 +54,5 @@ export function StoreHeader({ priceMultiplier, searchQuery, onSearchChange }: St
         </>
     );
 }
+
+export const StoreHeader = memo(StoreHeaderBase);

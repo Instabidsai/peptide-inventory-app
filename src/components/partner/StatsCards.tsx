@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Users,
@@ -19,7 +20,7 @@ interface StatsCardsProps {
     onOpenSheet: (view: SheetView) => void;
 }
 
-export function StatsCards({
+function StatsCardsBase({
     stats,
     creditBalance,
     totalOwed,
@@ -104,3 +105,5 @@ export function StatsCards({
         </div>
     );
 }
+
+export const StatsCards = memo(StatsCardsBase);

@@ -1,12 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRevenueMetrics, usePlanDistribution, useChurnRisk, useGrowthMetrics, TenantHealth } from '@/hooks/use-vendor-analytics';
-import { StatCard, BillingStatusBadge, HealthBadge } from './vendor-shared';
+import { StatCard, HealthBadge } from './vendor-shared';
 import {
     DollarSign,
     TrendingUp,
-    TrendingDown,
     Users,
     CreditCard,
     AlertTriangle,

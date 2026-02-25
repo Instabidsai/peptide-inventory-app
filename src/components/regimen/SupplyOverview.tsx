@@ -5,7 +5,14 @@ import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ShoppingBag, TrendingDown, CalendarClock, Lock, RefreshCw, AlertTriangle, Beaker } from 'lucide-react';
+import {
+    ShoppingBag,
+    TrendingDown,
+    CalendarClock,
+    Lock,
+    RefreshCw,
+    Beaker,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSupplyStatusColor, getSupplyStatusLabel, vialDailyUsage } from '@/lib/supply-calculations';
 import type { ClientInventoryItem } from '@/types/regimen';

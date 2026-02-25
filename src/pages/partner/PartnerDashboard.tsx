@@ -13,6 +13,7 @@ import { DollarSign, ShoppingBag, Percent, UserPlus } from 'lucide-react';
 import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { logger } from '@/lib/logger';
 import {
     TIER_INFO,
     EMPTY_PERSON,
@@ -84,7 +85,7 @@ export default function PartnerDashboard() {
                 .order('created_at', { ascending: true });
 
             if (error) {
-                console.error('owedMovements query error:', error);
+                logger.error('owedMovements query error:', error);
                 return [];
             }
             if (!movements?.length) return [];

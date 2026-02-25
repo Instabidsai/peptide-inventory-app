@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export type UserRole = 'admin' | 'sales_rep' | 'staff';
 
@@ -120,7 +121,7 @@ export function useUpdateProfile() {
                 .select();
 
             if (error) {
-                console.error('[useUpdateProfile] Error:', error);
+                logger.error('[useUpdateProfile] Error:', error);
                 throw error;
             }
 
@@ -137,7 +138,7 @@ export function useUpdateProfile() {
             toast({ title: 'Profile updated' });
         },
         onError: (error: Error) => {
-            console.error('[useUpdateProfile] Mutation error:', error);
+            logger.error('[useUpdateProfile] Mutation error:', error);
             toast({ variant: 'destructive', title: 'Update failed', description: error.message });
         },
     });

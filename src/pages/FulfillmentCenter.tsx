@@ -345,7 +345,7 @@ export default function FulfillmentCenter() {
     const handleMoveToPickPack = (orderId: string) => {
         setActiveOrderId(orderId);
         updateOrder.mutate(
-            { id: orderId, status: 'submitted', shipping_status: null as any },
+            { id: orderId, status: 'submitted' as const, shipping_status: null },
             {
                 onSuccess: () => toast({ title: 'Moved back to Pick & Pack' }),
                 onSettled: () => setActiveOrderId(null),
@@ -356,7 +356,7 @@ export default function FulfillmentCenter() {
     const handleMoveToLabelShip = (orderId: string) => {
         setActiveOrderId(orderId);
         updateOrder.mutate(
-            { id: orderId, delivery_method: 'ship' as any, shipping_status: 'pending' as any },
+            { id: orderId, delivery_method: 'ship', shipping_status: 'pending' },
             {
                 onSuccess: () => toast({ title: 'Moved to Label & Ship' }),
                 onSettled: () => setActiveOrderId(null),

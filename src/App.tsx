@@ -93,6 +93,7 @@ const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
 
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
+import { logger } from '@/lib/logger';
 const ClientDashboard = lazyRetry(() => import("./pages/client/ClientDashboard"));
 const ClientRegimen = lazyRetry(() => import("./pages/client/ClientRegimen"));
 const ClientMessages = lazyRetry(() => import("./pages/client/ClientMessages"));
@@ -119,7 +120,7 @@ const queryClient = new QueryClient({
         },
         mutations: {
             onError: (error: Error) => {
-                console.error('[Mutation Error]', error.message);
+                logger.error('[Mutation Error]', error.message);
                 sonnerToast.error(error.message || 'Something went wrong');
             },
         },

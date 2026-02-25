@@ -1,10 +1,11 @@
+import { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     ClipboardList, Pill, Package, HandMetal, CheckCircle,
 } from 'lucide-react';
 import type { SummaryStatsProps } from './types';
 
-export default function SummaryStats({
+function SummaryStatsBase({
     readyToPickCount,
     totalBottlesToPull,
     readyToShipCount,
@@ -71,3 +72,5 @@ export default function SummaryStats({
         </div>
     );
 }
+
+export default memo(SummaryStatsBase);

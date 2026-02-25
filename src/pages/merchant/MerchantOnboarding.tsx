@@ -5,14 +5,31 @@ import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardTitle,
+} from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useSubdomainCheck } from '@/hooks/use-wholesale-pricing';
 // MarginCalculator available at '@/components/wholesale/MarginCalculator' for future use
 import {
-    Loader2, Building2, Rocket, ArrowRight, ArrowLeft, Check,
-    LogOut, Globe, Palette, CreditCard, PartyPopper, LinkIcon, Sparkles,
-    X, ExternalLink, FlaskConical,
+    Loader2,
+    Building2,
+    Rocket,
+    ArrowRight,
+    ArrowLeft,
+    Check,
+    LogOut,
+    Globe,
+    Palette,
+    CreditCard,
+    PartyPopper,
+    LinkIcon,
+    Sparkles,
+    ExternalLink,
+    FlaskConical,
 } from 'lucide-react';
 
 type OnboardingPath = 'new' | 'existing' | null;

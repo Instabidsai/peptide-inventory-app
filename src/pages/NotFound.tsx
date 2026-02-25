@@ -4,13 +4,14 @@ import { motion } from "framer-motion";
 import { FlaskConical, Home, ArrowLeft, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/lib/logger';
 
 const NotFound = () => {
   const location = useLocation();
   const { user } = useAuth();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    logger.error("404 Error: User attempted to access non-existent route:", location.pathname);
   }, [location.pathname]);
 
   return (

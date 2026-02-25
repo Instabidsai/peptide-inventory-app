@@ -3,9 +3,21 @@ import DOMPurify from "dompurify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import {
-    Loader2, ArrowLeft, BookOpen, Video, ExternalLink, MessageSquare, Send,
-    Search, Play, ChevronRight, Eye, Clock, FileText, Download, Users,
-    FlaskConical, Atom
+    Loader2,
+    ArrowLeft,
+    Video,
+    ExternalLink,
+    MessageSquare,
+    Send,
+    Search,
+    Play,
+    ChevronRight,
+    Eye,
+    Clock,
+    FileText,
+    Download,
+    Users,
+    Atom,
 } from "lucide-react";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { useAuth } from "@/contexts/AuthContext";

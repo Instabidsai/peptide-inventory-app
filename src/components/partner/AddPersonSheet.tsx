@@ -60,8 +60,9 @@ export function AddPersonSheet({
                     }}
                 >
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Name *</label>
+                        <label htmlFor="add-person-name" className="text-sm font-medium">Name *</label>
                         <Input
+                            id="add-person-name"
                             placeholder="Full name"
                             value={newPerson.name}
                             onChange={e => onPersonChange(p => ({ ...p, name: e.target.value }))}
@@ -69,8 +70,9 @@ export function AddPersonSheet({
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Email</label>
+                        <label htmlFor="add-person-email" className="text-sm font-medium">Email</label>
                         <Input
+                            id="add-person-email"
                             type="email"
                             placeholder="email@example.com"
                             value={newPerson.email}
@@ -78,8 +80,9 @@ export function AddPersonSheet({
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Phone</label>
+                        <label htmlFor="add-person-phone" className="text-sm font-medium">Phone</label>
                         <Input
+                            id="add-person-phone"
                             type="tel"
                             placeholder="(555) 123-4567"
                             value={newPerson.phone}
@@ -87,8 +90,9 @@ export function AddPersonSheet({
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Shipping Address</label>
+                        <label htmlFor="add-person-address" className="text-sm font-medium">Shipping Address</label>
                         <Textarea
+                            id="add-person-address"
                             placeholder="Street, City, State, ZIP"
                             value={newPerson.address}
                             onChange={e => onPersonChange(p => ({ ...p, address: e.target.value }))}
@@ -96,8 +100,9 @@ export function AddPersonSheet({
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold">Assign To</label>
+                        <label htmlFor="add-person-assign" className="text-sm font-semibold">Assign To</label>
                         <select
+                            id="add-person-assign"
                             className="flex h-11 w-full rounded-lg border border-input bg-card/50 px-4 py-2.5 text-sm shadow-inset ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             value={newPerson.assignedTo}
                             onChange={e => onPersonChange(p => ({ ...p, assignedTo: e.target.value }))}

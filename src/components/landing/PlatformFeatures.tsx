@@ -63,7 +63,7 @@ export function PlatformFeatures() {
       label: "Sales & Revenue",
       icon: TrendingUp,
       features: [
-        { icon: Users, title: "4-Tier Partner Program", desc: "Senior (50% off), Standard (35%), Associate (25%), Executive (50%). Automated tier management and partner onboarding." },
+        { icon: Users, title: "3-Tier Partner Program", desc: "Senior (2x cost, can recruit), Standard (2x cost, 10% commission), Referral (2x cost, no commission). Automated tier management and partner onboarding." },
         { icon: TrendingUp, title: "Commission Engine", desc: "3-level deep commission tracking across partners and reps. Automated calculations, payout management, and reporting." },
         { icon: CreditCard, title: "Flexible Payments", desc: "Accept card (with merchant fee), Zelle, CashApp, Venmo (no fee). Automated payment email scanning and confidence-based matching." },
         { icon: BarChart3, title: "Financial Dashboard", desc: "Revenue tracking, expense management by category, financial metrics charts, bulk payment processing, and profit analysis." },

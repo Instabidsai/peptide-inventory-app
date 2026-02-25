@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSubscriptionPlans } from '@/hooks/use-subscription';
-import { Settings, CreditCard, Palette, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 export default function VendorSettings() {
     const { data: plans, isLoading } = useSubscriptionPlans();

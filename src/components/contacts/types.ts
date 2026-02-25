@@ -1,7 +1,3 @@
-import type { Protocol, ProtocolFeedback } from '@/types/regimen';
-import type { Contact } from '@/hooks/use-contacts';
-import type { Peptide } from '@/hooks/use-peptides';
-import type { Movement } from '@/hooks/use-movements';
 
 export interface RegimenPeptide {
     id: string;

@@ -20,9 +20,25 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import {
-    Mail, Scan, CheckCircle2, XCircle, Clock, AlertTriangle,
-    Zap, Bot, Megaphone, Activity, ChevronDown, ChevronUp,
-    SkipForward, Search, Sparkles, UserCheck, Lightbulb, Bug, HelpCircle, MessageCircle,
+    Mail,
+    Scan,
+    CheckCircle2,
+    XCircle,
+    Clock,
+    AlertTriangle,
+    Bot,
+    Megaphone,
+    Activity,
+    ChevronDown,
+    ChevronUp,
+    SkipForward,
+    Search,
+    Sparkles,
+    UserCheck,
+    Lightbulb,
+    Bug,
+    HelpCircle,
+    MessageCircle,
 } from 'lucide-react';
 import {
     useAutomationModules,

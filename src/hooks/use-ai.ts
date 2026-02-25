@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export type Message = {
     id: string;
@@ -113,7 +114,7 @@ export const useAI = () => {
             }, 3000);
         },
         onError: (error) => {
-            console.error('AI chat error:', error);
+            logger.error('AI chat error:', error);
             const friendly = friendlyError(error);
             // Replace optimistic messages with error
             setOptimisticMessages(prev => [

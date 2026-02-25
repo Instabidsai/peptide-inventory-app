@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,7 +94,7 @@ function useOrderLineItems(orderId: string | null) {
                 .eq('sales_order_id', orderId!);
 
             if (error) throw error;
-            return (data || []).map((item: any) => ({
+            return (data || []).map((item: { id: string; peptides?: { name: string } | null; quantity: number; unit_price: number; total_price: number }) => ({
                 id: item.id,
                 peptide_name: item.peptides?.name || 'Unknown',
                 quantity: item.quantity,

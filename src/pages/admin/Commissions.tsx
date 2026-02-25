@@ -321,7 +321,7 @@ export default function Commissions() {
                                                         <span className="font-medium">{partnerName}</span>
                                                         {(() => {
                                                             const tier = c.profiles?.partner_tier;
-                                                            const tierEmoji = tier === 'senior' ? '🥇' : tier === 'associate' ? '🥉' : tier === 'executive' ? '⭐' : '🥈';
+                                                            const tierEmoji = tier === 'senior' ? '🥇' : tier === 'referral' ? '🔗' : '🥈';
                                                             return <span className="text-xs">{tierEmoji}</span>;
                                                         })()}
                                                     </div>

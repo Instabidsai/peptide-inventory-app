@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export interface TenantConfig {
     brand_name: string;
@@ -95,7 +96,7 @@ export function useTenantConfig(): TenantConfigResult {
             .single()
             .then(({ data, error }) => {
                 if (error) {
-                    console.error('[useTenantConfig] Failed to load config:', error.message);
+                    logger.error('[useTenantConfig] Failed to load config:', error.message);
                     setIsError(true);
                     setIsLoaded(true);
                     return;

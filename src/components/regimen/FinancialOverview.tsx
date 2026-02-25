@@ -4,9 +4,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-    DollarSign, AlertCircle, CheckCircle2, Clock, Receipt,
-    ChevronDown, ChevronUp, CreditCard, Hash, Calendar,
-    Award, Zap, Wallet,
+    DollarSign,
+    AlertCircle,
+    CheckCircle2,
+    Receipt,
+    ChevronDown,
+    ChevronUp,
+    CreditCard,
+    Hash,
+    Calendar,
+    Award,
+    Zap,
+    Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +30,7 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -332,7 +342,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 }
             }
         } catch (err) {
-            console.error("FinancialOverview fetch error:", err);
+            logger.error("FinancialOverview fetch error:", err);
         } finally {
             setLoading(false);
         }
@@ -386,7 +396,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 className: "bg-green-50 border-green-200 text-green-900",
             });
         } catch (err) {
-            console.error("Apply commission error:", err);
+            logger.error("Apply commission error:", err);
             toast({
                 title: "Commission Apply Failed",
                 description: err instanceof Error ? err.message : "Could not apply commissions.",
@@ -450,7 +460,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 className: "bg-green-50 border-green-200 text-green-900",
             });
         } catch (err) {
-            console.error("Payment error:", err);
+            logger.error("Payment error:", err);
             toast({
                 title: "Payment Failed",
                 description: err instanceof Error ? err.message : "Could not update payment.",
@@ -512,7 +522,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 className: "bg-green-50 border-green-200 text-green-900",
             });
         } catch (err) {
-            console.error("Bulk payment error:", err);
+            logger.error("Bulk payment error:", err);
             toast({
                 title: "Payment Failed",
                 description: err instanceof Error ? err.message : "Could not update payments.",

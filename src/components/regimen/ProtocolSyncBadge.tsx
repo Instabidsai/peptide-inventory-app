@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { checkProtocolSync, type SyncStatus } from '@/lib/protocol-sync';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Link2Off } from 'lucide-react';
@@ -41,7 +42,7 @@ const STATUS_CONFIG: Record<SyncStatus, {
     },
 };
 
-export function ProtocolSyncBadge({ protocolItem, vial, compact = false }: ProtocolSyncBadgeProps) {
+function ProtocolSyncBadgeBase({ protocolItem, vial, compact = false }: ProtocolSyncBadgeProps) {
     const status = checkProtocolSync(protocolItem, vial);
     const config = STATUS_CONFIG[status];
 
@@ -74,3 +75,5 @@ export function ProtocolSyncBadge({ protocolItem, vial, compact = false }: Proto
         </div>
     );
 }
+
+export const ProtocolSyncBadge = memo(ProtocolSyncBadgeBase);
