@@ -25,6 +25,7 @@ export interface Peptide {
   default_concentration_mg_ml?: number | null;
   reconstitution_notes?: string | null;
   visible_to_user_ids?: string[] | null;
+  catalog_source?: 'website' | 'supplier' | 'manual' | null;
 }
 
 export interface CreatePeptideInput {

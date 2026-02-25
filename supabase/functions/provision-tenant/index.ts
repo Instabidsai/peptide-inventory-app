@@ -332,14 +332,23 @@ Deno.serve(async (req) => {
         if (body.seed_supplier_catalog && supplierOrgId) {
             const { data: supplierPeptides, error: catError } = await supabase
                 .from('peptides')
-                .select('name, description, sku, retail_price, base_cost, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes')
+                .select('name, description, sku, retail_price, base_cost, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes, visible_to_user_ids')
                 .eq('org_id', supplierOrgId)
                 .eq('active', true);
 
             if (catError) {
                 console.warn(`Supplier catalog read warning: ${catError.message}`);
             } else if (supplierPeptides && supplierPeptides.length > 0) {
-                const catalogRows = supplierPeptides.map(p => ({
+                // Filter out restricted products (those with visible_to_user_ids set)
+                const publicPeptides = supplierPeptides.filter(
+                    p => !p.visible_to_user_ids || p.visible_to_user_ids.length === 0
+                );
+                const skippedCount = supplierPeptides.length - publicPeptides.length;
+                if (skippedCount > 0) {
+                    console.log(`  Skipped ${skippedCount} restricted products`);
+                }
+
+                const catalogRows = publicPeptides.map(p => ({
                     org_id: org.id,
                     name: p.name,
                     description: p.description,
@@ -353,18 +362,21 @@ Deno.serve(async (req) => {
                     default_timing: p.default_timing,
                     default_concentration_mg_ml: p.default_concentration_mg_ml,
                     reconstitution_notes: p.reconstitution_notes,
+                    catalog_source: 'supplier',
                 }));
 
-                const { error: seedError } = await supabase
-                    .from('peptides')
-                    .insert(catalogRows);
+                if (catalogRows.length > 0) {
+                    const { error: seedError } = await supabase
+                        .from('peptides')
+                        .insert(catalogRows);
 
-                if (seedError) console.warn(`Supplier catalog seed warning: ${seedError.message}`);
-                else {
-                    results.supplier_catalog_seeded = true;
-                    results.catalog_product_count = catalogRows.length;
+                    if (seedError) console.warn(`Supplier catalog seed warning: ${seedError.message}`);
+                    else {
+                        results.supplier_catalog_seeded = true;
+                        results.catalog_product_count = catalogRows.length;
+                    }
+                    console.log(`  Seeded ${catalogRows.length} products from supplier catalog`);
                 }
-                console.log(`  Seeded ${catalogRows.length} products from supplier catalog`);
             }
         }
 

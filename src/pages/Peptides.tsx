@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse } from 'lucide-react';
 import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
 import {
@@ -66,6 +66,7 @@ export default function Peptides() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'website' | 'supplier' | 'manual'>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
@@ -111,7 +112,8 @@ export default function Peptides() {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? p.active : !p.active);
-    return matchesSearch && matchesStatus;
+    const matchesSource = sourceFilter === 'all' || (p.catalog_source || 'manual') === sourceFilter;
+    return matchesSearch && matchesStatus && matchesSource;
   });
 
   const handleCreate = async (data: PeptideFormData) => {
@@ -265,6 +267,17 @@ export default function Peptides() {
                 className="pl-9"
               />
             </div>
+            <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as 'all' | 'website' | 'supplier' | 'manual')}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="website">Website</SelectItem>
+                <SelectItem value="supplier">Wholesale</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Status" />
@@ -333,7 +346,19 @@ export default function Peptides() {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <p className="font-medium">{peptide.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium">{peptide.name}</p>
+                            {peptide.catalog_source === 'website' && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
+                                <Globe className="h-2.5 w-2.5" /> Web
+                              </Badge>
+                            )}
+                            {peptide.catalog_source === 'supplier' && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-400/50 text-orange-600 gap-0.5">
+                                <Warehouse className="h-2.5 w-2.5" /> Wholesale
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">{peptide.sku || 'No SKU'}</p>
                         </div>
                         <Badge variant={peptide.active ? 'default' : 'secondary'} className="text-xs">
@@ -379,13 +404,25 @@ export default function Peptides() {
                 {filteredPeptides?.map((peptide, index) => (
                   <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <TableCell className="font-medium">
-                      <button
-                        className="text-left hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer"
-                        onClick={() => setHistoryPeptide(peptide)}
-                        title="View Sales History"
-                      >
-                        {peptide.name}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          className="text-left hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer"
+                          onClick={() => setHistoryPeptide(peptide)}
+                          title="View Sales History"
+                        >
+                          {peptide.name}
+                        </button>
+                        {peptide.catalog_source === 'website' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
+                            <Globe className="h-2.5 w-2.5" /> Web
+                          </Badge>
+                        )}
+                        {peptide.catalog_source === 'supplier' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-400/50 text-orange-600 gap-0.5">
+                            <Warehouse className="h-2.5 w-2.5" /> Wholesale
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {peptide.sku || '-'}
