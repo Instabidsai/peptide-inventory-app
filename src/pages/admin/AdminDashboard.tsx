@@ -175,7 +175,6 @@ export default function AdminDashboard() {
                     peptides ( name ),
                     contacts ( name )
                 `)
-                .eq('org_id', orgId!)
                 .eq('in_fridge', true)
                 .not('dose_amount_mg', 'is', null)
                 .not('dose_frequency', 'is', null)
@@ -231,7 +230,6 @@ export default function AdminDashboard() {
             const { data, error } = await supabase
                 .from('lead_submissions')
                 .select('*')
-                .eq('org_id', orgId!)
                 .order('created_at', { ascending: false })
                 .limit(10);
             if (error) throw error;

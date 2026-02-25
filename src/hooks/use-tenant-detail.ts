@@ -88,9 +88,9 @@ export function useTenantDetail(orgId: string | undefined) {
                 supabase.from('bottles').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
                 supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
                 supabase.from('sales_orders').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
-                supabase.from('commissions').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
+                supabase.from('commissions').select('id', { count: 'exact', head: true }),
                 supabase.from('automation_modules').select('module_type, enabled, run_count, last_run_at').eq('org_id', orgId),
-                supabase.from('admin_chat_messages').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
+                supabase.from('admin_chat_messages').select('id', { count: 'exact', head: true }),
                 supabase.from('partner_chat_messages').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
             ]);
 
