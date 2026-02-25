@@ -2,6 +2,20 @@
 
 All notable changes to Peptide CRM will be documented in this file.
 
+## [1.1.0] — 2026-02-25
+
+### Preferred Customer System
+- New contact type: **Preferred** — upgraded customers who receive per-customer discounts
+- One-click upgrade button on contact list and contact detail pages (customer → preferred)
+- Per-customer `discount_percent` field (0–100%) editable from the contact details card
+- Amber star badge and green discount badge in contact header for preferred customers
+- Upgrade confirmation dialog to prevent accidental promotions
+- Partner network views (DownlineVisualizer, Full Network) now include preferred customers alongside regular customers
+- Migration: `contact_type` enum extended with `'preferred'` value; `discount_percent` numeric column added to contacts table
+
+### Simplified Partner Tiers
+- Reduced from 5 tiers to 3: **Senior** (10%, can recruit), **Standard** (10%, customer links only), **Referral** (0%)
+
 ## [1.0.0] — 2026-02-22
 
 ### Initial Release

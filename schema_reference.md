@@ -35,7 +35,8 @@ Generated from `src/integrations/supabase/types.ts` and recent migration scripts
 *   `name`: text
 *   `email`: text
 *   `phone`: text
-*   `type`: enum (`customer`, `partner`, `internal`)
+*   `type`: enum (`customer`, `preferred`, `partner`, `internal`)
+*   `discount_percent`: numeric (default 0, used for preferred customer pricing)
 *   `org_id`: uuid (FK)
 
 ### `protocols`
