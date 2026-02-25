@@ -274,13 +274,16 @@ export function installAutoErrorReporter() {
     });
   });
 
-  // 1b. Self-test: send a ping on install so we can verify the pipeline works
-  sendErrorToDb({
-    message: 'AutoErrorReporter installed successfully — this is a self-test ping',
-    source: 'self_test',
-    page: window.location.hash || '/',
-    timestamp: new Date().toISOString(),
-  });
+  // 1b. Self-test: send a single ping per browser session to verify pipeline
+  if (!sessionStorage.getItem('auto-error-reporter-pinged')) {
+    sessionStorage.setItem('auto-error-reporter-pinged', '1');
+    sendErrorToDb({
+      message: 'AutoErrorReporter installed successfully — this is a self-test ping',
+      source: 'self_test',
+      page: window.location.hash || '/',
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   // 2. Uncaught JavaScript errors
   window.addEventListener('error', (event) => {

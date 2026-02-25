@@ -325,6 +325,8 @@ async function checkBugReports() {
     if (msg.includes("DialogTitle")) return false; // accessibility warning, not a bug
     // ErrorBoundary test simulations — not real crashes
     if (r.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return false;
+    // Auth token refresh failures — normal session expiry, not a bug
+    if (/Invalid Refresh Token|Refresh Token Not Found|AuthSessionMissingError/i.test(msg)) return false;
     return true;
   });
 
