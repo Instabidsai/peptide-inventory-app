@@ -65,7 +65,7 @@ export function useProtocols(contactId?: string) {
                 .from('profiles')
                 .select('org_id')
                 .eq('user_id', user.user.id)
-                .single();
+                .maybeSingle();
 
             if (!fetchedProfile?.org_id) throw new Error('Organization ID not found');
 
@@ -188,7 +188,7 @@ export function useProtocols(contactId?: string) {
                 .select('id')
                 .eq('id', id)
                 .eq('org_id', profile.org_id)
-                .single();
+                .maybeSingle();
 
             if (!protocol) throw new Error('Protocol not found or access denied');
 

@@ -305,7 +305,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .from("contacts")
                 .select("email, linked_user_id")
                 .eq("id", contactId)
-                .single();
+                .maybeSingle();
 
             if (contactRow?.email) {
                 const { data: profile } = await supabase

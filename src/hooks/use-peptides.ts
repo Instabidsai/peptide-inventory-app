@@ -130,9 +130,10 @@ export function usePeptide(id: string) {
         .select('*')
         .eq('id', id)
         .eq('org_id', profile!.org_id!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Peptide not found');
       return data as Peptide;
     },
     enabled: !!id && !!user && !!profile?.org_id,
@@ -153,7 +154,7 @@ export function useCreatePeptide() {
         .from('profiles')
         .select('org_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.org_id) throw new Error('No organization found');
 

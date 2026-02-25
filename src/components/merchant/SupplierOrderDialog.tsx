@@ -79,7 +79,7 @@ export default function SupplierOrderDialog() {
                 .from('organizations')
                 .select('name')
                 .eq('id', tierInfo!.supplier_org_id!)
-                .single();
+                .maybeSingle();
             return data;
         },
         enabled: !!tierInfo?.supplier_org_id,

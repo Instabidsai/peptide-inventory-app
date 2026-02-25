@@ -234,7 +234,7 @@ export function useOrderPaymentStatus(orderId: string | null) {
                 .from('sales_orders')
                 .select('id, status, payment_status, psifi_status, total_amount, created_at')
                 .eq('id', orderId)
-                .single();
+                .maybeSingle();
             if (error) throw error;
             return data;
         },

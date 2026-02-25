@@ -197,9 +197,10 @@ export function useMovement(id: string) {
         .from('movements')
         .select('*, contacts(id, name), profiles(id, full_name)')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!movement) throw new Error('Movement not found');
 
       // Fetch items
       const { data: items, error: itemsError } = await supabase
@@ -278,7 +279,7 @@ export function useCreateMovement() {
         .from('profiles')
         .select('id, org_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.org_id) throw new Error('No organization found');
 
@@ -433,7 +434,7 @@ export function useCreateMovement() {
             .from('contacts')
             .select('assigned_rep_id, name')
             .eq('id', input.contact_id)
-            .single();
+            .maybeSingle();
 
           if (contact?.assigned_rep_id) {
             const totalSaleAmount = Math.round(input.items.reduce((sum, item) => sum + (item.price_at_sale || 0), 0) * 100) / 100;
@@ -547,7 +548,7 @@ export function useDeleteMovement() {
         .from('movements')
         .select('type, contact_id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       // 1. Get movement items to restore bottle statuses
       const { data: items } = await supabase
@@ -583,7 +584,7 @@ export function useDeleteMovement() {
             .from('movements')
             .select('notes')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
           const notesText = movementFull?.notes || '';
 
@@ -629,7 +630,7 @@ export function useDeleteMovement() {
               .from('contacts')
               .select('assigned_rep_id')
               .eq('id', movement.contact_id)
-              .single();
+              .maybeSingle();
 
             // Fetch actual commission records to reverse exact amounts
             const { data: commRecords } = await supabase
@@ -648,7 +649,7 @@ export function useDeleteMovement() {
                   .from('profiles')
                   .select('id, full_name, credit_balance')
                   .eq('id', comm.partner_id)
-                  .single();
+                  .maybeSingle();
 
                 if (repProfile) {
                   const oldBalance = Number(repProfile.credit_balance) || 0;

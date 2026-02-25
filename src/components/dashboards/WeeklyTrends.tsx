@@ -35,7 +35,7 @@ export function WeeklyTrends() {
                 .from('daily_macro_goals')
                 .select('calories, protein, carbs, fat')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (goalsError) throw goalsError;
 

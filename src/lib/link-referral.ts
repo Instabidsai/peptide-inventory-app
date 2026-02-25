@@ -12,7 +12,7 @@ export const REFERRAL_PARTNER_DEFAULTS = {
 };
 
 export type LinkReferralResult =
-  | { success: true; type: 'partner' | 'customer' }
+  | { success: true; type: 'partner' | 'preferred' | 'customer' }
   | { success: false; error: string };
 
 /**
@@ -46,7 +46,7 @@ export async function linkReferral(
     return { success: false, error: data?.error || 'Unknown error' };
   }
 
-  return { success: true, type: data.type as 'partner' | 'customer' };
+  return { success: true, type: data.type as 'partner' | 'preferred' | 'customer' };
 }
 
 /**

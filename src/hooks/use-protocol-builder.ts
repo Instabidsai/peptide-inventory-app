@@ -307,7 +307,7 @@ export function useProtocolBuilder() {
             .from('protocols')
             .select('name, contact_id')
             .eq('id', protocolId)
-            .single();
+            .maybeSingle();
 
         const { data: savedItems, error } = await supabase
             .from('protocol_items')

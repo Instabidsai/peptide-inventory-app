@@ -198,8 +198,9 @@ export default function PartnerDetail() {
                 .from('profiles')
                 .select('*')
                 .eq('id', id)
-                .single();
+                .maybeSingle();
             if (error) throw error;
+            if (!data) throw new Error('Partner profile not found');
             return data;
         },
         enabled: !!id
@@ -496,13 +497,13 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('profiles')
                 .select('email')
                 .eq('id', repId)
-                .single();
+                .maybeSingle();
             if (!profile?.email) return [];
             const { data: contact } = await supabase
                 .from('contacts')
                 .select('id')
                 .eq('email', profile.email)
-                .single();
+                .maybeSingle();
             if (!contact) return [];
             // Fetch movements where this contact is the buyer with commission_offset payment
             const { data } = await supabase
@@ -534,7 +535,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('profiles')
                 .select('email')
                 .eq('id', repId)
-                .single();
+                .maybeSingle();
 
             if (!profile?.email) {
                 toast({ title: 'Error', description: 'Could not find partner email.', variant: 'destructive' });
@@ -545,7 +546,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('contacts')
                 .select('id')
                 .eq('email', profile.email)
-                .single();
+                .maybeSingle();
 
             if (!contact) {
                 toast({ title: 'No Contact Record', description: 'This partner has no matching contact record to apply credit against.', variant: 'destructive' });
@@ -818,7 +819,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 .from('profiles')
                 .select('parent_rep_id')
                 .eq('id', currentId)
-                .single();
+                .maybeSingle();
 
             if (profile?.parent_rep_id) {
                 chain.push(profile.parent_rep_id);
@@ -843,7 +844,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 .from('profiles')
                 .select('org_id')
                 .eq('id', repId)
-                .single();
+                .maybeSingle();
 
             // 1. Create the contact assigned to this partner
             const { data: contact, error: contactErr } = await supabase

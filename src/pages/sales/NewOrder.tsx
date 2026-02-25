@@ -216,7 +216,7 @@ export default function NewOrder() {
                 .from('contacts')
                 .select('assigned_rep_id')
                 .eq('id', selectedContactId)
-                .single();
+                .maybeSingle();
 
             if (!contact?.assigned_rep_id) {
                 setCommissionChain([]);
@@ -229,7 +229,7 @@ export default function NewOrder() {
                 .from('profiles')
                 .select('id, full_name, commission_rate, parent_rep_id, partner_tier')
                 .eq('id', contact.assigned_rep_id)
-                .single();
+                .maybeSingle();
 
             if (rep) {
                 const rate = rep.commission_rate != null ? Number(rep.commission_rate) : 0.10;
@@ -248,7 +248,7 @@ export default function NewOrder() {
                         .from('profiles')
                         .select('id, full_name, commission_rate, parent_rep_id, partner_tier')
                         .eq('id', rep.parent_rep_id)
-                        .single();
+                        .maybeSingle();
 
                     if (parent) {
                         const parentRate = parent.commission_rate != null ? Number(parent.commission_rate) : 0.05;
@@ -267,7 +267,7 @@ export default function NewOrder() {
                                 .from('profiles')
                                 .select('id, full_name, commission_rate, partner_tier')
                                 .eq('id', parent.parent_rep_id)
-                                .single();
+                                .maybeSingle();
 
                             if (gp) {
                                 const gpRate = gp.commission_rate != null ? Number(gp.commission_rate) : 0.03;

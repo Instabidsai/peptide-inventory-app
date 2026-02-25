@@ -229,7 +229,7 @@ export function useCreateOrder() {
                 .from('profiles')
                 .select('org_id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!profile?.org_id) throw new Error('No organization found');
 
@@ -297,7 +297,7 @@ export function useMarkOrderReceived() {
                 .from('profiles')
                 .select('org_id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!profile?.org_id) throw new Error('No organization found');
 
@@ -306,9 +306,10 @@ export function useMarkOrderReceived() {
                 .from('orders')
                 .select('peptide_id')
                 .eq('id', input.order_id)
-                .single();
+                .maybeSingle();
 
             if (orderError) throw orderError;
+            if (!order) throw new Error('Order not found');
 
             // Create the lot
             const { data: lot, error: lotError } = await supabase
@@ -437,7 +438,7 @@ export function useRecordOrderPayment() {
             if (expenseError) throw expenseError;
 
             // 2. Update Order Status
-            const { data: currentOrder, error: fetchError } = await supabase.from('orders').select('amount_paid').eq('id', orderId).single();
+            const { data: currentOrder, error: fetchError } = await supabase.from('orders').select('amount_paid').eq('id', orderId).maybeSingle();
             if (fetchError || !currentOrder) throw new Error('Order not found');
             const newTotal = (currentOrder.amount_paid || 0) + amount;
 

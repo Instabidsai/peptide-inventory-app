@@ -294,7 +294,7 @@ async function checkBugReports() {
       .select("id, description, page_url, console_errors, created_at, user_id, status")
       .like("description", "[AUTO]%")
       .gte("created_at", since)
-      .eq("status", "new")
+      .in("status", ["open", "new"])
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -318,11 +318,20 @@ async function checkBugReports() {
     // Non-critical — primary path is audit_log
   }
 
-  const bugCount = reports.filter((r) => r.type === "bug_report").length;
-  const autoCount = reports.filter((r) => r.type === "auto_error").length;
+  // Filter out self-test pings and non-actionable noise
+  const filtered = reports.filter((r) => {
+    const msg = r.error || r.name || "";
+    if (msg.includes("self-test ping")) return false;
+    if (msg.includes("DialogTitle")) return false; // accessibility warning, not a bug
+    return true;
+  });
+
+  const bugCount = filtered.filter((r) => r.type === "bug_report").length;
+  const autoCount = filtered.filter((r) => r.type === "auto_error").length;
   if (bugCount > 0) console.log(`    Found ${bugCount} bug report(s) in last 24h`);
   if (autoCount > 0) console.log(`    Found ${autoCount} auto-captured error(s) in last 24h`);
-  return reports;
+  if (reports.length !== filtered.length) console.log(`    Filtered out ${reports.length - filtered.length} noise entries (self-test pings, accessibility warnings)`);
+  return filtered;
 }
 
 function checkTypeScript() {

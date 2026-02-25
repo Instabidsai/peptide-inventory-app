@@ -166,7 +166,7 @@ export function useMySalesOrders() {
                 .from('profiles')
                 .select('id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!userProfile) throw new Error('Profile not found');
 
@@ -204,7 +204,7 @@ export function useCreateSalesOrder() {
                 .from('profiles')
                 .select('id, org_id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!rawProfile?.org_id) throw new Error('No organization found');
             const profile = rawProfile as { id: string; org_id: string; commission_rate: number | null; price_multiplier: number | null; pricing_mode: string | null; cost_plus_markup: number | null };
@@ -223,7 +223,7 @@ export function useCreateSalesOrder() {
                     .from('contacts')
                     .select('assigned_rep_id')
                     .eq('id', input.client_id)
-                    .single();
+                    .maybeSingle();
 
                 if (contact?.assigned_rep_id) {
                     repId = contact.assigned_rep_id;
@@ -232,7 +232,7 @@ export function useCreateSalesOrder() {
                         .from('profiles')
                         .select('commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                         .eq('id', contact.assigned_rep_id)
-                        .single();
+                        .maybeSingle();
 
                     if (repProfile) {
                         const rate = repProfile.commission_rate;
@@ -516,7 +516,7 @@ export function useUpdateSalesOrder() {
                     .from('sales_orders')
                     .select('commission_amount')
                     .eq('id', id)
-                    .single();
+                    .maybeSingle();
 
                 if (orderCheck && (orderCheck.commission_amount ?? 0) > 0) {
                     const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: id });
@@ -545,7 +545,7 @@ export function useUpdateSalesOrder() {
                         .from('sales_orders')
                         .select('client_id, contacts!inner(linked_user_id)')
                         .eq('id', variables.id)
-                        .single();
+                        .maybeSingle();
 
                     type OrderWithContact = { client_id: string; contacts: { linked_user_id: string | null } };
                     const clientUserId = (orderData as unknown as OrderWithContact | null)?.contacts?.linked_user_id;
@@ -586,9 +586,10 @@ export function useFulfillOrder() {
           )
         `)
                 .eq('id', orderId)
-                .single();
+                .maybeSingle();
 
             if (orderError) throw orderError;
+            if (!order) throw new Error('Order not found');
             if (order.status === 'fulfilled') throw new Error('Order already fulfilled');
 
             const { data: { user } } = await supabase.auth.getUser();
@@ -599,7 +600,7 @@ export function useFulfillOrder() {
                 .from('profiles')
                 .select('id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
             const profileId = currentProfile?.id || user.id;
 
             // Track all mutations for rollback on failure
@@ -858,7 +859,7 @@ export function usePayWithCredit() {
                 .from('profiles')
                 .select('id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!profile) throw new Error('Profile not found');
 
@@ -923,7 +924,7 @@ export function useCreateShippingLabel() {
                     .from('sales_orders')
                     .select('client_id, contacts!inner(linked_user_id, name)')
                     .eq('id', orderId)
-                    .single();
+                    .maybeSingle();
 
                 type OrderWithContactName = { client_id: string; contacts: { linked_user_id: string | null; name: string } };
                 const clientUserId = (orderData as unknown as OrderWithContactName | null)?.contacts?.linked_user_id;
@@ -1020,7 +1021,7 @@ export function useBuyShippingLabel() {
                     .from('sales_orders')
                     .select('client_id, contacts!inner(linked_user_id, name)')
                     .eq('id', orderId)
-                    .single();
+                    .maybeSingle();
 
                 type OrderWithContactName2 = { client_id: string; contacts: { linked_user_id: string | null; name: string } };
                 const clientUserId = (orderData as unknown as OrderWithContactName2 | null)?.contacts?.linked_user_id;

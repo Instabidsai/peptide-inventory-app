@@ -53,8 +53,9 @@ export default function CheckoutSuccess() {
                     )
                 `)
                 .eq('id', orderId)
-                .single();
+                .maybeSingle();
             if (error) throw error;
+            if (!data) throw new Error('Order not found');
             return data;
         },
         enabled: !!orderId,

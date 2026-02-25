@@ -35,9 +35,10 @@ export function useProfile() {
                 .from('profiles')
                 .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
+            if (!data) throw new Error('Profile not found');
             return data as UserProfile;
         },
         enabled: !!user,
@@ -78,9 +79,10 @@ export function useRepProfile(repId: string | null) {
                 .select('*')
                 .eq('id', repId)
                 .eq('org_id', profile!.org_id!)
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
+            if (!data) throw new Error('Rep profile not found');
             return data as UserProfile;
         },
         enabled: !!repId && !!user && !!profile?.org_id,

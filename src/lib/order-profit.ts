@@ -43,7 +43,7 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
             sales_order_items (peptide_id, quantity)
         `)
         .eq('id', orderId)
-        .single();
+        .maybeSingle();
 
     if (orderErr || !order) {
         logger.error('[order-profit] Failed to fetch order:', orderErr?.message);

@@ -37,7 +37,7 @@ export default function CustomReportView() {
         .select('*')
         .eq('id', reportId)
         .eq('org_id', profile.org_id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as CustomReport;
     },

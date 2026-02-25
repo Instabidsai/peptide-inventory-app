@@ -113,9 +113,10 @@ export function useContact(id: string) {
         `)
         .eq('id', id)
         .eq('org_id', profile!.org_id!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Contact not found');
       return data as Contact;
     },
     enabled: !!id && !!user && !!profile?.org_id,
@@ -135,7 +136,7 @@ export function useCreateContact() {
         .from('profiles')
         .select('org_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.org_id) throw new Error('No organization found');
 

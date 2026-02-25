@@ -29,7 +29,7 @@ export function WaterTracker() {
                 .from('daily_macro_goals')
                 .select('water_goal_oz')
                 .eq('user_id', session.user.id)
-                .single();
+                .maybeSingle();
 
             return data?.water_goal_oz || 64;
         }

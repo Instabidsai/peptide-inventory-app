@@ -71,9 +71,10 @@ export function useLot(id: string) {
         .select('*, peptides(id, name)')
         .eq('id', id)
         .eq('org_id', profile!.org_id!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Lot not found');
       return data as Lot;
     },
     enabled: !!id && !!user && !!profile?.org_id,
@@ -93,7 +94,7 @@ export function useCreateLot() {
         .from('profiles')
         .select('org_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.org_id) throw new Error('No organization found');
 

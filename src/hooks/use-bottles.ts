@@ -81,9 +81,10 @@ export function useBottle(id: string) {
         .select('*, lots(id, lot_number, peptide_id, cost_per_unit, peptides(id, name, retail_price))')
         .eq('id', id)
         .eq('org_id', profile!.org_id!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Bottle not found');
       return data as Bottle;
     },
     enabled: !!id && !!user && !!profile?.org_id,

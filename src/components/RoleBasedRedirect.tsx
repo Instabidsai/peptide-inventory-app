@@ -52,10 +52,12 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // super_admin lands on their normal admin dashboard (not auto-redirected)
         // They can switch to /vendor via the sidebar mode switcher
 
-        // Block clients/customers from admin areas
+        // Block clients/customers from admin areas — send to store or dashboard
         if (roleName === 'client' || roleName === 'customer') {
             if (!allowedRoles || !allowedRoles.includes(roleName)) {
-                return <Navigate to="/dashboard" replace />;
+                // Preferred/discount customers land on the store (where they see 20% off)
+                const hasDiscount = profile?.price_multiplier != null && profile.price_multiplier < 1;
+                return <Navigate to={hasDiscount ? '/store' : '/dashboard'} replace />;
             }
         }
 
@@ -70,7 +72,8 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             if (!(roleName === 'super_admin' && allowedRoles.includes('admin'))) {
                 // Determine correct redirect based on role type
                 const isClientRole = roleName === 'client' || roleName === 'customer';
-                const target = isClientRole ? '/dashboard' : '/';
+                const hasDiscount = profile?.price_multiplier != null && profile.price_multiplier < 1;
+                const target = isClientRole ? (hasDiscount ? '/store' : '/dashboard') : '/';
                 // Prevent infinite redirect loop: if we'd redirect to the
                 // same path we're already on, bail out to /auth instead
                 if (location.pathname === target) {

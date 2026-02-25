@@ -75,7 +75,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
     const { data: requestContext } = useQuery({
         queryKey: ['request-details', requestId],
         queryFn: async () => {
-            const { data } = await supabase.from('client_requests').select('user_id, context_type, context_id').eq('id', requestId).single();
+            const { data } = await supabase.from('client_requests').select('user_id, context_type, context_id').eq('id', requestId).maybeSingle();
             return data;
         },
         enabled: !!requestId

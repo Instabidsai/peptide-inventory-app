@@ -88,7 +88,7 @@ export function useOrgWholesaleTier() {
                 .from('tenant_config')
                 .select('wholesale_tier_id, supplier_org_id')
                 .eq('org_id', orgId)
-                .single();
+                .maybeSingle();
             if (error) throw error;
             if (!data?.wholesale_tier_id) return null;
 
@@ -96,8 +96,9 @@ export function useOrgWholesaleTier() {
                 .from('wholesale_pricing_tiers')
                 .select('*')
                 .eq('id', data.wholesale_tier_id)
-                .single();
+                .maybeSingle();
             if (tierError) throw tierError;
+            if (!tier) return null;
             return {
                 tier: tier as WholesaleTier,
                 supplier_org_id: data.supplier_org_id as string | null,

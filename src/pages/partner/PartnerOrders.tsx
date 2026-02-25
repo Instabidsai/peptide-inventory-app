@@ -70,7 +70,7 @@ export default function PartnerOrders() {
                 .from('profiles')
                 .select('id, full_name')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!profile?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
 

@@ -80,7 +80,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { data: balanceData } = useQuery({
     queryKey: ['my_sidebar_profile'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('credit_balance').eq('user_id', user?.id).single();
+      const { data } = await supabase.from('profiles').select('credit_balance').eq('user_id', user?.id).maybeSingle();
       return data;
     },
     enabled: !!user

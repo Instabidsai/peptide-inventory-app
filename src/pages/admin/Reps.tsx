@@ -149,7 +149,7 @@ export default function Reps() {
                 .from('profiles')
                 .select('org_id')
                 .eq('id', addingToRep.id)
-                .single();
+                .maybeSingle();
 
             const { error } = await supabase
                 .from('contacts')
@@ -789,7 +789,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                     .from('profiles')
                     .select('id')
                     .eq('user_id', contact.linked_user_id)
-                    .single();
+                    .maybeSingle();
 
                 if (profileErr || !existingProfile) throw new Error('Could not find user profile');
 

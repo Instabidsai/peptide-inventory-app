@@ -91,7 +91,7 @@ export default function ClientStore() {
                 .from('profiles')
                 .select('id, full_name, commission_rate, price_multiplier, partner_tier, pricing_mode, cost_plus_markup')
                 .eq('id', contact.assigned_rep_id)
-                .single();
+                .maybeSingle();
             return data;
         },
         enabled: !!contact?.id,

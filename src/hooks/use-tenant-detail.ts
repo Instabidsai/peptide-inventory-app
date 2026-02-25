@@ -64,7 +64,7 @@ export function useTenantDetail(orgId: string | undefined) {
                 .from('organizations')
                 .select('id, name, created_at')
                 .eq('id', orgId)
-                .single();
+                .maybeSingle();
             if (!org) throw new Error('Organization not found');
 
             // Fetch all data in parallel
@@ -81,8 +81,8 @@ export function useTenantDetail(orgId: string | undefined) {
                 adminChatsRes,
                 partnerChatsRes,
             ] = await Promise.all([
-                supabase.from('tenant_config').select('*').eq('org_id', orgId).single(),
-                supabase.from('tenant_subscriptions').select('*, plan:subscription_plans(name, display_name)').eq('org_id', orgId).single(),
+                supabase.from('tenant_config').select('*').eq('org_id', orgId).maybeSingle(),
+                supabase.from('tenant_subscriptions').select('*, plan:subscription_plans(name, display_name)').eq('org_id', orgId).maybeSingle(),
                 supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
                 supabase.from('peptides').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
                 supabase.from('bottles').select('id', { count: 'exact', head: true }).eq('org_id', orgId),

@@ -92,7 +92,7 @@ export default function PartnerStore() {
                 .from('profiles')
                 .select('id, org_id, partner_tier, price_multiplier, commission_rate, full_name, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
             return data;
         },
         enabled: !!user?.id,

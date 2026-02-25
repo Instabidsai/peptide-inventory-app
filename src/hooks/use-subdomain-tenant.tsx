@@ -117,7 +117,7 @@ export function SubdomainTenantProvider({ children }: { children: ReactNode }) {
             .from('tenant_config')
             .select('org_id, brand_name, logo_url, primary_color, secondary_color, font_family, favicon_url, subdomain')
             .eq('subdomain', subdomain)
-            .single()
+            .maybeSingle()
             .then(({ data, error }) => {
                 if (error || !data) {
                     logger.warn(`[SubdomainTenant] No tenant found for subdomain: ${subdomain}`);
