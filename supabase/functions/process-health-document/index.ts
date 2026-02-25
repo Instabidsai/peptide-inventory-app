@@ -3,7 +3,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import OpenAI from "https://esm.sh/openai@4.28.0";
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').filter(Boolean);
+const APP_ORIGINS = [
+    'https://thepeptideai.com',
+    'https://app.thepeptideai.com',
+    'https://www.thepeptideai.com',
+    'http://localhost:5173',
+    'http://localhost:8080',
+];
+const envOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(o => o.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = [...new Set([...APP_ORIGINS, ...envOrigins])];
 
 function getCorsHeaders(req: Request) {
     const origin = req.headers.get('origin') || '';

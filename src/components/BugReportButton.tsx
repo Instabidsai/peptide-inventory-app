@@ -67,13 +67,13 @@ export function BugReportButton() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
-          size="icon"
-          className="fixed bottom-4 right-4 z-50 h-10 w-10 rounded-full shadow-lg"
+          variant="ghost"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
           title="Report a bug"
           aria-label="Report a bug"
         >
-          <Bug className="h-4 w-4" />
+          <Bug className="h-4.5 w-4.5" />
+          <span>Report a Bug</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

@@ -1,13 +1,24 @@
 /**
  * Standardized CORS helper for all Supabase Edge Functions.
- * Uses ALLOWED_ORIGINS env var (comma-separated whitelist).
- * Never reflects arbitrary origins — falls back to first whitelisted origin.
+ * Uses ALLOWED_ORIGINS env var (comma-separated whitelist) PLUS
+ * hardcoded app domains so CORS never breaks even if env var is missing.
  */
 
-const ALLOWED_ORIGINS: string[] = (Deno.env.get('ALLOWED_ORIGINS') || '')
+// Hardcoded app domains — these ALWAYS work regardless of env var
+const APP_ORIGINS = [
+    'https://thepeptideai.com',
+    'https://app.thepeptideai.com',
+    'https://www.thepeptideai.com',
+    'http://localhost:5173',       // local dev
+    'http://localhost:8080',       // local dev alt
+];
+
+const envOrigins: string[] = (Deno.env.get('ALLOWED_ORIGINS') || '')
     .split(',')
     .map(o => o.trim())
     .filter(Boolean);
+
+const ALLOWED_ORIGINS: string[] = [...new Set([...APP_ORIGINS, ...envOrigins])];
 
 /**
  * Build CORS headers from the request's Origin header.
