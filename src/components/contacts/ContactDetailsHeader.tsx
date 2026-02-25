@@ -29,11 +29,17 @@ function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderP
     const { userRole } = useAuth();
     const updateContact = useUpdateContact();
     const [showUpgrade, setShowUpgrade] = useState(false);
+    const [upgradeDiscount, setUpgradeDiscount] = useState('10');
     const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff' || userRole?.role === 'sales_rep';
 
     const handleUpgrade = async () => {
-        await updateContact.mutateAsync({ id: contact.id, type: 'preferred' as ContactType });
+        await updateContact.mutateAsync({
+            id: contact.id,
+            type: 'preferred' as ContactType,
+            discount_percent: Number(upgradeDiscount) || 0,
+        });
         setShowUpgrade(false);
+        setUpgradeDiscount('10');
     };
 
     return (
@@ -84,15 +90,27 @@ function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderP
             </div>
 
             {/* Upgrade Confirmation */}
-            <AlertDialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+            <AlertDialog open={showUpgrade} onOpenChange={(open) => { setShowUpgrade(open); if (!open) setUpgradeDiscount('10'); }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Upgrade to Preferred Customer?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Upgrade "{contact.name}" to a Preferred Customer. You can then set
-                            their discount percentage from the details card below.
+                            Upgrade "{contact.name}" to a Preferred Customer with a special discount on their orders.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <div className="py-2">
+                        <label htmlFor="upgrade-discount" className="text-sm font-medium">Discount Percentage</label>
+                        <input
+                            id="upgrade-discount"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={upgradeDiscount}
+                            onChange={(e) => setUpgradeDiscount(e.target.value)}
+                            className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            placeholder="e.g. 10"
+                        />
+                    </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
