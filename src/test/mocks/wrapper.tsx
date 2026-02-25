@@ -1,6 +1,7 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { ImpersonationProvider } from '@/contexts/ImpersonationContext';
 
 // Create a fresh QueryClient for each test — prevents cross-test leakage
 export function createTestQueryClient() {
@@ -39,7 +40,9 @@ export function createPageWrapper(initialEntries: string[] = ['/']) {
     return (
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={initialEntries}>
-          {children}
+          <ImpersonationProvider>
+            {children}
+          </ImpersonationProvider>
         </MemoryRouter>
       </QueryClientProvider>
     );

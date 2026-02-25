@@ -5,18 +5,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { useTenants, TenantSummary } from '@/hooks/use-tenants';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, Package, ShoppingCart, Copy, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, Users, Package, ShoppingCart, Copy, Search, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { format } from 'date-fns';
 import { useState } from 'react';
 
 function TenantRow({ tenant }: { tenant: TenantSummary }) {
     const navigate = useNavigate();
+    const { startImpersonation } = useImpersonation();
 
     const copyId = (e: React.MouseEvent) => {
         e.stopPropagation();
         navigator.clipboard.writeText(tenant.org_id);
         toast({ title: 'Copied', description: 'Org ID copied to clipboard' });
+    };
+
+    const enterTenant = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        startImpersonation(tenant.org_id, tenant.brand_name || tenant.org_name);
+        navigate('/');
     };
 
     return (
@@ -76,6 +85,11 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
                 <Badge variant="outline" className="text-xs">
                     {tenant.order_count > 0 ? 'Active' : 'New'}
                 </Badge>
+            </TableCell>
+            <TableCell>
+                <Button size="sm" variant="outline" onClick={enterTenant} className="h-7 px-2 text-xs gap-1 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-600">
+                    <Eye className="h-3 w-3" /> Enter
+                </Button>
             </TableCell>
         </TableRow>
     );
@@ -137,6 +151,7 @@ export default function VendorTenants() {
                                         <TableHead>Support</TableHead>
                                         <TableHead>Created</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead className="w-[70px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

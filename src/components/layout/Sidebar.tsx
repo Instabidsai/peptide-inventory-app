@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { NavLink, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useSearchParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import {
-  LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, ChevronDown, BookOpen,
+  LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
   ClipboardList,
   ShoppingBag,
   PackageCheck,
@@ -21,12 +20,6 @@ import {
   Activity,
   ShieldCheck,
   Building2,
-  BarChart3,
-  CreditCard,
-  LifeBuoy,
-  Rocket,
-  ScrollText,
-  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -69,25 +62,9 @@ const navigation = [
   { name: 'My Orders', href: '/partner/orders', icon: ClipboardList, roles: ['sales_rep', 'admin'] },
 ];
 
-const vendorNavItems = [
-  { name: 'Overview', href: '/vendor', icon: Shield, end: true },
-  { name: 'Tenants', href: '/vendor/tenants', icon: Building2 },
-  { name: 'Supply Orders', href: '/vendor/supply-orders', icon: Package },
-  { name: 'Analytics', href: '/vendor/analytics', icon: BarChart3 },
-  { name: 'Billing', href: '/vendor/billing', icon: CreditCard },
-  { name: 'Health', href: '/vendor/health', icon: Activity },
-  { name: 'Support', href: '/vendor/support', icon: LifeBuoy },
-  { name: 'Onboarding', href: '/vendor/onboarding', icon: Rocket },
-  { name: 'Messages', href: '/vendor/messages', icon: MessageSquare },
-  { name: 'Audit', href: '/vendor/audit', icon: ScrollText },
-  { name: 'Settings', href: '/vendor/settings', icon: Settings },
-];
-
 export function Sidebar({ open, onClose }: SidebarProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { organization, userRole, user, profile: authProfile } = useAuth();
-  const [vendorExpanded, setVendorExpanded] = useState(() => location.pathname.startsWith('/vendor'));
   const { isEnabled } = useOrgFeatures();
   const { brand_name, logo_url, admin_brand_name } = useTenantConfig();
   const [searchParams] = useSearchParams();
@@ -166,45 +143,25 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </Button>
       </div>
 
-      {/* SaaS Admin dropdown — super_admin only */}
+      {/* Mode Switcher — super_admin only */}
       {userRole?.role === 'super_admin' && (
         <div className="px-3 pt-3 pb-1">
-          <button
-            onClick={() => setVendorExpanded(prev => !prev)}
-            className={cn(
-              'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all',
-              vendorExpanded || location.pathname.startsWith('/vendor')
-                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            )}
-          >
-            <ShieldCheck className="h-4 w-4" />
-            <span className="flex-1 text-left">SaaS Admin</span>
-            {vendorExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          </button>
-          {vendorExpanded && (
-            <div className="mt-1 ml-2 pl-2 border-l border-border/40 space-y-0.5">
-              {vendorNavItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  end={item.end}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all',
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    )
-                  }
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  {item.name}
-                </NavLink>
-              ))}
-            </div>
-          )}
+          <div className="flex rounded-lg bg-muted/50 p-0.5 ring-1 ring-border/50">
+            <button
+              onClick={() => { navigate('/'); onClose(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all bg-background text-foreground shadow-sm ring-1 ring-border/50"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              My Company
+            </button>
+            <button
+              onClick={() => { navigate('/vendor'); onClose(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              SaaS Admin
+            </button>
+          </div>
         </div>
       )}
 

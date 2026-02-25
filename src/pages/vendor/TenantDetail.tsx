@@ -9,6 +9,7 @@ import TenantConfigEditor from './TenantConfigEditor';
 import TenantFeatureToggles from './TenantFeatureToggles';
 import TenantUserList from './TenantUserList';
 import TenantSubscriptionActions from './TenantSubscriptionActions';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import {
     ArrowLeft,
     Users,
@@ -20,6 +21,7 @@ import {
     Bot,
     MessageCircle,
     Zap,
+    Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -32,6 +34,7 @@ export default function TenantDetail() {
     const navigate = useNavigate();
     const { data: tenant, isLoading } = useTenantDetail(orgId);
     const { data: auditLog } = useTenantAuditLog(orgId);
+    const { startImpersonation } = useImpersonation();
 
     if (isLoading) {
         return (
@@ -77,6 +80,16 @@ export default function TenantDetail() {
                         </div>
                     </div>
                 </div>
+                <Button
+                    onClick={() => {
+                        startImpersonation(orgId!, tenant.config?.brand_name || tenant.org_name);
+                        navigate('/');
+                    }}
+                    className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Enter as Admin
+                </Button>
             </div>
 
             {/* Usage Stats */}

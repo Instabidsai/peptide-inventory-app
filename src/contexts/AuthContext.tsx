@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useSyncExternalStore } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
@@ -318,14 +318,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.hash = '#/auth';
   };
 
+  // Impersonation: read from sessionStorage (set by ImpersonationContext)
+  // useSyncExternalStore keeps this reactive when impersonation changes
+  const impersonationSnapshot = useSyncExternalStore(
+    (cb) => { window.addEventListener('impersonation-change', cb); return () => window.removeEventListener('impersonation-change', cb); },
+    () => sessionStorage.getItem('impersonation') || '',
+  );
+  const imp = useMemo(() => {
+    try { return impersonationSnapshot ? JSON.parse(impersonationSnapshot) as { orgId: string; orgName: string } : null; } catch { return null; }
+  }, [impersonationSnapshot]);
+  const isSuperAdmin = userRole?.role === 'super_admin';
+
+  const effectiveOrg = useMemo(() => {
+    if (imp?.orgId && isSuperAdmin) {
+      return { id: imp.orgId, name: imp.orgName || 'Tenant' };
+    }
+    return organization;
+  }, [imp, isSuperAdmin, organization]);
+
+  const effectiveRole = useMemo(() => {
+    if (imp?.orgId && isSuperAdmin && userRole) {
+      return { ...userRole, org_id: imp.orgId, role: 'admin' as AppRole };
+    }
+    return userRole;
+  }, [imp, isSuperAdmin, userRole]);
+
+  const effectiveProfile = useMemo(() => {
+    if (imp?.orgId && isSuperAdmin && profile) {
+      return { ...profile, org_id: imp.orgId, role: 'admin' as AppRole };
+    }
+    return profile;
+  }, [imp, isSuperAdmin, profile]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
-        profile,
-        userRole,
-        organization,
+        profile: effectiveProfile,
+        userRole: effectiveRole,
+        organization: effectiveOrg,
         loading,
         authError,
         signIn,

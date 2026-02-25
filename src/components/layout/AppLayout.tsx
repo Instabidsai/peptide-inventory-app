@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useLocation, NavLink } from 'react-router-dom';
+import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -7,9 +7,10 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 // Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
 import { motion } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, ClipboardList, Users } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, ClipboardList, Users, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const partnerNav = [
@@ -22,7 +23,9 @@ const partnerNav = [
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isPartnerRoute = location.pathname.startsWith('/partner');
+  const { isImpersonating, orgName, stopImpersonation } = useImpersonation();
   // Inject tenant's primary color into CSS variables
   useTenantTheme();
 
@@ -33,6 +36,20 @@ export function AppLayout() {
         Skip to main content
       </a>
       <CommandPalette />
+
+      {/* Impersonation banner */}
+      {isImpersonating && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-black px-4 py-1.5 flex items-center justify-center gap-3 text-sm font-medium shadow-lg">
+          <Eye className="h-4 w-4" />
+          <span>Viewing as <strong>{orgName}</strong></span>
+          <button
+            onClick={() => { stopImpersonation(); navigate('/vendor/tenants'); }}
+            className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/20 hover:bg-black/30 transition-colors text-xs font-bold"
+          >
+            <X className="h-3 w-3" /> Exit
+          </button>
+        </div>
+      )}
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
