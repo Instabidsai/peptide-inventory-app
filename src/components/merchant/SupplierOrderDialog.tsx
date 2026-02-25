@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides } from '@/hooks/use-peptides';
-import { useOrgWholesaleTier, calculateWholesalePrice } from '@/hooks/use-wholesale-pricing';
+import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice, getMarkupForQuantity, getTierForQuantity } from '@/hooks/use-wholesale-pricing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +68,7 @@ export default function SupplierOrderDialog() {
 
     const { data: peptides, isLoading: peptidesLoading } = usePeptides();
     const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
+    const { data: allTiers, isLoading: tiersLoading } = useWholesaleTiers();
     const createOrder = useCreateSupplierOrder();
 
     // Fetch supplier org name for display
@@ -85,8 +86,10 @@ export default function SupplierOrderDialog() {
         staleTime: 10 * 60 * 1000,
     });
 
-    const markupAmount = tierInfo?.tier?.markup_amount || 0;
-    const tierName = tierInfo?.tier?.name || 'Standard';
+    const tiers = allTiers || [];
+    const defaultMarkup = tiers.length > 0
+        ? [...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units)[0]?.markup_amount || 25
+        : 25;
 
     // Only show peptides that have a base_cost set
     const catalogPeptides = (peptides || []).filter(p => (p.base_cost ?? 0) > 0);
@@ -100,12 +103,13 @@ export default function SupplierOrderDialog() {
         if (newQty === 0) {
             newCart.delete(peptide.id);
         } else {
+            const markup = getMarkupForQuantity(newQty, tiers, defaultMarkup);
             newCart.set(peptide.id, {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: newQty,
                 base_cost: peptide.base_cost!,
-                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markupAmount),
+                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markup),
             });
         }
         setCart(newCart);
@@ -118,12 +122,13 @@ export default function SupplierOrderDialog() {
         if (safeQty === 0) {
             newCart.delete(peptide.id);
         } else {
+            const markup = getMarkupForQuantity(safeQty, tiers, defaultMarkup);
             newCart.set(peptide.id, {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: safeQty,
                 base_cost: peptide.base_cost!,
-                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markupAmount),
+                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markup),
             });
         }
         setCart(newCart);
@@ -157,7 +162,7 @@ export default function SupplierOrderDialog() {
         }
     };
 
-    const isLoading = peptidesLoading || tierLoading;
+    const isLoading = peptidesLoading || tierLoading || tiersLoading;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -191,13 +196,25 @@ export default function SupplierOrderDialog() {
                     </div>
                 ) : (
                     <>
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                                Your tier: <Badge variant="outline">{tierName}</Badge> (cost + ${markupAmount.toFixed(0)})
-                            </span>
-                            {totalItems > 0 && (
-                                <Badge>{totalItems} items in cart</Badge>
-                            )}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Volume pricing per item:</span>
+                                {totalItems > 0 && (
+                                    <Badge>{totalItems} units in cart</Badge>
+                                )}
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                {[...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                    <Badge key={t.id} variant="outline" className="text-xs">
+                                        {t.min_monthly_units}+ vials: cost + ${t.markup_amount}
+                                    </Badge>
+                                ))}
+                                {tiers.length === 0 && (
+                                    <Badge variant="outline" className="text-xs">
+                                        Default: cost + $25
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
 
                         <Table>
@@ -218,11 +235,18 @@ export default function SupplierOrderDialog() {
                                     </TableRow>
                                 ) : (
                                     catalogPeptides.map(p => {
-                                        const wholesalePrice = calculateWholesalePrice(p.base_cost!, markupAmount);
                                         const qty = cart.get(p.id)?.quantity || 0;
+                                        const itemMarkup = getMarkupForQuantity(qty || 1, tiers, defaultMarkup);
+                                        const wholesalePrice = calculateWholesalePrice(p.base_cost!, itemMarkup);
+                                        const activeTier = getTierForQuantity(qty || 1, tiers);
                                         return (
                                             <TableRow key={p.id} className={qty > 0 ? 'bg-primary/5' : ''}>
-                                                <TableCell className="font-medium">{p.name}</TableCell>
+                                                <TableCell>
+                                                    <div className="font-medium">{p.name}</div>
+                                                    {qty >= 50 && activeTier && (
+                                                        <span className="text-xs text-green-600">{activeTier.name} tier</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="text-right font-medium text-green-600">
                                                     ${wholesalePrice.toFixed(2)}
                                                 </TableCell>

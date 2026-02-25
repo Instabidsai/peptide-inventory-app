@@ -14,7 +14,35 @@ export interface WholesaleTier {
 
 // ── Pure pricing functions ──
 
-/** Wholesale price = base cost + fixed tier markup (e.g. $9 cost + $20 markup = $29) */
+/** Get the markup amount for a given per-item quantity based on tier thresholds.
+ *  Tiers must be sorted by min_monthly_units ascending.
+ *  Returns the best (lowest) markup the quantity qualifies for.
+ *  If quantity doesn't meet any threshold, returns the fallback markup. */
+export function getMarkupForQuantity(quantity: number, tiers: WholesaleTier[], fallbackMarkup = 25): number {
+    if (!tiers || tiers.length === 0) return fallbackMarkup;
+    // Walk tiers in descending threshold order — first match wins (highest qualifying tier)
+    const sorted = [...tiers].sort((a, b) => b.min_monthly_units - a.min_monthly_units);
+    for (const tier of sorted) {
+        if (quantity >= tier.min_monthly_units) {
+            return tier.markup_amount;
+        }
+    }
+    return fallbackMarkup;
+}
+
+/** Get the tier name for a given per-item quantity */
+export function getTierForQuantity(quantity: number, tiers: WholesaleTier[]): WholesaleTier | null {
+    if (!tiers || tiers.length === 0) return null;
+    const sorted = [...tiers].sort((a, b) => b.min_monthly_units - a.min_monthly_units);
+    for (const tier of sorted) {
+        if (quantity >= tier.min_monthly_units) {
+            return tier;
+        }
+    }
+    return null;
+}
+
+/** Wholesale price = base cost + tier markup (markup depends on quantity) */
 export function calculateWholesalePrice(baseCost: number, markupAmount: number): number {
     return +(baseCost + markupAmount).toFixed(2);
 }

@@ -68,15 +68,23 @@ Deno.serve(async (req) => {
             throw new Error('No supplier connected to your organization');
         }
 
-        // Get wholesale tier for validation
-        let markupAmount = 0;
-        if (config.wholesale_tier_id) {
-            const { data: tier } = await supabase
-                .from('wholesale_pricing_tiers')
-                .select('markup_amount')
-                .eq('id', config.wholesale_tier_id)
-                .single();
-            if (tier) markupAmount = tier.markup_amount;
+        // Fetch all active wholesale tiers for per-item quantity-based pricing
+        const { data: allTiers } = await supabase
+            .from('wholesale_pricing_tiers')
+            .select('name, markup_amount, min_monthly_units')
+            .eq('active', true)
+            .order('min_monthly_units', { ascending: false });
+
+        const tiers = allTiers || [];
+        const defaultMarkup = tiers.length > 0
+            ? [...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units)[0]?.markup_amount || 25
+            : 25;
+
+        function getMarkupForQty(qty: number): number {
+            for (const tier of tiers) {
+                if (qty >= tier.min_monthly_units) return tier.markup_amount;
+            }
+            return defaultMarkup;
         }
 
         const body: { items: OrderItem[] } = await req.json();
@@ -109,8 +117,9 @@ Deno.serve(async (req) => {
             if (!peptide?.base_cost || peptide.base_cost <= 0) {
                 throw new Error(`Product "${peptide?.name || item.peptide_id}" has no base cost set`);
             }
-            // Server-calculated wholesale price — ignore client-sent unit_price
-            const serverPrice = +(peptide.base_cost + markupAmount).toFixed(2);
+            // Server-calculated wholesale price — per-item quantity determines tier markup
+            const itemMarkup = getMarkupForQty(item.quantity);
+            const serverPrice = +(peptide.base_cost + itemMarkup).toFixed(2);
             pricedItems.push({ ...item, unit_price: serverPrice });
         }
 
