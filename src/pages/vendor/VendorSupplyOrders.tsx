@@ -184,14 +184,8 @@ function OrderDetailDialog({ orderId, merchantName, onClose }: { orderId: string
     );
 }
 
-export default function VendorSupplyOrders() {
-    const { data: orders, isLoading } = useSupplierOrders();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState<string>('all');
-    const [filterPayment, setFilterPayment] = useState<string>('all');
-    const [selectedOrder, setSelectedOrder] = useState<{ id: string; merchant: string } | null>(null);
-
-    const filtered = orders
+function filterOrders(orders: SupplierOrder[] | undefined, searchQuery: string, filterStatus: string, filterPayment: string) {
+    return orders
         ?.filter(o => filterStatus === 'all' || o.status === filterStatus)
         ?.filter(o => filterPayment === 'all' || o.payment_status === filterPayment)
         ?.filter(o => {
@@ -199,34 +193,47 @@ export default function VendorSupplyOrders() {
             const q = searchQuery.toLowerCase();
             return o.merchant_name.toLowerCase().includes(q) || o.order_id.toLowerCase().includes(q);
         });
+}
 
-    // Summary stats
-    const totalOrders = filtered?.length || 0;
-    const totalRevenue = filtered?.reduce((s, o) => s + o.total_amount, 0) || 0;
-    const totalUnits = filtered?.reduce((s, o) => s + o.item_count, 0) || 0;
-    const pendingCount = filtered?.filter(o => o.status === 'submitted').length || 0;
-
-    const exportCSV = () => {
-        if (!filtered?.length) return;
-        const headers = ['Order ID', 'Merchant', 'Date', 'Status', 'Payment', 'Items', 'Total'];
-        const rows = filtered.map(o => [
-            o.order_id.slice(0, 8),
-            `"${o.merchant_name}"`,
-            format(new Date(o.order_date), 'yyyy-MM-dd'),
-            o.status,
-            o.payment_status,
-            String(o.item_count),
-            o.total_amount.toFixed(2),
-        ]);
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `supply-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+function getOrderStats(filtered: SupplierOrder[] | undefined) {
+    return {
+        totalOrders: filtered?.length || 0,
+        totalRevenue: filtered?.reduce((s, o) => s + o.total_amount, 0) || 0,
+        totalUnits: filtered?.reduce((s, o) => s + o.item_count, 0) || 0,
+        pendingCount: filtered?.filter(o => o.status === 'submitted').length || 0,
     };
+}
+
+function exportOrdersCSV(orders: SupplierOrder[]) {
+    const headers = ['Order ID', 'Merchant', 'Date', 'Status', 'Payment', 'Items', 'Total'];
+    const rows = orders.map(o => [
+        o.order_id.slice(0, 8),
+        `"${o.merchant_name}"`,
+        format(new Date(o.order_date), 'yyyy-MM-dd'),
+        o.status,
+        o.payment_status,
+        String(o.item_count),
+        o.total_amount.toFixed(2),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supply-orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+export default function VendorSupplyOrders() {
+    const { data: orders, isLoading } = useSupplierOrders();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [filterPayment, setFilterPayment] = useState<string>('all');
+    const [selectedOrder, setSelectedOrder] = useState<{ id: string; merchant: string } | null>(null);
+
+    const filtered = filterOrders(orders, searchQuery, filterStatus, filterPayment);
+    const { totalOrders, totalRevenue, totalUnits, pendingCount } = getOrderStats(filtered);
 
     return (
         <div className="space-y-6">
@@ -238,7 +245,7 @@ export default function VendorSupplyOrders() {
                     </p>
                 </div>
                 {filtered && filtered.length > 0 && (
-                    <Button variant="outline" onClick={exportCSV}>
+                    <Button variant="outline" onClick={() => exportOrdersCSV(filtered)}>
                         <Download className="h-4 w-4 mr-2" /> Export CSV
                     </Button>
                 )}

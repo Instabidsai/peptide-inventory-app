@@ -58,3 +58,14 @@ srccomponentsErrorBoundary.tsx
 APP-OVERVIEW.md
 agent-order-context.md
 docs/
+
+# Supabase CLI (local binary)
+supabase.exe
+supabase_cli.tar.gz
+supabase/.temp/
+
+# Print service test artifacts
+print-service/test-label.pdf
+
+# Cross-project notes (session-specific)
+_cross-project-notes.md
