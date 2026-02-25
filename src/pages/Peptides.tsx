@@ -37,6 +37,9 @@ import { PeptideHistoryDialog } from '@/components/peptides/PeptideHistoryDialog
 import SupplierOrderDialog from '@/components/merchant/SupplierOrderDialog';
 import MarginCalculator from '@/components/wholesale/MarginCalculator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useOrgFeatures } from '@/hooks/use-org-features';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { useOrgWholesaleTier, calculateWholesalePrice } from '@/hooks/use-wholesale-pricing';
 import {
   Select,
   SelectContent,
@@ -64,9 +67,14 @@ export default function Peptides() {
   const updatePeptide = useUpdatePeptide();
   const deletePeptide = useDeletePeptide();
 
+  const { isEnabled } = useOrgFeatures();
+  const { data: tenantConfig } = useTenantConfig();
+  const { data: orgTier } = useOrgWholesaleTier();
+  const showWholesaleTab = isEnabled('wholesale_catalog') && !!tenantConfig?.supplier_org_id;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'website' | 'supplier' | 'manual'>('all');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'wholesale'>('catalog');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
@@ -108,12 +116,16 @@ export default function Peptides() {
     )
   }
 
-  const filteredPeptides = peptides?.filter((p) => {
+  const isWholesaleView = activeTab === 'wholesale' && showWholesaleTab;
+  const myCatalogPeptides = peptides?.filter(p => p.catalog_source !== 'supplier') || [];
+  const wholesalePeptides = peptides?.filter(p => p.catalog_source === 'supplier') || [];
+  const basePeptides = isWholesaleView ? wholesalePeptides : myCatalogPeptides;
+
+  const filteredPeptides = basePeptides.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? p.active : !p.active);
-    const matchesSource = sourceFilter === 'all' || (p.catalog_source || 'manual') === sourceFilter;
-    return matchesSearch && matchesStatus && matchesSource;
+    return matchesSearch && matchesStatus;
   });
 
   const handleCreate = async (data: PeptideFormData) => {
@@ -165,8 +177,8 @@ export default function Peptides() {
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
         <div className="flex gap-2">
-          {canEdit && <SupplierOrderDialog />}
-          {canEdit && (
+          {canEdit && isWholesaleView && <SupplierOrderDialog />}
+          {canEdit && !isWholesaleView && (
           <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) form.reset(); }}>
             <DialogTrigger asChild>
               <Button>
@@ -254,6 +266,15 @@ export default function Peptides() {
         </div>
       </div>
 
+      {showWholesaleTab && (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'catalog' | 'wholesale')}>
+          <TabsList>
+            <TabsTrigger value="catalog">My Catalog</TabsTrigger>
+            <TabsTrigger value="wholesale">Wholesale Available</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
       <Card className="bg-card border-border/60">
         <CardHeader>
           <div className="flex items-center gap-4">
@@ -267,17 +288,6 @@ export default function Peptides() {
                 className="pl-9"
               />
             </div>
-            <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as 'all' | 'website' | 'supplier' | 'manual')}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="website">Website</SelectItem>
-                <SelectItem value="supplier">Wholesale</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Status" />
@@ -288,7 +298,7 @@ export default function Peptides() {
                 <SelectItem value="inactive">Inactive Only</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => {
+            {!isWholesaleView && <Button variant="outline" onClick={() => {
               if (filteredPeptides?.length) {
                 exportToCSV(filteredPeptides.map(p => ({
                   name: p.name,
@@ -308,7 +318,7 @@ export default function Peptides() {
               }
             }}>
               <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
+            </Button>}
           </div>
         </CardHeader>
         <CardContent>
@@ -336,26 +346,23 @@ export default function Peptides() {
                   transition={{ duration: 0.25, delay: index * 0.04 }}
                 >
                   <Card
-                    className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Edit ${peptide.name}`}
-                    onClick={() => openEditDialog(peptide)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditDialog(peptide); } }}
+                    className={!isWholesaleView ? "cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all" : ""}
+                    {...(!isWholesaleView ? {
+                      role: "button" as const,
+                      tabIndex: 0,
+                      'aria-label': `Edit ${peptide.name}`,
+                      onClick: () => openEditDialog(peptide),
+                      onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditDialog(peptide); } },
+                    } : {})}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium">{peptide.name}</p>
-                            {peptide.catalog_source === 'website' && (
+                            {!isWholesaleView && peptide.catalog_source === 'website' && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
                                 <Globe className="h-2.5 w-2.5" /> Web
-                              </Badge>
-                            )}
-                            {peptide.catalog_source === 'supplier' && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-400/50 text-orange-600 gap-0.5">
-                                <Warehouse className="h-2.5 w-2.5" /> Wholesale
                               </Badge>
                             )}
                           </div>
@@ -372,9 +379,20 @@ export default function Peptides() {
                         }>
                           {peptide.stock_count || 0} Vials
                         </Badge>
-                        <span className="text-muted-foreground">
-                          ${(peptide.retail_price || 0).toFixed(2)}
-                        </span>
+                        {isWholesaleView ? (
+                          <>
+                            <span className="text-muted-foreground">
+                              Cost: ${calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0).toFixed(2)}
+                            </span>
+                            <span className="text-muted-foreground">
+                              MSRP: ${(peptide.retail_price || 0).toFixed(2)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            ${(peptide.retail_price || 0).toFixed(2)}
+                          </span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -388,15 +406,18 @@ export default function Peptides() {
                   <TableHead>Name</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>In Stock</TableHead>
-                  <TableHead>On Order</TableHead>
-                  <TableHead>Next Delivery</TableHead>
-                  {isPartner ? (
+                  {!isWholesaleView && <TableHead>On Order</TableHead>}
+                  {!isWholesaleView && <TableHead>Next Delivery</TableHead>}
+                  {isWholesaleView ? (
+                    <TableHead>Your Cost</TableHead>
+                  ) : isPartner ? (
                     <TableHead>Cost</TableHead>
                   ) : (
                     <TableHead>Avg Cost</TableHead>
                   )}
                   <TableHead>MSRP</TableHead>
-                  <TableHead>Status</TableHead>
+                  {isWholesaleView && <TableHead>Margin</TableHead>}
+                  {!isWholesaleView && <TableHead>Status</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -412,14 +433,9 @@ export default function Peptides() {
                         >
                           {peptide.name}
                         </button>
-                        {peptide.catalog_source === 'website' && (
+                        {!isWholesaleView && peptide.catalog_source === 'website' && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
                             <Globe className="h-2.5 w-2.5" /> Web
-                          </Badge>
-                        )}
-                        {peptide.catalog_source === 'supplier' && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-400/50 text-orange-600 gap-0.5">
-                            <Warehouse className="h-2.5 w-2.5" /> Wholesale
                           </Badge>
                         )}
                       </div>
@@ -441,6 +457,7 @@ export default function Peptides() {
                         <span className="text-xs text-amber-500 block">Low Stock</span>
                       )}
                     </TableCell>
+                    {!isWholesaleView && (
                     <TableCell>
                       {pendingByPeptide?.[peptide.id]?.totalOrdered ? (
                         <Badge variant="secondary" className="bg-amber-500/20 text-amber-600">
@@ -450,6 +467,8 @@ export default function Peptides() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
+                    )}
+                    {!isWholesaleView && (
                     <TableCell>
                       {pendingByPeptide?.[peptide.id]?.nextDelivery ? (
                         <div className="flex items-center gap-1 text-sm">
@@ -460,7 +479,12 @@ export default function Peptides() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    {isPartner ? (
+                    )}
+                    {isWholesaleView ? (
+                      <TableCell>
+                        ${calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0).toFixed(2)}
+                      </TableCell>
+                    ) : isPartner ? (
                       <TableCell>
                         {/* Partner sees (AvgCost OR PendingCost) + overhead (default 4.00) */}
                         {(() => {
@@ -479,6 +503,21 @@ export default function Peptides() {
                     <TableCell>
                       ${(peptide.retail_price || 0).toFixed(2)}
                     </TableCell>
+                    {isWholesaleView && (
+                    <TableCell>
+                      {(() => {
+                        const yourCost = calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0);
+                        const margin = (peptide.retail_price || 0) - yourCost;
+                        const pct = peptide.retail_price ? (margin / peptide.retail_price * 100) : 0;
+                        return (
+                          <span className={margin > 0 ? 'text-green-600' : 'text-red-500'}>
+                            ${margin.toFixed(2)} ({pct.toFixed(0)}%)
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
+                    )}
+                    {!isWholesaleView && (
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Switch
@@ -491,9 +530,10 @@ export default function Peptides() {
                         </Badge>
                       </div>
                     </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {canEdit && (
+                        {canEdit && !isWholesaleView && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -512,7 +552,7 @@ export default function Peptides() {
                         >
                           <History className="h-4 w-4" />
                         </Button>
-                        {canDelete && (
+                        {canDelete && !isWholesaleView && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -656,8 +696,8 @@ export default function Peptides() {
         peptideName={historyPeptide?.name || ''}
       />
 
-      {/* Wholesale Margin Calculator — only visible to admins with a supplier connection */}
-      {canEdit && <MarginCalculator />}
+      {/* Wholesale Margin Calculator — visible in wholesale tab */}
+      {isWholesaleView && canEdit && <MarginCalculator />}
     </div >
   );
 }

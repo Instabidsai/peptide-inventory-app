@@ -133,6 +133,15 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     roles: ['admin', 'staff'],
     sidebarItems: ['Movements'],
   },
+  {
+    key: 'wholesale_catalog',
+    label: 'Wholesale Catalog',
+    description: 'Browse and order from your supplier\'s wholesale product catalog with volume-based pricing tiers.',
+    category: 'inventory',
+    defaultEnabled: true,
+    roles: ['admin', 'staff'],
+    sidebarItems: [],
+  },
 
   // ── Sales & Orders ──
   {

@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
             'supplements', 'movements', 'purchase_orders', 'sales_orders',
             'fulfillment', 'partner_network', 'financials', 'automations',
             'contacts', 'protocols', 'resources', 'client_requests',
-            'feedback', 'client_portal', 'customizations',
+            'feedback', 'client_portal', 'customizations', 'wholesale_catalog',
         ];
         const { error: featureError } = await supabase
             .from('org_features')

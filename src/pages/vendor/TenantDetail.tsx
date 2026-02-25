@@ -3,7 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantDetail, useTenantAuditLog } from '@/hooks/use-tenant-detail';
+import { supabase } from '@/integrations/sb_client/client';
+import { Switch } from '@/components/ui/switch';
 import { StatCard, BillingStatusBadge } from './vendor-shared';
 import {
     ArrowLeft,
@@ -20,6 +23,7 @@ import {
     Palette,
     Globe,
     MapPin,
+    Warehouse,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -32,6 +36,31 @@ export default function TenantDetail() {
     const navigate = useNavigate();
     const { data: tenant, isLoading } = useTenantDetail(orgId);
     const { data: auditLog } = useTenantAuditLog(orgId);
+    const queryClient = useQueryClient();
+
+    const { data: wholesaleEnabled } = useQuery({
+        queryKey: ['org-feature', orgId, 'wholesale_catalog'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('org_features')
+                .select('enabled')
+                .eq('org_id', orgId!)
+                .eq('feature_key', 'wholesale_catalog')
+                .maybeSingle();
+            return data?.enabled ?? true;
+        },
+        enabled: !!orgId,
+    });
+
+    const toggleWholesale = async (enabled: boolean) => {
+        await supabase
+            .from('org_features')
+            .upsert(
+                { org_id: orgId!, feature_key: 'wholesale_catalog', enabled },
+                { onConflict: 'org_id,feature_key' }
+            );
+        queryClient.invalidateQueries({ queryKey: ['org-feature', orgId, 'wholesale_catalog'] });
+    };
 
     if (isLoading) {
         return (
@@ -183,6 +212,16 @@ export default function TenantDetail() {
                                         <span className="text-xs truncate max-w-[200px]">{tenant.config.ai_system_prompt_override}</span>
                                     </div>
                                 )}
+                                <div className="flex items-center justify-between pt-2 border-t">
+                                    <div className="flex items-center gap-2">
+                                        <Warehouse className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="text-sm">Wholesale Catalog</span>
+                                    </div>
+                                    <Switch
+                                        checked={wholesaleEnabled ?? true}
+                                        onCheckedChange={toggleWholesale}
+                                    />
+                                </div>
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">No configuration set</p>
