@@ -133,12 +133,43 @@ Deno.serve(async (req) => {
         const merchantName = merchantOrg?.name || 'Unknown Merchant';
         const supplierName = supplierOrg?.name || 'Supplier';
 
-        // Create the supplier order — use a dummy client_id (the merchant admin user)
+        // Upsert a "partner" contact in the supplier's org to represent this merchant
+        const { data: existingContact } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('org_id', config.supplier_org_id)
+            .eq('linked_user_id', user.id)
+            .eq('source', 'wholesale')
+            .maybeSingle();
+
+        let contactId: string;
+        if (existingContact) {
+            contactId = existingContact.id;
+        } else {
+            const { data: newContact, error: contactErr } = await supabase
+                .from('contacts')
+                .insert({
+                    org_id: config.supplier_org_id,
+                    name: merchantName,
+                    email: user.email,
+                    company: merchantName,
+                    type: 'partner',
+                    linked_user_id: user.id,
+                    source: 'wholesale',
+                    notes: `Wholesale merchant account (${merchantName})`,
+                })
+                .select('id')
+                .single();
+            if (contactErr) throw new Error(`Contact creation failed: ${contactErr.message}`);
+            contactId = newContact.id;
+        }
+
+        // Create the supplier order
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')
             .insert({
                 org_id: config.supplier_org_id,  // Order belongs to supplier's org
-                client_id: user.id,              // Merchant admin as the "client"
+                client_id: contactId,            // Merchant's contact record in supplier's org
                 rep_id: null,
                 status: 'submitted',
                 total_amount: totalAmount,
@@ -161,7 +192,6 @@ Deno.serve(async (req) => {
             peptide_id: item.peptide_id,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            total_price: +(item.unit_price * item.quantity).toFixed(2),
         }));
 
         const { error: itemsError } = await supabase
