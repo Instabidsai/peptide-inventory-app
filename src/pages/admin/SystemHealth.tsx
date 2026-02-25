@@ -22,7 +22,6 @@ const RPC_FUNCTIONS = [
   "get_bottle_stats",
   "get_inventory_valuation",
   "get_org_counts",
-  "run_readonly_query",
   "check_subdomain_availability",
   "get_partner_downline",
   "get_peptide_stock_counts",
@@ -88,28 +87,27 @@ export default function SystemHealth() {
       updateCheck("Auth Service", { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
     }
 
-    // 3. RPC function existence check (query pg_proc)
-    try {
-      const { data, error } = await supabase.rpc("run_readonly_query", {
-        query_text: `SELECT proname FROM pg_proc WHERE proname IN (${RPC_FUNCTIONS.map((fn) => `'${fn}'`).join(",")})`,
-      });
-
-      if (error) {
-        // If run_readonly_query itself fails, mark it and all RPCs as unknown
-        updateCheck("RPC: run_readonly_query", { status: "fail", error: error.message });
-        // Try checking each RPC individually by calling with dummy params
-        for (const fn of RPC_FUNCTIONS) {
-          if (fn === "run_readonly_query") continue;
-          updateCheck(`RPC: ${fn}`, { status: "fail", error: "Cannot verify — run_readonly_query failed" });
+    // 3. RPC function existence check — probe each individually
+    // Call each RPC with empty/minimal params. If Supabase returns "Could not find the function",
+    // the function is missing. Any other response (even param errors) means it exists.
+    for (const fn of RPC_FUNCTIONS) {
+      try {
+        const start = performance.now();
+        const { error } = await supabase.rpc(fn, {});
+        const latencyMs = Math.round(performance.now() - start);
+        if (error) {
+          const msg = error.message || "";
+          // "Could not find the function" = function doesn't exist in DB
+          if (msg.includes("Could not find the function") || msg.includes("not found in the schema cache")) {
+            updateCheck(`RPC: ${fn}`, { status: "fail", error: "Function not found", latencyMs });
+          } else {
+            // Function exists but returned an error (wrong params, RLS, etc.) — that's fine
+            updateCheck(`RPC: ${fn}`, { status: "pass", latencyMs });
+          }
+        } else {
+          updateCheck(`RPC: ${fn}`, { status: "pass", latencyMs });
         }
-      } else {
-        const existingFunctions = new Set((data as { proname: string }[])?.map((r) => r.proname) || []);
-        for (const fn of RPC_FUNCTIONS) {
-          updateCheck(`RPC: ${fn}`, existingFunctions.has(fn) ? { status: "pass" } : { status: "fail", error: "Function not found in pg_proc" });
-        }
-      }
-    } catch (err) {
-      for (const fn of RPC_FUNCTIONS) {
+      } catch (err) {
         updateCheck(`RPC: ${fn}`, { status: "fail", error: err instanceof Error ? err.message : "Unknown" });
       }
     }
