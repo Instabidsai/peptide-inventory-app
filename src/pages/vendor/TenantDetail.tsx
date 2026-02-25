@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenantDetail, useTenantAuditLog } from '@/hooks/use-tenant-detail';
-import { supabase } from '@/integrations/sb_client/client';
-import { Switch } from '@/components/ui/switch';
-import { StatCard, BillingStatusBadge } from './vendor-shared';
+import { StatCard } from './vendor-shared';
+import TenantConfigEditor from './TenantConfigEditor';
+import TenantFeatureToggles from './TenantFeatureToggles';
+import TenantUserList from './TenantUserList';
+import TenantSubscriptionActions from './TenantSubscriptionActions';
 import {
     ArrowLeft,
     Users,
@@ -19,11 +20,6 @@ import {
     Bot,
     MessageCircle,
     Zap,
-    Mail,
-    Palette,
-    Globe,
-    MapPin,
-    Warehouse,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -36,31 +32,6 @@ export default function TenantDetail() {
     const navigate = useNavigate();
     const { data: tenant, isLoading } = useTenantDetail(orgId);
     const { data: auditLog } = useTenantAuditLog(orgId);
-    const queryClient = useQueryClient();
-
-    const { data: wholesaleEnabled } = useQuery({
-        queryKey: ['org-feature', orgId, 'wholesale_catalog'],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from('org_features')
-                .select('enabled')
-                .eq('org_id', orgId!)
-                .eq('feature_key', 'wholesale_catalog')
-                .maybeSingle();
-            return data?.enabled ?? true;
-        },
-        enabled: !!orgId,
-    });
-
-    const toggleWholesale = async (enabled: boolean) => {
-        await supabase
-            .from('org_features')
-            .upsert(
-                { org_id: orgId!, feature_key: 'wholesale_catalog', enabled },
-                { onConflict: 'org_id,feature_key' }
-            );
-        queryClient.invalidateQueries({ queryKey: ['org-feature', orgId, 'wholesale_catalog'] });
-    };
 
     if (isLoading) {
         return (
@@ -106,9 +77,6 @@ export default function TenantDetail() {
                         </div>
                     </div>
                 </div>
-                {tenant.subscription && (
-                    <BillingStatusBadge status={tenant.subscription.status} />
-                )}
             </div>
 
             {/* Usage Stats */}
@@ -122,112 +90,14 @@ export default function TenantDetail() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Subscription */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Subscription</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {tenant.subscription ? (
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Plan</span>
-                                    <span className="font-medium">{tenant.subscription.plan_name}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Billing Period</span>
-                                    <span className="capitalize">{tenant.subscription.billing_period}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Status</span>
-                                    <BillingStatusBadge status={tenant.subscription.status} />
-                                </div>
-                                {tenant.subscription.current_period_end && (
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">Renews</span>
-                                        <span className="text-sm">{format(new Date(tenant.subscription.current_period_end), 'MMM d, yyyy')}</span>
-                                    </div>
-                                )}
-                                {tenant.subscription.stripe_customer_id && (
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">Stripe ID</span>
-                                        <span className="font-mono text-xs">{tenant.subscription.stripe_customer_id}</span>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No subscription — Free tier</p>
-                        )}
-                    </CardContent>
-                </Card>
+                {/* Subscription with actions */}
+                <TenantSubscriptionActions orgId={orgId!} subscription={tenant.subscription} />
 
-                {/* Config */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Configuration</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {tenant.config ? (
-                            <div className="space-y-2.5 text-sm">
-                                {tenant.config.support_email && (
-                                    <div className="flex items-center gap-2">
-                                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Support:</span>
-                                        <span>{tenant.config.support_email}</span>
-                                    </div>
-                                )}
-                                {tenant.config.app_url && (
-                                    <div className="flex items-center gap-2">
-                                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="text-muted-foreground">URL:</span>
-                                        <span className="truncate">{tenant.config.app_url}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-2">
-                                    <Palette className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="text-muted-foreground">Color:</span>
-                                    <div className="h-4 w-4 rounded" style={{ backgroundColor: tenant.config.primary_color }} />
-                                    <span className="font-mono text-xs">{tenant.config.primary_color}</span>
-                                </div>
-                                {(tenant.config.ship_from_city || tenant.config.ship_from_state) && (
-                                    <div className="flex items-center gap-2">
-                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Ships from:</span>
-                                        <span>{[tenant.config.ship_from_city, tenant.config.ship_from_state].filter(Boolean).join(', ')}</span>
-                                    </div>
-                                )}
-                                {(tenant.config.zelle_email || tenant.config.venmo_handle || tenant.config.cashapp_handle) && (
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Payments:</span>
-                                        {tenant.config.zelle_email && <Badge variant="outline" className="text-xs">Zelle</Badge>}
-                                        {tenant.config.venmo_handle && <Badge variant="outline" className="text-xs">Venmo</Badge>}
-                                        {tenant.config.cashapp_handle && <Badge variant="outline" className="text-xs">CashApp</Badge>}
-                                    </div>
-                                )}
-                                {tenant.config.ai_system_prompt_override && (
-                                    <div className="flex items-start gap-2">
-                                        <Bot className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
-                                        <span className="text-muted-foreground">AI Override:</span>
-                                        <span className="text-xs truncate max-w-[200px]">{tenant.config.ai_system_prompt_override}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-between pt-2 border-t">
-                                    <div className="flex items-center gap-2">
-                                        <Warehouse className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="text-sm">Wholesale Catalog</span>
-                                    </div>
-                                    <Switch
-                                        checked={wholesaleEnabled ?? true}
-                                        onCheckedChange={toggleWholesale}
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No configuration set</p>
-                        )}
-                    </CardContent>
-                </Card>
+                {/* Editable Configuration */}
+                <TenantConfigEditor orgId={orgId!} config={tenant.config} />
+
+                {/* User Management */}
+                <TenantUserList orgId={orgId!} />
 
                 {/* AI & Automation Usage */}
                 <Card>
@@ -299,6 +169,9 @@ export default function TenantDetail() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Feature Flags — full width below the grid */}
+            <TenantFeatureToggles orgId={orgId!} />
         </div>
     );
 }
