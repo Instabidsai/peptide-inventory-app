@@ -36,6 +36,7 @@ import { QueryError } from '@/components/ui/query-error';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 
 const staggerContainer = {
     hidden: {},
@@ -437,6 +438,7 @@ export default function AdminDashboard() {
             )}
 
             {/* Financial Overview - 4 cards, always in a clean grid */}
+            <SectionErrorBoundary section="Financial Overview">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/lots">
                     <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300 cursor-pointer">
@@ -516,8 +518,10 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card></motion.div>
             </motion.div>
+            </SectionErrorBoundary>
 
             {/* Pending Orders Row */}
+            <SectionErrorBoundary section="Orders & Commissions">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/orders?status=pending">
                     <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer">
@@ -601,8 +605,10 @@ export default function AdminDashboard() {
                     </Card>
                 </Link></motion.div>
             </motion.div>
+            </SectionErrorBoundary>
 
             {/* Per-Order Profit Summary */}
+            <SectionErrorBoundary section="Sales P&L">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}>
             <Link to="/sales">
                 <Card className="bg-card/80 border-border/50 hover:border-primary/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
@@ -651,8 +657,10 @@ export default function AdminDashboard() {
                 </Card>
             </Link>
             </motion.div>
+            </SectionErrorBoundary>
 
             {/* Inventory Overview */}
+            <SectionErrorBoundary section="Inventory & Activity">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
                 <motion.div variants={staggerItem}><Link to="/bottles?status=in_stock">
                     <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
@@ -992,6 +1000,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card></motion.div>
             </motion.div>
+            </SectionErrorBoundary>
             <div className="text-center text-xs text-muted-foreground mt-8">
                 System Version: 2.7 (Profit Pipeline + WooCommerce + Partner + Analytics)
             </div>
