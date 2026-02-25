@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { reportBoundaryError } from '@/lib/auto-error-reporter';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -25,6 +26,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo);
     Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    reportBoundaryError(error, errorInfo.componentStack ?? undefined);
   }
 
   static friendlyMessage(error: Error | null): string {

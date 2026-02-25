@@ -28,6 +28,9 @@ export function BugReportButton() {
 
     setSubmitting(true);
     try {
+      // Grab recent console errors captured by the interceptor in main.tsx
+      const recentErrors = (window as unknown as { __recentConsoleErrors?: string[] }).__recentConsoleErrors || [];
+
       const { error } = await supabase.from("audit_log").insert({
         action: "bug_report",
         table_name: "app",
@@ -39,6 +42,7 @@ export function BugReportButton() {
           page: window.location.hash,
           user_agent: navigator.userAgent,
           role: profile?.role || "unknown",
+          console_errors: recentErrors.slice(-10),
           timestamp: new Date().toISOString(),
         },
       });

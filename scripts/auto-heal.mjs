@@ -1,20 +1,104 @@
 #!/usr/bin/env node
 /**
- * Auto-Heal Pipeline — Automated issue detection, Claude Code repair, and email reporting.
+ * ══════════════════════════════════════════════════════════════════════════════
+ * AUTO-HEAL PIPELINE — Peptide Portal
+ * ══════════════════════════════════════════════════════════════════════════════
  *
- * Usage:
- *   npm run auto-heal                    # Detect + fix + email report
- *   npm run auto-heal -- --detect-only   # Just detect issues, don't fix
- *   npm run auto-heal -- --auto-push     # Fix + commit + push to main
- *   npm run auto-heal -- --skip-cc       # Fix tsc/test only (no Claude Code)
+ * Automated issue detection → Claude Code repair → verification → email report.
  *
- * Required .env:
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * ── ARCHITECTURE ──
  *
- * Optional .env:
- *   HEAL_EMAIL         — where to send reports (your email)
- *   RESEND_API_KEY     — for email delivery (free at resend.com)
- *   VITE_SUPABASE_URL  — fallback for SUPABASE_URL
+ * This pipeline has 4 phases:
+ *   1. DETECTION — Checks 6 sources for issues:
+ *      a) Bug reports: User-submitted via BugReportButton → audit_log table
+ *         (action='bug_report', data in new_data column including console errors)
+ *      a2) Auto errors: Automatically captured runtime errors → audit_log table
+ *          (action='auto_error', captures unhandled rejections, uncaught errors,
+ *          edge function failures, React boundary crashes — NO user action needed)
+ *      b) RPC functions: Queries Supabase OpenAPI spec to verify all 16 expected
+ *         RPC functions exist in the database
+ *      c) Edge functions: Invokes each of 12 edge functions with health_check flag
+ *      d) TypeScript: Runs `npx tsc --noEmit`
+ *      e) Tests: Runs `npx vitest run`
+ *
+ *   2. AUTO-FIX — Spawns a single-use Claude Code session with --dangerously-skip-permissions.
+ *      The prompt contains all detected issues with context. Claude Code reads the codebase,
+ *      fixes issues, and runs tsc + tests to verify.
+ *
+ *   3. VERIFICATION — Independently runs tsc and tests to confirm fixes.
+ *      If --auto-push is set AND verification passes, commits and pushes to main.
+ *
+ *   4. REPORTING — Generates markdown report (saved to scripts/reports/), sends
+ *      HTML email via Resend API, and logs to audit_log table.
+ *
+ * ── DATA FLOW ──
+ *
+ *   Frontend errors (two paths):
+ *     Path 1 — AUTOMATIC (no user action):
+ *       unhandled rejection / uncaught error / edge function failure / React crash
+ *         → auto-error-reporter.ts (installed in main.tsx)
+ *         → audit_log table (action='auto_error', new_data.message/source/stack)
+ *         → auto-heal reads from audit_log
+ *
+ *     Path 2 — MANUAL (user clicks bug button):
+ *       console.error → window.__recentConsoleErrors (main.tsx interceptor, last 20)
+ *         → BugReportButton captures them when user submits
+ *         → audit_log table (action='bug_report', new_data.console_errors)
+ *         → auto-heal reads from audit_log
+ *
+ *   Sentry (separate system):
+ *     @sentry/react captures crashes, unhandled rejections, and performance.
+ *     Sentry does NOT feed into auto-heal directly — it has its own dashboard.
+ *     User context (role, org_id, partner_tier) is attached in AuthContext.tsx.
+ *
+ *   Backend checks:
+ *     RPC existence (OpenAPI spec) + Edge function health + tsc + vitest
+ *       → auto-heal detects and fixes
+ *
+ * ── USAGE ──
+ *
+ *   npm run auto-heal                    # Full cycle: detect + fix + email
+ *   npm run auto-heal:detect             # Just detect issues (--detect-only)
+ *   npm run auto-heal:push               # Detect + fix + commit + push (--auto-push)
+ *   npm run auto-heal -- --skip-cc       # Skip Claude Code, just detect + report
+ *
+ * ── SCHEDULING ──
+ *
+ *   Run on a cron (e.g. every 6 hours) or manually when issues are reported.
+ *   Windows Task Scheduler: `node scripts/auto-heal.mjs --auto-push`
+ *   GitHub Actions: Add as a scheduled workflow
+ *
+ * ── REQUIRED .env ──
+ *
+ *   VITE_SUPABASE_URL           — Supabase project URL (this project)
+ *   SUPABASE_SERVICE_ROLE_KEY   — Service role key (bypasses RLS)
+ *
+ * ── OPTIONAL .env ──
+ *
+ *   HEAL_EMAIL       — Where to send reports (e.g. admin@thepeptideai.com)
+ *   RESEND_API_KEY   — Resend.com API key for email delivery
+ *   SITE_NAME        — Name shown in reports (default: "Peptide Portal")
+ *
+ * ── SAFETY ──
+ *
+ *   - detect-only mode is safe to run anytime (no code changes)
+ *   - Full mode spawns Claude Code with --dangerously-skip-permissions — it CAN edit files
+ *   - --auto-push will commit and push ONLY if tsc + tests pass after fix
+ *   - Without --auto-push, changes are local only (you review before pushing)
+ *   - Claude Code session has a 10-minute timeout
+ *   - Reports are always saved to scripts/reports/ regardless of mode
+ *
+ * ── RELATED FILES ──
+ *
+ *   src/lib/auto-error-reporter.ts      — Automatic runtime error capture (no user action)
+ *   src/components/BugReportButton.tsx  — Floating bug report UI (all pages)
+ *   src/main.tsx                        — Installs auto-error-reporter + Sentry init
+ *   src/components/ErrorBoundary.tsx    — React crash boundary (reports via auto-error-reporter)
+ *   src/contexts/AuthContext.tsx         — Sentry user context attachment
+ *   src/pages/admin/SystemHealth.tsx     — Admin health dashboard at /admin/health
+ *   .env                                — API keys and config
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -40,9 +124,11 @@ function loadEnv() {
   return env;
 }
 
-const env = { ...process.env, ...loadEnv() };
-const SUPABASE_URL = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+const dotEnv = loadEnv();
+const env = { ...process.env, ...dotEnv };
+// Prefer .env file values for Supabase (process.env may have a different project's URL)
+const SUPABASE_URL = dotEnv.VITE_SUPABASE_URL || dotEnv.SUPABASE_URL || env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = dotEnv.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
 const HEAL_EMAIL = env.HEAL_EMAIL;
 const RESEND_API_KEY = env.RESEND_API_KEY;
 const SITE_NAME = env.SITE_NAME || "Peptide Portal";
@@ -102,27 +188,26 @@ const EDGE_FUNCTIONS = [
 async function checkRpcFunctions() {
   console.log("  Checking RPC functions...");
   const issues = [];
-  for (const fn of RPC_FUNCTIONS) {
-    try {
-      const { error } = await supabase.rpc(fn, {});
-      if (
-        error?.message?.includes("Could not find the function") ||
-        error?.message?.includes("not found in the schema cache")
-      ) {
-        issues.push({
-          type: "rpc_missing",
-          name: fn,
-          error: "Function not found in database",
-        });
+  try {
+    // Use OpenAPI spec to list all RPC functions — avoids false positives from parameter mismatches
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    const spec = await res.json();
+    const rpcPaths = Object.keys(spec.paths || {}).filter((p) => p.startsWith("/rpc/"));
+    const found = new Set(rpcPaths.map((p) => p.replace("/rpc/", "")));
+
+    for (const fn of RPC_FUNCTIONS) {
+      if (!found.has(fn)) {
+        issues.push({ type: "rpc_missing", name: fn, error: "Function not found in database" });
         console.log(`    FAIL: RPC ${fn} — not found`);
       }
-    } catch (err) {
-      issues.push({
-        type: "rpc_error",
-        name: fn,
-        error: err.message,
-      });
     }
+    if (issues.length === 0) {
+      console.log(`    All ${RPC_FUNCTIONS.length} RPC functions present`);
+    }
+  } catch (err) {
+    console.log(`    WARN: RPC check failed: ${err.message}`);
   }
   return issues;
 }
@@ -161,31 +246,82 @@ async function checkEdgeFunctions() {
 async function checkBugReports() {
   console.log("  Checking recent bug reports...");
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // last 24h
-  const { data, error } = await supabase
-    .from("audit_log")
-    .select("id, action, metadata, created_at, user_id")
-    .eq("action", "bug_report")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(20);
+
+  let data, error;
+  try {
+    // Fetch both manual bug reports AND automatic error reports
+    ({ data, error } = await supabase
+      .from("audit_log")
+      .select("id, action, new_data, created_at, user_id")
+      .in("action", ["bug_report", "auto_error"])
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(20));
+  } catch (fetchErr) {
+    console.log(`    WARN: Could not query bug reports: ${fetchErr.constructor.name}: ${fetchErr.message}`);
+    if (fetchErr.cause) console.log(`    WARN: Cause: ${fetchErr.cause.code || fetchErr.cause.message || fetchErr.cause}`);
+    return [];
+  }
 
   if (error) {
     console.log(`    WARN: Could not query bug reports: ${error.message}`);
     return [];
   }
 
-  const reports = (data || []).map((r) => ({
-    type: "bug_report",
-    name: `Bug: ${r.metadata?.description?.slice(0, 80) || "untitled"}`,
-    error: r.metadata?.description || "No description",
-    page: r.metadata?.page_hash || "unknown",
-    reportedAt: r.created_at,
-    userId: r.user_id,
-  }));
+  const reports = (data || []).map((r) => {
+    const d = r.new_data || {};
+    const isAutoError = r.action === "auto_error";
+    return {
+      type: isAutoError ? "auto_error" : "bug_report",
+      name: isAutoError
+        ? `Auto Error [${d.source || "unknown"}]: ${d.message?.slice(0, 80) || "untitled"}`
+        : `Bug: ${d.description?.slice(0, 80) || "untitled"}`,
+      error: isAutoError ? d.message || "No message" : d.description || "No description",
+      page: d.page || "unknown",
+      consoleErrors: d.console_errors || [],
+      stack: d.stack || null,
+      source: d.source || null,
+      extra: d.extra || {},
+      reportedAt: r.created_at,
+      userId: r.user_id,
+    };
+  });
 
-  if (reports.length > 0) {
-    console.log(`    Found ${reports.length} bug report(s) in last 24h`);
+  // Also check bug_reports table for auto-captured errors (fallback path)
+  try {
+    const { data: brData } = await supabase
+      .from("bug_reports")
+      .select("id, description, page_url, console_errors, created_at, user_id, status")
+      .like("description", "[AUTO]%")
+      .gte("created_at", since)
+      .eq("status", "new")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    for (const br of brData || []) {
+      let parsed = {};
+      try { parsed = JSON.parse(br.console_errors || "{}"); } catch { /* ignore */ }
+      reports.push({
+        type: "auto_error",
+        name: `Auto Error (fallback): ${br.description?.slice(7, 87) || "untitled"}`,
+        error: br.description?.slice(7) || "No message",
+        page: br.page_url || "unknown",
+        consoleErrors: [],
+        stack: parsed.stack || null,
+        source: parsed.source || null,
+        extra: parsed.extra || {},
+        reportedAt: br.created_at,
+        userId: br.user_id,
+      });
+    }
+  } catch {
+    // Non-critical — primary path is audit_log
   }
+
+  const bugCount = reports.filter((r) => r.type === "bug_report").length;
+  const autoCount = reports.filter((r) => r.type === "auto_error").length;
+  if (bugCount > 0) console.log(`    Found ${bugCount} bug report(s) in last 24h`);
+  if (autoCount > 0) console.log(`    Found ${autoCount} auto-captured error(s) in last 24h`);
   return reports;
 }
 
@@ -306,6 +442,12 @@ Fix each one. After fixing, run \`npx tsc --noEmit\` and \`npx vitest run\` to v
     prompt += `## User Bug Reports (last 24h)\nInvestigate and fix these user-reported bugs:\n\n`;
     for (const i of grouped.bug_report) {
       prompt += `- Page: ${i.page} — "${i.error}"\n`;
+      if (i.consoleErrors?.length > 0) {
+        prompt += `  Console errors at time of report:\n`;
+        for (const ce of i.consoleErrors.slice(0, 5)) {
+          prompt += `    - ${ce.slice(0, 200)}\n`;
+        }
+      }
     }
     prompt += `\n`;
   }
@@ -574,7 +716,7 @@ async function saveToDb(issues, report) {
       action: "auto_heal",
       table_name: "system",
       record_id: crypto.randomUUID(),
-      metadata: {
+      new_data: {
         issue_count: issues.length,
         issues: issues.map((i) => ({ type: i.type, name: i.name })),
         report_file: report.filename,
@@ -599,9 +741,10 @@ async function main() {
   // ── Phase 1: Detection ──
   console.log("PHASE 1: Detection\n");
 
+  // Run bug report check first (lightweight query before the heavy RPC/edge checks)
+  const bugReports = await checkBugReports();
   const rpcIssues = await checkRpcFunctions();
   const edgeIssues = await checkEdgeFunctions();
-  const bugReports = await checkBugReports();
   const tscIssues = checkTypeScript();
   const testIssues = checkTests();
 

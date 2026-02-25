@@ -15,6 +15,7 @@ import {
     Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BugReportButton } from '@/components/BugReportButton';
 
 const vendorNav = [
     { name: 'Overview', path: '/vendor', icon: Shield, end: true },
@@ -101,6 +102,8 @@ export default function VendorLayout() {
             <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto">
                 <Outlet />
             </main>
+
+            <BugReportButton />
         </div>
     );
 }

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { installAutoErrorReporter } from './lib/auto-error-reporter'
 import App from './App.tsx'
 import './index.css'
 
@@ -61,6 +62,9 @@ if (sentryDsn) {
     window.history.replaceState(null, '', window.location.pathname + '#/auth');
   }
 })();
+
+// ─── Auto Error Reporter (writes runtime errors to DB for auto-heal) ─────
+installAutoErrorReporter();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
