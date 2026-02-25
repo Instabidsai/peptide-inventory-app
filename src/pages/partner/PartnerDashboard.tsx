@@ -14,6 +14,7 @@ import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { logger } from '@/lib/logger';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import {
     TIER_INFO,
     EMPTY_PERSON,
@@ -237,10 +238,13 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Referral Links */}
+            <SectionErrorBoundary section="Referral Links">
             <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} />
             <TeamReferralLinks downline={downline || []} />
+            </SectionErrorBoundary>
 
             {/* Stats Overview */}
+            <SectionErrorBoundary section="Stats Overview">
             <StatsCards
                 stats={stats}
                 creditBalance={creditBalance}
@@ -250,6 +254,7 @@ export default function PartnerDashboard() {
                 clientCount={clients?.length || 0}
                 onOpenSheet={setActiveSheet}
             />
+            </SectionErrorBoundary>
 
             {/* Apply Commission Banner */}
             <ApplyCommissionBanner
@@ -260,6 +265,7 @@ export default function PartnerDashboard() {
             />
 
             {/* Commission History + Network Hierarchy */}
+            <SectionErrorBoundary section="Commissions & Network">
             <div className="grid gap-4 md:grid-cols-2">
                 <CommissionHistoryCard
                     commissions={commissions}
@@ -275,9 +281,12 @@ export default function PartnerDashboard() {
                     onAddPerson={() => setActiveSheet('add-person')}
                 />
             </div>
+            </SectionErrorBoundary>
 
             {/* Downline Activity */}
+            <SectionErrorBoundary section="Downline Activity">
             <DownlineActivity downline={downline || []} />
+            </SectionErrorBoundary>
 
             {/* Detail Sheets */}
             <BalanceSheet

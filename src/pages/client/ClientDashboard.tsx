@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChatInterface } from "@/components/ai/AIChatInterface";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import { QueryError } from "@/components/ui/query-error";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 
@@ -582,6 +583,7 @@ function ClientDashboardContent() {
             )}
 
             {/* ── Quick Glance — connected data tiles ─── */}
+            <SectionErrorBoundary section="Quick Glance">
             {hasQuickGlance && (
                 <motion.div
                     className="grid grid-cols-2 gap-2.5"
@@ -656,6 +658,7 @@ function ClientDashboardContent() {
                     )}
                 </motion.div>
             )}
+            </SectionErrorBoundary>
 
             <Tabs defaultValue="protocol" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
@@ -670,6 +673,7 @@ function ClientDashboardContent() {
 
                 <TabsContent value="protocol" className="space-y-5">
                     {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
+                    <SectionErrorBoundary section="Today's Doses">
                     {hasDosesToday && (
                         <GlassCard className="border-white/[0.04] overflow-hidden">
                             <CardContent className="pt-5 pb-4">
@@ -761,14 +765,18 @@ function ClientDashboardContent() {
                             </motion.div>
                         );
                     })()}
+                    </SectionErrorBoundary>
 
                     {/* ─── Supply Overview (aggregate days-of-supply for all peptides) ─── */}
+                    <SectionErrorBoundary section="Supply & Inventory">
                     <SupplyOverview inventory={inventory || []} contactId={contact?.id} />
 
                     {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
                     <SimpleVials inventory={inventory || []} contactId={contact?.id} />
+                    </SectionErrorBoundary>
 
                     {/* ─── Protocol Calendar (month/week) ─── */}
+                    <SectionErrorBoundary section="Protocol Calendar">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
                             <Calendar className="h-4 w-4 text-muted-foreground/50" />
@@ -788,6 +796,7 @@ function ClientDashboardContent() {
                         )}
                     />
                     </div>
+                    </SectionErrorBoundary>
 
                     {/* ─── Request Protocol Change ─── */}
                     <div className="flex justify-center">
@@ -807,6 +816,7 @@ function ClientDashboardContent() {
                     />
 
                     {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
+                    <SectionErrorBoundary section="My Progress">
                     <GlassCard className="border-white/[0.04] overflow-hidden">
                         <button
                             onClick={() => setStatsOpen(prev => !prev)}
@@ -851,6 +861,7 @@ function ClientDashboardContent() {
                             </CardContent>
                         </div>
                     </GlassCard>
+                    </SectionErrorBoundary>
 
                     {/* ─── Full Regimen Link ─── */}
                     <motion.button
