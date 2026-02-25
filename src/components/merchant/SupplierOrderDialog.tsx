@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides } from '@/hooks/use-peptides';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -26,7 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Minus, Plus, ShoppingCart, Loader2 } from 'lucide-react';
+import { Package, Minus, Plus, ShoppingCart, Loader2, ArrowRight } from 'lucide-react';
 
 interface CartItem {
     peptide_id: string;
@@ -63,10 +64,26 @@ export default function SupplierOrderDialog() {
     const [open, setOpen] = useState(false);
     const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
     const { toast } = useToast();
+    const { organization } = useAuth();
 
     const { data: peptides, isLoading: peptidesLoading } = usePeptides();
     const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
     const createOrder = useCreateSupplierOrder();
+
+    // Fetch supplier org name for display
+    const { data: supplierOrg } = useQuery({
+        queryKey: ['supplier_org_name', tierInfo?.supplier_org_id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('organizations')
+                .select('name')
+                .eq('id', tierInfo!.supplier_org_id!)
+                .single();
+            return data;
+        },
+        enabled: !!tierInfo?.supplier_org_id,
+        staleTime: 10 * 60 * 1000,
+    });
 
     const markupAmount = tierInfo?.tier?.markup_amount || 0;
     const tierName = tierInfo?.tier?.name || 'Standard';
@@ -146,15 +163,20 @@ export default function SupplierOrderDialog() {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    <Package className="h-4 w-4 mr-2" /> Restock from Supplier
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Wholesale Order Form
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <ShoppingCart className="h-5 w-5" />
-                        Order from Supplier
+                        Wholesale Order Form
                     </DialogTitle>
+                    <DialogDescription className="flex items-center gap-1.5 text-xs">
+                        <span className="font-medium text-foreground">{organization?.name || 'Your Company'}</span>
+                        <ArrowRight className="h-3 w-3" />
+                        <span className="font-medium text-foreground">{supplierOrg?.name || 'Supplier'}</span>
+                    </DialogDescription>
                 </DialogHeader>
 
                 {isLoading ? (

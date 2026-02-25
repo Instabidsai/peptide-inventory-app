@@ -599,7 +599,7 @@ export default function Auth() {
                 {isMerchantSignup
                   ? mode === 'login'
                     ? 'Sign in to continue setting up your business'
-                    : 'Create your account to get started with ThePeptideAI'
+                    : 'Launch your peptide business — supply chain included, no inventory needed to start'
                   : refParam
                     ? isPartnerInvite
                       ? 'Create your partner account to start earning'

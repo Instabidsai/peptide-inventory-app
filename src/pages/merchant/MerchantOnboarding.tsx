@@ -323,7 +323,9 @@ function ChoosePathStep({ onSelect }: { onSelect: (path: OnboardingPath) => void
         <div className="space-y-6 text-center">
             <div>
                 <h2 className="text-2xl font-bold">Welcome to ThePeptideAI</h2>
-                <p className="text-muted-foreground mt-1">How would you like to get started?</p>
+                <p className="text-muted-foreground mt-1">
+                    Your all-in-one peptide business platform — with a built-in supply chain so you can start selling immediately.
+                </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card
@@ -336,7 +338,7 @@ function ChoosePathStep({ onSelect }: { onSelect: (path: OnboardingPath) => void
                         </div>
                         <CardTitle className="text-lg">I Have a Business</CardTitle>
                         <CardDescription>
-                            Replace your cobbled tools with one AI-powered platform. Import your existing inventory or start fresh.
+                            Replace your cobbled tools with one AI-powered platform. We'll import your catalog — or connect you to our peptide supply chain if you need one.
                         </CardDescription>
                     </CardContent>
                 </Card>
@@ -350,7 +352,7 @@ function ChoosePathStep({ onSelect }: { onSelect: (path: OnboardingPath) => void
                         </div>
                         <CardTitle className="text-lg">Start a Business</CardTitle>
                         <CardDescription>
-                            Launch your peptide business in minutes. Pre-loaded catalog, AI assistant, and instant storefront included.
+                            Launch your peptide business in minutes. Full supply chain included — we provide the peptides, you sell them under your brand.
                         </CardDescription>
                     </CardContent>
                 </Card>
@@ -450,13 +452,16 @@ function ConfirmLaunchStep({ onNext, onBack, submitting }: StepProps & { submitt
                             <Check className="h-3.5 w-3.5" /> 7-day free trial — no payment required today
                         </p>
                         <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Peptide supply chain included</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> AI-powered inventory</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Client portal & store</span>
-                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Partner network</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Fulfillment & shipping</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Partner network</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Automations & workflows</span>
-                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Unlimited team members</span>
                         </div>
+                        <p className="text-[11px] text-muted-foreground/70 mt-2">
+                            Don't have a peptide supplier? No problem — your account comes pre-loaded with our full catalog at wholesale pricing. Bring your own supplier anytime.
+                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -480,7 +485,9 @@ function SuccessStep() {
             </div>
             <div>
                 <h2 className="text-2xl font-bold">You're Live!</h2>
-                <p className="text-muted-foreground mt-1">Your peptide business is ready to go. Let's set it up.</p>
+                <p className="text-muted-foreground mt-1">
+                    Your peptide business is ready to go — complete with a pre-loaded product catalog and supply chain access.
+                </p>
             </div>
             <div className="space-y-3">
                 <Button className="w-full" onClick={() => navigate('/', { replace: true })}>

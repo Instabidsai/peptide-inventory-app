@@ -117,6 +117,22 @@ Deno.serve(async (req) => {
         // Calculate total using server-enforced prices
         const totalAmount = pricedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
 
+        // Fetch merchant and supplier org names for order notes
+        const { data: merchantOrg } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', merchantOrgId)
+            .single();
+
+        const { data: supplierOrg } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', config.supplier_org_id)
+            .single();
+
+        const merchantName = merchantOrg?.name || 'Unknown Merchant';
+        const supplierName = supplierOrg?.name || 'Supplier';
+
         // Create the supplier order — use a dummy client_id (the merchant admin user)
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')
@@ -129,7 +145,7 @@ Deno.serve(async (req) => {
                 commission_amount: 0,
                 payment_status: 'unpaid',
                 amount_paid: 0,
-                notes: `Wholesale order from merchant org ${merchantOrgId}`,
+                notes: `Wholesale order from ${merchantName} → ${supplierName}`,
                 is_supplier_order: true,
                 source_org_id: merchantOrgId,
                 fulfillment_type: 'standard',
