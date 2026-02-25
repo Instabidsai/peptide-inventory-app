@@ -68,7 +68,7 @@ const typeColors: Record<ContactType, 'default' | 'secondary' | 'outline'> = {
 };
 
 export default function Contacts() {
-  usePageTitle('Contacts');
+  usePageTitle('Customers');
   const navigate = useNavigate();
   const { userRole, profile: authProfile } = useAuth();
   const isMobile = useIsMobile();
@@ -226,7 +226,7 @@ export default function Contacts() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           <p className="text-muted-foreground">Manage customers and partners</p>
         </div>
         <div className="flex gap-2">
@@ -240,12 +240,12 @@ export default function Contacts() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Contact
+                Add Customer
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Contact</DialogTitle>
+                <DialogTitle>Add New Customer</DialogTitle>
                 <DialogDescription>Create a new customer or partner</DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -386,7 +386,7 @@ export default function Contacts() {
                   />
                   <DialogFooter>
                     <Button type="submit" disabled={createContact.isPending}>
-                      Create Contact
+                      Create Customer
                     </Button>
                   </DialogFooter>
                 </form>
@@ -403,8 +403,8 @@ export default function Contacts() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                aria-label="Search contacts"
-                placeholder="Search contacts..."
+                aria-label="Search customers"
+                placeholder="Search customers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -463,7 +463,7 @@ export default function Contacts() {
         </CardHeader>
         <CardContent>
           {isError ? (
-            <QueryError message="Failed to load contacts." onRetry={() => refetch()} />
+            <QueryError message="Failed to load customers." onRetry={() => refetch()} />
           ) : isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -473,7 +473,7 @@ export default function Contacts() {
           ) : filteredContacts?.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 mb-4 opacity-30" />
-              <p className="text-lg font-semibold text-muted-foreground">No contacts found</p>
+              <p className="text-lg font-semibold text-muted-foreground">No customers found</p>
               <p className="text-sm text-muted-foreground/70">Add your first customer or partner</p>
             </div>
           ) : isMobile ? (
@@ -648,8 +648,8 @@ export default function Contacts() {
       <Dialog open={!!editingContact} onOpenChange={() => setEditingContact(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
-            <DialogDescription>Update contact details</DialogDescription>
+            <DialogTitle>Edit Customer</DialogTitle>
+            <DialogDescription>Update customer details</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
@@ -804,7 +804,7 @@ export default function Contacts() {
             <AlertDialogDescription>
               Upgrade "{upgradingContact?.name}" to a Preferred Customer. Preferred customers
               can receive special discounts on their orders. You can set their discount percentage
-              from their contact detail page.
+              from their customer detail page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -824,10 +824,10 @@ export default function Contacts() {
       <AlertDialog open={!!deletingContact} onOpenChange={() => setDeletingContact(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Contact?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Customer?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deletingContact?.name}"?
-              Movements associated with this contact will remain but lose the contact reference.
+              Movements associated with this customer will remain but lose the customer reference.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

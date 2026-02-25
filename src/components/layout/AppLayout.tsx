@@ -17,7 +17,7 @@ const partnerNav = [
   { name: 'Dashboard', path: '/partner', icon: LayoutDashboard },
   { name: 'Store', path: '/partner/store', icon: ShoppingBag },
   { name: 'Orders', path: '/partner/orders', icon: ClipboardList },
-  { name: 'People', path: '/contacts', icon: Users },
+  { name: 'Customers', path: '/contacts', icon: Users },
 ];
 
 export function AppLayout() {

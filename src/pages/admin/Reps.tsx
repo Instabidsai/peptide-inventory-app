@@ -718,12 +718,32 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
     const updateProfile = useUpdateProfile();
     const { data: candidates } = useTeamMembers();
     const { toast } = useToast();
+    const { profile } = useAuth();
+    const queryClient = useQueryClient();
 
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
     const [parentRepId, setParentRepId] = useState('');
     const [activeTab, setActiveTab] = useState('promote');
+    const [selectedContactId, setSelectedContactId] = useState('');
+    const [isPromotingCustomer, setIsPromotingCustomer] = useState(false);
+
+    // Fetch customer/preferred contacts for "From Customers" tab
+    const { data: customerContacts } = useQuery({
+        queryKey: ['customer_contacts_for_promote', profile?.org_id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, linked_user_id')
+                .in('type', ['customer', 'preferred'])
+                .eq('org_id', profile!.org_id!)
+                .order('name');
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!profile?.org_id && open,
+    });
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -756,6 +776,94 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
         });
     };
 
+    const handlePromoteCustomer = async () => {
+        if (!selectedContactId) return;
+        const contact = customerContacts?.find(c => c.id === selectedContactId);
+        if (!contact) return;
+
+        setIsPromotingCustomer(true);
+        try {
+            if (contact.linked_user_id) {
+                // Customer already has a login — find their profile and promote
+                const { data: existingProfile, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('user_id', contact.linked_user_id)
+                    .single();
+
+                if (profileErr || !existingProfile) throw new Error('Could not find user profile');
+
+                // Update profile to sales_rep
+                const { error: updateErr } = await supabase
+                    .from('profiles')
+                    .update({
+                        role: 'sales_rep',
+                        commission_rate: 0,
+                        price_multiplier: 1.0,
+                        parent_rep_id: parentRepId || null,
+                    })
+                    .eq('id', existingProfile.id);
+                if (updateErr) throw updateErr;
+
+                // Update contact type to partner
+                await supabase
+                    .from('contacts')
+                    .update({ type: 'partner' })
+                    .eq('id', contact.id);
+
+                toast({ title: 'Customer Promoted', description: `${contact.name} is now a partner.` });
+            } else {
+                // Customer has no account — send invite via edge function
+                if (!contact.email) {
+                    toast({ variant: 'destructive', title: 'Email Required', description: 'This customer needs an email before they can be invited.' });
+                    return;
+                }
+
+                const { data, error } = await supabase.functions.invoke('invite-user', {
+                    body: {
+                        email: contact.email,
+                        contact_id: contact.id,
+                        role: 'sales_rep',
+                        parent_rep_id: parentRepId || undefined,
+                        redirect_origin: `${window.location.origin}/update-password`,
+                    }
+                });
+
+                if (error) throw error;
+                if (!data?.success) throw new Error(data?.error || 'Invite failed');
+
+                // Update contact type to partner
+                await supabase
+                    .from('contacts')
+                    .update({ type: 'partner' })
+                    .eq('id', contact.id);
+
+                // Copy invite link to clipboard
+                if (data.action_link) {
+                    try {
+                        await navigator.clipboard.writeText(data.action_link);
+                        toast({ title: 'Invite Sent', description: `Invite link for ${contact.name} copied to clipboard.` });
+                    } catch {
+                        toast({ title: 'Invite Sent', description: data.action_link });
+                    }
+                } else {
+                    toast({ title: 'Invite Sent', description: `${contact.name} has been invited as a partner.` });
+                }
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['reps'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['customer_contacts_for_promote'] });
+            onOpenChange(false);
+            setSelectedContactId('');
+            setParentRepId('');
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Promotion Failed', description: err instanceof Error ? err.message : String(err) });
+        } finally {
+            setIsPromotingCustomer(false);
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
@@ -767,8 +875,9 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="promote">From Existing Users</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="promote">From Users</TabsTrigger>
+                        <TabsTrigger value="from_customer">From Customers</TabsTrigger>
                         <TabsTrigger value="invite">Invite New</TabsTrigger>
                     </TabsList>
 
@@ -820,6 +929,57 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                             <Button onClick={handlePromote} disabled={!selectedUserId || updateProfile.isPending} className="w-full">
                                 {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Promote to Partner
+                            </Button>
+                        </DialogFooter>
+                    </TabsContent>
+
+                    <TabsContent value="from_customer" className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Select Customer</Label>
+                            <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Choose a customer..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {customerContacts?.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>
+                                            {c.name}{c.email ? ` (${c.email})` : ''}{' '}
+                                            {c.linked_user_id ? '✓ Has Account' : '— No Account'}
+                                        </SelectItem>
+                                    ))}
+                                    {(!customerContacts || customerContacts.length === 0) && (
+                                        <SelectItem value="none" disabled>No customers found</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Customers with an account will be promoted directly. Those without will receive an invite link.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Assign Upline (optional)</Label>
+                            <Select value={parentRepId || '__none__'} onValueChange={(v) => setParentRepId(v === '__none__' ? '' : v)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select upline partner..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">
+                                        <span className="text-muted-foreground">No Upline (Top-Level)</span>
+                                    </SelectItem>
+                                    {allReps.map(r => (
+                                        <SelectItem key={r.id} value={r.id}>
+                                            {r.full_name || 'Unnamed'} — {r.partner_tier || 'standard'}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handlePromoteCustomer} disabled={!selectedContactId || isPromotingCustomer} className="w-full">
+                                {isPromotingCustomer && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {selectedContactId && customerContacts?.find(c => c.id === selectedContactId)?.linked_user_id
+                                    ? 'Promote to Partner'
+                                    : 'Invite as Partner'}
                             </Button>
                         </DialogFooter>
                     </TabsContent>

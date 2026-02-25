@@ -41,7 +41,7 @@ const pages = [
   { name: 'Orders', href: '/orders', icon: ClipboardList, group: 'Navigate' },
   { name: 'Lots', href: '/lots', icon: Package, group: 'Navigate' },
   { name: 'Bottles', href: '/bottles', icon: Pill, group: 'Navigate' },
-  { name: 'Contacts', href: '/contacts', icon: Users, group: 'Navigate' },
+  { name: 'Customers', href: '/contacts', icon: Users, group: 'Navigate' },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, group: 'Navigate' },
   { name: 'Protocols', href: '/protocols', icon: FileText, group: 'Navigate' },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, group: 'Navigate', adminOnly: true },
@@ -118,7 +118,7 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search pages, peptides, contacts..." />
+      <CommandInput placeholder="Search pages, peptides, customers..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
@@ -163,7 +163,7 @@ export function CommandPalette() {
         {contacts && contacts.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Contacts">
+            <CommandGroup heading="Customers">
               {contacts.map(c => (
                 <CommandItem key={c.id} value={`${c.name} ${c.email || ''}`} onSelect={() => handleSelect(`/contacts/${c.id}`)}>
                   <Users className="mr-2 h-4 w-4 text-muted-foreground" />

@@ -39,10 +39,10 @@ function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderP
     return (
         <>
             <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')} className="mb-4">
-                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Contacts
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back to Customers
             </Button>
             <nav className="flex items-center text-sm text-muted-foreground">
-                <Link to="/contacts" className="hover:text-foreground transition-colors">Contacts</Link>
+                <Link to="/contacts" className="hover:text-foreground transition-colors">Customers</Link>
                 <span className="mx-2">/</span>
                 <span className="text-foreground font-medium">{contact.name}</span>
             </nav>

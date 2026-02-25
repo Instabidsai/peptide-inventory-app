@@ -99,7 +99,7 @@ describe('useCreateContact', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Contact created successfully' }));
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Customer created successfully' }));
   });
 
   it('shows error toast on failure', async () => {
@@ -114,7 +114,7 @@ describe('useCreateContact', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'destructive', title: 'Failed to create contact' })
+      expect.objectContaining({ variant: 'destructive', title: 'Failed to create customer' })
     );
   });
 });
@@ -131,7 +131,7 @@ describe('useUpdateContact', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Contact updated successfully' }));
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Customer updated successfully' }));
   });
 });
 
@@ -150,7 +150,7 @@ describe('useDeleteContact', () => {
       p_contact_id: 'c1',
       p_org_id: 'org-123',
     });
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Contact deleted successfully' }));
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Customer deleted successfully' }));
   });
 
   it('shows error when RPC returns failure', async () => {
@@ -164,7 +164,7 @@ describe('useDeleteContact', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'destructive', title: 'Failed to delete contact' })
+      expect.objectContaining({ variant: 'destructive', title: 'Failed to delete customer' })
     );
   });
 

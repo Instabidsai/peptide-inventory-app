@@ -150,10 +150,10 @@ export function useCreateContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      toast({ title: 'Contact created successfully' });
+      toast({ title: 'Customer created successfully' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Failed to create contact', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed to create customer', description: error.message });
     },
   });
 }
@@ -176,10 +176,10 @@ export function useUpdateContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      toast({ title: 'Contact updated successfully' });
+      toast({ title: 'Customer updated successfully' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Failed to update contact', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed to update customer', description: error.message });
     },
   });
 }
@@ -207,10 +207,10 @@ export function useDeleteContact() {
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
-      toast({ title: 'Contact deleted successfully' });
+      toast({ title: 'Customer deleted successfully' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Failed to delete contact', description: error.message });
+      toast({ variant: 'destructive', title: 'Failed to delete customer', description: error.message });
     },
   });
 }

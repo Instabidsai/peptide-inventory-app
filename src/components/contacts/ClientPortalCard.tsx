@@ -104,13 +104,13 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
                     </Badge>
                 </CardTitle>
                 <CardDescription>
-                    Generate a secure invite link to give this contact access to their Regimen Dashboard.
+                    Generate a secure invite link to give this customer access to their Regimen Dashboard.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {!contact.email ? (
                     <div className="flex flex-col gap-2 p-4 bg-amber-900/20 rounded-lg border border-amber-900/50">
-                        <div className="text-amber-200 text-sm font-medium">Contact Missing Email</div>
+                        <div className="text-amber-200 text-sm font-medium">Customer Missing Email</div>
                         <p className="text-amber-200/80 text-xs">An email is required to create a client portal account.</p>
                         <div className="flex gap-2">
                             <Input

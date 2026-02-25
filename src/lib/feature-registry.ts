@@ -177,12 +177,12 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   // ── Client Experience ──
   {
     key: 'contacts',
-    label: 'Contact Management',
-    description: 'CRM contacts with profiles, communication history, and household linking.',
+    label: 'Customer Management',
+    description: 'CRM customers with profiles, communication history, and household linking.',
     category: 'clients',
     defaultEnabled: true,
     roles: ['admin', 'staff', 'sales_rep'],
-    sidebarItems: ['Contacts'],
+    sidebarItems: ['Customers'],
   },
   {
     key: 'protocols',

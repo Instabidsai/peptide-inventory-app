@@ -167,7 +167,7 @@ export default function ContactDetails() {
     });
 
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-    if (!contact) return <div className="p-8">Contact not found</div>;
+    if (!contact) return <div className="p-8">Customer not found</div>;
 
     return (
         <div className="space-y-6">

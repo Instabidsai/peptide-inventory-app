@@ -43,7 +43,7 @@ const navigation = [
   { name: 'Lots', href: '/lots', icon: Package, roles: ['admin', 'staff'] },
   { name: 'Bottles', href: '/bottles', icon: Pill, roles: ['admin', 'staff'] },
   { name: 'Supplements', href: '/admin/supplements', icon: Leaf, roles: ['admin', 'staff'] },
-  { name: 'Contacts', href: '/contacts', icon: Users, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Customers', href: '/contacts', icon: Users, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Protocols', href: '/protocols', icon: FileText, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Protocol Builder', href: '/protocol-builder', icon: Wand2, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Resources', href: '/admin-resources', icon: BookOpen, roles: ['admin', 'staff', 'sales_rep'] },
