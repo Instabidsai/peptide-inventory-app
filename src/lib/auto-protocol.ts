@@ -70,7 +70,7 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
             org_id: orgId,
         })
         .select()
-        .single();
+        .maybeSingle();
 
     if (protoErr) throw protoErr;
 

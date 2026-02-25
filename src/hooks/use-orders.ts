@@ -241,7 +241,7 @@ export function useCreateOrder() {
                     order_date: input.order_date || format(new Date(), 'yyyy-MM-dd'),
                 })
                 .select('*, peptides(id, name)')
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return data;
@@ -268,7 +268,7 @@ export function useUpdateOrder() {
                 .update({ ...input, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return data;
@@ -324,7 +324,7 @@ export function useMarkOrderReceived() {
                     expiry_date: input.expiry_date || null,
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (lotError) throw lotError;
 

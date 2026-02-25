@@ -73,7 +73,7 @@ export function useProtocols(contactId?: string) {
                 .from('protocols')
                 .insert({ name, description, contact_id, org_id: fetchedProfile.org_id })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
 

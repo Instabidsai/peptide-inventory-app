@@ -54,7 +54,7 @@ export function useCreateContactNote() {
                     org_id: profile.org_id,
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (error) throw error;
             return data;

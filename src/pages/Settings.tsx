@@ -590,7 +590,7 @@ function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
           active: true,
         })
         .select('id')
-        .single();
+        .maybeSingle();
 
       if (insertErr) throw insertErr;
 
@@ -639,7 +639,7 @@ function ScrapedPeptidesReview({ orgId }: { orgId: string }) {
             active: true,
           })
           .select('id')
-          .single();
+          .maybeSingle();
 
         if (!insertErr && newPeptide) {
           await supabase

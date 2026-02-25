@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: meta.full_name || meta.name || null,
             })
             .select()
-            .single();
+            .maybeSingle();
 
           if (newProfile) {
             profileData = newProfile;

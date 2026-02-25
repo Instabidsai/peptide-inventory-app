@@ -39,7 +39,7 @@ export function useSupplements() {
                 .from('supplements')
                 .insert(newSupplement)
                 .select()
-                .single();
+                .maybeSingle();
             if (dbError) throw dbError;
             return data;
         },
@@ -60,7 +60,7 @@ export function useSupplements() {
                 .update(updates)
                 .eq('id', id)
                 .select()
-                .single();
+                .maybeSingle();
             if (dbError) throw dbError;
             return data;
         },

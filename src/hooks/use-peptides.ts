@@ -162,7 +162,7 @@ export function useCreatePeptide() {
         .from('peptides')
         .insert({ ...input, org_id: profile.org_id })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -188,7 +188,7 @@ export function useUpdatePeptide() {
         .update(input)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

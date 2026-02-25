@@ -294,7 +294,7 @@ export function useCreateSalesOrder() {
                     delivery_method: input.delivery_method || 'ship',
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (orderError) throw orderError;
 
@@ -365,7 +365,7 @@ export function useCreateSalesOrder() {
                         amount_paid: 0,
                     })
                     .select()
-                    .single();
+                    .maybeSingle();
 
                 if (movError) throw movError;
 
@@ -624,7 +624,7 @@ export function useFulfillOrder() {
                     payment_date: order.payment_date,
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (movError) throw movError;
             movementId = movement.id;

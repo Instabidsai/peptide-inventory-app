@@ -860,7 +860,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                     org_id: repProfile?.org_id || null,
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (contactErr) throw contactErr;
 

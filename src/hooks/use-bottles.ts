@@ -125,7 +125,7 @@ export function useUpdateBottle() {
         .eq('id', id)
         .eq('org_id', profile.org_id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

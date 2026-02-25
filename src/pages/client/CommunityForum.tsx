@@ -98,7 +98,7 @@ export default function CommunityForum() {
                     org_id: orgId,
                 })
                 .select()
-                .single();
+                .maybeSingle();
             if (error) throw error;
             return data;
         },

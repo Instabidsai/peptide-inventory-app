@@ -102,7 +102,7 @@ export function useCreateLot() {
         .from('lots')
         .insert({ ...input, org_id: profile.org_id })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -134,7 +134,7 @@ export function useUpdateLot() {
         .update(input)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

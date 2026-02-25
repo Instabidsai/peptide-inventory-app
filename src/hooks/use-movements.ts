@@ -322,7 +322,7 @@ export function useCreateMovement() {
           payment_date: input.payment_date || null
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (movementError) throw movementError;
       movementId = movement.id;
@@ -454,7 +454,7 @@ export function useCreateMovement() {
                 notes: `[MV:${movement.id}] Auto-generated from inventory sale (Movement #${movement.id.slice(0, 8)}). Client: ${contact.name || 'Unknown'}.`,
               })
               .select()
-              .single();
+              .maybeSingle();
 
             if (soErr) {
               logger.error('Failed to create sales_order:', soErr);

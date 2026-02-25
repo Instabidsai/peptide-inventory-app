@@ -144,7 +144,7 @@ export function useCreateContact() {
         .from('contacts')
         .insert({ ...input, org_id: profile.org_id })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -170,7 +170,7 @@ export function useUpdateContact() {
         .update(input)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

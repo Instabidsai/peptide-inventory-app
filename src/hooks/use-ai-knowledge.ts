@@ -81,7 +81,7 @@ export function useAIKnowledge() {
                     status: 'pending',
                 })
                 .select('id')
-                .single();
+                .maybeSingle();
 
             if (docError) throw docError;
 

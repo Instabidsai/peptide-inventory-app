@@ -151,7 +151,7 @@ export const useAI = () => {
             .from('ai_conversations')
             .insert({ user_id: user.id })
             .select('id')
-            .single();
+            .maybeSingle();
 
         if (newConvo) {
             setConversationId(newConvo.id);

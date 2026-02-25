@@ -52,7 +52,7 @@ export function useCheckout() {
                     notes: input.notes || null,
                 })
                 .select()
-                .single();
+                .maybeSingle();
 
             if (orderError) throw new Error(`Failed to create order: ${orderError.message}`);
 
