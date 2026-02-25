@@ -96,7 +96,7 @@ async function sendErrorToDb(entry: ErrorEntry) {
         description: `[AUTO] ${entry.source}: ${entry.message}`.slice(0, 500),
         page_url: entry.page,
         user_agent: navigator.userAgent,
-        status: 'new',
+        status: 'open',
         console_errors: JSON.stringify({
           source: entry.source,
           stack: entry.stack?.slice(0, 2000),
