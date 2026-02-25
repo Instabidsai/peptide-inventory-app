@@ -783,8 +783,8 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
 
         setIsPromotingCustomer(true);
         try {
+            // If customer already has a login, promote their profile too
             if (contact.linked_user_id) {
-                // Customer already has a login — find their profile and promote
                 const { data: existingProfile, error: profileErr } = await supabase
                     .from('profiles')
                     .select('id')
@@ -793,7 +793,6 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
 
                 if (profileErr || !existingProfile) throw new Error('Could not find user profile');
 
-                // Update profile to sales_rep
                 const { error: updateErr } = await supabase
                     .from('profiles')
                     .update({
@@ -804,51 +803,23 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                     })
                     .eq('id', existingProfile.id);
                 if (updateErr) throw updateErr;
+            }
 
-                // Update contact type to partner
-                await supabase
-                    .from('contacts')
-                    .update({ type: 'partner' })
-                    .eq('id', contact.id);
+            // Always update contact type to partner
+            const { error: contactErr } = await supabase
+                .from('contacts')
+                .update({ type: 'partner' })
+                .eq('id', contact.id);
+            if (contactErr) throw contactErr;
 
-                toast({ title: 'Customer Promoted', description: `${contact.name} is now a partner.` });
+            if (contact.linked_user_id) {
+                toast({ title: 'Partner Created', description: `${contact.name} is now a partner.` });
             } else {
-                // Customer has no account — send invite via edge function
-                if (!contact.email) {
-                    toast({ variant: 'destructive', title: 'Email Required', description: 'This customer needs an email before they can be invited.' });
-                    return;
-                }
-
-                const { data, error } = await supabase.functions.invoke('invite-user', {
-                    body: {
-                        email: contact.email,
-                        contact_id: contact.id,
-                        role: 'sales_rep',
-                        parent_rep_id: parentRepId || undefined,
-                        redirect_origin: `${window.location.origin}/update-password`,
-                    }
+                toast({
+                    title: 'Partner Created',
+                    description: `${contact.name} is now a partner. Send them an invite link from their customer profile to connect their account.`,
+                    duration: 8000,
                 });
-
-                if (error) throw error;
-                if (!data?.success) throw new Error(data?.error || 'Invite failed');
-
-                // Update contact type to partner
-                await supabase
-                    .from('contacts')
-                    .update({ type: 'partner' })
-                    .eq('id', contact.id);
-
-                // Copy invite link to clipboard
-                if (data.action_link) {
-                    try {
-                        await navigator.clipboard.writeText(data.action_link);
-                        toast({ title: 'Invite Sent', description: `Invite link for ${contact.name} copied to clipboard.` });
-                    } catch {
-                        toast({ title: 'Invite Sent', description: data.action_link });
-                    }
-                } else {
-                    toast({ title: 'Invite Sent', description: `${contact.name} has been invited as a partner.` });
-                }
             }
 
             queryClient.invalidateQueries({ queryKey: ['reps'] });
@@ -943,8 +914,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                                 <SelectContent>
                                     {customerContacts?.map(c => (
                                         <SelectItem key={c.id} value={c.id}>
-                                            {c.name}{c.email ? ` (${c.email})` : ''}{' '}
-                                            {c.linked_user_id ? '✓ Has Account' : '— No Account'}
+                                            {c.name}{c.email ? ` (${c.email})` : ''}
                                         </SelectItem>
                                     ))}
                                     {(!customerContacts || customerContacts.length === 0) && (
@@ -953,7 +923,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground">
-                                Customers with an account will be promoted directly. Those without will receive an invite link.
+                                Pick a customer to make them a partner. You can send them a login link from their profile page later.
                             </p>
                         </div>
                         <div className="space-y-2">
@@ -977,9 +947,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                         <DialogFooter>
                             <Button onClick={handlePromoteCustomer} disabled={!selectedContactId || isPromotingCustomer} className="w-full">
                                 {isPromotingCustomer && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {selectedContactId && customerContacts?.find(c => c.id === selectedContactId)?.linked_user_id
-                                    ? 'Promote to Partner'
-                                    : 'Invite as Partner'}
+                                Make Partner
                             </Button>
                         </DialogFooter>
                     </TabsContent>
