@@ -501,7 +501,10 @@ function spawnClaudeCode(issues) {
         encoding: "utf-8",
         shell: true,
         maxBuffer: 10 * 1024 * 1024,
-        env: { ...process.env, FORCE_COLOR: "0", CLAUDECODE: "" },
+        env: (() => {
+          const { CLAUDECODE: _, CLAUDE_CODE_ENTRYPOINT: _b, ...clean } = process.env;
+          return { ...clean, FORCE_COLOR: "0" };
+        })(),
       }
     );
 
