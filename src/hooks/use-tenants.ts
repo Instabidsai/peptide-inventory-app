@@ -107,5 +107,8 @@ export function useProvisionTenant() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['vendor-tenants'] });
         },
+        onError: (error: Error) => {
+            console.error('Tenant provisioning failed:', error);
+        },
     });
 }

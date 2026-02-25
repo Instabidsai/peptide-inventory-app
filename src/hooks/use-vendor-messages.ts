@@ -45,5 +45,8 @@ export function useSendVendorMessage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['vendor-messages'] });
         },
+        onError: (error: Error) => {
+            console.error('Failed to send vendor message:', error);
+        },
     });
 }

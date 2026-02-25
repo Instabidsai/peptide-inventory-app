@@ -19,11 +19,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import { getPeptideDescription, getRelatedStacks } from './utils';
 import type { CartItem, SelectedProtocol } from './types';
+import type { Peptide } from '@/hooks/use-peptides';
 
 interface ProductDetailSheetProps {
-    selectedPeptide: any;
+    selectedPeptide: Peptide | null;
     onClose: () => void;
-    allPeptides: any[] | undefined;
+    allPeptides: Peptide[] | undefined;
     cart: CartItem[];
     isPartner: boolean;
     pricingMode: string;
@@ -273,8 +274,8 @@ export function ProductDetailSheet({
                                                             const template = PROTOCOL_TEMPLATES.find(t => t.name === stack.templateName);
                                                             if (template && allPeptides) {
                                                                 const matched = template.peptideNames
-                                                                    .map(n => allPeptides.find((p: any) => p.name?.toLowerCase().startsWith(n.toLowerCase())))
-                                                                    .filter(Boolean) as any[];
+                                                                    .map(n => allPeptides.find(p => p.name?.toLowerCase().startsWith(n.toLowerCase())))
+                                                                    .filter((p): p is Peptide => !!p);
                                                                 if (matched.length > 0) {
                                                                     onClose();
                                                                     setTimeout(() => onSelectProtocol({ template, matched }), 200);

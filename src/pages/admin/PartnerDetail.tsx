@@ -455,6 +455,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const payCommission = usePayCommission();
+    const [applyingId, setApplyingId] = useState<string | null>(null);
 
     const { data: commissions, isLoading } = useQuery({
         queryKey: ['admin_partner_commissions', repId],
@@ -508,6 +509,8 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     };
 
     const handleApplyToBalance = async (commissionId: string, amount: number) => {
+        if (applyingId) return; // Prevent double-click
+        setApplyingId(commissionId);
         try {
             // 1. Find the partner's contact record by matching email
             const { data: profile } = await supabase
@@ -592,6 +595,8 @@ function PayoutsTabContent({ repId }: { repId: string }) {
         } catch (err) {
             console.error('Apply to balance error:', err);
             toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to apply commission to balance.', variant: 'destructive' });
+        } finally {
+            setApplyingId(null);
         }
     };
 
@@ -690,8 +695,9 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                                                 variant="outline"
                                                 className="border-blue-500/40 text-blue-400 hover:bg-blue-900/20"
                                                 onClick={() => handleApplyToBalance(c.id, Number(c.amount))}
+                                                disabled={applyingId === c.id}
                                             >
-                                                Apply to Balance
+                                                {applyingId === c.id ? 'Applying...' : 'Apply to Balance'}
                                             </Button>
                                             <Button
                                                 size="sm"

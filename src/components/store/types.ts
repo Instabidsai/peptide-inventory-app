@@ -1,4 +1,5 @@
 import type { ProtocolTemplate } from '@/data/protocol-knowledge';
+import type { Peptide } from '@/hooks/use-peptides';
 
 export type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
 
@@ -11,7 +12,7 @@ export interface CartItem {
 
 export interface SelectedProtocol {
     template: ProtocolTemplate;
-    matched: any[];
+    matched: Peptide[];
 }
 
 // Category gradient config with hover glow colors

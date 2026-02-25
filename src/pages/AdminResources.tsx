@@ -503,8 +503,8 @@ export default function AdminResources() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsThemeDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={() => upsertTheme.mutate(themeForm)} disabled={!themeForm.name}>
-                            {editingTheme ? 'Save Changes' : 'Create Theme'}
+                        <Button onClick={() => upsertTheme.mutate(themeForm)} disabled={!themeForm.name || upsertTheme.isPending}>
+                            {upsertTheme.isPending ? 'Saving...' : editingTheme ? 'Save Changes' : 'Create Theme'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -649,7 +649,7 @@ export default function AdminResources() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsResourceDialogOpen(false)}>Cancel</Button>
-                            <Button type="submit">{editingResource ? 'Save Changes' : 'Create'}</Button>
+                            <Button type="submit" disabled={upsertResource.isPending}>{upsertResource.isPending ? 'Saving...' : editingResource ? 'Save Changes' : 'Create'}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubdomainTenantProvider } from "@/hooks/use-subdomain-tenant";
 import { BugReportButton } from "@/components/BugReportButton";
 import { Loader2 } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 
 // Eagerly loaded — needed on first render
 import Auth from "./pages/Auth";
@@ -119,6 +120,7 @@ const queryClient = new QueryClient({
         mutations: {
             onError: (error: Error) => {
                 console.error('[Mutation Error]', error.message);
+                sonnerToast.error(error.message || 'Something went wrong');
             },
         },
     },

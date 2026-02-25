@@ -49,7 +49,8 @@ const staggerItem = {
 
 export default function AdminDashboard() {
     usePageTitle('Dashboard');
-    const { organization } = useAuth();
+    const { organization, profile } = useAuth();
+    const orgId = profile?.org_id;
     const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>(() => {
         const saved = localStorage.getItem('dashboard_view_mode');
         return saved === 'investment' ? 'investment' : 'operations';
@@ -77,36 +78,41 @@ export default function AdminDashboard() {
 
     // WooCommerce sync status
     const { data: lastWooOrder } = useQuery({
-        queryKey: ['last_woo_order'],
+        queryKey: ['last_woo_order', orgId],
         queryFn: async () => {
             const { data } = await supabase
                 .from('sales_orders')
                 .select('created_at, woo_order_id')
+                .eq('org_id', orgId!)
                 .eq('order_source', 'woocommerce')
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
             return data;
         },
+        enabled: !!orgId,
     });
     const wooOrderCount = useQuery({
-        queryKey: ['woo_order_count'],
+        queryKey: ['woo_order_count', orgId],
         queryFn: async () => {
             const { count } = await supabase
                 .from('sales_orders')
                 .select('id', { count: 'exact', head: true })
+                .eq('org_id', orgId!)
                 .eq('order_source', 'woocommerce');
             return count || 0;
         },
+        enabled: !!orgId,
     });
 
     // Top sellers by quantity
     const { data: topSellers } = useQuery({
-        queryKey: ['top_sellers'],
+        queryKey: ['top_sellers', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('sales_order_items')
-                .select('peptide_id, quantity, peptides (name)')
+                .select('peptide_id, quantity, peptides (name), sales_orders!inner (org_id)')
+                .eq('sales_orders.org_id', orgId!)
                 .not('peptide_id', 'is', null);
             if (error) throw error;
             // Aggregate by peptide
@@ -121,6 +127,7 @@ export default function AdminDashboard() {
             });
             return [...agg.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
         },
+        enabled: !!orgId,
     });
 
     const lowStock = useMemo(() =>
@@ -132,7 +139,7 @@ export default function AdminDashboard() {
 
     // Client supply alerts — scan all fridge items and compute days remaining
     const { data: clientSupplyAlerts } = useQuery({
-        queryKey: ['client_supply_alerts'],
+        queryKey: ['client_supply_alerts', orgId],
         queryFn: async () => {
             const { data: items, error } = await supabase
                 .from('client_inventory')
@@ -143,6 +150,7 @@ export default function AdminDashboard() {
                     peptides ( name ),
                     contacts ( name )
                 `)
+                .eq('org_id', orgId!)
                 .eq('in_fridge', true)
                 .not('dose_amount_mg', 'is', null)
                 .not('dose_frequency', 'is', null)
@@ -188,21 +196,24 @@ export default function AdminDashboard() {
             return alerts.sort((a, b) => a.daysLeft - b.daysLeft);
         },
         refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+        enabled: !!orgId,
     });
 
     // CRM Lead Submissions from landing page
     const { data: leadSubmissions, isLoading: leadsLoading } = useQuery({
-        queryKey: ['lead_submissions'],
+        queryKey: ['lead_submissions', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('lead_submissions')
                 .select('*')
+                .eq('org_id', orgId!)
                 .order('created_at', { ascending: false })
                 .limit(10);
             if (error) throw error;
             return data as { id: string; name: string | null; email: string; business_status: string | null; expected_volume: string | null; created_at: string }[];
         },
         refetchInterval: 30_000, // Check every 30s for new leads
+        enabled: !!orgId,
     });
 
     const newLeadsToday = leadSubmissions?.filter(l => {
@@ -211,9 +222,7 @@ export default function AdminDashboard() {
         return created.toDateString() === now.toDateString();
     }).length ?? 0;
 
-    if (financialsError) {
-        console.error("Financials Error:", financialsError);
-    }
+    // financialsError is surfaced to the user via the UI — no console logging needed
 
     // Show full-page error only if the critical financial query fails and nothing else loaded
     if (financialsError && !stats && !movements) {

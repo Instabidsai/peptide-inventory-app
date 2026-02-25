@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface CustomEntity {
   id: string;
@@ -67,6 +68,7 @@ export function useCustomEntityRecords(entityId: string) {
 export function useCreateEntityRecord(entityId: string) {
   const { profile, user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Record<string, any>) => {
@@ -83,6 +85,10 @@ export function useCreateEntityRecord(entityId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-entity-records', profile?.org_id, entityId] });
+      toast({ title: 'Record created' });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to create record', description: error.message });
     },
   });
 }
@@ -90,6 +96,7 @@ export function useCreateEntityRecord(entityId: string) {
 export function useDeleteEntityRecord(entityId: string) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (recordId: string) => {
@@ -101,6 +108,10 @@ export function useDeleteEntityRecord(entityId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-entity-records', profile?.org_id, entityId] });
+      toast({ title: 'Record deleted' });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Failed to delete record', description: error.message });
     },
   });
 }

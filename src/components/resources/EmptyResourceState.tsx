@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bot, FileText, Sparkles, BookOpen, AlertCircle } from "lucide-react";
+import { Bot, Sparkles, BookOpen, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export function EmptyResourceState({ searchTerm }: { searchTerm?: string }) {
     return (
@@ -27,8 +28,7 @@ export function EmptyResourceState({ searchTerm }: { searchTerm?: string }) {
                         size="lg"
                         className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-8 py-6 h-auto shadow-lg shadow-indigo-500/20 group"
                         onClick={() => {
-                            // TODO: Trigger AI Job
-                            alert("Research Agent dispatched! You will be notified when the report is ready (~2 mins).");
+                            toast.info("Research Agent dispatched! You will be notified when the report is ready (~2 mins).");
                         }}
                     >
                         <Sparkles className="mr-2 h-5 w-5 animate-pulse text-indigo-200" />
