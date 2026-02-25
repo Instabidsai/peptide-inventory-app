@@ -156,7 +156,7 @@ describe('useBottleStats', () => {
     const { result } = renderHook(() => useBottleStats(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(supabase.rpc).toHaveBeenCalledWith('get_bottle_stats');
+    expect(supabase.rpc).toHaveBeenCalledWith('get_bottle_stats', { p_org_id: 'org-123' });
     expect(result.current.data?.total).toBe(15);
     expect(result.current.data?.in_stock).toBe(10);
     expect(result.current.data?.sold).toBe(5);
