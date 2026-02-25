@@ -184,6 +184,29 @@ export function installAutoErrorReporter() {
     }
   };
 
+  // 0b. Intercept console.error — catches EVERYTHING any code logs as an error,
+  //     including try/catch'd errors that show toasts but never bubble up.
+  const origConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    origConsoleError.apply(console, args);
+    try {
+      const msg = args
+        .map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : JSON.stringify(a)))
+        .join(' ')
+        .slice(0, 500);
+      // Skip React internal noise and our own messages
+      if (msg.includes('[AutoErrorReporter]')) return;
+      if (msg.includes('Warning:') && msg.includes('React')) return;
+      if (msg.includes('Download the React DevTools')) return;
+      sendErrorToDb({
+        message: msg,
+        source: 'console_error',
+        page: window.location.hash || '/',
+        timestamp: new Date().toISOString(),
+      });
+    } catch { /* never throw from here */ }
+  };
+
   // 1. Unhandled promise rejections (covers failed fetch, edge function errors, etc.)
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
@@ -204,6 +227,14 @@ export function installAutoErrorReporter() {
       stack: reason instanceof Error ? reason.stack : undefined,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // 1b. Self-test: send a ping on install so we can verify the pipeline works
+  sendErrorToDb({
+    message: 'AutoErrorReporter installed successfully — this is a self-test ping',
+    source: 'self_test',
+    page: window.location.hash || '/',
+    timestamp: new Date().toISOString(),
   });
 
   // 2. Uncaught JavaScript errors
