@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,11 +68,13 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { profile } = useAuth();
     const { data: salesOrders, isLoading } = useSalesOrders();
     // Optimization: In real app use specific hook useSalesOrder(id), but filtering list for now is okay for prototype
@@ -88,15 +90,53 @@ export default function OrderDetails() {
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
     const [editing, setEditing] = useState(false);
-    const [editItems, setEditItems] = useState<{ id: string; name: string; quantity: number; unit_price: number }[]>([]);
+    const [editItems, setEditItems] = useState<{ id: string; peptide_id?: string; name: string; quantity: number; unit_price: number; isNew?: boolean }[]>([]);
     const [editNotes, setEditNotes] = useState('');
     const [editShippingAddress, setEditShippingAddress] = useState('');
     const [saving, setSaving] = useState(false);
     const [showRatesDialog, setShowRatesDialog] = useState(false);
     const [availableRates, setAvailableRates] = useState<ShippingRate[]>([]);
     const [ratesShipmentId, setRatesShipmentId] = useState<string>('');
+    const [editDeliveryMethod, setEditDeliveryMethod] = useState<string>('ship');
+    const [addingItem, setAddingItem] = useState(false);
+    const [newItemPeptideId, setNewItemPeptideId] = useState<string>('');
+    const [newItemQty, setNewItemQty] = useState(1);
+    const [newItemPrice, setNewItemPrice] = useState<number>(0);
+
+    // Fetch peptides for the "Add Item" picker
+    const { data: allPeptides } = useQuery({
+        queryKey: ['peptides-for-order-edit', profile?.org_id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('peptides')
+                .select('id, name, retail_price')
+                .eq('org_id', profile!.org_id!)
+                .eq('active', true)
+                .order('name');
+            if (error) throw error;
+            return data as { id: string; name: string; retail_price: number | null }[];
+        },
+        enabled: !!profile?.org_id && editing,
+    });
+
+    // Filter out peptides already in the order
+    const availablePeptides = useMemo(() => {
+        if (!allPeptides) return [];
+        const existingIds = new Set(editItems.map(i => i.peptide_id));
+        return allPeptides.filter(p => !existingIds.has(p.id));
+    }, [allPeptides, editItems]);
 
     const order = salesOrders?.find(o => o.id === id);
+
+    // Auto-enter edit mode when ?edit=true is in URL
+    useEffect(() => {
+        if (order && searchParams.get('edit') === 'true' && !editing) {
+            startEditing();
+            // Remove the query param so refreshing doesn't re-enter edit mode
+            setSearchParams({}, { replace: true });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order, searchParams]);
 
     if (isLoading) return (
         <div className="space-y-6 p-4">
@@ -192,6 +232,7 @@ export default function OrderDetails() {
         setEditItems(
             (order.sales_order_items || []).map(item => ({
                 id: item.id,
+                peptide_id: item.peptide_id,
                 name: item.peptides?.name || 'Unknown',
                 quantity: item.quantity,
                 unit_price: item.unit_price,
@@ -199,14 +240,38 @@ export default function OrderDetails() {
         );
         setEditNotes(order.notes || '');
         setEditShippingAddress(order.shipping_address || '');
+        setEditDeliveryMethod(order.delivery_method || 'ship');
+        setAddingItem(false);
         setEditing(true);
     };
 
+    const handleAddItem = () => {
+        if (!newItemPeptideId) return;
+        const peptide = allPeptides?.find(p => p.id === newItemPeptideId);
+        if (!peptide) return;
+        setEditItems([...editItems, {
+            id: `new-${Date.now()}`,
+            peptide_id: peptide.id,
+            name: peptide.name,
+            quantity: newItemQty,
+            unit_price: newItemPrice || peptide.retail_price || 0,
+            isNew: true,
+        }]);
+        setNewItemPeptideId('');
+        setNewItemQty(1);
+        setNewItemPrice(0);
+        setAddingItem(false);
+    };
+
     const saveEdits = async () => {
+        if (editItems.length === 0) {
+            toast({ variant: 'destructive', title: 'Order must have at least one item' });
+            return;
+        }
         setSaving(true);
         try {
-            // Update each item's quantity
-            for (const item of editItems) {
+            // Update existing items
+            for (const item of editItems.filter(i => !i.isNew)) {
                 const { error } = await supabase
                     .from('sales_order_items')
                     .update({ quantity: item.quantity, unit_price: item.unit_price })
@@ -214,8 +279,21 @@ export default function OrderDetails() {
                 if (error) throw error;
             }
 
+            // Insert new items
+            for (const item of editItems.filter(i => i.isNew)) {
+                const { error } = await supabase
+                    .from('sales_order_items')
+                    .insert({
+                        order_id: order.id,
+                        peptide_id: item.peptide_id!,
+                        quantity: item.quantity,
+                        unit_price: item.unit_price,
+                    });
+                if (error) throw error;
+            }
+
             // Delete removed items
-            const currentIds = editItems.map(i => i.id);
+            const currentIds = editItems.filter(i => !i.isNew).map(i => i.id);
             const originalIds = (order.sales_order_items || []).map(i => i.id);
             const removedIds = originalIds.filter(itemId => !currentIds.includes(itemId));
             for (const rid of removedIds) {
@@ -231,6 +309,7 @@ export default function OrderDetails() {
                 total_amount: newTotal,
                 notes: editNotes || null,
                 shipping_address: editShippingAddress || null,
+                delivery_method: editDeliveryMethod as 'ship' | 'local_pickup',
             });
 
             setEditing(false);
@@ -384,9 +463,24 @@ export default function OrderDetails() {
                                     <div className="space-y-3">
                                         {editItems.map((item, idx) => (
                                             <div key={item.id} className="flex items-center gap-3 bg-card/50 p-3 rounded-lg border border-border/40">
-                                                <div className="flex-1">
+                                                <div className="flex-1 min-w-0">
                                                     <span className="font-medium">{item.name}</span>
-                                                    <div className="text-xs text-muted-foreground">${item.unit_price.toFixed(2)} each</div>
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                        <span className="text-xs text-muted-foreground">$</span>
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            step={0.01}
+                                                            className="w-20 h-6 text-xs px-1"
+                                                            value={item.unit_price}
+                                                            onChange={(e) => {
+                                                                const updated = [...editItems];
+                                                                updated[idx] = { ...item, unit_price: Math.max(0, parseFloat(e.target.value) || 0) };
+                                                                setEditItems(updated);
+                                                            }}
+                                                        />
+                                                        <span className="text-xs text-muted-foreground">each</span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Button
@@ -440,6 +534,54 @@ export default function OrderDetails() {
                                                 </Button>
                                             </div>
                                         ))}
+
+                                        {/* Add Item Section */}
+                                        {addingItem ? (
+                                            <div className="border border-dashed border-blue-500/40 rounded-lg p-3 space-y-3 bg-blue-500/5">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="text-xs">Peptide</label>
+                                                        <Select value={newItemPeptideId} onValueChange={(val) => {
+                                                            setNewItemPeptideId(val);
+                                                            const p = allPeptides?.find(pp => pp.id === val);
+                                                            if (p?.retail_price) setNewItemPrice(p.retail_price);
+                                                        }}>
+                                                            <SelectTrigger className="h-9">
+                                                                <SelectValue placeholder="Select peptide..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {availablePeptides.map(p => (
+                                                                    <SelectItem key={p.id} value={p.id}>
+                                                                        {p.name} {p.retail_price ? `($${p.retail_price})` : ''}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-xs">Qty</label>
+                                                            <Input type="number" min={1} className="h-9" value={newItemQty} onChange={e => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs">Price</label>
+                                                            <Input type="number" min={0} step={0.01} className="h-9" value={newItemPrice} onChange={e => setNewItemPrice(parseFloat(e.target.value) || 0)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" className="flex-1" disabled={!newItemPeptideId} onClick={handleAddItem}>
+                                                        <Plus className="h-3 w-3 mr-1" /> Add to Order
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" onClick={() => setAddingItem(false)}>Cancel</Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <Button variant="outline" className="w-full border-dashed" onClick={() => setAddingItem(true)}>
+                                                <Plus className="h-4 w-4 mr-2" /> Add Item
+                                            </Button>
+                                        )}
+
                                         <div className="flex justify-between items-center text-lg font-bold pt-3 border-t">
                                             <span>New Total</span>
                                             <span>${editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0).toFixed(2)}</span>
@@ -469,9 +611,25 @@ export default function OrderDetails() {
                                 </div>
                             )}
 
-                            {/* Notes Section */}
+                            {/* Notes + Delivery Method Section */}
                             {editing ? (
                                 <div className="space-y-3">
+                                    <div>
+                                        <label className="text-sm font-semibold mb-1 block">Delivery Method</label>
+                                        <Select value={editDeliveryMethod} onValueChange={setEditDeliveryMethod}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ship">
+                                                    <span className="flex items-center gap-2"><Truck className="h-3 w-3" /> Ship to Customer</span>
+                                                </SelectItem>
+                                                <SelectItem value="local_pickup">
+                                                    <span className="flex items-center gap-2"><MapPin className="h-3 w-3" /> Local Pickup</span>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div>
                                         <label htmlFor="order-detail-notes" className="text-sm font-semibold mb-1 block">Notes</label>
                                         <Textarea
@@ -482,16 +640,18 @@ export default function OrderDetails() {
                                             rows={3}
                                         />
                                     </div>
-                                    <div>
-                                        <label htmlFor="order-detail-shipping-address" className="text-sm font-semibold mb-1 block">Shipping Address</label>
-                                        <Textarea
-                                            id="order-detail-shipping-address"
-                                            value={editShippingAddress}
-                                            onChange={(e) => setEditShippingAddress(e.target.value)}
-                                            placeholder="Shipping address..."
-                                            rows={3}
-                                        />
-                                    </div>
+                                    {editDeliveryMethod === 'ship' && (
+                                        <div>
+                                            <label htmlFor="order-detail-shipping-address" className="text-sm font-semibold mb-1 block">Shipping Address</label>
+                                            <Textarea
+                                                id="order-detail-shipping-address"
+                                                value={editShippingAddress}
+                                                onChange={(e) => setEditShippingAddress(e.target.value)}
+                                                placeholder="Shipping address..."
+                                                rows={3}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : order.notes ? (
                                 <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/20">

@@ -315,7 +315,7 @@ export default function OrderList() {
                                     <div className="flex gap-2 mt-3 pt-3 border-t">
                                         <Button
                                             className="flex-1 h-11 bg-blue-600 hover:bg-blue-700"
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/sales/${order.id}`); }}
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/sales/${order.id}?edit=true`); }}
                                         >
                                             <Pencil className="h-4 w-4 mr-2" />
                                             Edit Order
@@ -337,7 +337,7 @@ export default function OrderList() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Order ID</TableHead>
+                                <TableHead className="sticky left-0 z-20 bg-background">Order ID</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Customer</TableHead>
                                 {!isRep && <TableHead>Rep</TableHead>}
@@ -354,7 +354,7 @@ export default function OrderList() {
                             {orders && orders.length > 0 ? (
                                 orders.map((order, index) => (
                                     <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" role="link" tabIndex={0} aria-label={`View order ${order.id.slice(0, 8)}`} onClick={() => navigate(`/sales/${order.id}`)} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/sales/${order.id}`); } }}>
-                                        <TableCell className="font-mono text-xs">
+                                        <TableCell className="font-mono text-xs sticky left-0 z-10 bg-background">
                                             {order.id.slice(0, 8)}...
                                             {order.is_supplier_order && (
                                                 <Badge variant="outline" className="ml-1 text-xs py-0 bg-cyan-500/15 text-cyan-400 border-cyan-500/30">
@@ -455,7 +455,7 @@ export default function OrderList() {
                                         )}
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" className="text-blue-400" asChild>
-                                                <Link to={`/sales/${order.id}`}>
+                                                <Link to={`/sales/${order.id}?edit=true`}>
                                                     <Pencil className="h-4 w-4 mr-1" /> Edit
                                                 </Link>
                                             </Button>
