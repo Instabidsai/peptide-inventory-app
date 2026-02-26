@@ -85,6 +85,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const timestamp = Date.now();
         const externalId = `${orderId}-pl-${timestamp}`;
 
+        const lineItems = (order.sales_order_items || []).map((item: any) => ({
+            name: item.peptides?.name || 'Item',
+            quantity: item.quantity || 1,
+            amount: Math.round((item.unit_price || 0) * 100),
+        }));
+
         const psifiPayload = {
             mode: 'payment',
             total_amount: totalCents,
@@ -92,17 +98,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             success_url: successUrl,
             cancel_url: cancelUrl,
             payment_method: 'card',
+            items: lineItems,
             metadata: {
                 order_id: orderId,
                 client_name: order.contacts?.name || 'Customer',
                 client_email: order.contacts?.email || '',
-                item_count: order.sales_order_items?.length || 0,
                 source: 'payment_link',
-                items: (order.sales_order_items || []).map((item: any) => ({
-                    name: item.peptides?.name || 'Unknown',
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                })),
             },
         };
 

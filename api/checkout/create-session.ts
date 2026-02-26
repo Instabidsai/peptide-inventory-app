@@ -96,6 +96,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Total in cents
         const totalCents = Math.round((order.total_amount || 0) * 100);
 
+        const lineItems = (order.sales_order_items || []).map((item: any) => ({
+            name: item.peptides?.name || 'Item',
+            quantity: item.quantity || 1,
+            amount: Math.round((item.unit_price || 0) * 100),
+        }));
+
         const psifiPayload = {
             mode: 'payment',
             total_amount: totalCents,
@@ -103,15 +109,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             success_url: successUrl,
             cancel_url: cancelUrl,
             payment_method: 'card',
+            items: lineItems,
             metadata: {
                 client_name: order.contacts?.name || 'Unknown',
                 client_email: order.contacts?.email || '',
-                item_count: order.sales_order_items?.length || 0,
-                items: (order.sales_order_items || []).map((item: any) => ({
-                    name: item.peptides?.name || 'Unknown Peptide',
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                })),
             },
         };
 
