@@ -24,7 +24,7 @@ export function Pricing() {
 
   const handleGetStarted = () => {
     sessionStorage.setItem("selected_plan", "professional");
-    navigate("/auth");
+    navigate("/get-started");
   };
 
   return (

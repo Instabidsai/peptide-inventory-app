@@ -99,7 +99,7 @@ export function Nav() {
               size="sm"
               onClick={() => {
                 sessionStorage.setItem("selected_plan", "professional");
-                navigate("/auth");
+                navigate("/get-started");
               }}
               className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
             >
@@ -141,7 +141,7 @@ export function Nav() {
                     onClick={() => {
                       setMobileOpen(false);
                       sessionStorage.setItem("selected_plan", "professional");
-                      navigate("/auth");
+                      navigate("/get-started");
                     }}
                   >
                     Get Started

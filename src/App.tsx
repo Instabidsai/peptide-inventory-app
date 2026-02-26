@@ -93,6 +93,7 @@ const SetupAssistant = lazyRetry(() => import("./pages/SetupAssistant"));
 
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
+const GetStarted = lazyRetry(() => import("./pages/GetStarted"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
 
@@ -158,6 +159,7 @@ const App = () => (
                     <Suspense fallback={<PageLoader />}>
                         <Routes>
                             <Route path="/crm" element={<CrmLanding />} />
+                            <Route path="/get-started" element={<GetStarted />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
                             <Route path="/pay/:orderId" element={<PayOrder />} />

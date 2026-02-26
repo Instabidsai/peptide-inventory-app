@@ -139,7 +139,7 @@ export function Hero() {
                 size="lg"
                 onClick={() => {
                   sessionStorage.setItem("selected_plan", "professional");
-                  navigate("/auth");
+                  navigate("/get-started");
                 }}
                 className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
                 style={shimmerStyle}

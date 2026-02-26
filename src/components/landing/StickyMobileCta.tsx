@@ -28,7 +28,7 @@ export function StickyMobileCta() {
             className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
             onClick={() => {
               sessionStorage.setItem("selected_plan", "professional");
-              navigate("/auth");
+              navigate("/get-started");
             }}
           >
             Start Free Trial

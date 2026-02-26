@@ -302,10 +302,6 @@ export default function Auth() {
   const signupParam = searchParams.get('signup');
   const isMerchantSignup = signupParam === 'merchant' || sessionStorage.getItem('merchant_signup') === 'true';
 
-  // Landing page self-service signup — sessionStorage has selected_plan from CTA buttons
-  const selectedPlan = sessionStorage.getItem('selected_plan');
-  const isSelfSignup = !!selectedPlan || isMerchantSignup;
-
   // Persist merchant signup flag across OAuth redirects
   useEffect(() => {
     if (signupParam === 'merchant') {
@@ -313,15 +309,15 @@ export default function Auth() {
     }
   }, [signupParam]);
 
-  // Determine if this visitor has a valid referral OR is self-signing up
-  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isSelfSignup);
+  // Determine if this visitor has a valid referral OR is a merchant self-signup
+  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isMerchantSignup);
 
-  // Auto-switch to signup when plan param present OR landing page CTA used
+  // Auto-switch to signup when plan param present — BUT only if they have a referral
   useEffect(() => {
-    if ((planParam || isSelfSignup) && mode === 'login' && hasReferral) {
+    if (planParam && mode === 'login' && hasReferral) {
       setMode('signup');
     }
-  }, [planParam, isSelfSignup, hasReferral]);
+  }, [planParam, hasReferral]);
 
   // Show OAuth error if redirected back with one (see main.tsx interceptor)
   useEffect(() => {
@@ -486,8 +482,8 @@ export default function Auth() {
     }
 
     setIsLoading(false);
-    // Self-signup or merchant signup — tell them to confirm email
-    if (isSelfSignup) {
+    // Merchant self-signup — tell them to confirm email
+    if (isMerchantSignup) {
       toast({
         title: 'Account created!',
         description: 'Check your email to confirm, then log in to set up your business.',
@@ -592,17 +588,17 @@ export default function Auth() {
               transition={{ delay: 0.25 }}
             >
               <CardTitle className="text-2xl font-bold text-foreground">
-                {isSelfSignup
+                {isMerchantSignup
                   ? mode === 'login' ? 'Welcome Back' : 'Start Your Business'
                   : refParam
                     ? isPartnerInvite ? 'Join as a Partner' : "You've Been Invited"
                     : mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-1">
-                {isSelfSignup
+                {isMerchantSignup
                   ? mode === 'login'
                     ? 'Sign in to continue setting up your business'
-                    : 'Create your account to get started — 7-day free trial, no credit card required'
+                    : 'Create your account to get started'
                   : refParam
                     ? isPartnerInvite
                       ? 'Create your partner account to start earning'
