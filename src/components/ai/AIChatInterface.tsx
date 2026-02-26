@@ -1,15 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAI } from '@/hooks/use-ai';
 import { useAIKnowledge } from '@/hooks/use-ai-knowledge';
 import { PeptideAIKnowledgePanel } from './PeptideAIKnowledgePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Bot, User, Sparkles, Plus, Paperclip, Brain, MessageCircle } from 'lucide-react';
+import { Loader2, Send, Bot, User, Plus, Paperclip, Brain, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,11 +35,51 @@ export const AIChatInterface = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Typewriter state
+    const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+    const [typedLength, setTypedLength] = useState(0);
+    const prevMessageCountRef = useRef(0);
+    const wasLoadingRef = useRef(false);
+
+    // Auto-scroll on new content
     useEffect(() => {
         requestAnimationFrame(() => {
             scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
         });
-    }, [messages, isLoading]);
+    }, [messages, isLoading, typedLength]);
+
+    // Detect new AI messages and start typewriter
+    useEffect(() => {
+        if (wasLoadingRef.current && !isLoading && messages.length > prevMessageCountRef.current) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg.role === 'assistant' && lastMsg.id !== 'welcome') {
+                setTypingMessageId(lastMsg.id);
+                setTypedLength(0);
+            }
+        }
+        wasLoadingRef.current = isLoading;
+        prevMessageCountRef.current = messages.length;
+    }, [isLoading, messages]);
+
+    // Typewriter character-by-character animation
+    useEffect(() => {
+        if (!typingMessageId) return;
+        const msg = messages.find(m => m.id === typingMessageId);
+        if (!msg) { setTypingMessageId(null); return; }
+
+        if (typedLength >= msg.content.length) {
+            setTypingMessageId(null);
+            return;
+        }
+
+        // Adaptive speed: type faster for longer messages
+        const charsPerTick = msg.content.length > 300 ? 4 : msg.content.length > 150 ? 3 : 2;
+        const timer = setTimeout(() => {
+            setTypedLength(prev => Math.min(prev + charsPerTick, msg.content.length));
+        }, 18);
+
+        return () => clearTimeout(timer);
+    }, [typingMessageId, typedLength, messages]);
 
     const handleSend = (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -75,32 +115,43 @@ export const AIChatInterface = () => {
     // Count docs being processed
     const processingCount = documents.filter((d) => d.status === 'pending' || d.status === 'processing').length;
 
+    // Typewriter helpers
+    const getDisplayContent = (msg: (typeof messages)[0]) => {
+        if (msg.id === typingMessageId) return msg.content.slice(0, typedLength);
+        return msg.content;
+    };
+    const isTypewriting = (msg: (typeof messages)[0]) => msg.id === typingMessageId;
+
     return (
         <>
-            <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto rounded-2xl bg-card/80 backdrop-blur-xl border border-white/[0.08] shadow-overlay overflow-hidden">
-                {/* Header */}
-                <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                            <Sparkles className="h-4 w-4 text-emerald-400" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-sm">Peptide AI</h3>
-                            <p className="text-[10px] text-muted-foreground/60">Protocol Consultant</p>
-                        </div>
+            <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto rounded-xl bg-card/95 backdrop-blur-xl border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.08)] overflow-hidden">
+                {/* Terminal-style header matching landing page */}
+                <div className="px-4 py-2.5 border-b border-border/40 bg-background/60 flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
                     </div>
-                    <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground ml-1 font-mono">Peptide AI</span>
+                    <div className="ml-auto flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-mono">LIVE</span>
+                        </div>
                         <Button
                             variant="ghost"
                             size="icon"
                             aria-label="Open knowledge panel"
                             onClick={() => setKnowledgePanelOpen(true)}
-                            className="h-8 w-8 rounded-xl text-muted-foreground/60 hover:text-foreground relative"
+                            className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-foreground relative"
                         >
-                            <Brain className="h-4 w-4" />
+                            <Brain className="h-3.5 w-3.5" />
                             {processingCount > 0 && (
-                                <div className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-amber-500 flex items-center justify-center">
-                                    <span className="text-[8px] font-bold text-white">{processingCount}</span>
+                                <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 flex items-center justify-center">
+                                    <span className="text-[7px] font-bold text-white">{processingCount}</span>
                                 </div>
                             )}
                         </Button>
@@ -108,9 +159,9 @@ export const AIChatInterface = () => {
                             variant="ghost"
                             size="sm"
                             onClick={startNewConversation}
-                            className="h-8 px-2.5 rounded-xl text-xs text-muted-foreground/60 hover:text-foreground"
+                            className="h-7 px-2 rounded-lg text-[10px] text-muted-foreground/60 hover:text-foreground"
                         >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            <Plus className="h-3 w-3 mr-1" />
                             New
                         </Button>
                     </div>
@@ -150,67 +201,91 @@ export const AIChatInterface = () => {
                                 </div>
                             )}
 
-                            {messages.map((msg) => (
-                                <div
-                                    key={msg.id}
-                                    className={cn(
-                                        "flex w-full gap-2",
-                                        msg.role === 'user' ? "justify-end" : "justify-start",
-                                        msg.isOptimistic && msg.role === 'user' && "opacity-70"
-                                    )}
-                                >
-                                    {msg.role === 'assistant' && (
-                                        <Avatar className="h-7 w-7 mt-1 shrink-0 border border-white/[0.06]">
-                                            <AvatarImage src="/ai-avatar.png" />
-                                            <AvatarFallback className="bg-emerald-500/10 text-emerald-400"><Bot size={14} /></AvatarFallback>
-                                        </Avatar>
-                                    )}
-
-                                    <div
+                            <AnimatePresence mode="popLayout">
+                                {messages.map((msg) => (
+                                    <motion.div
+                                        key={msg.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
                                         className={cn(
-                                            "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
-                                            msg.role === 'user'
-                                                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                : "bg-white/[0.04] border border-white/[0.06] text-foreground rounded-tl-sm"
+                                            "flex w-full gap-2.5",
+                                            msg.role === 'user' ? "justify-end" : "justify-start",
+                                            msg.isOptimistic && msg.role === 'user' && "opacity-70"
                                         )}
                                     >
-                                        {msg.role === 'assistant' ? (
-                                            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300">
-                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                        {msg.role === 'assistant' && (
+                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+                                                <Bot className="w-3.5 h-3.5" />
                                             </div>
-                                        ) : (
-                                            <div className="whitespace-pre-wrap">{msg.content}</div>
                                         )}
-                                        <div className={cn(
-                                            "text-[10px] mt-1.5 opacity-50",
-                                            msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
-                                        )}>
-                                            {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+
+                                        <div
+                                            className={cn(
+                                                "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
+                                                msg.role === 'user'
+                                                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                                    : "bg-white/[0.04] border border-white/[0.06] rounded-tl-sm"
+                                            )}
+                                        >
+                                            {msg.role === 'assistant' ? (
+                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300 text-emerald-300/90">
+                                                    <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
+                                                    {isTypewriting(msg) && (
+                                                        <span className="inline-block w-0.5 h-4 bg-emerald-400 ml-0.5 animate-pulse align-middle" />
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="whitespace-pre-wrap">{msg.content}</div>
+                                            )}
+                                            {!isTypewriting(msg) && (
+                                                <div className={cn(
+                                                    "text-[10px] mt-1.5 opacity-50",
+                                                    msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
+                                                )}>
+                                                    {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
 
-                                    {msg.role === 'user' && (
-                                        <Avatar className="h-7 w-7 mt-1 shrink-0 border border-white/[0.06]">
-                                            <AvatarFallback className="bg-white/[0.04] text-muted-foreground"><User size={14} /></AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                </div>
-                            ))}
+                                        {msg.role === 'user' && (
+                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
+                                                <User className="w-3.5 h-3.5" />
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
 
+                            {/* Animated thinking dots matching landing page */}
                             {isLoading && (
-                                <div className="flex justify-start gap-2">
-                                    <Avatar className="h-7 w-7 border border-white/[0.06]">
-                                        <AvatarFallback className="bg-emerald-500/10 text-emerald-400"><Bot size={14} /></AvatarFallback>
-                                    </Avatar>
-                                    <div className="bg-white/[0.04] border border-white/[0.06] p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
-                                        <div className="flex gap-1">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/60 animate-pulse" />
-                                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/60 animate-pulse [animation-delay:150ms]" />
-                                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/60 animate-pulse [animation-delay:300ms]" />
-                                        </div>
-                                        <span className="text-muted-foreground/50 text-xs">Researching...</span>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="flex gap-2.5"
+                                >
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+                                        <Bot className="w-3.5 h-3.5" />
                                     </div>
-                                </div>
+                                    <div className="bg-white/[0.04] border border-white/[0.06] p-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
+                                        <div className="flex gap-1">
+                                            {[0, 1, 2].map((i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    className="w-1.5 h-1.5 rounded-full bg-emerald-400/70"
+                                                    animate={{ opacity: [0.3, 1, 0.3] }}
+                                                    transition={{
+                                                        duration: 1,
+                                                        repeat: Infinity,
+                                                        delay: i * 0.2,
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="text-emerald-300/50 text-xs">Researching...</span>
+                                    </div>
+                                </motion.div>
                             )}
                             <div ref={scrollRef} />
                         </div>
@@ -218,7 +293,7 @@ export const AIChatInterface = () => {
                 </ScrollArea>
 
                 {/* Input Area */}
-                <form onSubmit={handleSend} className="p-3 border-t border-white/[0.06] bg-white/[0.02] flex gap-2">
+                <form onSubmit={handleSend} className="p-3 border-t border-border/40 bg-background/60 flex gap-2">
                     <input
                         ref={fileInputRef}
                         type="file"
