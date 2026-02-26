@@ -3,8 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 
 const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
 
+/**
+ * Authenticated checkout session creator — requires Supabase JWT.
+ * Used by the admin/staff UI to initiate payment for an order.
+ *
+ * PsiFi API requirements (discovered Feb 2026):
+ *   - items[].productId is REQUIRED — must reference a registered product
+ *   - items[].name and items[].price are REQUIRED alongside productId
+ *   - All prices are in DOLLARS (PsiFi converts to cents internally)
+ *   - payment_method field must be omitted (defaults to banxa/card)
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Only allow POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -31,7 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
-        // Use the service role client to verify the token and fetch data
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Verify the JWT and get the user
@@ -78,41 +86,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(403).json({ error: 'Not authorized for this order' });
         }
 
-        // Safety check: don't create duplicate sessions
-        if (order.psifi_session_id && order.psifi_status !== 'failed' && order.psifi_status !== 'cancelled') {
-            return res.status(400).json({
-                error: 'Checkout session already exists for this order',
-                checkout_url: null, // They should use the existing one
-            });
+        // Don't allow payment on already-paid or cancelled orders
+        if (order.payment_status === 'paid') {
+            return res.status(400).json({ error: 'This order has already been paid' });
         }
+        if (order.status === 'cancelled') {
+            return res.status(400).json({ error: 'This order has been cancelled' });
+        }
+
+        const totalDollars = Number(order.total_amount || 0);
+        if (totalDollars <= 0) {
+            return res.status(400).json({ error: 'Order total must be greater than zero' });
+        }
+
+        // Clear any stale session
+        if (order.psifi_session_id) {
+            await supabase
+                .from('sales_orders')
+                .update({ psifi_session_id: null, psifi_status: null })
+                .eq('id', orderId);
+        }
+
+        // --- Create ad-hoc PsiFi product for this order ---
+        const shortId = orderId.slice(0, 8);
+        const productName = `Order #${shortId}`;
+
+        const productRes = await fetch(`${PSIFI_API_BASE}/products`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': psifiApiKey,
+            },
+            body: JSON.stringify({
+                name: productName,
+                price: totalDollars,
+                currency: 'USD',
+                type: 'service',
+            }),
+        });
+
+        if (!productRes.ok) {
+            const errBody = await productRes.text();
+            console.error('PsiFi product creation failed:', productRes.status, errBody);
+            return res.status(502).json({ error: 'Payment processor error', psifi_error: errBody });
+        }
+
+        const product = await productRes.json();
 
         // --- Build PsiFi checkout session ---
         const siteBase = process.env.PUBLIC_SITE_URL || '';
-
-        // Since this is a HashRouter SPA, success/cancel URLs use hash fragments
         const successUrl = `${siteBase}/#/checkout/success?orderId=${orderId}`;
         const cancelUrl = `${siteBase}/#/checkout/cancel?orderId=${orderId}`;
-
-        // Total in cents
-        const totalCents = Math.round((order.total_amount || 0) * 100);
-
-        const lineItems = (order.sales_order_items || []).map((item: any) => ({
-            name: item.peptides?.name || 'Item',
-            quantity: item.quantity || 1,
-            price: Math.round((item.unit_price || 0) * 100),
-        }));
+        const timestamp = Date.now();
 
         const psifiPayload = {
             mode: 'payment',
-            total_amount: totalCents,
-            external_id: orderId,
+            total_amount: totalDollars,
+            external_id: `${orderId}-cs-${timestamp}`,
             success_url: successUrl,
             cancel_url: cancelUrl,
-            payment_method: 'card',
-            items: lineItems,
+            items: [{
+                productId: product.id,
+                name: productName,
+                quantity: 1,
+                price: totalDollars,
+            }],
             metadata: {
+                order_id: orderId,
                 client_name: order.contacts?.name || 'Unknown',
                 client_email: order.contacts?.email || '',
+                source: 'checkout',
             },
         };
 
@@ -122,17 +165,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': psifiApiKey,
-                'Idempotency-Key': orderId, // Prevent duplicate charges
+                'Idempotency-Key': `checkout-${orderId}-${timestamp}`,
             },
             body: JSON.stringify(psifiPayload),
         });
 
         if (!psifiResponse.ok) {
             const errorBody = await psifiResponse.text();
-            console.error('PsiFi API error:', psifiResponse.status, errorBody);
+            console.error('PsiFi API error:', psifiResponse.status, 'body:', errorBody);
             return res.status(502).json({
                 error: 'Payment processor error',
-                details: psifiResponse.status,
+                psifi_error: errorBody,
             });
         }
 
@@ -149,7 +192,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (updateError) {
             console.error('Failed to update order with session ID:', updateError);
-            // Don't fail the request — the checkout can still proceed
         }
 
         // --- Return the checkout URL ---

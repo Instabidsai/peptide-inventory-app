@@ -7,6 +7,12 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * Public checkout session creator — no JWT required.
  * Auth is implicit: order UUIDs are 128-bit unguessable tokens.
  * This is the same pattern Stripe/Square/PayPal use for invoice links.
+ *
+ * PsiFi API requirements (discovered Feb 2026):
+ *   - items[].productId is REQUIRED — must reference a registered product
+ *   - items[].name and items[].price are REQUIRED alongside productId
+ *   - All prices are in DOLLARS (PsiFi converts to cents internally)
+ *   - payment_method field must be omitted (defaults to banxa/card)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -62,7 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'This order has been cancelled' });
         }
 
-        // Clear any stale session so PsiFi doesn't reject duplicate external_id
+        const totalDollars = Number(order.total_amount || 0);
+        if (totalDollars <= 0) {
+            return res.status(400).json({ error: 'Order total must be greater than zero' });
+        }
+
+        // Clear any stale session
         if (order.psifi_session_id) {
             await supabase
                 .from('sales_orders')
@@ -70,35 +81,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .eq('id', orderId);
         }
 
-        // Build PsiFi checkout session
+        // PsiFi requires registered products. Create an ad-hoc product for this order.
+        const shortId = orderId.slice(0, 8);
+        const productName = `Order #${shortId}`;
+
+        const productRes = await fetch(`${PSIFI_API_BASE}/products`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': psifiApiKey,
+            },
+            body: JSON.stringify({
+                name: productName,
+                price: totalDollars,
+                currency: 'USD',
+                type: 'service',
+            }),
+        });
+
+        if (!productRes.ok) {
+            const errBody = await productRes.text();
+            console.error('PsiFi product creation failed:', productRes.status, errBody);
+            return res.status(502).json({ error: 'Payment processor error', psifi_error: errBody });
+        }
+
+        const product = await productRes.json();
+
+        // Build checkout session
         const siteBase = process.env.PUBLIC_SITE_URL || '';
         const successUrl = `${siteBase}/#/pay/${orderId}/success`;
         const cancelUrl = `${siteBase}/#/pay/${orderId}`;
-
-        const totalCents = Math.round((order.total_amount || 0) * 100);
-
-        if (totalCents <= 0) {
-            return res.status(400).json({ error: 'Order total must be greater than zero' });
-        }
-
-        // Use unique external_id per attempt to avoid PsiFi duplicate rejection
         const timestamp = Date.now();
-        const externalId = `${orderId}-pl-${timestamp}`;
-
-        const lineItems = (order.sales_order_items || []).map((item: any) => ({
-            name: item.peptides?.name || 'Item',
-            quantity: item.quantity || 1,
-            price: Math.round((item.unit_price || 0) * 100),
-        }));
 
         const psifiPayload = {
             mode: 'payment',
-            total_amount: totalCents,
-            external_id: externalId,
+            total_amount: totalDollars,
+            external_id: `${orderId}-pl-${timestamp}`,
             success_url: successUrl,
             cancel_url: cancelUrl,
-            payment_method: 'card',
-            items: lineItems,
+            items: [{
+                productId: product.id,
+                name: productName,
+                quantity: 1,
+                price: totalDollars,
+            }],
             metadata: {
                 order_id: orderId,
                 client_name: order.contacts?.name || 'Customer',
@@ -107,7 +133,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
         };
 
-        // Call PsiFi API
         const psifiResponse = await fetch(`${PSIFI_API_BASE}/checkout-sessions`, {
             method: 'POST',
             headers: {
@@ -120,10 +145,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!psifiResponse.ok) {
             const errorBody = await psifiResponse.text();
-            console.error('PsiFi API error:', psifiResponse.status, 'body:', errorBody, 'payload:', JSON.stringify(psifiPayload));
+            console.error('PsiFi API error:', psifiResponse.status, 'body:', errorBody);
             return res.status(502).json({
                 error: 'Payment processor error',
-                details: psifiResponse.status,
                 psifi_error: errorBody,
             });
         }

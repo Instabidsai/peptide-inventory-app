@@ -116,13 +116,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const eventType = event.event || event.type;
         const transactionId = event.order_id || event.transaction_id || event.id;
         const status = event.status || event.order?.status;
-        const externalId = event.order?.externalId || event.external_id || event.metadata?.external_id;
+        const rawExternalId = event.order?.externalId || event.external_id || event.metadata?.external_id;
 
-        console.log(`[PsiFi Webhook] Event: ${eventType}, Status: ${status}, ExternalId: ${externalId}, TransactionId: ${transactionId}`);
+        // Extract the actual order UUID from external_id.
+        // Format may be: plain UUID, or "UUID-pl-timestamp" / "UUID-cs-timestamp"
+        // Also check metadata.order_id as a fallback.
+        let orderId: string | null = null;
+        if (rawExternalId) {
+            // Try to extract UUID from the beginning (36 chars = UUID length)
+            const uuidMatch = rawExternalId.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+            orderId = uuidMatch ? uuidMatch[1] : rawExternalId;
+        }
+        // Fallback: check metadata for order_id
+        if (!orderId) {
+            orderId = event.metadata?.order_id || null;
+        }
 
-        if (!externalId) {
-            console.warn('[PsiFi Webhook] No external_id found in event, skipping');
-            return res.status(200).json({ received: true, action: 'skipped_no_external_id' });
+        console.log(`[PsiFi Webhook] Event: ${eventType}, Status: ${status}, RawExternalId: ${rawExternalId}, OrderId: ${orderId}, TransactionId: ${transactionId}`);
+
+        if (!orderId) {
+            console.warn('[PsiFi Webhook] No order_id found in event, skipping');
+            return res.status(200).json({ received: true, action: 'skipped_no_order_id' });
         }
 
         // --- Update order in Supabase ---
@@ -135,11 +149,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const { data: existingOrder } = await supabase
                 .from('sales_orders')
                 .select('payment_status')
-                .eq('id', externalId)
+                .eq('id', orderId)
                 .single();
 
             if (existingOrder?.payment_status === 'paid') {
-                console.log(`[PsiFi Webhook] Order ${externalId} already paid, skipping`);
+                console.log(`[PsiFi Webhook] Order ${orderId} already paid, skipping`);
                 return res.status(200).json({ received: true, action: 'already_paid' });
             }
 
@@ -156,14 +170,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     payment_method: 'psifi',
                     payment_date: new Date().toISOString(),
                 })
-                .eq('id', externalId);
+                .eq('id', orderId);
 
             if (updateError) {
                 console.error('[PsiFi Webhook] Failed to update order:', updateError);
                 return res.status(500).json({ error: 'Database update failed' });
             }
 
-            console.log(`[PsiFi Webhook] Order ${externalId} marked as PAID`);
+            console.log(`[PsiFi Webhook] Order ${orderId} marked as PAID`);
 
         } else if (TERMINAL_FAILURE.includes(statusLower)) {
             // Payment failed/cancelled
@@ -173,14 +187,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     psifi_status: statusLower,
                     psifi_transaction_id: transactionId,
                 })
-                .eq('id', externalId);
+                .eq('id', orderId);
 
             if (updateError) {
                 console.error('[PsiFi Webhook] Failed to update failed order:', updateError);
                 return res.status(500).json({ error: 'Database update failed' });
             }
 
-            console.log(`[PsiFi Webhook] Order ${externalId} marked as ${statusLower}`);
+            console.log(`[PsiFi Webhook] Order ${orderId} marked as ${statusLower}`);
 
         } else {
             // Intermediate status update (pendingPayment, inProgress, etc.)
@@ -189,13 +203,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .update({
                     psifi_status: statusLower,
                 })
-                .eq('id', externalId);
+                .eq('id', orderId);
 
             if (updateError) {
                 console.error('[PsiFi Webhook] Failed to update intermediate status:', updateError);
             }
 
-            console.log(`[PsiFi Webhook] Order ${externalId} status updated to ${statusLower}`);
+            console.log(`[PsiFi Webhook] Order ${orderId} status updated to ${statusLower}`);
         }
 
         // Always return 200 to acknowledge receipt
