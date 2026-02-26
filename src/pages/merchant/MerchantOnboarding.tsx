@@ -607,7 +607,7 @@ export default function MerchantOnboarding() {
                 await supabase.rpc('seed_default_features', { p_org_id: data.org_id });
             }
 
-            sessionStorage.removeItem('selected_plan');
+            localStorage.removeItem('selected_plan');
             sessionStorage.removeItem('merchant_signup');
             await refreshProfile();
 
@@ -622,7 +622,7 @@ export default function MerchantOnboarding() {
     };
 
     const handleSignOut = async () => {
-        sessionStorage.removeItem('selected_plan');
+        localStorage.removeItem('selected_plan');
         sessionStorage.removeItem('merchant_signup');
         await signOut();
         navigate('/auth', { replace: true });

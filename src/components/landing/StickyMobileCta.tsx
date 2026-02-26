@@ -27,7 +27,7 @@ export function StickyMobileCta() {
           <Button
             className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
             onClick={() => {
-              sessionStorage.setItem("selected_plan", "professional");
+              localStorage.setItem("selected_plan", "professional");
               navigate("/get-started");
             }}
           >

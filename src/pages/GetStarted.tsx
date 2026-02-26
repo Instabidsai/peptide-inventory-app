@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
  * /get-started — Dedicated SaaS signup page.
  * Completely separate from /auth (internal app login).
  * Landing page CTAs point here. After auth, routes to /onboarding
- * which picks up `selected_plan` from sessionStorage.
+ * which picks up `selected_plan` from localStorage.
  */
 
 const loginSchema = z.object({
@@ -65,8 +65,8 @@ export default function GetStarted() {
 
   // Ensure selected_plan is always set for SaaS flow
   useEffect(() => {
-    if (!sessionStorage.getItem('selected_plan')) {
-      sessionStorage.setItem('selected_plan', 'professional');
+    if (!localStorage.getItem('selected_plan')) {
+      localStorage.setItem('selected_plan', 'professional');
     }
   }, []);
 
@@ -167,8 +167,8 @@ export default function GetStarted() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    // Ensure plan is set before OAuth redirect
-    sessionStorage.setItem('selected_plan', 'professional');
+    // Ensure plan is set before OAuth redirect (localStorage survives new tabs)
+    localStorage.setItem('selected_plan', 'professional');
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

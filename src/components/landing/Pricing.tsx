@@ -23,7 +23,7 @@ export function Pricing() {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    sessionStorage.setItem("selected_plan", "professional");
+    localStorage.setItem("selected_plan", "professional");
     navigate("/get-started");
   };
 

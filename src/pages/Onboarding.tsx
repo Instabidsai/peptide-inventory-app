@@ -31,7 +31,7 @@ export default function Onboarding() {
   const { brand_name: brandName } = useTenantConfig();
 
   // Check if user came from landing page with a selected plan
-  const selectedPlan = sessionStorage.getItem('selected_plan');
+  const selectedPlan = localStorage.getItem('selected_plan');
 
   const attemptLink = (ref: { refId: string; role: 'customer' | 'partner' }) => {
     if (!user) return;
@@ -71,8 +71,8 @@ export default function Onboarding() {
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
-      // Clear the selected plan from sessionStorage
-      sessionStorage.removeItem('selected_plan');
+      // Clear the selected plan from localStorage
+      localStorage.removeItem('selected_plan');
 
       // Refresh profile to pick up the new org_id
       await refreshProfile();
@@ -141,7 +141,7 @@ export default function Onboarding() {
   }, [profile, navigate]);
 
   const handleSignOut = async () => {
-    sessionStorage.removeItem('selected_plan');
+    localStorage.removeItem('selected_plan');
     await signOut();
     navigate('/auth', { replace: true });
   };

@@ -388,7 +388,7 @@ export default function Auth() {
     // No referral — redirect normally
     if (profile?.org_id) {
       // Already has an org — clear any stale signup state and go to dashboard
-      sessionStorage.removeItem('selected_plan');
+      localStorage.removeItem('selected_plan');
       sessionStorage.removeItem('merchant_signup');
       navigate(from, { replace: true });
     } else {
@@ -438,7 +438,7 @@ export default function Auth() {
     setIsLoading(true);
     // Persist selected plan for onboarding to pick up
     if (planParam) {
-      sessionStorage.setItem('selected_plan', planParam);
+      localStorage.setItem('selected_plan', planParam);
     }
     const { error } = await signUp(data.email, data.password, data.fullName);
 

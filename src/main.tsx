@@ -52,8 +52,11 @@ if (sentryDsn) {
     if (refId) {
       const role = sessionStorage.getItem('partner_ref_role') || 'customer';
       window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(refId) + '&role=' + encodeURIComponent(role));
+    } else if (localStorage.getItem('selected_plan')) {
+      // SaaS signup via /get-started — send to onboarding to create org
+      window.history.replaceState(null, '', window.location.pathname + '#/onboarding');
     } else {
-      // No referral — clean root path
+      // No referral, no plan — clean root path
       window.history.replaceState(null, '', window.location.pathname + '#/');
     }
   } else if (params.has('error')) {

@@ -98,7 +98,7 @@ export function Nav() {
             <Button
               size="sm"
               onClick={() => {
-                sessionStorage.setItem("selected_plan", "professional");
+                localStorage.setItem("selected_plan", "professional");
                 navigate("/get-started");
               }}
               className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
@@ -140,7 +140,7 @@ export function Nav() {
                   <Button
                     onClick={() => {
                       setMobileOpen(false);
-                      sessionStorage.setItem("selected_plan", "professional");
+                      localStorage.setItem("selected_plan", "professional");
                       navigate("/get-started");
                     }}
                   >
