@@ -90,6 +90,9 @@ const CustomReportView = lazyRetry(() => import("./components/custom/CustomRepor
 // AI Setup Assistant (post-onboarding)
 const SetupAssistant = lazyRetry(() => import("./pages/SetupAssistant"));
 
+// Public status page (no auth)
+const StatusPage = lazyRetry(() => import("./pages/StatusPage"));
+
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
 const GetStarted = lazyRetry(() => import("./pages/GetStarted"));
@@ -165,6 +168,7 @@ const App = () => (
                             <Route path="/get-started" element={<GetStarted />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/status" element={<StatusPage />} />
                             <Route path="/pay/:orderId" element={<PayOrder />} />
                             <Route path="/pay/:orderId/success" element={<PaySuccess />} />
                             <Route path="/auth" element={<Auth />} />

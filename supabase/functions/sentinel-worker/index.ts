@@ -5,7 +5,7 @@ import { withErrorReporting } from "../_shared/error-reporter.ts";
 import { authenticateCron, authenticateRequest, AuthError, createServiceClient } from "../_shared/auth.ts";
 
 /**
- * sentinel-worker v3 — The AI Self-Healing Brain (Enhanced)
+ * sentinel-worker v4 — The AI Self-Healing Brain (Enhanced)
  *
  * Runs every 2 minutes via pg_cron. Zero human intervention.
  *
@@ -296,6 +296,11 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     await escalateCriticalIncidents(supabase, stats, runErrors);
 
     // ═══════════════════════════════════════════════════════════
+    // PHASE 8b: Retry failed escalations from previous runs (NEW v4)
+    // ═══════════════════════════════════════════════════════════
+    await retryFailedEscalations(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
     // PHASE 9: Performance anomaly detection (NEW v3)
     // ═══════════════════════════════════════════════════════════
     await checkPerformanceAnomalies(supabase, stats, runErrors);
@@ -539,6 +544,89 @@ function buildEscalationEmail(incident: any): string {
       </div>
     </div>
   `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Retry Failed Escalations (NEW v4 — Alert Redundancy)
+// ═══════════════════════════════════════════════════════════════
+async function retryFailedEscalations(
+  supabase: ReturnType<typeof createClient>,
+  stats: { escalations_sent: number },
+  runErrors: string[],
+): Promise<void> {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const healEmail = Deno.env.get("HEAL_EMAIL");
+  if (!resendKey || !healEmail) return;
+
+  try {
+    // Find failed escalations from the last 2 hours that haven't been retried yet
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
+    const { data: failedEscalations } = await supabase
+      .from("escalation_log")
+      .select("id, incident_id, subject")
+      .eq("status", "failed")
+      .gte("created_at", twoHoursAgo)
+      .limit(3);
+
+    if (!failedEscalations || failedEscalations.length === 0) return;
+
+    // Check cooldown
+    const cooldownTime = new Date(Date.now() - ESCALATION_COOLDOWN_MIN * 60_000).toISOString();
+    const { count: recentSent } = await supabase
+      .from("escalation_log")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "sent")
+      .gte("created_at", cooldownTime);
+
+    if ((recentSent || 0) >= 3) return;
+
+    for (const failed of failedEscalations) {
+      try {
+        // Get the incident details for the email body
+        const { data: incident } = failed.incident_id
+          ? await supabase.from("incidents").select("*").eq("id", failed.incident_id).single()
+          : { data: null };
+
+        const subject = failed.subject || "[SENTINEL RETRY] Alert delivery retry";
+        const html = incident
+          ? buildEscalationEmail(incident)
+          : `<p>Retrying failed alert. Original subject: ${failed.subject}</p>`;
+
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${resendKey}`,
+          },
+          body: JSON.stringify({
+            from: "Sentinel AI <sentinel@thepeptideai.com>",
+            to: [healEmail],
+            subject: `[RETRY] ${subject}`,
+            html,
+          }),
+        });
+
+        if (res.ok) {
+          // Mark the original as retried by updating its status
+          await supabase
+            .from("escalation_log")
+            .update({ status: "sent", error_message: "Delivered on retry" })
+            .eq("id", failed.id);
+          stats.escalations_sent++;
+
+          await supabase.from("heal_log").insert({
+            action: "escalation_retry",
+            result: "success",
+            details: `Retried failed escalation ${failed.id} — delivered successfully`,
+          });
+        }
+      } catch (err) {
+        runErrors.push(`Escalation retry failed for ${failed.id}: ${(err as Error).message}`);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Escalation retry check: ${(err as Error).message}`);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

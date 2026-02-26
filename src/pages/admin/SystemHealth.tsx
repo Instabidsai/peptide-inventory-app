@@ -184,17 +184,20 @@ const ERROR_SOURCES = [
   { name: "Unhandled Rejections", layer: "Browser", reporter: "auto-error-reporter" },
   { name: "Edge Function Crashes", layer: "Server", reporter: "withErrorReporting" },
   { name: "RPC/Database Errors", layer: "Browser", reporter: "auto-error-reporter" },
-  { name: "App Downtime", layer: "Infra", reporter: "health-probe v3 (cron)" },
-  { name: "DB Connectivity", layer: "Infra", reporter: "health-probe v3 (cron)" },
-  { name: "DB Resource Metrics", layer: "Infra", reporter: "health-probe v3 (cron)" },
-  { name: "Edge Fn Downtime", layer: "Infra", reporter: "health-probe v3 (cron)" },
-  { name: "Performance Baselines", layer: "Infra", reporter: "health-probe v3 (cron)" },
-  { name: "AI Pattern Matching", layer: "Sentinel", reporter: "sentinel-worker v3 (cron)" },
-  { name: "Circuit Breakers", layer: "Sentinel", reporter: "sentinel-worker v3 (cron)" },
-  { name: "Deploy Correlation", layer: "Sentinel", reporter: "sentinel-worker v3 + deploy-webhook" },
-  { name: "Auto-Rollback", layer: "Sentinel", reporter: "sentinel-worker v3 (Vercel API)" },
-  { name: "Email Escalation", layer: "Sentinel", reporter: "sentinel-worker v3 (Resend API)" },
-  { name: "Performance Anomaly Detection", layer: "Sentinel", reporter: "sentinel-worker v3 (baselines)" },
+  { name: "App Downtime", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "DB Connectivity", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "DB Resource Metrics", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "Edge Fn Downtime", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "Performance Baselines", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "Dependency Health (Stripe/OpenAI/Resend)", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "Synthetic Transactions", layer: "Infra", reporter: "health-probe v4 (cron)" },
+  { name: "AI Pattern Matching", layer: "Sentinel", reporter: "sentinel-worker v4 (cron)" },
+  { name: "Circuit Breakers", layer: "Sentinel", reporter: "sentinel-worker v4 (cron)" },
+  { name: "Deploy Correlation", layer: "Sentinel", reporter: "sentinel-worker v4 + deploy-webhook" },
+  { name: "Auto-Rollback", layer: "Sentinel", reporter: "sentinel-worker v4 (Vercel API)" },
+  { name: "Email Escalation", layer: "Sentinel", reporter: "sentinel-worker v4 (Resend API)" },
+  { name: "Escalation Retry", layer: "Sentinel", reporter: "sentinel-worker v4 (retry queue)" },
+  { name: "Performance Anomaly Detection", layer: "Sentinel", reporter: "sentinel-worker v4 (baselines)" },
 ];
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -495,6 +498,33 @@ export default function SystemHealth() {
   }, [escalationLog]);
 
   const rollbackCount = rollbackEvents?.length || 0;
+
+  /* ── Realtime subscriptions — instant push updates ── */
+  useEffect(() => {
+    const channels = [
+      { table: "health_checks", keys: ["health-probe-latest"] },
+      { table: "incidents", keys: ["incidents-active", "incidents-recent"] },
+      { table: "sentinel_runs", keys: ["sentinel-runs"] },
+      { table: "heal_log", keys: ["heal-log-recent"] },
+      { table: "resource_metrics", keys: ["resource-metrics"] },
+      { table: "escalation_log", keys: ["escalation-log"] },
+      { table: "rollback_events", keys: ["rollback-events"] },
+      { table: "circuit_breaker_events", keys: ["circuit-breaker-events"] },
+      { table: "deploy_events", keys: ["deploy-events"] },
+      { table: "bug_reports", keys: ["ai-diagnoses"] },
+    ];
+
+    const subs = channels.map(({ table, keys }) =>
+      supabase
+        .channel(`realtime-${table}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table }, () => {
+          keys.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+        })
+        .subscribe(),
+    );
+
+    return () => { subs.forEach(ch => supabase.removeChannel(ch)); };
+  }, [queryClient]);
 
   // Sentinel v3 stats from runs
   const sentinelEscalations24h = sentinelRuns?.reduce((sum, r) => sum + ((r as any).escalations_sent || 0), 0) || 0;

@@ -5,7 +5,7 @@ import { withErrorReporting } from "../_shared/error-reporter.ts";
 import { authenticateCron, authenticateRequest, AuthError, createServiceClient } from "../_shared/auth.ts";
 
 /**
- * health-probe v3 — Enhanced autonomous health check (every 5 minutes via pg_cron).
+ * health-probe v4 — Full-spectrum autonomous health check (every 5 minutes via pg_cron).
  *
  * Checks:
  *   1. Database connectivity
@@ -16,6 +16,8 @@ import { authenticateCron, authenticateRequest, AuthError, createServiceClient }
  *   6. Database health (connections, dead tuples, cache hit ratio)
  *   7. Resource metrics (DB size, index usage, table bloat)
  *   8. Supabase infrastructure (Storage, REST API)
+ *   9. External dependencies (Stripe, OpenAI, Resend) — NEW v4
+ *  10. Synthetic transactions (CRUD, auth, RPC) — NEW v4
  *
  * Writes results to health_checks, resource_metrics tables.
  * Creates incidents for failures. Auto-resolves stale incidents.
@@ -437,6 +439,186 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
         results.push({ check_name: "realtime", category: "infra", status: "fail", latency_ms: Date.now() - rtStart, error_message: (err as Error).message });
         failures.push(`Realtime: ${(err as Error).message}`);
       }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 9. External dependency health checks (NEW v4)
+  // ═══════════════════════════════════════════════════════════
+  {
+    // 9a. Stripe API status
+    const stripeStart = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch("https://status.stripe.com/current", {
+        method: "GET",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const latency = Date.now() - stripeStart;
+      if (res.ok) {
+        const data = await res.json();
+        // /current returns { statuses: {api:"up",...}, largestatus: "up", message: "..." }
+        const isUp = data.largestatus === "up";
+        results.push({
+          check_name: "dep:stripe",
+          category: "dependency",
+          status: isUp ? "pass" : "fail",
+          latency_ms: latency,
+          error_message: isUp ? null : `Stripe status: ${data.largestatus} — ${data.message || ""}`,
+        });
+      } else {
+        results.push({ check_name: "dep:stripe", category: "dependency", status: "fail", latency_ms: latency, error_message: `HTTP ${res.status}` });
+        failures.push(`Stripe API: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      results.push({ check_name: "dep:stripe", category: "dependency", status: "fail", latency_ms: Date.now() - stripeStart, error_message: (err as Error).message });
+      failures.push(`Stripe API: ${(err as Error).message}`);
+    }
+
+    // 9b. OpenAI API status
+    const openaiStart = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch("https://status.openai.com/api/v2/status.json", {
+        method: "GET",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const latency = Date.now() - openaiStart;
+      if (res.ok) {
+        const data = await res.json();
+        const indicator = data.status?.indicator || "none";
+        results.push({
+          check_name: "dep:openai",
+          category: "dependency",
+          status: indicator === "none" || indicator === "minor" ? "pass" : "fail",
+          latency_ms: latency,
+          error_message: indicator !== "none" ? `OpenAI status: ${indicator} — ${data.status?.description || ""}` : null,
+        });
+      } else {
+        results.push({ check_name: "dep:openai", category: "dependency", status: "fail", latency_ms: latency, error_message: `HTTP ${res.status}` });
+        failures.push(`OpenAI API: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      results.push({ check_name: "dep:openai", category: "dependency", status: "fail", latency_ms: Date.now() - openaiStart, error_message: (err as Error).message });
+      failures.push(`OpenAI API: ${(err as Error).message}`);
+    }
+
+    // 9c. Resend API health (authenticated — verifies key + service)
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (resendKey) {
+      const resendStart = Date.now();
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch("https://api.resend.com/domains", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${resendKey}` },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        const latency = Date.now() - resendStart;
+        results.push({
+          check_name: "dep:resend",
+          category: "dependency",
+          status: res.ok ? "pass" : "fail",
+          latency_ms: latency,
+          error_message: res.ok ? null : `HTTP ${res.status}`,
+        });
+        if (!res.ok) failures.push(`Resend API: HTTP ${res.status}`);
+      } catch (err) {
+        results.push({ check_name: "dep:resend", category: "dependency", status: "fail", latency_ms: Date.now() - resendStart, error_message: (err as Error).message });
+        failures.push(`Resend API: ${(err as Error).message}`);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 10. Synthetic transactions (NEW v4)
+  // ═══════════════════════════════════════════════════════════
+  {
+    // 10a. Full CRUD cycle — write, read, delete a test row
+    const crudStart = Date.now();
+    try {
+      const testRow = {
+        check_name: "__synthetic_test__",
+        category: "synthetic",
+        status: "pass",
+        latency_ms: 0,
+        checked_at: new Date().toISOString(),
+      };
+      const { data: inserted, error: insErr } = await supabase
+        .from("health_checks")
+        .insert(testRow)
+        .select("id")
+        .single();
+      if (insErr) throw new Error(`Insert: ${insErr.message}`);
+
+      const { error: readErr } = await supabase
+        .from("health_checks")
+        .select("id")
+        .eq("id", inserted.id)
+        .single();
+      if (readErr) throw new Error(`Read: ${readErr.message}`);
+
+      const { error: delErr } = await supabase
+        .from("health_checks")
+        .delete()
+        .eq("id", inserted.id);
+      if (delErr) throw new Error(`Delete: ${delErr.message}`);
+
+      const latency = Date.now() - crudStart;
+      results.push({ check_name: "synthetic:crud", category: "synthetic", status: "pass", latency_ms: latency, error_message: null });
+    } catch (err) {
+      results.push({ check_name: "synthetic:crud", category: "synthetic", status: "fail", latency_ms: Date.now() - crudStart, error_message: (err as Error).message });
+      failures.push(`Synthetic CRUD: ${(err as Error).message}`);
+    }
+
+    // 10b. Auth flow — attempt login with a fake user, expect proper rejection
+    const authStart = Date.now();
+    try {
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: "synthetic-probe@nonexistent.invalid",
+        password: "synth_test_probe_2026",
+      });
+      const latency = Date.now() - authStart;
+      // We EXPECT an error — if auth correctly rejects, auth is healthy
+      if (authErr) {
+        results.push({ check_name: "synthetic:auth", category: "synthetic", status: "pass", latency_ms: latency, error_message: null });
+      } else {
+        results.push({ check_name: "synthetic:auth", category: "synthetic", status: "fail", latency_ms: latency, error_message: "Auth accepted non-existent user!" });
+        failures.push("Synthetic auth: accepted non-existent user");
+      }
+    } catch (err) {
+      results.push({ check_name: "synthetic:auth", category: "synthetic", status: "fail", latency_ms: Date.now() - authStart, error_message: (err as Error).message });
+      failures.push(`Synthetic auth: ${(err as Error).message}`);
+    }
+
+    // 10c. RPC invocation — call a known function with safe params
+    const rpcStart = Date.now();
+    try {
+      const { error: rpcErr } = await supabase.rpc("get_bottle_stats");
+      const latency = Date.now() - rpcStart;
+      if (rpcErr) {
+        // Some RPCs require org context — a permission error still means the function exists and DB is responsive
+        const isPermErr = rpcErr.message?.includes("permission") || rpcErr.message?.includes("policy") || rpcErr.code === "42501";
+        results.push({
+          check_name: "synthetic:rpc",
+          category: "synthetic",
+          status: isPermErr ? "pass" : "fail",
+          latency_ms: latency,
+          error_message: isPermErr ? null : rpcErr.message,
+        });
+        if (!isPermErr) failures.push(`Synthetic RPC: ${rpcErr.message}`);
+      } else {
+        results.push({ check_name: "synthetic:rpc", category: "synthetic", status: "pass", latency_ms: latency, error_message: null });
+      }
+    } catch (err) {
+      results.push({ check_name: "synthetic:rpc", category: "synthetic", status: "fail", latency_ms: Date.now() - rpcStart, error_message: (err as Error).message });
+      failures.push(`Synthetic RPC: ${(err as Error).message}`);
     }
   }
 
