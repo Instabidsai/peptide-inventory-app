@@ -113,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const product = await productRes.json();
 
         // Build checkout session
+        const contactEmail = (order.contacts as any)?.email || '';
         const siteBase = process.env.PUBLIC_SITE_URL || '';
         const successUrl = `${siteBase}/#/pay/${orderId}/success`;
         const cancelUrl = `${siteBase}/#/pay/${orderId}`;
