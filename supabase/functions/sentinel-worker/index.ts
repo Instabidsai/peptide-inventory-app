@@ -5,7 +5,7 @@ import { withErrorReporting } from "../_shared/error-reporter.ts";
 import { authenticateCron, authenticateRequest, AuthError, createServiceClient } from "../_shared/auth.ts";
 
 /**
- * sentinel-worker — The AI Self-Healing Brain
+ * sentinel-worker v3 — The AI Self-Healing Brain (Enhanced)
  *
  * Runs every 2 minutes via pg_cron. Zero human intervention.
  *
@@ -16,28 +16,32 @@ import { authenticateCron, authenticateRequest, AuthError, createServiceClient }
  *   4. For unknown errors: call OpenAI for diagnosis
  *   5. Apply auto-fix actions (circuit breakers, incidents, feature toggles)
  *   6. Correlate error spikes with recent deploys
- *   7. Auto-resolve stale incidents when errors stop
- *   8. Log everything to heal_log + sentinel_runs
+ *   7. Auto-rollback if deploy correlation + critical severity (NEW v3)
+ *   8. Email escalation for critical incidents that can't be auto-fixed (NEW v3)
+ *   9. Performance anomaly detection (NEW v3)
+ *  10. Auto-resolve stale incidents when errors stop
+ *  11. Log everything to heal_log + sentinel_runs
  *
  * Auth: CRON_SECRET (pg_cron) or admin JWT (manual trigger).
  */
 
 // ── Config ────────────────────────────────────────────────────
 const MAX_BUGS_PER_RUN = 100;
-const CIRCUIT_BREAKER_THRESHOLD = 10;    // errors in window → trip breaker
-const CIRCUIT_BREAKER_WINDOW_MIN = 15;   // window in minutes
-const AI_DIAGNOSIS_BATCH = 5;            // max unknown errors to diagnose per run
-const DEPLOY_CORRELATION_WINDOW_MIN = 30; // correlate errors with deploys in last 30 min
+const CIRCUIT_BREAKER_THRESHOLD = 10;
+const CIRCUIT_BREAKER_WINDOW_MIN = 15;
+const AI_DIAGNOSIS_BATCH = 5;
+const DEPLOY_CORRELATION_WINDOW_MIN = 30;
+const ESCALATION_COOLDOWN_MIN = 60;  // Don't spam emails — 1 per hour per incident
+const ANOMALY_THRESHOLD_MULTIPLIER = 2.5; // Flag if latency > 2.5x baseline
 
 // ── Feature key → error category mapping for circuit breakers ──
 const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
-  ai_assistant: ["edge_function"],   // AI chat errors → disable AI
-  supplements: ["database"],         // DB errors on supplements → disable
+  ai_assistant: ["edge_function"],
+  supplements: ["database"],
   protocols: ["database"],
-  client_store: ["validation"],      // payment/store errors → disable store
+  client_store: ["validation"],
 };
 
-// Reverse map: category → features to potentially disable
 const CATEGORY_TO_FEATURES: Record<string, string[]> = {};
 for (const [feature, categories] of Object.entries(FEATURE_CIRCUIT_MAP)) {
   for (const cat of categories) {
@@ -65,6 +69,8 @@ interface ErrorPattern {
   fix_description: string | null;
   cooldown_minutes: number;
   last_fixed_at: string | null;
+  times_matched?: number;
+  times_fixed?: number;
 }
 
 Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
@@ -103,6 +109,9 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     ai_diagnoses: 0,
     fixes_applied: 0,
     circuit_breakers_tripped: 0,
+    escalations_sent: 0,
+    rollbacks_attempted: 0,
+    anomalies_detected: 0,
   };
   const runErrors: string[] = [];
 
@@ -125,8 +134,9 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     stats.bugs_processed = bugList.length;
 
     if (bugList.length === 0) {
-      // Nothing to process — still do housekeeping
       await doHousekeeping(supabase);
+      await checkPerformanceAnomalies(supabase, stats, runErrors);
+      await escalateCriticalIncidents(supabase, stats, runErrors);
       await finishRun(supabase, runId, stats, runErrors, "completed");
       return jsonResponse({ ok: true, message: "No unprocessed bugs", ...stats }, 200, corsHeaders);
     }
@@ -156,13 +166,11 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
           matched = true;
           stats.patterns_matched++;
 
-          // Update pattern stats
           await supabase
             .from("error_patterns")
             .update({ times_matched: (pat.times_matched || 0) + 1, last_matched_at: new Date().toISOString() })
             .eq("id", pat.id);
 
-          // Mark bug as processed with pattern
           await supabase
             .from("bug_reports")
             .update({
@@ -175,7 +183,7 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
           if (pat.auto_fix_action && pat.auto_fix_action !== "log_only") {
             matchedActions.push({ bug, pattern: pat });
           }
-          break; // first match wins
+          break;
         }
       }
 
@@ -205,7 +213,6 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
             .eq("id", bug.id);
         } catch (err) {
           runErrors.push(`AI diagnosis failed for ${bug.id}: ${(err as Error).message}`);
-          // Still mark as processed to avoid re-processing
           await supabase
             .from("bug_reports")
             .update({ sentinel_processed_at: new Date().toISOString(), sentinel_diagnosis: "AI diagnosis failed" })
@@ -214,7 +221,7 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       }
     }
 
-    // Mark remaining unmatched bugs as processed (no pattern, no AI)
+    // Mark remaining unmatched bugs as processed
     const remainingIds = unmatchedBugs.slice(AI_DIAGNOSIS_BATCH).map((b) => b.id);
     if (remainingIds.length > 0) {
       await supabase
@@ -227,10 +234,9 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // PHASE 5: Execute auto-fix actions
     // ═══════════════════════════════════════════════════════════
     for (const { bug, pattern } of matchedActions) {
-      // Check cooldown
       if (pattern.last_fixed_at) {
         const cooldownEnd = new Date(pattern.last_fixed_at).getTime() + pattern.cooldown_minutes * 60_000;
-        if (Date.now() < cooldownEnd) continue; // still in cooldown
+        if (Date.now() < cooldownEnd) continue;
       }
 
       try {
@@ -239,29 +245,24 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
             await createAutoIncident(supabase, bug, pattern);
             stats.fixes_applied++;
             break;
-
           case "circuit_breaker":
             await tripCircuitBreaker(supabase, bug, pattern);
             stats.fixes_applied++;
             stats.circuit_breakers_tripped++;
             break;
-
           case "disable_feature":
             await disableFeature(supabase, bug, pattern);
             stats.fixes_applied++;
             break;
-
           default:
             break;
         }
 
-        // Update pattern fix stats
         await supabase
           .from("error_patterns")
           .update({ times_fixed: (pattern.times_fixed || 0) + 1, last_fixed_at: new Date().toISOString() })
           .eq("id", pattern.id);
 
-        // Log the healing action
         await supabase.from("heal_log").insert({
           action: pattern.auto_fix_action,
           result: "success",
@@ -280,19 +281,35 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // ═══════════════════════════════════════════════════════════
     // PHASE 6: Deploy correlation
     // ═══════════════════════════════════════════════════════════
-    await correlateWithDeploys(supabase, bugList, runErrors);
+    const deployCorrelation = await correlateWithDeploys(supabase, bugList, runErrors);
 
     // ═══════════════════════════════════════════════════════════
-    // PHASE 7: Circuit breaker check (aggregate error rate)
+    // PHASE 7: Auto-rollback if deploy correlation + critical (NEW v3)
+    // ═══════════════════════════════════════════════════════════
+    if (deployCorrelation) {
+      await attemptAutoRollback(supabase, deployCorrelation, stats, runErrors);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 8: Email escalation for critical incidents (NEW v3)
+    // ═══════════════════════════════════════════════════════════
+    await escalateCriticalIncidents(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 9: Performance anomaly detection (NEW v3)
+    // ═══════════════════════════════════════════════════════════
+    await checkPerformanceAnomalies(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 10: Circuit breaker check (aggregate error rate)
     // ═══════════════════════════════════════════════════════════
     await checkAggregateCircuitBreakers(supabase, stats, runErrors);
 
     // ═══════════════════════════════════════════════════════════
-    // PHASE 8: Housekeeping
+    // PHASE 11: Housekeeping
     // ═══════════════════════════════════════════════════════════
     await doHousekeeping(supabase);
 
-    // ── Finish run ──
     await finishRun(supabase, runId, stats, runErrors, "completed");
 
     return jsonResponse(
@@ -398,12 +415,377 @@ Be concise. No markdown. No pleasantries.`,
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Email Escalation (NEW v3)
+// ═══════════════════════════════════════════════════════════════
+async function escalateCriticalIncidents(
+  supabase: ReturnType<typeof createClient>,
+  stats: { escalations_sent: number },
+  runErrors: string[],
+): Promise<void> {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const healEmail = Deno.env.get("HEAL_EMAIL");
+  if (!resendKey || !healEmail) return; // No email config — skip
+
+  try {
+    // Find critical/high incidents that haven't been escalated yet
+    const cooldownTime = new Date(Date.now() - ESCALATION_COOLDOWN_MIN * 60_000).toISOString();
+    const { data: unescalated } = await supabase
+      .from("incidents")
+      .select("id, title, severity, source, error_pattern, diagnosis, detected_at, metadata")
+      .in("severity", ["critical", "high"])
+      .in("status", ["detected", "diagnosing", "healing"])
+      .is("escalation_sent_at", null)
+      .order("detected_at", { ascending: false })
+      .limit(5);
+
+    if (!unescalated || unescalated.length === 0) return;
+
+    // Check global escalation cooldown (don't send more than 3 emails per hour)
+    const { count: recentEscalations } = await supabase
+      .from("escalation_log")
+      .select("*", { count: "exact", head: true })
+      .eq("channel", "email")
+      .gte("created_at", cooldownTime);
+
+    if ((recentEscalations || 0) >= 3) return; // Already sent 3 in the last hour
+
+    for (const incident of unescalated) {
+      const subject = `[SENTINEL ${incident.severity.toUpperCase()}] ${incident.title}`;
+      const html = buildEscalationEmail(incident);
+
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${resendKey}`,
+          },
+          body: JSON.stringify({
+            from: "Sentinel AI <sentinel@thepeptideai.com>",
+            to: [healEmail],
+            subject,
+            html,
+          }),
+        });
+
+        const emailStatus = res.ok ? "sent" : "failed";
+        const errMsg = res.ok ? null : await res.text();
+
+        // Log the escalation
+        await supabase.from("escalation_log").insert({
+          incident_id: incident.id,
+          channel: "email",
+          recipient: healEmail,
+          subject,
+          status: emailStatus,
+          error_message: errMsg?.slice(0, 500) || null,
+        });
+
+        // Mark incident as escalated
+        if (res.ok) {
+          await supabase
+            .from("incidents")
+            .update({ escalation_sent_at: new Date().toISOString() })
+            .eq("id", incident.id);
+          stats.escalations_sent++;
+        }
+
+        await supabase.from("heal_log").insert({
+          action: "email_escalation",
+          result: emailStatus === "sent" ? "success" : "failure",
+          details: `Escalated incident "${incident.title}" to ${healEmail}. Status: ${emailStatus}`,
+        });
+
+      } catch (err) {
+        runErrors.push(`Email escalation failed for incident ${incident.id}: ${(err as Error).message}`);
+        await supabase.from("escalation_log").insert({
+          incident_id: incident.id,
+          channel: "email",
+          recipient: healEmail,
+          subject,
+          status: "failed",
+          error_message: (err as Error).message.slice(0, 500),
+        });
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Escalation check: ${(err as Error).message}`);
+  }
+}
+
+function buildEscalationEmail(incident: any): string {
+  const meta = incident.metadata || {};
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: ${incident.severity === 'critical' ? '#dc2626' : '#f59e0b'}; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin: 0; font-size: 18px;">Sentinel Alert: ${incident.severity.toUpperCase()}</h2>
+      </div>
+      <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+        <h3 style="margin: 0 0 12px;">${incident.title}</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr><td style="padding: 6px 0; color: #6b7280;">Source</td><td style="padding: 6px 0;">${incident.source}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6b7280;">Severity</td><td style="padding: 6px 0;"><strong>${incident.severity}</strong></td></tr>
+          <tr><td style="padding: 6px 0; color: #6b7280;">Detected</td><td style="padding: 6px 0;">${new Date(incident.detected_at).toLocaleString()}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6b7280;">Pattern</td><td style="padding: 6px 0;">${incident.error_pattern || 'N/A'}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6b7280;">Diagnosis</td><td style="padding: 6px 0;">${incident.diagnosis || 'Pending AI analysis'}</td></tr>
+          ${meta.error_count ? `<tr><td style="padding: 6px 0; color: #6b7280;">Error Count</td><td style="padding: 6px 0;">${meta.error_count}</td></tr>` : ''}
+          ${meta.commit_sha ? `<tr><td style="padding: 6px 0; color: #6b7280;">Commit</td><td style="padding: 6px 0;">${meta.commit_sha?.slice(0, 7)} — ${meta.commit_message?.slice(0, 80) || ''}</td></tr>` : ''}
+        </table>
+        <div style="margin-top: 20px; padding: 12px; background: #f3f4f6; border-radius: 6px; font-size: 13px; color: #6b7280;">
+          This is an automated alert from the Sentinel AI self-healing system.<br>
+          Dashboard: <a href="https://app.thepeptideai.com/vendor/system-health">System Health</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Auto-Rollback via Vercel API (NEW v3)
+// ═══════════════════════════════════════════════════════════════
+
+interface DeployCorrelation {
+  incidentId: string;
+  deployEventId: string;
+  deploymentId: string;
+  commitSha: string;
+  errorCount: number;
+  severity: string;
+}
+
+async function attemptAutoRollback(
+  supabase: ReturnType<typeof createClient>,
+  correlation: DeployCorrelation,
+  stats: { rollbacks_attempted: number },
+  runErrors: string[],
+): Promise<void> {
+  const vercelToken = Deno.env.get("VERCEL_TOKEN");
+  if (!vercelToken) {
+    // No Vercel token — log but don't fail
+    await supabase.from("rollback_events").insert({
+      deploy_event_id: correlation.deployEventId,
+      incident_id: correlation.incidentId,
+      status: "skipped",
+      reason: "VERCEL_TOKEN not configured",
+    });
+    return;
+  }
+
+  // Only rollback if severity is critical and error count is significant
+  if (correlation.severity !== "critical" || correlation.errorCount < 5) {
+    await supabase.from("rollback_events").insert({
+      deploy_event_id: correlation.deployEventId,
+      incident_id: correlation.incidentId,
+      status: "skipped",
+      reason: `Below rollback threshold: severity=${correlation.severity}, errors=${correlation.errorCount}`,
+    });
+    return;
+  }
+
+  // Check if we already attempted a rollback for this deploy
+  const { data: existingRollback } = await supabase
+    .from("rollback_events")
+    .select("id")
+    .eq("deploy_event_id", correlation.deployEventId)
+    .in("status", ["success", "pending"])
+    .limit(1);
+
+  if (existingRollback && existingRollback.length > 0) return; // Already attempted
+
+  try {
+    // Step 1: Get the previous successful deployment from Vercel
+    const projectId = Deno.env.get("VERCEL_PROJECT_ID");
+    if (!projectId) {
+      await supabase.from("rollback_events").insert({
+        deploy_event_id: correlation.deployEventId,
+        incident_id: correlation.incidentId,
+        status: "skipped",
+        reason: "VERCEL_PROJECT_ID not configured",
+      });
+      return;
+    }
+
+    // Find the last good deployment (status: ready, before the bad one)
+    const { data: previousDeploys } = await supabase
+      .from("deploy_events")
+      .select("deployment_id, commit_sha, deployed_at")
+      .eq("status", "ready")
+      .lt("deployed_at", correlation.commitSha ? undefined : new Date().toISOString())
+      .neq("deployment_id", correlation.deploymentId)
+      .order("deployed_at", { ascending: false })
+      .limit(1);
+
+    if (!previousDeploys || previousDeploys.length === 0) {
+      await supabase.from("rollback_events").insert({
+        deploy_event_id: correlation.deployEventId,
+        incident_id: correlation.incidentId,
+        status: "skipped",
+        reason: "No previous successful deployment found to rollback to",
+      });
+      return;
+    }
+
+    const targetDeployment = previousDeploys[0];
+
+    // Step 2: Trigger Vercel redeploy via API
+    const rollbackRes = await fetch(`https://api.vercel.com/v13/deployments`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${vercelToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: projectId,
+        deploymentId: targetDeployment.deployment_id,
+        target: "production",
+      }),
+    });
+
+    if (rollbackRes.ok) {
+      const rollbackData = await rollbackRes.json();
+      stats.rollbacks_attempted++;
+
+      await supabase.from("rollback_events").insert({
+        deploy_event_id: correlation.deployEventId,
+        incident_id: correlation.incidentId,
+        rollback_to_deployment_id: targetDeployment.deployment_id,
+        status: "success",
+        reason: `Auto-rollback triggered. ${correlation.errorCount} errors after deploy ${correlation.deploymentId}. Rolling back to ${targetDeployment.deployment_id}`,
+      });
+
+      // Update incident
+      await supabase
+        .from("incidents")
+        .update({ rollback_attempted: true, heal_action: `auto_rollback:${targetDeployment.deployment_id}` })
+        .eq("id", correlation.incidentId);
+
+      await supabase.from("heal_log").insert({
+        action: "auto_rollback",
+        result: "success",
+        details: `Rolled back from ${correlation.deploymentId} to ${targetDeployment.deployment_id}. Trigger: ${correlation.errorCount} errors post-deploy.`,
+      });
+    } else {
+      const errText = await rollbackRes.text();
+      await supabase.from("rollback_events").insert({
+        deploy_event_id: correlation.deployEventId,
+        incident_id: correlation.incidentId,
+        rollback_to_deployment_id: targetDeployment.deployment_id,
+        status: "failed",
+        reason: `Vercel API error: ${rollbackRes.status}`,
+        error_message: errText.slice(0, 500),
+      });
+
+      await supabase.from("heal_log").insert({
+        action: "auto_rollback",
+        result: "failure",
+        details: `Rollback failed: Vercel ${rollbackRes.status} — ${errText.slice(0, 200)}`,
+      });
+    }
+  } catch (err) {
+    runErrors.push(`Auto-rollback failed: ${(err as Error).message}`);
+    await supabase.from("rollback_events").insert({
+      deploy_event_id: correlation.deployEventId,
+      incident_id: correlation.incidentId,
+      status: "failed",
+      error_message: (err as Error).message.slice(0, 500),
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Performance Anomaly Detection (NEW v3)
+// ═══════════════════════════════════════════════════════════════
+async function checkPerformanceAnomalies(
+  supabase: ReturnType<typeof createClient>,
+  stats: { anomalies_detected: number },
+  runErrors: string[],
+): Promise<void> {
+  try {
+    // Load baselines
+    const { data: baselines } = await supabase
+      .from("performance_baselines")
+      .select("check_name, avg_latency_ms, p95_latency_ms, sample_count")
+      .eq("window_hours", 24)
+      .gt("sample_count", 5); // Only use baselines with enough samples
+
+    if (!baselines || baselines.length === 0) return;
+
+    // Get most recent health check results
+    const { data: latestChecks } = await supabase
+      .from("health_checks")
+      .select("check_name, latency_ms, checked_at")
+      .order("checked_at", { ascending: false })
+      .limit(50);
+
+    if (!latestChecks || latestChecks.length === 0) return;
+
+    // Get the latest check per name
+    const latestByName: Record<string, { latency_ms: number; checked_at: string }> = {};
+    for (const c of latestChecks) {
+      if (!latestByName[c.check_name]) {
+        latestByName[c.check_name] = { latency_ms: c.latency_ms, checked_at: c.checked_at };
+      }
+    }
+
+    // Compare each check against its baseline
+    for (const baseline of baselines) {
+      const latest = latestByName[baseline.check_name];
+      if (!latest || latest.latency_ms <= 0) continue;
+
+      const threshold = baseline.avg_latency_ms * ANOMALY_THRESHOLD_MULTIPLIER;
+      if (latest.latency_ms > threshold && latest.latency_ms > 500) { // At least 500ms to avoid noise
+        stats.anomalies_detected++;
+
+        // Check if we already flagged this recently
+        const recentWindow = new Date(Date.now() - 30 * 60_000).toISOString();
+        const { data: recentAnomaly } = await supabase
+          .from("incidents")
+          .select("id")
+          .eq("source", "sentinel")
+          .ilike("title", `%performance anomaly%${baseline.check_name}%`)
+          .gte("detected_at", recentWindow)
+          .limit(1);
+
+        if (!recentAnomaly || recentAnomaly.length === 0) {
+          await supabase.from("incidents").insert({
+            title: `[Performance Anomaly] ${baseline.check_name}: ${latest.latency_ms}ms (baseline: ${Math.round(baseline.avg_latency_ms)}ms)`,
+            severity: latest.latency_ms > baseline.p95_latency_ms * 3 ? "high" : "medium",
+            status: "detected",
+            source: "sentinel",
+            error_pattern: `${baseline.check_name} latency ${latest.latency_ms}ms > ${ANOMALY_THRESHOLD_MULTIPLIER}x baseline ${Math.round(baseline.avg_latency_ms)}ms`,
+            diagnosis: `Performance degradation detected. Current: ${latest.latency_ms}ms, 24h avg: ${Math.round(baseline.avg_latency_ms)}ms, p95: ${Math.round(baseline.p95_latency_ms)}ms.`,
+            metadata: {
+              check_name: baseline.check_name,
+              current_latency: latest.latency_ms,
+              baseline_avg: baseline.avg_latency_ms,
+              baseline_p95: baseline.p95_latency_ms,
+              multiplier: Math.round((latest.latency_ms / baseline.avg_latency_ms) * 100) / 100,
+            },
+          });
+
+          await supabase.from("heal_log").insert({
+            action: "anomaly_detection",
+            result: "success",
+            details: `Performance anomaly: ${baseline.check_name} at ${latest.latency_ms}ms (${Math.round(latest.latency_ms / baseline.avg_latency_ms * 100) / 100}x baseline)`,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Performance anomaly check: ${(err as Error).message}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Existing helpers (unchanged)
+// ═══════════════════════════════════════════════════════════════
+
 async function createAutoIncident(
   supabase: ReturnType<typeof createClient>,
   bug: BugReport,
   pattern: ErrorPattern,
 ): Promise<void> {
-  // Check for existing open incident with same pattern
   const { data: existing } = await supabase
     .from("incidents")
     .select("id")
@@ -413,7 +795,6 @@ async function createAutoIncident(
     .limit(1);
 
   if (existing && existing.length > 0) {
-    // Update existing incident metadata
     await supabase
       .from("incidents")
       .update({
@@ -447,16 +828,13 @@ async function tripCircuitBreaker(
   bug: BugReport,
   pattern: ErrorPattern,
 ): Promise<void> {
-  // Find which features map to this error category
   const features = CATEGORY_TO_FEATURES[pattern.category] || [];
   if (features.length === 0) {
-    // No feature mapping — create incident instead
     await createAutoIncident(supabase, bug, pattern);
     return;
   }
 
   for (const featureKey of features) {
-    // Disable the feature for the affected org (or all orgs if no org_id)
     const orgId = bug.org_id;
     if (orgId) {
       await supabase
@@ -467,7 +845,6 @@ async function tripCircuitBreaker(
         );
     }
 
-    // Log the circuit breaker event
     await supabase.from("circuit_breaker_events").insert({
       feature_key: featureKey,
       org_id: orgId,
@@ -477,7 +854,6 @@ async function tripCircuitBreaker(
       threshold: CIRCUIT_BREAKER_THRESHOLD,
     });
 
-    // Create incident for the circuit breaker trip
     await supabase.from("incidents").insert({
       title: `[Circuit Breaker] ${featureKey} disabled for ${orgId ? "org " + orgId.slice(0, 8) : "all orgs"}`,
       severity: pattern.severity,
@@ -502,7 +878,6 @@ async function disableFeature(
   bug: BugReport,
   pattern: ErrorPattern,
 ): Promise<void> {
-  // Same as circuit breaker but explicit
   await tripCircuitBreaker(supabase, bug, pattern);
 }
 
@@ -510,8 +885,8 @@ async function correlateWithDeploys(
   supabase: ReturnType<typeof createClient>,
   bugs: BugReport[],
   runErrors: string[],
-): Promise<void> {
-  if (bugs.length === 0) return;
+): Promise<DeployCorrelation | null> {
+  if (bugs.length === 0) return null;
 
   try {
     const windowStart = new Date(Date.now() - DEPLOY_CORRELATION_WINDOW_MIN * 60_000).toISOString();
@@ -522,19 +897,16 @@ async function correlateWithDeploys(
       .order("deployed_at", { ascending: false })
       .limit(5);
 
-    if (!recentDeploys || recentDeploys.length === 0) return;
+    if (!recentDeploys || recentDeploys.length === 0) return null;
 
-    // If there's a spike (more bugs than usual) correlating with a deploy, create incident
     const earliestBug = bugs[0].created_at;
     const latestDeploy = recentDeploys[0];
 
-    // Check if deploy happened shortly before the errors
     const deployTime = new Date(latestDeploy.deployed_at).getTime();
     const bugTime = new Date(earliestBug).getTime();
     const diffMin = (bugTime - deployTime) / 60_000;
 
     if (diffMin >= 0 && diffMin <= 30 && bugs.length >= 3) {
-      // Errors started after deploy — possible regression
       const { data: existingCorrelation } = await supabase
         .from("incidents")
         .select("id")
@@ -543,10 +915,13 @@ async function correlateWithDeploys(
         .gte("detected_at", windowStart)
         .limit(1);
 
-      if (!existingCorrelation || existingCorrelation.length === 0) {
-        await supabase.from("incidents").insert({
+      let incidentId = existingCorrelation?.[0]?.id;
+
+      if (!incidentId) {
+        const severity = bugs.length >= 10 ? "critical" : "high";
+        const { data: newIncident } = await supabase.from("incidents").insert({
           title: `[Deploy Correlation] ${bugs.length} errors after deploy ${latestDeploy.commit_sha?.slice(0, 7) || "unknown"}`,
-          severity: bugs.length >= 10 ? "critical" : "high",
+          severity,
           status: "detected",
           source: "sentinel",
           error_pattern: `Deploy ${latestDeploy.deployment_id} → ${bugs.length} errors within ${Math.round(diffMin)}min`,
@@ -558,12 +933,25 @@ async function correlateWithDeploys(
             error_count: bugs.length,
             minutes_after_deploy: Math.round(diffMin),
           },
-        });
+        }).select("id").single();
+
+        incidentId = newIncident?.id;
       }
+
+      return {
+        incidentId: incidentId || "",
+        deployEventId: latestDeploy.id,
+        deploymentId: latestDeploy.deployment_id || "",
+        commitSha: latestDeploy.commit_sha || "",
+        errorCount: bugs.length,
+        severity: bugs.length >= 10 ? "critical" : "high",
+      };
     }
   } catch (err) {
     runErrors.push(`Deploy correlation: ${(err as Error).message}`);
   }
+
+  return null;
 }
 
 async function checkAggregateCircuitBreakers(
@@ -572,7 +960,6 @@ async function checkAggregateCircuitBreakers(
   runErrors: string[],
 ): Promise<void> {
   try {
-    // Count errors per category in the circuit breaker window
     const windowStart = new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MIN * 60_000).toISOString();
 
     const { data: recentBugs } = await supabase
@@ -583,7 +970,6 @@ async function checkAggregateCircuitBreakers(
 
     if (!recentBugs || recentBugs.length < CIRCUIT_BREAKER_THRESHOLD) return;
 
-    // Group by pattern → category
     const patternCounts: Record<string, { count: number; orgIds: Set<string> }> = {};
     for (const bug of recentBugs) {
       const key = bug.sentinel_pattern_id;
@@ -592,10 +978,8 @@ async function checkAggregateCircuitBreakers(
       if (bug.org_id) patternCounts[key].orgIds.add(bug.org_id);
     }
 
-    // Check if any pattern exceeds threshold
     for (const [patternId, info] of Object.entries(patternCounts)) {
       if (info.count >= CIRCUIT_BREAKER_THRESHOLD) {
-        // Load the pattern to get category
         const { data: pat } = await supabase
           .from("error_patterns")
           .select("category, pattern, severity")
@@ -606,7 +990,6 @@ async function checkAggregateCircuitBreakers(
 
         const features = CATEGORY_TO_FEATURES[pat.category] || [];
         for (const featureKey of features) {
-          // Check if already tripped recently
           const { data: recentTrip } = await supabase
             .from("circuit_breaker_events")
             .select("id")
@@ -615,9 +998,8 @@ async function checkAggregateCircuitBreakers(
             .gte("created_at", windowStart)
             .limit(1);
 
-          if (recentTrip && recentTrip.length > 0) continue; // already tripped
+          if (recentTrip && recentTrip.length > 0) continue;
 
-          // Trip the aggregate circuit breaker
           for (const orgId of info.orgIds) {
             await supabase
               .from("org_features")
@@ -640,21 +1022,19 @@ async function checkAggregateCircuitBreakers(
       }
     }
 
-    // Auto-reset circuit breakers: if error rate dropped to 0 in last window, re-enable
+    // Auto-reset circuit breakers
     const { data: recentBreakers } = await supabase
       .from("circuit_breaker_events")
       .select("feature_key, org_id, created_at")
       .eq("action", "tripped")
-      .gte("created_at", new Date(Date.now() - 60 * 60_000).toISOString()) // tripped in last hour
+      .gte("created_at", new Date(Date.now() - 60 * 60_000).toISOString())
       .order("created_at", { ascending: false });
 
     if (recentBreakers) {
       for (const breaker of recentBreakers) {
-        // Check if errors for this feature have stopped
         const features = Object.entries(FEATURE_CIRCUIT_MAP).find(([k]) => k === breaker.feature_key);
         if (!features) continue;
 
-        const categories = features[1];
         const { data: recentErrors } = await supabase
           .from("bug_reports")
           .select("id")
@@ -662,7 +1042,6 @@ async function checkAggregateCircuitBreakers(
           .not("sentinel_pattern_id", "is", null)
           .limit(1);
 
-        // If no recent errors, reset the breaker
         if (!recentErrors || recentErrors.length === 0) {
           if (breaker.org_id) {
             await supabase
@@ -690,23 +1069,19 @@ async function checkAggregateCircuitBreakers(
 async function doHousekeeping(supabase: ReturnType<typeof createClient>): Promise<void> {
   const now = new Date().toISOString();
 
-  // Auto-resolve incidents older than 2 hours with no new matching errors
-  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   await supabase
     .from("incidents")
     .update({ status: "resolved", resolved_at: now, auto_healed: true })
     .eq("source", "sentinel")
     .in("status", ["detected", "diagnosing"])
-    .lt("detected_at", twoHoursAgo);
+    .lt("detected_at", new Date(Date.now() - 2 * 60 * 60_000).toISOString());
 
-  // Clean sentinel_runs older than 30 days
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
   await supabase.from("sentinel_runs").delete().lt("started_at", thirtyDaysAgo);
-
-  // Clean circuit_breaker_events older than 30 days
   await supabase.from("circuit_breaker_events").delete().lt("created_at", thirtyDaysAgo);
+  await supabase.from("escalation_log").delete().lt("created_at", thirtyDaysAgo);
+  await supabase.from("rollback_events").delete().lt("created_at", thirtyDaysAgo);
 
-  // Auto-close resolved bug reports older than 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
   await supabase
     .from("bug_reports")

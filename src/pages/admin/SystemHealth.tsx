@@ -9,7 +9,7 @@ import {
   CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud,
   Wrench, Terminal, HeartPulse, Shield, AlertTriangle, Clock,
   TrendingUp, Zap, Eye, Brain, GitBranch, ToggleLeft, ToggleRight,
-  Cpu, Radio, Rocket, ShieldAlert, Gauge,
+  Cpu, Radio, Rocket, ShieldAlert, Gauge, Mail, Database, BarChart3, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -113,6 +113,48 @@ interface DeployEvent {
   metadata: Record<string, unknown>;
 }
 
+interface ResourceMetric {
+  id: string;
+  metric_name: string;
+  metric_value: number;
+  threshold_warning: number | null;
+  threshold_critical: number | null;
+  status: "ok" | "warning" | "critical";
+  checked_at: string;
+}
+
+interface PerformanceBaseline {
+  id: string;
+  check_name: string;
+  avg_latency_ms: number;
+  p95_latency_ms: number;
+  sample_count: number;
+  window_hours: number;
+  computed_at: string;
+}
+
+interface EscalationEntry {
+  id: string;
+  incident_id: string | null;
+  channel: string;
+  recipient: string;
+  subject: string | null;
+  status: "sent" | "failed" | "suppressed";
+  error_message: string | null;
+  created_at: string;
+}
+
+interface RollbackEvent {
+  id: string;
+  deploy_event_id: string | null;
+  incident_id: string | null;
+  rollback_to_deployment_id: string | null;
+  status: "pending" | "success" | "failed" | "skipped";
+  reason: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Static lists                                                       */
 /* ------------------------------------------------------------------ */
@@ -142,12 +184,17 @@ const ERROR_SOURCES = [
   { name: "Unhandled Rejections", layer: "Browser", reporter: "auto-error-reporter" },
   { name: "Edge Function Crashes", layer: "Server", reporter: "withErrorReporting" },
   { name: "RPC/Database Errors", layer: "Browser", reporter: "auto-error-reporter" },
-  { name: "App Downtime", layer: "Infra", reporter: "health-probe (cron)" },
-  { name: "DB Connectivity", layer: "Infra", reporter: "health-probe (cron)" },
-  { name: "Edge Fn Downtime", layer: "Infra", reporter: "health-probe (cron)" },
-  { name: "AI Pattern Matching", layer: "Sentinel", reporter: "sentinel-worker (cron)" },
-  { name: "Circuit Breakers", layer: "Sentinel", reporter: "sentinel-worker (cron)" },
-  { name: "Deploy Correlation", layer: "Sentinel", reporter: "sentinel-worker + deploy-webhook" },
+  { name: "App Downtime", layer: "Infra", reporter: "health-probe v3 (cron)" },
+  { name: "DB Connectivity", layer: "Infra", reporter: "health-probe v3 (cron)" },
+  { name: "DB Resource Metrics", layer: "Infra", reporter: "health-probe v3 (cron)" },
+  { name: "Edge Fn Downtime", layer: "Infra", reporter: "health-probe v3 (cron)" },
+  { name: "Performance Baselines", layer: "Infra", reporter: "health-probe v3 (cron)" },
+  { name: "AI Pattern Matching", layer: "Sentinel", reporter: "sentinel-worker v3 (cron)" },
+  { name: "Circuit Breakers", layer: "Sentinel", reporter: "sentinel-worker v3 (cron)" },
+  { name: "Deploy Correlation", layer: "Sentinel", reporter: "sentinel-worker v3 + deploy-webhook" },
+  { name: "Auto-Rollback", layer: "Sentinel", reporter: "sentinel-worker v3 (Vercel API)" },
+  { name: "Email Escalation", layer: "Sentinel", reporter: "sentinel-worker v3 (Resend API)" },
+  { name: "Performance Anomaly Detection", layer: "Sentinel", reporter: "sentinel-worker v3 (baselines)" },
 ];
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -320,6 +367,65 @@ export default function SystemHealth() {
     refetchInterval: 30_000,
   });
 
+  // Resource metrics (latest per metric)
+  const { data: resourceMetrics } = useQuery<ResourceMetric[]>({
+    queryKey: ["resource-metrics"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("resource_metrics")
+        .select("*")
+        .order("checked_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Performance baselines
+  const { data: perfBaselines } = useQuery<PerformanceBaseline[]>({
+    queryKey: ["performance-baselines"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_baselines")
+        .select("*")
+        .order("computed_at", { ascending: false });
+      return data || [];
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Escalation log (last 7 days)
+  const { data: escalationLog } = useQuery<EscalationEntry[]>({
+    queryKey: ["escalation-log"],
+    queryFn: async () => {
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data } = await supabase
+        .from("escalation_log")
+        .select("*")
+        .gte("created_at", weekAgo)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Rollback events (last 7 days)
+  const { data: rollbackEvents } = useQuery<RollbackEvent[]>({
+    queryKey: ["rollback-events"],
+    queryFn: async () => {
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data } = await supabase
+        .from("rollback_events")
+        .select("*")
+        .gte("created_at", weekAgo)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
   /* ── Computed metrics ── */
 
   const latestByName = useMemo(() => {
@@ -368,6 +474,32 @@ export default function SystemHealth() {
   const sentinelFixesApplied24h = sentinelRuns?.reduce((sum, r) => sum + (r.fixes_applied || 0), 0) || 0;
   const activeBreakers = circuitEvents?.filter(e => e.action === "tripped") || [];
   const resetBreakers = circuitEvents?.filter(e => e.action === "reset") || [];
+
+  // Resource metrics: latest per metric_name
+  const latestResourceByName = useMemo(() => {
+    const map = new Map<string, ResourceMetric>();
+    for (const m of resourceMetrics || []) {
+      if (!map.has(m.metric_name)) map.set(m.metric_name, m);
+    }
+    return map;
+  }, [resourceMetrics]);
+
+  const resourceWarnings = useMemo(() =>
+    Array.from(latestResourceByName.values()).filter(m => m.status !== "ok").length,
+  [latestResourceByName]);
+
+  // Escalation stats
+  const escalationsSent24h = useMemo(() => {
+    const dayAgo = Date.now() - 86400000;
+    return (escalationLog || []).filter(e => new Date(e.created_at).getTime() > dayAgo && e.status === "sent").length;
+  }, [escalationLog]);
+
+  const rollbackCount = rollbackEvents?.length || 0;
+
+  // Sentinel v3 stats from runs
+  const sentinelEscalations24h = sentinelRuns?.reduce((sum, r) => sum + ((r as any).escalations_sent || 0), 0) || 0;
+  const sentinelRollbacks24h = sentinelRuns?.reduce((sum, r) => sum + ((r as any).rollbacks_attempted || 0), 0) || 0;
+  const sentinelAnomalies24h = sentinelRuns?.reduce((sum, r) => sum + ((r as any).anomalies_detected || 0), 0) || 0;
 
   // Patterns stats
   const totalPatterns = errorPatterns?.length || 0;
@@ -543,6 +675,18 @@ export default function SystemHealth() {
             {activeBreakers.length} Circuit Breaker{activeBreakers.length > 1 ? "s" : ""} Tripped
           </Badge>
         )}
+        {resourceWarnings > 0 && (
+          <Badge variant="destructive" className="text-sm px-3 py-1">
+            <Database className="h-3 w-3 mr-1" />
+            {resourceWarnings} Resource Warning{resourceWarnings > 1 ? "s" : ""}
+          </Badge>
+        )}
+        {escalationsSent24h > 0 && (
+          <Badge variant="outline" className="text-sm px-3 py-1 text-orange-700 border-orange-300">
+            <Mail className="h-3 w-3 mr-1" />
+            {escalationsSent24h} Escalation{escalationsSent24h > 1 ? "s" : ""} Sent
+          </Badge>
+        )}
         {activeIncidentCount === 0 && probeTotalCount > 0 && (
           <Badge variant="outline" className="text-sm px-3 py-1 text-green-700 border-green-300">
             No Active Incidents
@@ -551,13 +695,15 @@ export default function SystemHealth() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Uptime (24h)" value={uptime24h ? `${uptime24h}%` : "—"} />
         <KpiCard icon={<Zap className="h-4 w-4" />} label="Avg Latency" value={avgLatency ? `${avgLatency}ms` : "—"} />
         <KpiCard icon={<CheckCircle2 className="h-4 w-4" />} label="Probes Passing" value={probeTotalCount > 0 ? `${probePassCount}/${probeTotalCount}` : "—"} />
         <KpiCard icon={<AlertTriangle className="h-4 w-4" />} label="Active Incidents" value={String(activeIncidentCount)} alert={activeIncidentCount > 0} />
-        <KpiCard icon={<Wrench className="h-4 w-4" />} label="Fixes Applied (24h)" value={String(sentinelFixesApplied24h)} />
+        <KpiCard icon={<Wrench className="h-4 w-4" />} label="Fixes (24h)" value={String(sentinelFixesApplied24h)} />
         <KpiCard icon={<Brain className="h-4 w-4" />} label="AI Diagnoses (24h)" value={String(sentinelAIDiagnoses24h)} />
+        <KpiCard icon={<Mail className="h-4 w-4" />} label="Escalations (24h)" value={String(escalationsSent24h)} alert={escalationsSent24h > 0} />
+        <KpiCard icon={<Database className="h-4 w-4" />} label="Resource Alerts" value={String(resourceWarnings)} alert={resourceWarnings > 0} />
       </div>
 
       {/* ── Tabs ── */}
@@ -576,6 +722,18 @@ export default function SystemHealth() {
           </TabsTrigger>
           <TabsTrigger value="patterns">Patterns ({totalPatterns})</TabsTrigger>
           <TabsTrigger value="breakers">Circuit Breakers</TabsTrigger>
+          <TabsTrigger value="resources">
+            Resources
+            {resourceWarnings > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold w-5 h-5">{resourceWarnings}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="escalations">
+            Escalations
+            {escalationsSent24h > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-orange-500 text-white text-[10px] font-bold w-5 h-5">{escalationsSent24h}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="deploys">Deploys</TabsTrigger>
           <TabsTrigger value="healing">Healing Log</TabsTrigger>
           <TabsTrigger value="manual">Manual Check</TabsTrigger>
@@ -635,12 +793,15 @@ export default function SystemHealth() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-8">
                 <MiniStat label="Last Run" value={lastSentinelRun ? timeAgo(lastSentinelRun.started_at) : "Never"} />
-                <MiniStat label="Bugs Processed (24h)" value={String(sentinelBugsProcessed24h)} />
-                <MiniStat label="Patterns Matched (24h)" value={String(sentinelRuns?.reduce((s, r) => s + (r.patterns_matched || 0), 0) || 0)} />
+                <MiniStat label="Bugs (24h)" value={String(sentinelBugsProcessed24h)} />
+                <MiniStat label="Patterns (24h)" value={String(sentinelRuns?.reduce((s, r) => s + (r.patterns_matched || 0), 0) || 0)} />
                 <MiniStat label="AI Diagnoses (24h)" value={String(sentinelAIDiagnoses24h)} />
-                <MiniStat label="Fixes Applied (24h)" value={String(sentinelFixesApplied24h)} />
+                <MiniStat label="Fixes (24h)" value={String(sentinelFixesApplied24h)} />
+                <MiniStat label="Escalations (24h)" value={String(sentinelEscalations24h)} alert={sentinelEscalations24h > 0} />
+                <MiniStat label="Rollbacks (24h)" value={String(sentinelRollbacks24h)} alert={sentinelRollbacks24h > 0} />
+                <MiniStat label="Anomalies (24h)" value={String(sentinelAnomalies24h)} alert={sentinelAnomalies24h > 0} />
               </div>
             </CardContent>
           </Card>
@@ -819,6 +980,183 @@ export default function SystemHealth() {
           </Card>
         </TabsContent>
 
+        {/* ── Tab: Resources ── */}
+        <TabsContent value="resources" className="space-y-4">
+          {/* Resource Metrics */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Database &amp; Infrastructure Resources
+                {latestResourceByName.size > 0 && (
+                  <Badge variant={resourceWarnings > 0 ? "destructive" : "default"} className="ml-2 text-xs">
+                    {resourceWarnings > 0 ? `${resourceWarnings} warning${resourceWarnings > 1 ? "s" : ""}` : "All OK"}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {latestResourceByName.size === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No resource metrics yet. The <code className="bg-muted px-1 rounded">health-probe</code> collects DB size, connections, cache hit ratio, dead tuples, and index usage.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from(latestResourceByName.entries()).map(([name, metric]) => (
+                    <ResourceGauge key={name} metric={metric} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Performance Baselines */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Performance Baselines (24h rolling)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!perfBaselines || perfBaselines.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No baselines computed yet. The health-probe computes rolling 24h averages for anomaly detection.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {perfBaselines.filter(b => b.window_hours === 24).map((b) => (
+                    <div key={b.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-mono">{b.check_name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>Avg: <strong className="text-foreground">{Math.round(b.avg_latency_ms)}ms</strong></span>
+                        <span>P95: <strong className="text-foreground">{Math.round(b.p95_latency_ms)}ms</strong></span>
+                        <span>{b.sample_count} samples</span>
+                        <span>{timeAgo(b.computed_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Resource Metrics History */}
+          {(resourceMetrics?.length || 0) > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Resource Metrics History (latest 50)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {resourceMetrics?.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        {m.status === "ok" ? <CheckCircle2 className="h-3 w-3 text-green-500" /> :
+                         m.status === "warning" ? <AlertTriangle className="h-3 w-3 text-amber-500" /> :
+                         <XCircle className="h-3 w-3 text-red-500" />}
+                        <span className="text-xs font-mono">{m.metric_name}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="font-mono">{formatMetricValue(m.metric_name, m.metric_value)}</span>
+                        <Badge variant={m.status === "ok" ? "outline" : m.status === "warning" ? "secondary" : "destructive"} className="text-[10px]">{m.status}</Badge>
+                        <span>{timeAgo(m.checked_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Tab: Escalations ── */}
+        <TabsContent value="escalations" className="space-y-4">
+          {/* Escalation Email Log */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Escalations (last 7 days) ({escalationLog?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!escalationLog || escalationLog.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No escalation emails sent. The sentinel sends email alerts via Resend for critical incidents (max 3/hour).
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {escalationLog.map((esc) => (
+                    <div key={esc.id} className={`rounded-lg border p-3 space-y-1 ${esc.status === "sent" ? "border-green-200 bg-green-50" : esc.status === "failed" ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {esc.status === "sent" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> :
+                           esc.status === "failed" ? <XCircle className="h-4 w-4 text-red-500" /> :
+                           <Clock className="h-4 w-4 text-muted-foreground" />}
+                          <span className="text-sm font-medium">{esc.subject || "Alert"}</span>
+                          <Badge variant={esc.status === "sent" ? "default" : esc.status === "failed" ? "destructive" : "secondary"} className="text-xs">{esc.status}</Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{timeAgo(esc.created_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>To: {esc.recipient}</span>
+                        <Badge variant="outline" className="text-[10px]">{esc.channel}</Badge>
+                        {esc.incident_id && <span className="font-mono">Incident: {esc.incident_id.slice(0, 8)}...</span>}
+                      </div>
+                      {esc.error_message && <p className="text-xs text-red-500">{esc.error_message}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Rollback Events */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Undo2 className="h-4 w-4" />
+                Auto-Rollback Events (last 7 days) ({rollbackEvents?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!rollbackEvents || rollbackEvents.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No auto-rollback events. The sentinel triggers rollbacks via Vercel API when error spikes correlate with recent deploys.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {rollbackEvents.map((rb) => (
+                    <div key={rb.id} className={`rounded-lg border p-3 space-y-1 ${rb.status === "success" ? "border-green-200 bg-green-50" : rb.status === "failed" ? "border-red-200 bg-red-50" : rb.status === "skipped" ? "border-gray-200 bg-gray-50" : "border-blue-200 bg-blue-50"}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {rb.status === "success" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> :
+                           rb.status === "failed" ? <XCircle className="h-4 w-4 text-red-500" /> :
+                           rb.status === "skipped" ? <Clock className="h-4 w-4 text-muted-foreground" /> :
+                           <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                          <span className="text-sm font-medium">Rollback</span>
+                          <Badge variant={rb.status === "success" ? "default" : rb.status === "failed" ? "destructive" : "secondary"} className="text-xs">{rb.status}</Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{timeAgo(rb.created_at)}</span>
+                      </div>
+                      {rb.reason && <p className="text-xs text-muted-foreground">{rb.reason}</p>}
+                      {rb.rollback_to_deployment_id && <p className="text-xs font-mono">Target: {rb.rollback_to_deployment_id}</p>}
+                      {rb.error_message && <p className="text-xs text-red-500">{rb.error_message}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ── Tab: Deploys ── */}
         <TabsContent value="deploys" className="space-y-4">
           <Card>
@@ -983,13 +1321,16 @@ export default function SystemHealth() {
                 ))}
               </div>
               <div className="mt-4 rounded-lg border p-4 bg-muted/50">
-                <h4 className="text-sm font-medium mb-2">Self-Healing Pipeline</h4>
+                <h4 className="text-sm font-medium mb-2">Self-Healing Pipeline v3</h4>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p><strong>Layer 1 — Detection:</strong> auto-error-reporter (browser) + withErrorReporting (server) + health-probe (cron/5min) → bug_reports + health_checks</p>
-                  <p><strong>Layer 2 — Diagnosis:</strong> sentinel-worker (cron/2min) pattern-matches against {totalPatterns} known patterns. Unknown errors → GPT-4o-mini AI diagnosis.</p>
-                  <p><strong>Layer 3 — Healing:</strong> Auto-fix actions: create_incident, circuit_breaker (disable feature), log_only. {sentinelFixesApplied24h} fixes applied in last 24h.</p>
-                  <p><strong>Layer 4 — Correlation:</strong> deploy-webhook captures Vercel deploys. Sentinel correlates error spikes with recent deployments.</p>
-                  <p><strong>Layer 5 — Recovery:</strong> Circuit breakers auto-reset when error rate drops to 0. Incidents auto-resolve after 2 hours of silence.</p>
+                  <p><strong>Layer 1 — Detection:</strong> auto-error-reporter (browser) + withErrorReporting (server) + health-probe v3 (cron/5min) → bug_reports + health_checks + resource_metrics</p>
+                  <p><strong>Layer 2 — Diagnosis:</strong> sentinel-worker v3 (cron/2min) pattern-matches against {totalPatterns} known patterns. Unknown errors → GPT-4o-mini AI diagnosis.</p>
+                  <p><strong>Layer 3 — Healing:</strong> Auto-fix actions: create_incident, circuit_breaker, log_only. {sentinelFixesApplied24h} fixes applied in last 24h.</p>
+                  <p><strong>Layer 4 — Correlation:</strong> deploy-webhook captures Vercel deploys. Sentinel correlates error spikes → triggers auto-rollback via Vercel API.</p>
+                  <p><strong>Layer 5 — Recovery:</strong> Circuit breakers auto-reset when error rate drops to 0. Incidents auto-resolve after 2h of silence.</p>
+                  <p><strong>Layer 6 — Escalation:</strong> Critical incidents → email alerts via Resend API (max 3/hour, 60min cooldown). {escalationsSent24h} sent in last 24h.</p>
+                  <p><strong>Layer 7 — Resource Monitoring:</strong> DB size, connections, cache hit ratio, dead tuples, index usage. Auto-alerts when thresholds breached.</p>
+                  <p><strong>Layer 8 — Anomaly Detection:</strong> Rolling 24h baselines → performance anomalies flagged at 2.5x deviation. {sentinelAnomalies24h} anomalies in last 24h.</p>
                 </div>
               </div>
             </CardContent>
@@ -1059,6 +1400,58 @@ function PipelineCard({ label, cmd, desc, icon }: { label: string; cmd: string; 
       <div className="flex items-center gap-2 text-sm font-medium">{icon}{label}</div>
       <code className="text-xs block bg-muted px-2 py-1 rounded">{cmd}</code>
       <p className="text-xs text-muted-foreground">{desc}</p>
+    </div>
+  );
+}
+
+function formatMetricValue(name: string, value: number): string {
+  if (name === "cache_hit_ratio" || name === "index_usage_ratio") return `${(value * 100).toFixed(1)}%`;
+  if (name === "db_size_mb") return `${value.toFixed(1)} MB`;
+  if (name === "dead_tuples") return value.toLocaleString();
+  if (name === "active_connections") return String(Math.round(value));
+  return String(value);
+}
+
+function metricLabel(name: string): string {
+  const labels: Record<string, string> = {
+    db_size_mb: "Database Size",
+    active_connections: "Active Connections",
+    cache_hit_ratio: "Cache Hit Ratio",
+    dead_tuples: "Dead Tuples",
+    index_usage_ratio: "Index Usage",
+  };
+  return labels[name] || name;
+}
+
+function ResourceGauge({ metric }: { metric: ResourceMetric }) {
+  const pct = (() => {
+    if (!metric.threshold_critical) return null;
+    const max = metric.threshold_critical * 1.2;
+    return Math.min(100, (metric.metric_value / max) * 100);
+  })();
+
+  const barColor = metric.status === "ok" ? "bg-green-500" : metric.status === "warning" ? "bg-amber-500" : "bg-red-500";
+  const borderColor = metric.status === "ok" ? "border-green-200" : metric.status === "warning" ? "border-amber-200" : "border-red-200";
+
+  return (
+    <div className={`rounded-lg border p-3 space-y-2 ${borderColor}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">{metricLabel(metric.metric_name)}</span>
+        <Badge variant={metric.status === "ok" ? "outline" : metric.status === "warning" ? "secondary" : "destructive"} className="text-[10px]">
+          {metric.status}
+        </Badge>
+      </div>
+      <p className="text-xl font-bold font-mono">{formatMetricValue(metric.metric_name, metric.metric_value)}</p>
+      {pct !== null && (
+        <div className="w-full bg-muted rounded-full h-2">
+          <div className={`h-2 rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        {metric.threshold_warning !== null && <span>Warn: {formatMetricValue(metric.metric_name, metric.threshold_warning)}</span>}
+        {metric.threshold_critical !== null && <span>Crit: {formatMetricValue(metric.metric_name, metric.threshold_critical)}</span>}
+        <span>{timeAgo(metric.checked_at)}</span>
+      </div>
     </div>
   );
 }
