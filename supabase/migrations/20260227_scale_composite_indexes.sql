@@ -19,8 +19,12 @@ CREATE INDEX IF NOT EXISTS idx_sales_orders_org_status
   ON public.sales_orders(org_id, status);
 
 -- commissions: financials sums by (org_id, status)
-CREATE INDEX IF NOT EXISTS idx_commissions_org_status
-  ON public.commissions(org_id, status);
+-- NOTE: Only runs if org_id column exists (added by 20260224_add_org_id_to_commissions.sql)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='commissions' AND column_name='org_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_commissions_org_status ON public.commissions(org_id, status);
+  END IF;
+END $$;
 
 -- contacts: list queries filter by (org_id, type)
 CREATE INDEX IF NOT EXISTS idx_contacts_org_type
