@@ -172,7 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('user_id', user.id)
             .maybeSingle();
 
-        if (callerRole?.role !== 'admin' && callerRole?.role !== 'sales_rep') {
+        if (callerRole?.role !== 'admin' && callerRole?.role !== 'super_admin' && callerRole?.role !== 'sales_rep') {
             return res.status(403).json({ error: 'Only admin/sales_rep can create labels' });
         }
 

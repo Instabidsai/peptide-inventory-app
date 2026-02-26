@@ -896,7 +896,7 @@ export async function runAILoop(opts: {
   maxLoops?: number;
 }): Promise<string> {
   const { supabase, orgId, userId, userRole, systemPrompt, dynamicContext, chatHistory, maxLoops = 8 } = opts;
-  const activeTools = userRole === "admin" ? tools : tools.filter(t => STAFF_ALLOWED_TOOLS.has(t.function.name));
+  const activeTools = (userRole === "admin" || userRole === "super_admin") ? tools : tools.filter(t => STAFF_ALLOWED_TOOLS.has(t.function.name));
 
   const messages: any[] = [
     { role: "system", content: systemPrompt + dynamicContext },

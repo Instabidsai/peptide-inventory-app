@@ -440,7 +440,7 @@ export default function Movements() {
     setViewingMovement(null);
   };
 
-  const canDelete = userRole?.role === 'admin';
+  const canDelete = userRole?.role === 'admin' || userRole?.role === 'super_admin';
 
   const handleDelete = async () => {
     if (!deletingMovement) return;

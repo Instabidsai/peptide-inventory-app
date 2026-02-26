@@ -92,7 +92,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const isVendorRoute = location.pathname.startsWith('/vendor');
   // Only admins can use preview_role to impersonate other roles
   const rawPreviewRole = searchParams.get('preview_role');
-  const previewRole = (userRole?.role === 'admin' && rawPreviewRole) ? rawPreviewRole : null;
+  const previewRole = ((userRole?.role === 'admin' || userRole?.role === 'super_admin') && rawPreviewRole) ? rawPreviewRole : null;
 
   const effectiveRole = previewRole || (
     (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep' : userRole?.role
@@ -118,7 +118,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         .in('status', ['pending']);
       return count || 0;
     },
-    enabled: effectiveRole === 'admin' || effectiveRole === 'staff',
+    enabled: effectiveRole === 'admin' || effectiveRole === 'staff' || effectiveRole === 'super_admin',
     refetchInterval: 60000, // Refresh every minute
   });
 

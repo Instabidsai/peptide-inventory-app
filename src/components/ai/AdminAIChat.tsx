@@ -63,7 +63,7 @@ export function AdminAIChat() {
     }
   }, [messages, open]);
 
-  if (role !== 'admin' && role !== 'staff') return null;
+  if (role !== 'admin' && role !== 'staff' && role !== 'super_admin') return null;
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();

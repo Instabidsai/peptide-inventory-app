@@ -338,7 +338,7 @@ export default function AdminDashboard() {
             </motion.div>
 
             {/* Merchant Onboarding Link — admin only */}
-            {profile?.role === 'admin' && (
+            {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}

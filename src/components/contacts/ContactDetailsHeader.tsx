@@ -30,7 +30,7 @@ function ContactDetailsHeaderBase({ contact, orderStats }: ContactDetailsHeaderP
     const updateContact = useUpdateContact();
     const [showUpgrade, setShowUpgrade] = useState(false);
     const [upgradeDiscount, setUpgradeDiscount] = useState('10');
-    const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff' || userRole?.role === 'sales_rep';
+    const canEdit = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff' || userRole?.role === 'sales_rep';
 
     const handleUpgrade = async () => {
         await updateContact.mutateAsync({

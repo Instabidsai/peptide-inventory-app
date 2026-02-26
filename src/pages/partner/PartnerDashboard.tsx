@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients } from '@/hooks/use-partner';
+import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients, useAllOrgReps } from '@/hooks/use-partner';
 import { useCreateContact } from '@/hooks/use-contacts';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
@@ -55,9 +55,10 @@ export default function PartnerDashboard() {
     const priceMultiplier = Number(authProfile?.price_multiplier || 1);
     const discountPct = Math.round((1 - priceMultiplier) * 100);
 
-    // Fetch clients assigned to all reps in the network
+    // Fetch clients assigned to all reps in the org (not just downline)
     const myProfileId = authProfile?.id as string | undefined;
-    const allRepIds = [
+    const { data: allOrgReps } = useAllOrgReps();
+    const allRepIds = allOrgReps?.map(r => r.id) || [
         ...(myProfileId ? [myProfileId] : []),
         ...(downline?.map(d => d.id) || [])
     ];
@@ -214,7 +215,7 @@ export default function PartnerDashboard() {
                                 Order Peptides
                             </Button>
                         </Link>
-                        {userRole?.role === 'admin' && (
+                        {(userRole?.role === 'admin' || userRole?.role === 'super_admin') && (
                             <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                                 <DollarSign className="mr-2 h-4 w-4" />
                                 Return to Admin
@@ -277,6 +278,7 @@ export default function PartnerDashboard() {
                     rootProfileId={myProfileId || null}
                     partners={downline || []}
                     clients={clients || []}
+                    allOrgReps={allOrgReps}
                     isLoading={downlineLoading}
                     onAddPerson={() => setActiveSheet('add-person')}
                 />
@@ -333,6 +335,7 @@ export default function PartnerDashboard() {
                 newPerson={newPerson}
                 onPersonChange={setNewPerson}
                 downline={downline}
+                allOrgReps={allOrgReps}
                 authProfileName={authProfile?.full_name}
                 myProfileId={myProfileId}
                 isPending={createContact.isPending}

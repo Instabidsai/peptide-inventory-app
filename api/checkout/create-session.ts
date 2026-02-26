@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('id', order.client_id)
             .single();
 
-        const isStaff = callerRole?.role === 'admin' || callerRole?.role === 'sales_rep';
+        const isStaff = callerRole?.role === 'admin' || callerRole?.role === 'super_admin' || callerRole?.role === 'sales_rep';
         if (!isStaff && !isClient.data) {
             return res.status(403).json({ error: 'Not authorized for this order' });
         }

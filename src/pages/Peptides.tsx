@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check } from 'lucide-react';
 import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
 import {
@@ -79,6 +79,7 @@ export default function Peptides() {
   const [editingPeptide, setEditingPeptide] = useState<Peptide | null>(null);
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
+  const [addingToCatalog, setAddingToCatalog] = useState<Set<string>>(new Set());
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),
@@ -87,8 +88,8 @@ export default function Peptides() {
 
   const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
 
-  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isPartner;
-  const canDelete = (userRole?.role === 'admin' || profile?.role === 'admin') && !isPartner;
+  const canEdit = (userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff' || profile?.role === 'admin') && !isPartner;
+  const canDelete = (userRole?.role === 'admin' || userRole?.role === 'super_admin' || profile?.role === 'admin') && !isPartner;
 
   // Protect Route: If Sales Rep but NOT Senior, Redirect to Home
   // (Sidebar hides it, but this prevents direct link access)
@@ -157,6 +158,30 @@ export default function Peptides() {
     try {
       await updatePeptide.mutateAsync({ id: peptide.id, active: !peptide.active });
     } catch { /* onError in hook shows toast */ }
+  };
+
+  // Track which wholesale items are already in My Catalog (by name)
+  const catalogNameSet = new Set(myCatalogPeptides.map(p => p.name.toLowerCase()));
+
+  const handleAddToCatalog = async (peptide: Peptide) => {
+    try {
+      setAddingToCatalog(prev => new Set(prev).add(peptide.id));
+      const wholesalePrice = calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0);
+      await createPeptide.mutateAsync({
+        name: peptide.name,
+        description: peptide.description || undefined,
+        sku: peptide.sku || undefined,
+        retail_price: peptide.retail_price || 0,
+        base_cost: wholesalePrice,
+        catalog_source: 'manual',
+      });
+    } catch { /* onError in hook shows toast */ } finally {
+      setAddingToCatalog(prev => {
+        const next = new Set(prev);
+        next.delete(peptide.id);
+        return next;
+      });
+    }
   };
 
   const openEditDialog = (peptide: Peptide) => {
@@ -394,6 +419,26 @@ export default function Peptides() {
                           </span>
                         )}
                       </div>
+                      {isWholesaleView && canEdit && (
+                        <div className="mt-2">
+                          {catalogNameSet.has(peptide.name.toLowerCase()) ? (
+                            <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
+                              <Check className="h-3 w-3" /> Already in My Catalog
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs w-full"
+                              disabled={addingToCatalog.has(peptide.id)}
+                              onClick={(e) => { e.stopPropagation(); handleAddToCatalog(peptide); }}
+                            >
+                              <ShoppingCart className="h-3.5 w-3.5" />
+                              {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -533,6 +578,24 @@ export default function Peptides() {
                     )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {isWholesaleView && canEdit && (
+                          catalogNameSet.has(peptide.name.toLowerCase()) ? (
+                            <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
+                              <Check className="h-3 w-3" /> Added
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs"
+                              disabled={addingToCatalog.has(peptide.id)}
+                              onClick={() => handleAddToCatalog(peptide)}
+                            >
+                              <ShoppingCart className="h-3.5 w-3.5" />
+                              {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
+                            </Button>
+                          )
+                        )}
                         {canEdit && !isWholesaleView && (
                           <Button
                             variant="ghost"

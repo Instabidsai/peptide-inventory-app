@@ -229,7 +229,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                     <div className="flex items-center justify-between">
                         <AudioRecorder onRecordingComplete={(blob) => setVoiceBlob(blob)} />
 
-                        {userRole === 'admin' && (
+                        {(userRole === 'admin' || userRole === 'super_admin') && (
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground">Internal Note?</span>
                                 <input

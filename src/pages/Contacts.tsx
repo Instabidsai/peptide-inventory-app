@@ -90,9 +90,9 @@ export default function Contacts() {
   const [upgradeDiscount, setUpgradeDiscount] = useState('10');
 
   const isSalesRep = userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep';
-  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff' || userRole?.role === 'super_admin';
   const canEdit = isAdmin || isSalesRep;
-  const canDelete = userRole?.role === 'admin';
+  const canDelete = userRole?.role === 'admin' || userRole?.role === 'super_admin';
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -524,7 +524,8 @@ export default function Contacts() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead className="sticky left-0 z-20 bg-background min-w-[150px]">Name</TableHead>
+                  <TableHead className="sticky left-[150px] z-20 bg-background text-right">Actions</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Assigned Rep</TableHead>
@@ -533,7 +534,6 @@ export default function Contacts() {
                   <TableHead>Orders</TableHead>
                   <TableHead>Last Order</TableHead>
                   <TableHead>Company</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -546,7 +546,44 @@ export default function Contacts() {
                     className="border-b transition-colors cursor-pointer hover:bg-muted/50 data-[state=selected]:bg-muted"
                     onClick={() => navigate(`/contacts/${contact.id}`)}
                   >
-                    <TableCell className="font-medium">{contact.name}</TableCell>
+                    <TableCell className="font-medium sticky left-0 z-10 bg-background">{contact.name}</TableCell>
+                    <TableCell className="sticky left-[150px] z-10 bg-background" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        {canEdit && contact.type === 'customer' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Upgrade to preferred"
+                            title="Upgrade to Preferred Customer"
+                            className="text-amber-500 hover:text-amber-600"
+                            onClick={() => setUpgradingContact(contact)}
+                          >
+                            <Star className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Edit contact"
+                            onClick={() => openEditDialog(contact)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            aria-label="Delete contact"
+                            onClick={() => setDeletingContact(contact)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={typeColors[contact.type]}>
                         {typeLabels[contact.type]}
@@ -601,43 +638,6 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {contact.company || '-'}
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
-                        {canEdit && contact.type === 'customer' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Upgrade to preferred"
-                            title="Upgrade to Preferred Customer"
-                            className="text-amber-500 hover:text-amber-600"
-                            onClick={() => setUpgradingContact(contact)}
-                          >
-                            <Star className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Edit contact"
-                            onClick={() => openEditDialog(contact)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            aria-label="Delete contact"
-                            onClick={() => setDeletingContact(contact)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
                     </TableCell>
                   </motion.tr>
                 ))}

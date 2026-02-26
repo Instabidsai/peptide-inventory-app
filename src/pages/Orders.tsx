@@ -110,7 +110,7 @@ export default function Orders() {
     const markReceived = useMarkOrderReceived();
     const cancelOrder = useCancelOrder();
 
-    const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff';
+    const canEdit = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
 
     const form = useForm<OrderFormData>({
         resolver: zodResolver(orderSchema),
@@ -544,7 +544,7 @@ export default function Orders() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Peptide</TableHead>
+                                        <TableHead className="sticky left-0 z-20 bg-background">Peptide</TableHead>
                                         <TableHead>Qty</TableHead>
                                         <TableHead>Est. Cost</TableHead>
                                         <TableHead>Order Date</TableHead>
@@ -558,7 +558,7 @@ export default function Orders() {
                                 <TableBody>
                                     {filteredOrders?.map((order) => (
                                         <TableRow key={order.id}>
-                                            <TableCell className="font-medium">
+                                            <TableCell className="font-medium sticky left-0 z-10 bg-background">
                                                 {order.peptides?.name || '-'}
                                             </TableCell>
                                             <TableCell>{order.quantity_ordered}</TableCell>

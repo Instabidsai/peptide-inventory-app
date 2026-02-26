@@ -92,7 +92,7 @@ export default function AIAssistant() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const role = userRole?.role || profile?.role;
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'super_admin';
   const isStaff = role === 'staff';
   const isAdminOrStaff = isAdmin || isStaff;
   const isSeniorPartner = role === 'sales_rep' && !profile?.parent_rep_id;
@@ -281,11 +281,11 @@ export default function AIAssistant() {
                       "p-3.5 rounded-2xl max-w-[85%] text-sm leading-relaxed",
                       msg.role === 'user'
                         ? cn(accentBg, "text-white rounded-tr-sm", accentHover)
-                        : "bg-muted/50 border border-border/50 text-foreground rounded-tl-sm"
+                        : "bg-white text-gray-900 border border-gray-200 rounded-tl-sm shadow-sm"
                     )}
                   >
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                      <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900 prose-strong:text-gray-900">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
@@ -293,7 +293,7 @@ export default function AIAssistant() {
                     )}
                     <div className={cn(
                       "text-[10px] mt-1.5 opacity-50",
-                      msg.role === 'user' ? "text-white" : "text-muted-foreground"
+                      msg.role === 'user' ? "text-white" : "text-gray-500"
                     )}>
                       {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -311,7 +311,7 @@ export default function AIAssistant() {
                   <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", accentBgLight)}>
                     <Bot className={cn("h-4 w-4", accentText)} />
                   </div>
-                  <div className="bg-muted/50 border border-border/50 p-3.5 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
+                  <div className="bg-white border border-gray-200 shadow-sm p-3.5 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
                     <div className="flex gap-1">
                       <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", isAdminOrStaff ? "bg-primary/60" : "bg-emerald-500/60")} />
                       <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse [animation-delay:150ms]", isAdminOrStaff ? "bg-primary/60" : "bg-emerald-500/60")} />

@@ -28,7 +28,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
     .toUpperCase() || 'U';
 
   const roleLabel = userRole?.role ? userRole.role.charAt(0).toUpperCase() + userRole.role.slice(1).replace('_', ' ') : '';
-  const roleVariant = userRole?.role === 'admin' ? 'default' : userRole?.role === 'staff' ? 'secondary' : 'outline';
+  const roleVariant = (userRole?.role === 'admin' || userRole?.role === 'super_admin') ? 'default' : userRole?.role === 'staff' ? 'secondary' : 'outline';
 
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center gap-4 border-b border-primary/10 bg-background/40 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.1)] px-6 md:px-8 transition-all">

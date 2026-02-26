@@ -64,7 +64,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { userRole } = useAuth();
-  const isAdmin = userRole?.role === 'admin';
+  const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
 
   // Search peptides for live results
   const { data: peptides } = useQuery({

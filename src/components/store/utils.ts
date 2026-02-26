@@ -20,7 +20,7 @@ export function getPeptideDescription(peptideName: string): string | null {
 // Visibility check: peptides with visible_to_user_ids set are restricted
 // to those specific users (by profile.id) + admins. Null/empty = visible to all.
 export function canSeePeptide(peptide: { visible_to_user_ids?: string[] | null }, profileId?: string, role?: string): boolean {
-    if (role === 'admin') return true;
+    if (role === 'admin' || role === 'super_admin') return true;
     if (!peptide.visible_to_user_ids || peptide.visible_to_user_ids.length === 0) return true;
     return !!profileId && peptide.visible_to_user_ids.includes(profileId);
 }
@@ -56,7 +56,10 @@ export function calculateClientPrice(
     const retail = Number(peptide.retail_price || 0);
 
     if (!isPartner) {
-        const customerMultiplier = Number(authProfile?.price_multiplier) || 1.0;
+        // Every customer gets minimum 20% off retail — hardcoded floor.
+        // If their profile has an even lower multiplier, use that instead.
+        const profileMult = Number(authProfile?.price_multiplier) || 0.80;
+        const customerMultiplier = Math.min(profileMult, 0.80);
         return Math.round(retail * customerMultiplier * 100) / 100;
     }
 

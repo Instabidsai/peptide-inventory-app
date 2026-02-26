@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 
-export type UserRole = 'admin' | 'sales_rep' | 'staff';
+export type UserRole = 'admin' | 'sales_rep' | 'staff' | 'super_admin';
 
 export interface UserProfile {
     id: string;

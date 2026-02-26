@@ -6,6 +6,7 @@ const APP_ORIGINS = [
     'https://app.thepeptideai.com',
     'https://www.thepeptideai.com',
     'http://localhost:5173',
+    'http://localhost:4550',
     'http://localhost:8080',
 ];
 const envOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -30,6 +31,19 @@ interface OrderItem {
 Deno.serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+    // Health check bypass for monitoring
+    if (req.method === 'POST') {
+        try {
+            const peek = await req.clone().json();
+            if (peek?.health_check === true) {
+                return new Response(JSON.stringify({ status: 'ok' }), {
+                    status: 200,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+            }
+        } catch { /* not JSON — continue */ }
+    }
 
     const json = (body: object, status = 200) =>
         new Response(JSON.stringify(body), {
@@ -59,7 +73,7 @@ Deno.serve(async (req) => {
             .single();
 
         if (!callerRole?.org_id) throw new Error('No organization found');
-        if (!['admin', 'staff'].includes(callerRole.role)) {
+        if (!['admin', 'staff', 'super_admin'].includes(callerRole.role)) {
             throw new Error('Only admin or staff can place supplier orders');
         }
 

@@ -68,7 +68,7 @@ export default function Lots() {
   const [editingLot, setEditingLot] = useState<Lot | null>(null);
   const [lotToDelete, setLotToDelete] = useState<string | null>(null);
 
-  const canEdit = userRole?.role === 'admin' || userRole?.role === 'staff';
+  const canEdit = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
 
   const form = useForm<LotFormData>({
     resolver: zodResolver(lotSchema),
@@ -468,7 +468,7 @@ export default function Lots() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Lot Number</TableHead>
+                  <TableHead className="sticky left-0 z-20 bg-background">Lot Number</TableHead>
                   <TableHead>Peptide</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Cost/Unit</TableHead>
@@ -481,7 +481,7 @@ export default function Lots() {
               <TableBody>
                 {filteredLots?.map((lot) => (
                   <TableRow key={lot.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium sticky left-0 z-10 bg-background">
                       <Link
                         to={`/bottles?lot_id=${lot.id}`}
                         className="text-primary hover:underline"

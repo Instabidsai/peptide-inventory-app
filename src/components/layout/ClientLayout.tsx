@@ -17,7 +17,7 @@ export function ClientLayout() {
     const location = useLocation();
     const { userRole, user, profile } = useAuth();
     const { brand_name: brandName } = useTenantConfig();
-    const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff';
+    const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
 
     const { data: unreadFeedback } = useQuery({

@@ -48,6 +48,24 @@ export function usePartnerAI() {
 
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
+      if (import.meta.env.DEV) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+        const res = await fetch('/functions/v1/partner-ai-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ message }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(body.error || `Edge function error (${res.status})`);
+        }
+        return await res.json() as { reply: string };
+      }
       const { data, error } = await supabase.functions.invoke('partner-ai-chat', {
         body: { message },
       });

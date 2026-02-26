@@ -25,6 +25,19 @@ Deno.serve(async (req) => {
   const json = (body: object, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+  // Health check bypass for monitoring
+  if (req.method === "POST") {
+    try {
+      const peek = await req.clone().json();
+      if (peek?.health_check === true) {
+        return new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch { /* not JSON — continue */ }
+  }
+
   try {
     // Auth
     const authHeader = req.headers.get("Authorization");
@@ -39,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
-    if (!["admin", "staff"].includes(role)) return json({ error: "Admin or staff role required" }, 403);
+    if (!["admin", "staff", "super_admin"].includes(role)) return json({ error: "Admin or staff role required" }, 403);
 
     // Rate limit
     const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
@@ -58,7 +71,7 @@ Deno.serve(async (req) => {
     ]);
 
     // Run AI loop
-    const systemPrompt = role === "admin" ? ADMIN_SYSTEM_PROMPT + SHARED_RULES : STAFF_SYSTEM_PROMPT + SHARED_RULES;
+    const systemPrompt = (role === "admin" || role === "super_admin") ? ADMIN_SYSTEM_PROMPT + SHARED_RULES : STAFF_SYSTEM_PROMPT + SHARED_RULES;
     const response = await runAILoop({
       supabase,
       orgId: profile.org_id,

@@ -10,6 +10,7 @@ const APP_ORIGINS = [
     'https://app.thepeptideai.com',
     'https://www.thepeptideai.com',
     'http://localhost:5173',
+    'http://localhost:4550',
     'http://localhost:8080',
 ];
 const envOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -314,6 +315,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+  // Health check bypass for monitoring
+  if (req.method === "POST") {
+    try {
+      const peek = await req.clone().json();
+      if (peek?.health_check === true) {
+        return new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch { /* not JSON — continue */ }
+  }
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing authorization" }, 401);
@@ -330,8 +344,8 @@ Deno.serve(async (req) => {
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
 
-    // Partners (sales_rep) + admins (for testing)
-    if (!["sales_rep", "admin", "staff"].includes(role)) return json({ error: "Partner role required" }, 403);
+    // Partners (sales_rep) + admins + super_admin (for testing)
+    if (!["sales_rep", "admin", "staff", "super_admin"].includes(role)) return json({ error: "Partner role required" }, 403);
     // Rate limit: 20 requests per minute per user
     const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
     if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);

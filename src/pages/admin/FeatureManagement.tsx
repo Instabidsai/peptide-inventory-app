@@ -30,6 +30,7 @@ const CATEGORY_ICONS: Record<FeatureCategory, React.ElementType> = {
 };
 
 const ROLE_OPTIONS = [
+  { value: 'super_admin', label: 'Super Admin' },
   { value: 'admin', label: 'Admin' },
   { value: 'staff', label: 'Staff' },
   { value: 'sales_rep', label: 'Sales Rep' },
@@ -41,6 +42,8 @@ export default function FeatureManagement() {
   const { features, toggleFeature, isLoaded } = useOrgFeatures();
   const { toast } = useToast();
   const [previewRole, setPreviewRole] = useState('admin');
+  // super_admin sees everything admin sees
+  const effectivePreviewRole = previewRole === 'super_admin' ? 'admin' : previewRole;
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, ResolvedFeature[]>>((acc, cat) => {
     const items = features.filter((f) => f.category === cat);
@@ -67,10 +70,10 @@ export default function FeatureManagement() {
 
   // Role preview: which features would this role see?
   const previewFeatures = features.filter(
-    (f) => f.enabled && f.roles.includes(previewRole) && f.sidebarItems.length > 0,
+    (f) => f.enabled && f.roles.includes(effectivePreviewRole) && f.sidebarItems.length > 0,
   );
   const hiddenCount = features.filter(
-    (f) => f.sidebarItems.length > 0 && (!f.enabled || !f.roles.includes(previewRole)),
+    (f) => f.sidebarItems.length > 0 && (!f.enabled || !f.roles.includes(effectivePreviewRole)),
   ).length;
 
   if (!isLoaded) {
@@ -204,7 +207,7 @@ export default function FeatureManagement() {
               <div className="space-y-1.5">
                 {FEATURE_REGISTRY.filter((f) => f.sidebarItems.length > 0).map((f) => {
                   const resolved = features.find((rf) => rf.key === f.key);
-                  const visible = resolved?.enabled && f.roles.includes(previewRole);
+                  const visible = resolved?.enabled && f.roles.includes(effectivePreviewRole);
                   return (
                     <div
                       key={f.key}
@@ -224,7 +227,7 @@ export default function FeatureManagement() {
                           off
                         </Badge>
                       )}
-                      {resolved?.enabled && !f.roles.includes(previewRole) && (
+                      {resolved?.enabled && !f.roles.includes(effectivePreviewRole) && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto">
                           no access
                         </Badge>

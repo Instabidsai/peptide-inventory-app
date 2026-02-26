@@ -45,7 +45,7 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
         // Allow staff/admin/sales_rep to preview as other roles
         let roleName = userRole.role;
-        if (previewRole && ['admin', 'staff', 'sales_rep'].includes(roleName)) {
+        if (previewRole && ['admin', 'staff', 'sales_rep', 'super_admin'].includes(roleName)) {
             roleName = previewRole;
         }
 
@@ -55,9 +55,8 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // Block clients/customers from admin areas — send to store or dashboard
         if (roleName === 'client' || roleName === 'customer') {
             if (!allowedRoles || !allowedRoles.includes(roleName)) {
-                // Preferred/discount customers land on the store (where they see 20% off)
-                const hasDiscount = profile?.price_multiplier != null && profile.price_multiplier < 1;
-                return <Navigate to={hasDiscount ? '/store' : '/dashboard'} replace />;
+                // All customers get at least 20% off — always route to store
+                return <Navigate to="/store" replace />;
             }
         }
 
@@ -68,12 +67,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
         // Enforce strict allowedRoles if provided
         // super_admin inherits admin access everywhere
+        // admin/staff can view client portal (ClientLayout shows an "Admin" button to return)
         if (allowedRoles && !allowedRoles.includes(roleName)) {
-            if (!(roleName === 'super_admin' && allowedRoles.includes('admin'))) {
+            const isPrivilegedRole = ['admin', 'staff', 'super_admin'].includes(roleName);
+            const isClientArea = allowedRoles.some(r => ['client', 'customer'].includes(r));
+
+            if (!(roleName === 'super_admin' && allowedRoles.includes('admin')) && !(isPrivilegedRole && isClientArea)) {
                 // Determine correct redirect based on role type
                 const isClientRole = roleName === 'client' || roleName === 'customer';
-                const hasDiscount = profile?.price_multiplier != null && profile.price_multiplier < 1;
-                const target = isClientRole ? (hasDiscount ? '/store' : '/dashboard') : '/';
+                const target = isClientRole ? '/store' : '/';
                 // Prevent infinite redirect loop: if we'd redirect to the
                 // same path we're already on, bail out to /auth instead
                 if (location.pathname === target) {
