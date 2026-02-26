@@ -154,14 +154,21 @@ export default function BodyComposition() {
         }
     });
 
-    if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+    if (isLoading) return (
+        <div className="flex justify-center p-8">
+            <div className="relative h-10 w-10">
+                <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+            </div>
+        </div>
+    );
 
     const latestLog = logs && logs.length > 0 ? logs[logs.length - 1] : null;
 
     return (
         <div className="container mx-auto p-4 max-w-2xl space-y-6 pb-20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary">Body Composition</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">Body Composition</h1>
                 <Button onClick={() => setIsLogging(!isLogging)} variant={isLogging ? "secondary" : "default"}>
                     {isLogging ? "Cancel" : <><Plus className="mr-2 h-4 w-4" /> Log New</>}
                 </Button>
@@ -238,13 +245,13 @@ export default function BodyComposition() {
                     </GlassCard>
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
-                            <div className="text-2xl font-bold text-blue-600">{latestLog.body_fat_percentage != null ? `${latestLog.body_fat_percentage}%` : '—'}</div>
+                            <div className="text-2xl font-bold text-blue-400">{latestLog.body_fat_percentage != null ? `${latestLog.body_fat_percentage}%` : '—'}</div>
                             <div className="text-xs text-muted-foreground uppercase">Body Fat</div>
                         </CardContent>
                     </GlassCard>
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
-                            <div className="text-2xl font-bold text-green-600">{latestLog.muscle_mass ?? '—'}</div>
+                            <div className="text-2xl font-bold text-emerald-400">{latestLog.muscle_mass ?? '—'}</div>
                             <div className="text-xs text-muted-foreground uppercase">Muscle</div>
                         </CardContent>
                     </GlassCard>
@@ -363,10 +370,13 @@ export default function BodyComposition() {
             )}
 
             {(!logs || logs.length === 0) && !isLogging && (
-                <div className="text-center py-10 text-muted-foreground">
-                    <History className="mx-auto h-12 w-12 opacity-20 mb-4" />
-                    <p>No body composition logs yet.</p>
-                    <Button variant="link" onClick={() => setIsLogging(true)}>Log your first entry</Button>
+                <div className="text-center py-12 text-muted-foreground flex flex-col items-center">
+                    <div className="p-4 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 mb-4">
+                        <History className="h-8 w-8 text-muted-foreground/30" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-muted-foreground mb-1">No body composition logs yet</h3>
+                    <p className="text-sm text-muted-foreground/70 mb-4">Track your progress over time</p>
+                    <Button variant="outline" onClick={() => setIsLogging(true)}>Log your first entry</Button>
                 </div>
             )}
         </div>

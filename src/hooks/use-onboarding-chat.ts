@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { friendlyError } from '@/lib/ai-utils';
+import { supabase } from '@/integrations/sb_client/client';
 import { logger } from '@/lib/logger';
+
+const AGENT_API_URL = import.meta.env.VITE_ONBOARDING_AGENT_URL || '';
 
 export type OnboardingMessage = {
   id: string;
@@ -19,159 +20,127 @@ export type Attachment = {
   type: string;
 };
 
-const AGENT_API_URL = import.meta.env.VITE_ONBOARDING_AGENT_URL || 'https://agent.thepeptideai.com';
-
 export function useOnboardingChat() {
-  const { user, profile } = useAuth();
+  const { session, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [optimisticMessages, setOptimisticMessages] = useState<OnboardingMessage[]>([]);
 
-  // Load chat history from onboarding_messages table
-  const { data: dbMessages = [], isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['onboarding-chat', profile?.org_id],
+  const orgId = profile?.org_id;
+
+  // Load conversation history from DB
+  const { data: dbMessages = [], isLoading } = useQuery({
+    queryKey: ['onboarding-chat', orgId],
     queryFn: async () => {
-      if (!profile?.org_id) return [];
+      if (!orgId) return [];
       const { data, error } = await supabase
         .from('onboarding_messages')
         .select('id, role, content, created_at')
-        .eq('org_id', profile.org_id)
+        .eq('org_id', orgId)
         .order('created_at', { ascending: true })
         .limit(50);
       if (error) throw error;
       return (data || []) as OnboardingMessage[];
     },
-    enabled: !!profile?.org_id,
+    enabled: !!orgId,
   });
 
-  const messages: OnboardingMessage[] = [
-    ...dbMessages,
-    ...optimisticMessages,
-  ];
+  const messages: OnboardingMessage[] = [...dbMessages, ...optimisticMessages];
 
   const sendMutation = useMutation({
     mutationFn: async ({ message, attachments }: { message: string; attachments?: Attachment[] }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session?.access_token) throw new Error('Not authenticated');
+      if (!AGENT_API_URL) throw new Error('Agent API URL not configured');
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+      const resp = await fetch(`${AGENT_API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message, attachments }),
+      });
 
-      const body: Record<string, unknown> = { message };
-      if (attachments?.length) body.attachments = attachments;
-
-      let res: Response;
-      try {
-        res = await fetch(`${AGENT_API_URL}/api/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-      } catch (err: unknown) {
-        if ((err as Error).name === 'AbortError') {
-          throw new Error('The AI took too long to respond. Please try again.');
-        }
-        throw err;
-      } finally {
-        clearTimeout(timeout);
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.detail || body.error || `Agent returned ${resp.status}`);
       }
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(body.detail || body.error || `Agent error (${res.status})`);
-      }
-
-      return await res.json() as { reply: string; message_id?: string };
+      return resp.json() as Promise<{ reply: string; message_id: string }>;
     },
-    retry: (failureCount, error) => {
-      // Don't retry network errors (server unreachable) — only retry server errors
-      const msg = (error as Error)?.message?.toLowerCase() ?? '';
-      if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed'))
-        return false;
-      return failureCount < 1;
-    },
-    retryDelay: 2000,
     onSuccess: () => {
       setOptimisticMessages([]);
-      queryClient.invalidateQueries({ queryKey: ['onboarding-chat', profile?.org_id] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding-chat', orgId] });
     },
-    onError: (error) => {
-      logger.error('Onboarding chat error:', error);
-      const friendly = friendlyError(error);
-      setOptimisticMessages(prev => [
-        ...prev.filter(m => m.role === 'user'),
-        {
-          id: `err-${crypto.randomUUID()}`,
-          role: 'assistant',
-          content: friendly,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+    onError: (err: Error) => {
+      setOptimisticMessages([]);
+      logger.error('Onboarding chat error', err);
+      toast({
+        title: 'Message failed',
+        description: err.message,
+        variant: 'destructive',
+      });
     },
   });
 
-  const sendMessage = useCallback((text: string, attachments?: Attachment[]) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const sendMessage = useCallback(
+    (text: string, attachments?: Attachment[]) => {
+      const trimmed = text.trim();
+      if (!trimmed || sendMutation.isPending) return;
 
-    const displayContent = attachments?.length
-      ? `${trimmed}\n\n📎 ${attachments.map(a => a.name).join(', ')}`
-      : trimmed;
+      const now = new Date().toISOString();
+      setOptimisticMessages([
+        { id: `opt-user-${Date.now()}`, role: 'user', content: trimmed, created_at: now },
+        { id: `opt-thinking-${Date.now()}`, role: 'assistant', content: '...', created_at: now },
+      ]);
 
-    setOptimisticMessages(prev => [
-      ...prev,
-      {
-        id: `opt-${crypto.randomUUID()}`,
-        role: 'user',
-        content: displayContent,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-    sendMutation.mutate({ message: trimmed, attachments });
-  }, [sendMutation]);
+      sendMutation.mutate({ message: trimmed, attachments });
+    },
+    [sendMutation],
+  );
 
-  const uploadFile = useCallback(async (file: File): Promise<Attachment> => {
-    if (!user?.id) throw new Error('Not authenticated');
-    const ext = file.name.split('.').pop() || 'bin';
-    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+  const uploadFile = useCallback(
+    async (file: File): Promise<Attachment | null> => {
+      if (!session?.user?.id) return null;
 
-    const { error: uploadError } = await supabase.storage
-      .from('onboarding-uploads')
-      .upload(path, file, { contentType: file.type });
-    if (uploadError) throw uploadError;
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        toast({ title: 'File too large', description: 'Maximum file size is 10MB.', variant: 'destructive' });
+        return null;
+      }
 
-    const { data: urlData } = await supabase.storage
-      .from('onboarding-uploads')
-      .createSignedUrl(path, 3600); // 1 hour expiry
-    if (!urlData?.signedUrl) throw new Error('Failed to generate signed URL');
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
 
-    return { url: urlData.signedUrl, name: file.name, type: file.type };
-  }, [user?.id]);
+      const { error: uploadError } = await supabase.storage
+        .from('onboarding-uploads')
+        .upload(path, file, { upsert: false });
 
-  const clearChat = useCallback(async () => {
-    if (!profile?.org_id) return;
-    const { error } = await supabase
-      .from('onboarding_messages')
-      .delete()
-      .eq('org_id', profile.org_id);
-    if (error) {
-      toast({ variant: 'destructive', title: 'Failed to clear chat', description: error.message });
-      return;
-    }
-    setOptimisticMessages([]);
-    queryClient.invalidateQueries({ queryKey: ['onboarding-chat', profile?.org_id] });
-  }, [profile?.org_id, queryClient, toast]);
+      if (uploadError) {
+        logger.error('Upload failed', uploadError);
+        toast({ title: 'Upload failed', description: uploadError.message, variant: 'destructive' });
+        return null;
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from('onboarding-uploads')
+        .createSignedUrl(path, 3600);
+
+      if (!urlData?.signedUrl) {
+        toast({ title: 'Upload failed', description: 'Could not create file URL.', variant: 'destructive' });
+        return null;
+      }
+
+      return { url: urlData.signedUrl, name: file.name, type: file.type };
+    },
+    [session, toast],
+  );
 
   return {
     messages,
+    isLoading,
+    isSending: sendMutation.isPending,
     sendMessage,
     uploadFile,
-    clearChat,
-    isLoading: sendMutation.isPending,
-    isLoadingHistory,
   };
 }

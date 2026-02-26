@@ -19,10 +19,6 @@ import {
 } from '@/components/ui/sheet';
 import {
     Package,
-    Clock,
-    CheckCircle2,
-    Truck,
-    XCircle,
     ShoppingBag,
     DollarSign,
     Users,
@@ -37,23 +33,13 @@ import {
     FileText,
     Copy,
     Check,
+    Truck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getTrackingUrl } from '@/lib/tracking';
 import { QueryError } from '@/components/ui/query-error';
 import { logger } from '@/lib/logger';
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
-    confirmed: { label: 'Confirmed', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    processing: { label: 'Processing', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', icon: <Package className="h-3.5 w-3.5" /> },
-    shipped: { label: 'Shipped', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: <Truck className="h-3.5 w-3.5" /> },
-    delivered: { label: 'Delivered', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    fulfilled: { label: 'Fulfilled', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    cancelled: { label: 'Cancelled', color: 'bg-red-500/10 text-red-500 border-red-500/20', icon: <XCircle className="h-3.5 w-3.5" /> },
-    draft: { label: 'Draft', color: 'bg-gray-500/10 text-gray-500 border-gray-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
-    submitted: { label: 'Submitted', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-};
+import { StatusBadge, PaymentBadge } from '@/components/ui/status-badge';
 
 export default function PartnerOrders() {
     const { user } = useAuth();
@@ -157,8 +143,6 @@ export default function PartnerOrders() {
     const selfOrders = orders.filter((o) => o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER'));
     const networkOrders = orders.filter((o) => !(o.rep_id === myProfileId && o.notes?.includes('PARTNER SELF-ORDER')));
 
-    const getStatus = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-
     const totalRevenue = orders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
     const totalCommission = orders?.reduce((s, o) => s + (commissionBySale.get(o.id) || 0), 0) || 0;
     const paidCount = orders?.filter((o) => o.payment_status === 'paid').length || 0;
@@ -228,7 +212,7 @@ export default function PartnerOrders() {
                                 <Badge variant="secondary">{selfOrders.length}</Badge>
                             </h2>
                             {selfOrders.map((order) => (
-                                <OrderCard key={order.id} order={order} getStatus={getStatus} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} onClick={() => setSelectedOrder(order)} />
+                                <OrderCard key={order.id} order={order} commission={commissionBySale.get(order.id)} repName={null} myName={myName || undefined} onClick={() => setSelectedOrder(order)} />
                             ))}
                         </div>
                     )}
@@ -363,7 +347,6 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
     if (!order) return null;
 
     const items = order.sales_order_items || [];
-    const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
     const editTotal = editing ? editItems.reduce((s, i) => s + i.quantity * i.unit_price, 0) : 0;
 
     return (
@@ -372,10 +355,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
                 <SheetHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <SheetTitle className="text-lg font-bold text-left">Order Details</SheetTitle>
-                        <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
-                            <span className="mr-1">{statusInfo.icon}</span>
-                            {statusInfo.label}
-                        </Badge>
+                        <StatusBadge status={order.status} />
                     </div>
                 </SheetHeader>
 
@@ -575,8 +555,7 @@ interface OrderCardOrder {
     }>;
 }
 
-function OrderCard({ order, getStatus, commission, repName, myName, onClick }: { order: OrderCardOrder; getStatus: (s: string) => { label: string; color: string; icon: React.ReactNode }; commission?: number; repName?: string | null; myName?: string; onClick?: () => void }) {
-    const statusInfo = getStatus(order.status);
+function OrderCard({ order, commission, repName, myName, onClick }: { order: OrderCardOrder; commission?: number; repName?: string | null; myName?: string; onClick?: () => void }) {
     const items = order.sales_order_items || [];
     const clientName = order.contacts?.name || (order.notes?.includes('PARTNER SELF-ORDER') ? 'Self Order' : 'Unknown');
     const isSelfOrder = order.notes?.includes('PARTNER SELF-ORDER');
@@ -615,25 +594,12 @@ function OrderCard({ order, getStatus, commission, repName, myName, onClick }: {
                                     via {repFullName}
                                 </Badge>
                             )}
-                            <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
-                                <span className="mr-1">{statusInfo.icon}</span>
-                                {statusInfo.label}
-                            </Badge>
-                            {order.payment_status === 'paid' && (
-                                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20">
-                                    Paid
-                                </Badge>
-                            )}
-                            {order.payment_status === 'partial' && (
-                                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                    Partial
-                                </Badge>
+                            <StatusBadge status={order.status} />
+                            {(order.payment_status === 'paid' || order.payment_status === 'partial') && (
+                                <PaymentBadge status={order.payment_status} />
                             )}
                             {order.shipping_status && order.shipping_status !== 'pending' && (
-                                <Badge variant="outline" className={`text-xs ${getStatus(order.shipping_status === 'label_created' ? 'processing' : order.shipping_status === 'in_transit' ? 'shipped' : order.shipping_status).color}`}>
-                                    <Truck className="h-3 w-3 mr-1" />
-                                    {order.shipping_status === 'label_created' ? 'Label Created' : order.shipping_status === 'in_transit' ? 'In Transit' : order.shipping_status === 'delivered' ? 'Delivered' : order.shipping_status}
-                                </Badge>
+                                <StatusBadge status={order.shipping_status === 'label_created' ? 'processing' : order.shipping_status === 'in_transit' ? 'shipped' : order.shipping_status} />
                             )}
                         </div>
                         <p className="text-xs text-muted-foreground">

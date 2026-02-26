@@ -75,7 +75,7 @@ export function ClientLayout() {
                 Skip to main content
             </a>
             {/* Top Bar */}
-            <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-primary/10 bg-background/40 backdrop-blur-2xl px-4 justify-between shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/[0.06] bg-background/60 backdrop-blur-2xl px-4 justify-between shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_4px_30px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center gap-2.5 relative group cursor-pointer" role="button" tabIndex={0} onClick={() => navigate('/dashboard')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/dashboard'); } }}>
                     <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
                     <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] overflow-hidden flex items-center justify-center">
@@ -137,7 +137,7 @@ export function ClientLayout() {
             <FloatingHelpWidget />
 
             {/* Bottom Navigation (Mobile First) */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-primary/10 bg-background/60 backdrop-blur-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.1)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className="fixed bottom-0 left-0 right-0 border-t border-white/[0.06] bg-background/60 backdrop-blur-2xl shadow-[0_-1px_0_0_rgba(255,255,255,0.04)_inset,0_-4px_30px_rgba(0,0,0,0.12)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 <nav className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = item.path === '/menu'
@@ -149,7 +149,7 @@ export function ClientLayout() {
                                 onClick={() => navigate(item.path)}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
+                                    "flex flex-col items-center justify-center w-full h-full gap-1 transition-all relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none active:scale-[0.92]",
                                     isActive ? "text-primary" : "text-muted-foreground/70 hover:text-foreground"
                                 )}
                             >

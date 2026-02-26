@@ -22,7 +22,7 @@
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 215 20% 68%;
 
     --accent: 160 84% 39%;
     --accent-foreground: 210 40% 98%;
@@ -44,6 +44,10 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 20%;
     --sidebar-ring: 160 84% 39%;
+
+    /* Secondary accent — indigo/blue to break emerald monotone */
+    --accent-secondary: 230 80% 60%;
+    --accent-secondary-foreground: 210 40% 98%;
 
     /* Custom tokens */
     --success: 160 84% 39%;
@@ -72,8 +76,10 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
     overscroll-behavior-y: contain;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(var(--primary) / 0.04) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 
   /* Apple-style heading tracking */
@@ -149,6 +155,10 @@
 
   .glow-destructive {
     box-shadow: 0 0 20px hsl(0 72% 51% / 0.3), 0 0 60px hsl(0 72% 51% / 0.12);
+  }
+
+  .glow-accent2 {
+    box-shadow: 0 0 20px hsl(var(--accent-secondary) / 0.25), 0 0 60px hsl(var(--accent-secondary) / 0.10);
   }
 
   /* Gradient text utility */
@@ -240,6 +250,12 @@
   .accent-cognitive { --accent-from: 199 89% 48%; --accent-to: 210 90% 55%; }
   .accent-sleep { --accent-from: 260 80% 60%; --accent-to: 280 70% 50%; }
   .accent-anti_aging { --accent-from: 330 80% 55%; --accent-to: 45 93% 58%; }
+
+  /* Smooth surface divider — sits between layered sections */
+  .surface-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--border) / 0.6) 20%, hsl(var(--border) / 0.6) 80%, transparent);
+  }
 
   /* Noise texture overlay for depth */
   .noise-overlay::after {

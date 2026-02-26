@@ -343,7 +343,7 @@ export default function MacroTracker() {
     return (
         <div className="container mx-auto p-4 max-w-2xl relative">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-primary">Snap & Track Macros</h1>
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">Snap & Track Macros</h1>
                 <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
                     {showSettings ? "Close" : "Goals"}
                 </Button>
@@ -491,7 +491,10 @@ export default function MacroTracker() {
                 loading && (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-12">
-                            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                            <div className="relative h-12 w-12 mb-4">
+                                <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                                <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                            </div>
                             <p className="text-lg font-semibold">Analyzing your meal...</p>
                             <p className="text-sm text-muted-foreground">This may take a few seconds</p>
                         </CardContent>
@@ -513,15 +516,15 @@ export default function MacroTracker() {
                                         <div className="text-xs text-muted-foreground uppercase">Calories</div>
                                     </div>
                                     <div>
-                                        <div className="text-xl font-bold text-blue-600">{Math.round(result.total_protein)}g</div>
+                                        <div className="text-xl font-bold text-blue-400">{Math.round(result.total_protein)}g</div>
                                         <div className="text-xs text-muted-foreground uppercase">Protein</div>
                                     </div>
                                     <div>
-                                        <div className="text-xl font-bold text-green-600">{Math.round(result.total_carbs)}g</div>
+                                        <div className="text-xl font-bold text-emerald-400">{Math.round(result.total_carbs)}g</div>
                                         <div className="text-xs text-muted-foreground uppercase">Carbs</div>
                                     </div>
                                     <div>
-                                        <div className="text-xl font-bold text-yellow-600">{Math.round(result.total_fat)}g</div>
+                                        <div className="text-xl font-bold text-amber-400">{Math.round(result.total_fat)}g</div>
                                         <div className="text-xs text-muted-foreground uppercase">Fat</div>
                                     </div>
                                 </div>

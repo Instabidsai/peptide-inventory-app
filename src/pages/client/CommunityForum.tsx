@@ -164,7 +164,10 @@ export default function CommunityForum() {
     if (loadingTopics) {
         return (
             <div className="h-full flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="relative h-10 w-10">
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin direction-reverse" style={{ animationDirection: 'reverse' }} />
+                </div>
             </div>
         );
     }
@@ -225,11 +228,13 @@ export default function CommunityForum() {
                     {/* Topics List */}
                     <div className="space-y-2">
                         {topics?.length === 0 ? (
-                            <Card className="bg-card/50">
-                                <CardContent className="py-12 text-center">
-                                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                                    <h3 className="font-semibold mb-2">No discussions yet</h3>
-                                    <p className="text-sm text-muted-foreground mb-4">
+                            <Card className="bg-card/50 border-dashed">
+                                <CardContent className="py-12 text-center flex flex-col items-center">
+                                    <div className="p-4 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 mb-4">
+                                        <MessageSquare className="h-8 w-8 text-muted-foreground/30" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-muted-foreground mb-1">No discussions yet</h3>
+                                    <p className="text-sm text-muted-foreground/70 mb-4">
                                         Be the first to start a conversation!
                                     </p>
                                     <Button onClick={() => setNewTopicOpen(true)} className="gap-2">
@@ -241,7 +246,7 @@ export default function CommunityForum() {
                             topics?.map((topic) => (
                                 <Card
                                     key={topic.id}
-                                    className="cursor-pointer hover:border-primary/50 hover:shadow-card transition-all"
+                                    className="cursor-pointer hover:border-primary/20 hover:shadow-card transition-all"
                                     onClick={() => handleTopicClick(topic)}
                                 >
                                     <CardContent className="p-4">
@@ -317,7 +322,12 @@ export default function CommunityForum() {
                         </h3>
 
                         {loadingMessages ? (
-                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                            <div className="flex justify-center py-4">
+                                <div className="relative h-8 w-8">
+                                    <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                                    <div className="absolute inset-1 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                                </div>
+                            </div>
                         ) : messages?.length === 0 ? (
                             <p className="text-sm text-muted-foreground text-center py-8">
                                 No replies yet. Be the first to respond!
@@ -327,8 +337,8 @@ export default function CommunityForum() {
                                 <Card key={message.id} className="bg-card/50">
                                     <CardContent className="p-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                                                <User className="h-4 w-4 text-primary" />
+                                            <div className="w-8 h-8 rounded-xl bg-primary/[0.08] flex items-center justify-center shrink-0">
+                                                <User className="h-4 w-4 text-primary/70" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">

@@ -11,6 +11,7 @@ import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { CardContent } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ContentFade } from '@/components/ui/content-fade';
 import { Info } from 'lucide-react';
 
 import {
@@ -279,35 +280,34 @@ export default function ClientStore() {
         }
     };
 
-    if (isLoadingContact) {
-        return (
-            <div className="space-y-6 pb-20">
-                <div>
-                    <Skeleton className="h-7 w-40 mb-2" />
-                    <Skeleton className="h-4 w-56" />
-                </div>
-                <Skeleton className="h-10 w-full rounded-md" />
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <GlassCard key={i}>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1 space-y-2">
-                                        <Skeleton className="h-4 w-28" />
-                                        <Skeleton className="h-3 w-16" />
-                                        <Skeleton className="h-6 w-20 mt-1" />
-                                    </div>
-                                    <Skeleton className="h-9 w-16 rounded-md" />
-                                </div>
-                            </CardContent>
-                        </GlassCard>
-                    ))}
-                </div>
+    const loadingSkeleton = (
+        <div className="space-y-6 pb-20">
+            <div>
+                <Skeleton className="h-7 w-40 mb-2" />
+                <Skeleton className="h-4 w-56" />
             </div>
-        );
-    }
+            <Skeleton className="h-10 w-full rounded-md" />
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <GlassCard key={i}>
+                        <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-4 w-28" />
+                                    <Skeleton className="h-3 w-16" />
+                                    <Skeleton className="h-6 w-20 mt-1" />
+                                </div>
+                                <Skeleton className="h-9 w-16 rounded-md" />
+                            </div>
+                        </CardContent>
+                    </GlassCard>
+                ))}
+            </div>
+        </div>
+    );
 
     return (
+        <ContentFade isLoading={isLoadingContact} skeleton={loadingSkeleton}>
         <div className="space-y-8 pb-24">
             <StoreHeader
                 priceMultiplier={Number(authProfile?.price_multiplier || 1)}
@@ -425,5 +425,6 @@ export default function ClientStore() {
                 onSelectProtocol={setSelectedProtocol}
             />
         </div>
+        </ContentFade>
     );
 }

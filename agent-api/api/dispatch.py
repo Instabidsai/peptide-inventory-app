@@ -168,12 +168,14 @@ def _fetch_org_state(org_id: str) -> str:
     Query the database for a snapshot of what this org has already configured.
     Returns a plain-text summary block to inject into the prompt so the agent
     knows the merchant's current state regardless of conversation history length.
+
+    Each query is independent — one table failure won't kill the whole snapshot.
     """
     sb = get_supabase()
     lines = []
 
+    # Products
     try:
-        # Products
         products = sb.table("peptides") \
             .select("name, retail_price") \
             .eq("org_id", org_id) \
@@ -185,8 +187,11 @@ def _fetch_org_state(org_id: str) -> str:
             lines.append(f"Products ({len(products.data)} active):\n" + "\n".join(items))
         else:
             lines.append("Products: None configured yet")
+    except Exception:
+        logger.debug("Failed to fetch peptides — skipping")
 
-        # Scraped peptides (pending review)
+    # Scraped peptides (pending review)
+    try:
         scraped = sb.table("scraped_peptides") \
             .select("name, price, confidence, status") \
             .eq("org_id", org_id) \
@@ -199,8 +204,11 @@ def _fetch_org_state(org_id: str) -> str:
                 lines.append(f"Scraped peptides awaiting review: {len(pending)}")
             if approved:
                 lines.append(f"Scraped peptides approved: {len(approved)}")
+    except Exception:
+        logger.debug("Failed to fetch scraped_peptides — skipping")
 
-        # Tenant config (branding, payments)
+    # Tenant config (branding, payments)
+    try:
         config = sb.table("tenant_config") \
             .select("*") \
             .eq("org_id", org_id) \
@@ -239,8 +247,11 @@ def _fetch_org_state(org_id: str) -> str:
             lines.append("Branding: Not configured")
             lines.append("Payments: None configured")
             lines.append("Shipping: Not configured")
+    except Exception:
+        logger.debug("Failed to fetch tenant_config — skipping")
 
-        # Contacts
+    # Contacts
+    try:
         contacts = sb.table("contacts") \
             .select("id", count="exact") \
             .eq("org_id", org_id) \
@@ -248,8 +259,11 @@ def _fetch_org_state(org_id: str) -> str:
             .execute()
         count = contacts.count if contacts.count else 0
         lines.append(f"Contacts: {count} imported")
+    except Exception:
+        logger.debug("Failed to fetch contacts — skipping")
 
-        # Feature flags (from org_features)
+    # Feature flags (from org_features)
+    try:
         flags = sb.table("org_features") \
             .select("feature_key, enabled") \
             .eq("org_id", org_id) \
@@ -260,8 +274,11 @@ def _fetch_org_state(org_id: str) -> str:
             lines.append(f"Features enabled: {', '.join(enabled)}")
         else:
             lines.append("Features: None enabled yet")
+    except Exception:
+        logger.debug("Failed to fetch org_features — skipping")
 
-        # Pricing tiers
+    # Pricing tiers — try both possible table names
+    try:
         tiers = sb.table("pricing_tiers") \
             .select("name, discount_percentage") \
             .eq("org_id", org_id) \
@@ -270,9 +287,24 @@ def _fetch_org_state(org_id: str) -> str:
             tier_strs = [f"{t['name']} ({t['discount_percentage']}%)" for t in tiers.data]
             lines.append(f"Pricing tiers: {', '.join(tier_strs)}")
         else:
-            lines.append("Pricing tiers: None configured")
+            lines.append("Pricing tiers: Default (Retail/Partner/VIP)")
+    except Exception:
+        # Table might be named wholesale_pricing_tiers in some schemas
+        try:
+            tiers = sb.table("wholesale_pricing_tiers") \
+                .select("name, discount_pct") \
+                .eq("org_id", org_id) \
+                .execute()
+            if tiers.data:
+                tier_strs = [f"{t['name']} ({t['discount_pct']}%)" for t in tiers.data]
+                lines.append(f"Pricing tiers: {', '.join(tier_strs)}")
+            else:
+                lines.append("Pricing tiers: Default")
+        except Exception:
+            logger.debug("Failed to fetch pricing tiers — skipping")
 
-        # Commissions
+    # Commissions
+    try:
         commissions = sb.table("commissions") \
             .select("id", count="exact") \
             .eq("org_id", org_id) \
@@ -280,10 +312,8 @@ def _fetch_org_state(org_id: str) -> str:
             .execute()
         comm_count = commissions.count if commissions.count else 0
         lines.append(f"Commission rules: {comm_count} configured")
-
     except Exception:
-        logger.warning("Failed to fetch org state — proceeding without snapshot")
-        return ""
+        logger.debug("Failed to fetch commissions — skipping")
 
     return "\n".join(lines)
 

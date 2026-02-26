@@ -4,34 +4,22 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
+import { StatusBadge, PaymentBadge } from '@/components/ui/status-badge';
+import { ContentFade } from '@/components/ui/content-fade';
 import { motion } from 'framer-motion';
 import {
     Package,
-    Clock,
-    CheckCircle2,
     Truck,
-    XCircle,
     ShoppingBag,
     RotateCcw,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getTrackingUrl } from '@/lib/tracking';
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending: { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Clock className="h-3.5 w-3.5" /> },
-    confirmed: { label: 'Confirmed', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    processing: { label: 'Processing', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20', icon: <Package className="h-3.5 w-3.5" /> },
-    shipped: { label: 'Shipped', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: <Truck className="h-3.5 w-3.5" /> },
-    delivered: { label: 'Delivered', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    fulfilled: { label: 'Fulfilled', color: 'bg-green-500/10 text-green-500 border-green-500/20', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    cancelled: { label: 'Cancelled', color: 'bg-red-500/10 text-red-500 border-red-500/20', icon: <XCircle className="h-3.5 w-3.5" /> },
-};
 
 const PAGE_SIZE = 20;
 
@@ -65,40 +53,37 @@ export default function ClientOrders() {
         enabled: !!contact?.id,
     });
 
-    const getStatus = (status: string) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-
-    if (isLoadingContact || isLoading) {
-        return (
-            <div className="space-y-6 pb-20">
-                <div>
-                    <Skeleton className="h-7 w-32 mb-2" />
-                    <Skeleton className="h-4 w-48" />
-                </div>
-                <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <GlassCard key={i}>
-                            <CardContent className="p-4 space-y-3">
-                                <div className="flex gap-2">
-                                    <Skeleton className="h-5 w-20 rounded-full" />
-                                    <Skeleton className="h-5 w-16 rounded-full" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Skeleton className="h-4 w-full" />
-                                    <Skeleton className="h-4 w-3/4" />
-                                </div>
-                            </CardContent>
-                        </GlassCard>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     if (isError) {
         return <QueryError message="Failed to load your orders." onRetry={() => refetch()} />;
     }
 
+    const loadingSkeleton = (
+        <div className="space-y-6 pb-20">
+            <div>
+                <Skeleton className="h-7 w-32 mb-2" />
+                <Skeleton className="h-4 w-48" />
+            </div>
+            <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <GlassCard key={i}>
+                        <CardContent className="p-4 space-y-3">
+                            <div className="flex gap-2">
+                                <Skeleton className="h-5 w-20 rounded-full" />
+                                <Skeleton className="h-5 w-16 rounded-full" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                            </div>
+                        </CardContent>
+                    </GlassCard>
+                ))}
+            </div>
+        </div>
+    );
+
     return (
+        <ContentFade isLoading={isLoadingContact || isLoading} skeleton={loadingSkeleton}>
         <div className="space-y-6 pb-20">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -120,11 +105,11 @@ export default function ClientOrders() {
                 <GlassCard>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                         <motion.div
-                            className="p-4 rounded-full bg-secondary/50 mb-4"
+                            className="p-4 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 mb-4"
                             animate={{ y: [0, -6, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                            <Package className="h-8 w-8 text-muted-foreground/60" />
+                            <Package className="h-8 w-8 text-muted-foreground/30" />
                         </motion.div>
                         <p className="font-medium">No orders yet</p>
                         <p className="text-sm text-muted-foreground mt-1 text-center max-w-[240px]">
@@ -145,8 +130,8 @@ export default function ClientOrders() {
                     variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
                 >
                     {orders.slice(0, displayCount).map((order) => {
-                        const statusInfo = getStatus(order.status);
                         const items = order.sales_order_items || [];
+                        const shippingStatus = order.shipping_status === 'label_created' ? 'processing' : order.shipping_status === 'in_transit' ? 'shipped' : order.shipping_status;
 
                         return (
                             <motion.div key={order.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }} whileTap={{ scale: 0.98 }}>
@@ -156,20 +141,12 @@ export default function ClientOrders() {
                                         <div className="flex-1 min-w-0">
                                             {/* Status + Shipping + Date */}
                                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
-                                                    <span className="mr-1">{statusInfo.icon}</span>
-                                                    {statusInfo.label}
-                                                </Badge>
+                                                <StatusBadge status={order.status} />
                                                 {order.shipping_status && order.shipping_status !== 'pending' && (
-                                                    <Badge variant="outline" className={`text-xs ${getStatus(order.shipping_status === 'label_created' ? 'processing' : order.shipping_status === 'in_transit' ? 'shipped' : order.shipping_status).color}`}>
-                                                        <Truck className="h-3 w-3 mr-1" />
-                                                        {order.shipping_status === 'label_created' ? 'Label Created' : order.shipping_status === 'in_transit' ? 'In Transit' : order.shipping_status === 'delivered' ? 'Delivered' : order.shipping_status}
-                                                    </Badge>
+                                                    <StatusBadge status={shippingStatus} />
                                                 )}
                                                 {order.payment_status === 'paid' && (
-                                                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/20">
-                                                        Paid
-                                                    </Badge>
+                                                    <PaymentBadge status={order.payment_status} />
                                                 )}
                                                 <span className="text-xs text-muted-foreground">
                                                     {format(new Date(order.created_at), 'MMM d, yyyy')}
@@ -256,5 +233,6 @@ export default function ClientOrders() {
                 </motion.div>
             )}
         </div>
+        </ContentFade>
     );
 }

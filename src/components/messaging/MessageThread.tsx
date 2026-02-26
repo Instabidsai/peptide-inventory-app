@@ -145,7 +145,14 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
         sendReplyMutation.mutate();
     };
 
-    if (isLoading) return <div className="p-4 flex justify-center"><Loader2 className="animate-spin" /></div>;
+    if (isLoading) return (
+        <div className="p-4 flex justify-center">
+            <div className="relative h-8 w-8">
+                <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                <div className="absolute inset-1 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+            </div>
+        </div>
+    );
 
     return (
         <div className={cn("flex flex-col h-[500px] border border-border/60 rounded-xl bg-card", className)}>
@@ -177,7 +184,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                         return (
                             <div key={reply.id} className={cn("flex gap-3", isMe ? "flex-row-reverse" : "flex-row")}>
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback className={cn(isFromAdmin ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")}>
+                                    <AvatarFallback className={cn(isFromAdmin ? "bg-blue-500/15 text-blue-400" : "bg-emerald-500/15 text-emerald-400")}>
                                         {reply.sender?.full_name?.[0] || <User className="h-4 w-4" />}
                                     </AvatarFallback>
                                 </Avatar>
@@ -187,7 +194,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                                     isMe
                                         ? "bg-primary text-primary-foreground ml-12"
                                         : "bg-muted text-foreground mr-12",
-                                    reply.is_internal && "bg-yellow-50 border border-yellow-200 text-yellow-900"
+                                    reply.is_internal && "bg-yellow-500/10 border border-yellow-500/20 text-yellow-300"
                                 )}>
                                     {/* Header */}
                                     <div className="flex items-center gap-2 mb-1 justify-between text-xs opacity-70">
@@ -197,7 +204,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
 
                                     {/* Internal Badge */}
                                     {reply.is_internal && (
-                                        <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 mb-1">
+                                        <div className="flex items-center gap-1 text-xs font-bold text-yellow-400 mb-1">
                                             <ShieldAlert className="h-3 w-3" /> Internal Note
                                         </div>
                                     )}
@@ -244,8 +251,8 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
 
                     {/* Visual indicator that voice is attached */}
                     {voiceBlob && (
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 text-blue-700 text-xs rounded border border-blue-200">
-                            <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                        <div className="flex items-center gap-2 p-2 bg-blue-500/10 text-blue-400 text-xs rounded border border-blue-500/20">
+                            <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
                             Voice Message Ready to Send
                             <button type="button" onClick={() => setVoiceBlob(null)} className="ml-auto hover:underline">Remove</button>
                         </div>

@@ -195,7 +195,15 @@ export default function ClientResources() {
     };
 
     if (isLoading) {
-        return <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+        return (
+            <div className="h-full flex items-center justify-center">
+                <div className="relative h-10 w-10">
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+                    <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-transparent border-t-emerald-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+                </div>
+            </div>
+        );
     }
 
     return (

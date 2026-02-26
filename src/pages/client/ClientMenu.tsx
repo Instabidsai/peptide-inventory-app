@@ -114,11 +114,11 @@ export default function ClientMenu() {
                         <motion.div key={item.label} variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }} whileTap={{ scale: 0.97 }}>
                         <Button
                             variant="secondary"
-                            className="w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
+                            className="group w-full justify-between h-auto py-4 hover:border-primary/20 border border-transparent"
                             onClick={() => navigate(item.path)}
                         >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-background rounded-full relative">
+                                <div className="p-2 bg-primary/[0.08] rounded-xl relative">
                                     <item.icon className="h-4 w-4" />
                                     {count > 0 && (
                                         <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white leading-none px-0.5">{count > 9 ? '9+' : count}</span>
@@ -133,7 +133,7 @@ export default function ClientMenu() {
                                     <div className="text-xs text-muted-foreground">{item.description}</div>
                                 </div>
                             </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
                         </Button>
                         </motion.div>
                     );

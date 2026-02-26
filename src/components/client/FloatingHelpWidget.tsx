@@ -75,10 +75,10 @@ export function FloatingHelpWidget() {
                                 setModalOpen(true);
                                 setState('closed');
                             }}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500/[0.08] border border-blue-400/[0.15] hover:border-blue-400/[0.3] hover:bg-blue-500/[0.12] transition-all text-left group"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-accent-secondary/[0.08] border border-accent-secondary/[0.15] hover:border-accent-secondary/[0.3] hover:bg-accent-secondary/[0.12] transition-all text-left group"
                         >
-                            <div className="h-9 w-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0 group-hover:bg-blue-500/25 transition-colors">
-                                <MessageSquare className="h-4 w-4 text-blue-400" />
+                            <div className="h-9 w-9 rounded-xl bg-accent-secondary/15 flex items-center justify-center shrink-0 group-hover:bg-accent-secondary/25 transition-colors">
+                                <MessageSquare className="h-4 w-4 text-accent-secondary" />
                             </div>
                             <div>
                                 <p className="text-sm font-medium">Message the Office</p>

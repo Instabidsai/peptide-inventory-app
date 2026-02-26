@@ -51,7 +51,7 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                 "flex items-center gap-3 p-4 rounded-2xl border transition-colors duration-300",
                 dose.isTaken
                     ? "bg-emerald-500/[0.06] border-emerald-500/15"
-                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
+                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] hover:border-primary/15 hover:shadow-[0_0_20px_rgba(16,185,129,0.06)]"
             )}
         >
             {/* Color dot */}

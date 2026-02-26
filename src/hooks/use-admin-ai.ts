@@ -100,7 +100,7 @@ export function useAdminAI() {
       }, 500);
     },
     onError: (error) => {
-      logger.error('Admin AI chat error:', error);
+      logger.warn('Admin AI chat error:', error);
       const friendly = friendlyError(error);
       setOptimisticMessages(prev => [
         ...prev.filter(m => m.role === 'user'),

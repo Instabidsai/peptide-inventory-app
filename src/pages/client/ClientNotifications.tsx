@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContentFade } from "@/components/ui/content-fade";
 import { QueryError } from "@/components/ui/query-error";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -88,33 +89,37 @@ export default function ClientNotifications() {
                 )}
             </div>
 
-            {isLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Card key={i}>
-                            <CardContent className="p-4 flex gap-4 items-start">
-                                <Skeleton className="h-5 w-5 rounded-full mt-1 shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                    <Skeleton className="h-4 w-3/4" />
-                                    <Skeleton className="h-3 w-full" />
-                                    <Skeleton className="h-3 w-1/2" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : isError ? (
+            <ContentFade
+                isLoading={isLoading}
+                skeleton={
+                    <div className="space-y-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardContent className="p-4 flex gap-4 items-start">
+                                    <Skeleton className="h-5 w-5 rounded-full mt-1 shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-3/4" />
+                                        <Skeleton className="h-3 w-full" />
+                                        <Skeleton className="h-3 w-1/2" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                }
+            >
+            {isError ? (
                 <QueryError message="Failed to load notifications." onRetry={refetch} />
             ) : notifications?.length === 0 ? (
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
                         <motion.div
-                            className="p-4 rounded-full bg-secondary/50 mb-4"
+                            className="p-4 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 mb-4"
                             animate={{ y: [0, -6, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                            <Bell className="h-8 w-8 opacity-30" />
+                            <Bell className="h-8 w-8 text-muted-foreground/30" />
                         </motion.div>
                         <h3 className="text-lg font-semibold text-muted-foreground mb-1">No notifications</h3>
                         <p className="text-sm text-muted-foreground/70">You're all caught up!</p>
@@ -131,7 +136,7 @@ export default function ClientNotifications() {
                     {notifications?.map((notification) => (
                         <motion.div key={notification.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
                         <Card
-                            className={`transition-colors cursor-pointer hover:border-primary/20 ${!notification.is_read ? 'bg-secondary/30 border-primary/30' : ''}`}
+                            className={`transition-colors cursor-pointer hover:border-primary/20 ${!notification.is_read ? 'bg-primary/[0.04] border-primary/15' : ''}`}
                             onClick={() => !notification.is_read && markOneRead(notification.id)}
                         >
                             <CardContent className="p-4 flex gap-4 items-start">
@@ -184,6 +189,7 @@ export default function ClientNotifications() {
                     ))}
                 </motion.div>
             )}
+            </ContentFade>
         </div>
     );
 }

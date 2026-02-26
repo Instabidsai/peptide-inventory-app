@@ -242,26 +242,45 @@ export default function ClientRegimen() {
     };
 
     if (profileLoading) {
-        return <div className="p-8 text-center animate-pulse text-muted-foreground">Loading Profile...</div>;
+        return (
+            <div className="h-full flex items-center justify-center p-8">
+                <div className="relative h-10 w-10">
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                </div>
+            </div>
+        );
     }
 
     if (profileError) {
         return (
-            <div className="p-8 text-center text-red-400 border-2 border-dashed border-red-900/20 rounded-xl m-8">
-                <h2 className="text-xl font-semibold mb-2">Error Loading Profile</h2>
-                <p>{(profileErrorObj as any)?.message || "Unknown error occurred"}</p>
+            <div className="p-8 m-8">
+                <div className="mx-auto max-w-md rounded-xl border border-red-500/20 bg-red-500/[0.06] p-8 text-center">
+                    <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-red-500/10 ring-1 ring-red-500/20 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <h2 className="text-lg font-semibold text-red-400 mb-1">Error Loading Profile</h2>
+                    <p className="text-sm text-muted-foreground">{(profileErrorObj as any)?.message || "Unknown error occurred"}</p>
+                </div>
             </div>
         );
     }
 
     if (loading && contact) {
-        return <div className="p-8 text-center animate-pulse text-emerald-400">Loading Dashboard Data...</div>;
+        return (
+            <div className="h-full flex items-center justify-center p-8">
+                <div className="relative h-10 w-10">
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                </div>
+            </div>
+        );
     }
 
     if (!contact) {
         return (
-            <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl m-8 space-y-3">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="p-8 text-center text-muted-foreground border border-dashed border-border/60 rounded-xl m-8 space-y-3">
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
                 <h2 className="text-xl font-semibold">Getting Things Ready</h2>

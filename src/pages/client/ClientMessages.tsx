@@ -31,6 +31,7 @@ import { QueryError } from "@/components/ui/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContentFade } from "@/components/ui/content-fade";
 import { Badge } from "@/components/ui/badge";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 import { MessageThread } from "@/components/messaging/MessageThread";
@@ -119,34 +120,38 @@ export default function ClientMessages() {
                 </Button>
             </div>
 
-            {isLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <Card key={i}>
-                            <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-2">
-                                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                    <Skeleton className="h-4 w-40" />
-                                    <Skeleton className="h-3 w-24" />
-                                </div>
-                                <Skeleton className="h-6 w-20 rounded-full" />
-                            </CardHeader>
-                            <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4 mt-2" /></CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : isError ? (
+            <ContentFade
+                isLoading={isLoading}
+                skeleton={
+                    <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-2">
+                                    <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-40" />
+                                        <Skeleton className="h-3 w-24" />
+                                    </div>
+                                    <Skeleton className="h-6 w-20 rounded-full" />
+                                </CardHeader>
+                                <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4 mt-2" /></CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                }
+            >
+            {isError ? (
                 <QueryError message="Failed to load messages." onRetry={refetch} />
             ) : requests?.length === 0 ? (
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
                         <motion.div
-                            className="p-4 rounded-full bg-secondary/50 mb-4"
+                            className="p-4 rounded-2xl bg-primary/[0.06] ring-1 ring-primary/10 mb-4"
                             animate={{ y: [0, -6, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                            <MessageSquare className="h-8 w-8 opacity-30" />
+                            <MessageSquare className="h-8 w-8 text-muted-foreground/30" />
                         </motion.div>
                         <h3 className="text-lg font-semibold text-muted-foreground mb-1">No messages yet</h3>
                         <p className="text-sm text-muted-foreground/70 mb-4">You haven't sent any requests or messages.</p>
@@ -166,7 +171,7 @@ export default function ClientMessages() {
                         <Card className="overflow-hidden">
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="p-2 rounded-full bg-secondary/50">
+                                    <div className="p-2 rounded-xl bg-primary/[0.08]">
                                         {getTypeIcon(req.type)}
                                     </div>
                                     <div>
@@ -220,6 +225,7 @@ export default function ClientMessages() {
                     ))}
                 </motion.div>
             )}
+            </ContentFade>
 
             <ClientRequestModal
                 open={modalOpen}
