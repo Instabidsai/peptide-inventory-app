@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -15,7 +15,7 @@ import { FloatingHelpWidget } from '@/components/client/FloatingHelpWidget';
 export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { userRole, user, profile } = useAuth();
+    const { userRole, user, profile, signOut } = useAuth();
     const { brand_name: brandName } = useTenantConfig();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
@@ -95,6 +95,10 @@ export function ClientLayout() {
                                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 animate-ping opacity-75" />
                             </>
                         )}
+                    </Button>
+
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Sign out" onClick={async () => { try { await signOut(); } catch { /* handled by context */ } }}>
+                        <LogOut className="h-5 w-5" />
                     </Button>
 
                     {isAdmin && (
