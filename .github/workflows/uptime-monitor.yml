@@ -1,0 +1,58 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  uptime-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check app.thepeptideai.com
+        id: check_site
+        run: |
+          HTTP_STATUS=$(curl -sI -o /dev/null -w "%{http_code}" --max-time 30 "https://app.thepeptideai.com" 2>/dev/null || echo "000")
+          RESPONSE_TIME=$(curl -so /dev/null -w "%{time_total}" --max-time 30 "https://app.thepeptideai.com" 2>/dev/null || echo "timeout")
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "response_time=$RESPONSE_TIME" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          
+          echo "## Uptime Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | https://app.thepeptideai.com |" >> $GITHUB_STEP_SUMMARY
+          echo "| HTTP Status | $HTTP_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Response Time | ${RESPONSE_TIME}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Site DOWN! HTTP status: $HTTP_STATUS"
+            echo "site_down=true" >> $GITHUB_OUTPUT
+          else
+            echo "Site UP - HTTP $HTTP_STATUS in ${RESPONSE_TIME}s"
+            echo "site_down=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check Supabase connectivity
+        id: check_supabase
+        run: |
+          SB_STATUS=$(curl -sI -o /dev/null -w "%{http_code}" --max-time 15 "https://mckkegmkpqdicudnfhor.supabase.co/rest/v1/" -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja2tlZ21rcHFkaWN1ZG5maG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0OTIxMTcsImV4cCI6MjA4NDA2ODExN30.Amo1Aw6I_JnDGiSmfoIhkcBmemkKl73kcfuHAPdX_rU" 2>/dev/null || echo "000")
+          echo "supabase_status=$SB_STATUS" >> $GITHUB_OUTPUT
+          
+          echo "| Supabase API | $SB_STATUS |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$SB_STATUS" != "200" ]; then
+            echo "::warning::Supabase returned HTTP $SB_STATUS"
+          fi
+
+      - name: Fail workflow if site is down
+        if: steps.check_site.outputs.site_down == 'true'
+        run: |
+          echo "ALERT: app.thepeptideai.com is DOWN!"
+          echo "HTTP Status: ${{ steps.check_site.outputs.status }}"
+          echo "Timestamp: ${{ steps.check_site.outputs.timestamp }}"
+          echo ""
+          echo "GitHub will email the repository owner about this failed workflow run."
+          exit 1
