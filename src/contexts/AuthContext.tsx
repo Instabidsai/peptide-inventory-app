@@ -90,11 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const meta = currentUser.user_metadata || {};
           const { data: newProfile } = await supabase
             .from('profiles')
-            .insert({
+            .upsert({
               user_id: userId,
               email: currentUser.email,
               full_name: meta.full_name || meta.name || null,
-            })
+            }, { onConflict: 'user_id' })
             .select()
             .maybeSingle();
 
@@ -295,11 +295,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.user) {
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           user_id: data.user.id,
           email: email,
           full_name: fullName,
-        });
+        }, { onConflict: 'user_id' });
 
       if (profileError) {
         logger.error('Error creating profile:', profileError);

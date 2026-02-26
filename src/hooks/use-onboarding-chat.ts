@@ -13,6 +13,12 @@ export type OnboardingMessage = {
   created_at: string;
 };
 
+export type Attachment = {
+  url: string;
+  name: string;
+  type: string;
+};
+
 const AGENT_API_URL = import.meta.env.VITE_ONBOARDING_AGENT_URL || 'https://agent.thepeptideai.com';
 
 export function useOnboardingChat() {
@@ -44,18 +50,35 @@ export function useOnboardingChat() {
   ];
 
   const sendMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, attachments }: { message: string; attachments?: Attachment[] }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const res = await fetch(`${AGENT_API_URL}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ message }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+
+      const body: Record<string, unknown> = { message };
+      if (attachments?.length) body.attachments = attachments;
+
+      let res: Response;
+      try {
+        res = await fetch(`${AGENT_API_URL}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (err: unknown) {
+        if ((err as Error).name === 'AbortError') {
+          throw new Error('The AI took too long to respond. Please try again.');
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ detail: res.statusText }));
@@ -64,7 +87,13 @@ export function useOnboardingChat() {
 
       return await res.json() as { reply: string; message_id?: string };
     },
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry network errors (server unreachable) — only retry server errors
+      const msg = (error as Error)?.message?.toLowerCase() ?? '';
+      if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed'))
+        return false;
+      return failureCount < 1;
+    },
     retryDelay: 2000,
     onSuccess: () => {
       setOptimisticMessages([]);
@@ -85,21 +114,43 @@ export function useOnboardingChat() {
     },
   });
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback((text: string, attachments?: Attachment[]) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+
+    const displayContent = attachments?.length
+      ? `${trimmed}\n\n📎 ${attachments.map(a => a.name).join(', ')}`
+      : trimmed;
 
     setOptimisticMessages(prev => [
       ...prev,
       {
         id: `opt-${crypto.randomUUID()}`,
         role: 'user',
-        content: trimmed,
+        content: displayContent,
         created_at: new Date().toISOString(),
       },
     ]);
-    sendMutation.mutate(trimmed);
+    sendMutation.mutate({ message: trimmed, attachments });
   }, [sendMutation]);
+
+  const uploadFile = useCallback(async (file: File): Promise<Attachment> => {
+    if (!user?.id) throw new Error('Not authenticated');
+    const ext = file.name.split('.').pop() || 'bin';
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('onboarding-uploads')
+      .upload(path, file, { contentType: file.type });
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = await supabase.storage
+      .from('onboarding-uploads')
+      .createSignedUrl(path, 3600); // 1 hour expiry
+    if (!urlData?.signedUrl) throw new Error('Failed to generate signed URL');
+
+    return { url: urlData.signedUrl, name: file.name, type: file.type };
+  }, [user?.id]);
 
   const clearChat = useCallback(async () => {
     if (!profile?.org_id) return;
@@ -118,6 +169,7 @@ export function useOnboardingChat() {
   return {
     messages,
     sendMessage,
+    uploadFile,
     clearChat,
     isLoading: sendMutation.isPending,
     isLoadingHistory,

@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
-import { useOnboardingChat, type OnboardingMessage } from '@/hooks/use-onboarding-chat';
+import { useOnboardingChat, type OnboardingMessage, type Attachment } from '@/hooks/use-onboarding-chat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Bot, Send, Loader2, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Bot, Send, Loader2, User, ArrowRight, Sparkles, Paperclip, X } from 'lucide-react';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_TYPES = '.csv,.pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls';
 
 const QUICK_ACTIONS = [
   'Import my peptide catalog',
@@ -38,10 +42,14 @@ Where would you like to start? Or just tell me what you need!`,
 export default function SetupAssistant() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { messages, sendMessage, isLoading, isLoadingHistory } = useOnboardingChat();
+  const { toast } = useToast();
+  const { messages, sendMessage, uploadFile, isLoading, isLoadingHistory } = useOnboardingChat();
   const [input, setInput] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const displayMessages = messages.length > 0 ? messages : [WELCOME_MESSAGE];
 
@@ -51,11 +59,44 @@ export default function SetupAssistant() {
     }
   }, [messages]);
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const valid = files.filter(f => {
+      if (f.size > MAX_FILE_SIZE) {
+        toast({ variant: 'destructive', title: `${f.name} is too large`, description: 'Max file size is 10MB.' });
+        return false;
+      }
+      return true;
+    });
+    setPendingFiles(prev => [...prev, ...valid]);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage(input);
+    if ((!input.trim() && pendingFiles.length === 0) || isLoading || isUploading) return;
+
+    let attachments: Attachment[] | undefined;
+    if (pendingFiles.length > 0) {
+      setIsUploading(true);
+      try {
+        attachments = await Promise.all(pendingFiles.map(f => uploadFile(f)));
+      } catch (err) {
+        toast({ variant: 'destructive', title: 'Upload failed', description: (err as Error).message });
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+
+    const text = input.trim() || `Uploaded ${pendingFiles.map(f => f.name).join(', ')}`;
+    sendMessage(text, attachments);
     setInput('');
+    setPendingFiles([]);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -181,26 +222,60 @@ export default function SetupAssistant() {
         )}
 
         {/* Input */}
-        <form onSubmit={handleSend} className="p-4 border-t border-border/50 bg-card/80 backdrop-blur-sm flex gap-2 shrink-0">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Tell me what you'd like to set up..."
-            className="flex-1 h-11 rounded-xl text-sm"
-            disabled={isLoading}
-            autoFocus
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !input.trim()}
-            className="h-11 w-11 rounded-xl shrink-0"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            <span className="sr-only">Send</span>
-          </Button>
-        </form>
+        <div className="border-t border-border/50 bg-card/80 backdrop-blur-sm shrink-0">
+          {pendingFiles.length > 0 && (
+            <div className="px-4 pt-3 flex flex-wrap gap-1.5">
+              {pendingFiles.map((file, i) => (
+                <span key={i} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-1">
+                  <Paperclip className="h-3 w-3" />
+                  {file.name}
+                  <button type="button" onClick={() => removePendingFile(i)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form onSubmit={handleSend} className="p-4 flex gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={isLoading || isUploading}
+              className="h-11 w-11 rounded-xl shrink-0"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Paperclip className="h-4 w-4" />
+              <span className="sr-only">Attach file</span>
+            </Button>
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Tell me what you'd like to set up..."
+              className="flex-1 h-11 rounded-xl text-sm"
+              disabled={isLoading || isUploading}
+              autoFocus
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isLoading || isUploading || (!input.trim() && pendingFiles.length === 0)}
+              className="h-11 w-11 rounded-xl shrink-0"
+            >
+              {isLoading || isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <span className="sr-only">Send</span>
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -12,10 +12,10 @@ from pydantic import BaseModel
 
 try:
     from api.auth import verify_supabase_jwt, UserContext
-    from api.dispatch import dispatch_message, get_conversation_history
+    from api.dispatch import dispatch_message, get_conversation_history, RateLimitExceeded
 except ImportError:
     from auth import verify_supabase_jwt, UserContext
-    from dispatch import dispatch_message, get_conversation_history
+    from dispatch import dispatch_message, get_conversation_history, RateLimitExceeded
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("onboarding-agent")
@@ -49,8 +49,15 @@ app.add_middleware(
 )
 
 
+class Attachment(BaseModel):
+    url: str
+    name: str
+    type: str
+
+
 class ChatRequest(BaseModel):
     message: str
+    attachments: list[Attachment] | None = None
 
 
 class ChatResponse(BaseModel):
@@ -69,14 +76,18 @@ async def chat(req: ChatRequest, user: UserContext = Depends(verify_supabase_jwt
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     try:
+        attachments = [a.model_dump() for a in req.attachments] if req.attachments else None
         result = await dispatch_message(
             user_id=user.user_id,
             org_id=user.org_id,
             email=user.email,
             full_name=user.full_name,
             message=req.message.strip(),
+            attachments=attachments,
         )
         return ChatResponse(reply=result["reply"], message_id=result.get("message_id"))
+    except RateLimitExceeded:
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment and try again.")
     except Exception as e:
         logger.exception("Chat dispatch error")
         raise HTTPException(status_code=500, detail=str(e))

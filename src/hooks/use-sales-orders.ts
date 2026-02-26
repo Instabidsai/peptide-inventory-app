@@ -318,6 +318,7 @@ export function useCreateSalesOrder() {
                 .maybeSingle();
 
             if (orderError) throw orderError;
+            if (!order) throw new Error('Failed to create order');
 
             // 2. Create Items
             const itemsToInsert = input.items.map(item => ({
@@ -389,6 +390,7 @@ export function useCreateSalesOrder() {
                     .maybeSingle();
 
                 if (movError) throw movError;
+                if (!movement) throw new Error('Failed to create fulfillment movement');
 
                 // FIFO bottle allocation for each item
                 for (const item of input.items) {
@@ -641,6 +643,7 @@ export function useFulfillOrder() {
                 .maybeSingle();
 
             if (movError) throw movError;
+            if (!movement) throw new Error('Failed to create fulfillment movement');
             movementId = movement.id;
 
             // 3. Allocate Inventory (FIFO)
