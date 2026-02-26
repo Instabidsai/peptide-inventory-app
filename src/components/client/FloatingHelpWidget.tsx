@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, MessageSquare, X } from 'lucide-react';
 import { AIChatInterface } from '@/components/ai/AIChatInterface';
 import { ClientRequestModal } from '@/components/client/ClientRequestModal';
@@ -9,18 +9,28 @@ export function FloatingHelpWidget() {
     const [state, setState] = useState<WidgetState>('closed');
     const [modalOpen, setModalOpen] = useState(false);
 
+    const close = useCallback(() => setState('closed'), []);
+
+    // Escape key closes any open state
+    useEffect(() => {
+        if (state === 'closed') return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') close();
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [state, close]);
+
     return (
         <>
-            {/* FAB Button */}
+            {/* FAB Button — offset above bottom nav + safe area */}
             {state === 'closed' && (
                 <button
                     onClick={() => setState('menu')}
-                    className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105 transition-all flex items-center justify-center"
+                    className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
                     aria-label="Get help"
                 >
                     <Sparkles className="h-6 w-6" />
-                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white/90 animate-ping" />
-                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white/90" />
                 </button>
             )}
 
@@ -30,18 +40,18 @@ export function FloatingHelpWidget() {
                     {/* Backdrop */}
                     <div
                         className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[2px]"
-                        onClick={() => setState('closed')}
+                        onClick={close}
                     />
                     {/* Menu card */}
-                    <div className="fixed bottom-36 right-4 z-50 w-64 rounded-2xl bg-card border border-border/60 shadow-overlay p-3 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom,0px))] right-4 z-50 w-64 rounded-2xl bg-card border border-border/60 shadow-overlay p-3 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-200">
                         <div className="flex items-center justify-between px-1 pb-1">
                             <span className="text-sm font-semibold">How can we help?</span>
                             <button
-                                onClick={() => setState('closed')}
-                                className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                onClick={close}
+                                className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                                 aria-label="Close menu"
                             >
-                                <X className="h-3.5 w-3.5" />
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
 
@@ -82,10 +92,10 @@ export function FloatingHelpWidget() {
             {/* AI Chat Panel */}
             {state === 'ai-chat' && (
                 <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card/95 backdrop-blur-xl border border-border/60 shadow-overlay flex flex-col overflow-hidden">
-                    {/* Close button overlay */}
+                    {/* Close button overlay — 44px touch target */}
                     <button
-                        onClick={() => setState('closed')}
-                        className="absolute top-3 right-3 z-10 h-8 w-8 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        onClick={close}
+                        className="absolute top-2.5 right-2.5 z-10 h-9 w-9 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 active:scale-90 transition-all"
                         aria-label="Close AI chat"
                     >
                         <X className="h-4 w-4" />
