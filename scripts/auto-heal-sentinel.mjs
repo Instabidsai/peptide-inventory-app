@@ -93,7 +93,8 @@ function isNoise(record) {
   if (msg.includes("DialogTitle")) return true;
   if (d.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return true;
   if (/Invalid Refresh Token|Refresh Token Not Found|AuthSessionMissingError/i.test(msg)) return true;
-  if (d.source === "fetch_error" && /HTTP 400/.test(msg)) return true;
+  // Only suppress 400s on plain REST (validation), NOT on RPC calls (real bugs)
+  if (d.source === "fetch_error" && /HTTP 400/.test(msg) && !/rpc\//.test(msg)) return true;
   if (/ResizeObserver/.test(msg)) return true;
   if (d.source === "fetch_error" && /HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return true;
   if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return true;
@@ -165,7 +166,8 @@ async function pollBugReports() {
       if (msg.includes("self-test ping")) return false;
       if (/ResizeObserver/.test(msg)) return false;
       if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
-      if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg)) return false;
+      // Only suppress 400s on plain REST (validation), NOT on RPC calls (real bugs)
+      if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg) && !/rpc\//.test(msg)) return false;
       if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return false;
       if (/\[hmr\] Failed to reload/.test(msg)) return false;
       return true;

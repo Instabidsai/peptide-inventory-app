@@ -340,9 +340,10 @@ async function checkBugReports() {
     if (r.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return false;
     // Auth token refresh failures — normal session expiry, not a bug
     if (/Invalid Refresh Token|Refresh Token Not Found|AuthSessionMissingError/i.test(msg)) return false;
-    // HTTP 400 on PostgREST — usually a query param issue that self-resolves on page refresh
-    if (r.source === "fetch_error" && /HTTP 400/.test(msg)) return false;
-    if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg)) return false; // also catch fallback-path entries
+    // HTTP 400 on plain REST — usually a query param issue that self-resolves on page refresh
+    // RPC 400s are NOT noise — they indicate broken SQL functions (e.g. Postgres 42703)
+    if (r.source === "fetch_error" && /HTTP 400/.test(msg) && !/rpc\//.test(msg)) return false;
+    if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg) && !/rpc\//.test(msg)) return false;
     // HTTP 401 on edge functions — transient JWT timing, handled by retry logic
     if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
     // Auto-protocol generation is non-blocking — not a user-facing error
