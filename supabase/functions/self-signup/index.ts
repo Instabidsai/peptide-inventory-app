@@ -183,71 +183,11 @@ Deno.serve(withErrorReporting("self-signup", async (req) => {
             }
         }
 
-        // ── Step 8: Assign Wholesale Tier + Supplier ──
-        let wholesaleTierAssigned = false;
-        const supplierOrgId = Deno.env.get('SUPPLIER_ORG_ID');
-        if (supplierOrgId) {
-            const { data: standardTier } = await supabase
-                .from('wholesale_pricing_tiers')
-                .select('id')
-                .eq('name', 'Standard')
-                .eq('active', true)
-                .single();
-
-            if (standardTier) {
-                const { error: tierUpdateError } = await supabase
-                    .from('tenant_config')
-                    .update({
-                        wholesale_tier_id: standardTier.id,
-                        supplier_org_id: supplierOrgId,
-                    })
-                    .eq('org_id', org.id);
-
-                if (tierUpdateError) console.warn(`Wholesale tier warning: ${tierUpdateError.message}`);
-                else wholesaleTierAssigned = true;
-                console.log(`[self-signup] Assigned wholesale tier: Standard, supplier: ${supplierOrgId}`);
-            }
-        }
-
-        // ── Step 9: Seed Supplier Catalog ──
-        let catalogSeeded = false;
-        if (supplierOrgId) {
-            const { data: supplierPeptides, error: catError } = await supabase
-                .from('peptides')
-                .select('name, description, sku, retail_price, base_cost, active, default_dose_amount, default_dose_unit, default_frequency, default_timing, default_concentration_mg_ml, reconstitution_notes')
-                .eq('org_id', supplierOrgId)
-                .eq('active', true);
-
-            if (catError) {
-                console.warn(`[self-signup] Catalog read warning: ${catError.message}`);
-            } else if (supplierPeptides && supplierPeptides.length > 0) {
-                const catalogRows = supplierPeptides.map(p => ({
-                    org_id: org.id,
-                    name: p.name,
-                    description: p.description,
-                    sku: p.sku,
-                    retail_price: p.retail_price,
-                    base_cost: p.base_cost,
-                    active: true,
-                    default_dose_amount: p.default_dose_amount,
-                    default_dose_unit: p.default_dose_unit,
-                    default_frequency: p.default_frequency,
-                    default_timing: p.default_timing,
-                    default_concentration_mg_ml: p.default_concentration_mg_ml,
-                    reconstitution_notes: p.reconstitution_notes,
-                }));
-
-                const { error: seedError } = await supabase
-                    .from('peptides')
-                    .insert(catalogRows);
-
-                if (seedError) console.warn(`[self-signup] Catalog seed warning: ${seedError.message}`);
-                else {
-                    catalogSeeded = true;
-                    console.log(`[self-signup] Seeded ${catalogRows.length} products from supplier catalog`);
-                }
-            }
-        }
+        // NOTE: Wholesale tier assignment and supplier catalog seeding are NOT
+        // done at signup. Merchants start with an empty product catalog.
+        // The Setup Assistant will help them import THEIR OWN products
+        // (via website scrape or conversation). Supply chain opt-in is a
+        // separate, deliberate decision made later.
 
         console.log(`[self-signup] Org ${org.id} created for ${user.email}`);
 
@@ -255,8 +195,6 @@ Deno.serve(withErrorReporting("self-signup", async (req) => {
             success: true,
             org_id: org.id,
             subscription_created: subscriptionCreated,
-            wholesale_tier_assigned: wholesaleTierAssigned,
-            catalog_seeded: catalogSeeded,
         });
 
     } catch (err: any) {

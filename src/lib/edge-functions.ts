@@ -23,6 +23,19 @@ function jwtExp(token: string): number {
   }
 }
 
+/** Extract the real error message from a FunctionsHttpError context */
+function extractErrorDetail(error: unknown): string | undefined {
+  const context = (error as any)?.context;
+  if (context == null) return undefined;
+  if (typeof context === "string") return context;
+  if (typeof context === "object") {
+    const detail = context.error || context.message || context.msg;
+    if (detail) return String(detail);
+    try { return JSON.stringify(context); } catch { /* ignore */ }
+  }
+  return undefined;
+}
+
 /**
  * Invoke a Supabase Edge Function with guaranteed fresh auth token.
  * Proactively refreshes the session if the token expires within 90 seconds,
@@ -54,32 +67,26 @@ export async function invokeEdgeFunction<T = unknown>(
   // 3. Call the edge function
   const { data, error } = await supabase.functions.invoke(functionName, { body });
 
-  // 4. Safety net: retry once on auth failure (shouldn't happen after proactive refresh)
-  if (error) {
-    const msg = error.message || "";
-    const isAuthError =
-      msg.includes("401") ||
-      msg.includes("Unauthorized") ||
-      msg.includes("JWT");
+  if (!error) return { data: data as T, error: null };
 
-    if (isAuthError) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshed.session) {
-        const retry = await supabase.functions.invoke(functionName, { body });
-        return { data: retry.data as T, error: retry.error };
-      }
-      return { data: null, error: { message: "Session expired — please sign in again" } };
-    }
+  // 4. Extract real error from context (supabase-js wraps non-2xx with a generic message)
+  const detail = extractErrorDetail(error);
+  const effectiveMsg = detail || error.message || "Unknown edge function error";
 
-    // Extract actual error from edge function response if available
-    const context = (error as any).context;
-    if (context) {
-      const detail = typeof context === "string" ? context : context?.error || context?.message;
-      if (detail) {
-        return { data: null, error: { message: String(detail) } };
+  // 5. Retry once on auth failure (check extracted message, not just generic wrapper)
+  const isAuthError = /\b(401|unauthorized|invalid token|expired|jwt)\b/i.test(effectiveMsg);
+  if (isAuthError) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshed.session) {
+      const retry = await supabase.functions.invoke(functionName, { body });
+      if (retry.error) {
+        const retryDetail = extractErrorDetail(retry.error);
+        return { data: null, error: { message: retryDetail || retry.error.message } };
       }
+      return { data: retry.data as T, error: null };
     }
+    return { data: null, error: { message: "Session expired — please sign in again" } };
   }
 
-  return { data: data as T, error };
+  return { data: null, error: { message: effectiveMsg } };
 }

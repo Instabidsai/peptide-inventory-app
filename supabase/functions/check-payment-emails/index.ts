@@ -2,14 +2,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.86.1";
 
-import { authenticateCron, AuthError } from "../_shared/auth.ts";
+import { authenticateCron, authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
- * check-payment-emails — Cron-triggered payment email scanner.
- * Auth: CRON_SECRET header.
+ * check-payment-emails — Payment email scanner.
+ * Auth: CRON_SECRET (automated) or JWT with admin/staff role ("Scan Now" button).
  * Scans Gmail via Composio for payment emails (Venmo, CashApp, Zelle, Psifi),
  * matches them to contacts, and auto-posts or queues for review.
  */
@@ -352,22 +352,38 @@ Deno.serve(withErrorReporting("check-payment-emails", async (req) => {
     if (preflight) return preflight;
 
     try {
-        // Auth: CRON_SECRET only
-        const supabase = authenticateCron(req);
+        // Auth: try CRON_SECRET first, fall back to JWT (for "Scan Now" button)
+        let supabase: ReturnType<typeof createClient>;
+        let filterOrgId: string | null = null;
 
-        // Rate limit: 1 req/min (cron)
-        const rl = checkRateLimit('cron:check-payment-emails', { maxRequests: 1, windowMs: 60_000 });
+        try {
+            supabase = authenticateCron(req);
+        } catch {
+            const auth = await authenticateRequest(req, { requireRole: ['admin', 'super_admin', 'staff'] });
+            supabase = auth.supabase;
+            filterOrgId = auth.orgId;
+        }
+
+        // Rate limit: 1 req/min per caller
+        const rlKey = filterOrgId ? `scan:${filterOrgId}` : 'cron:check-payment-emails';
+        const rl = checkRateLimit(rlKey, { maxRequests: 1, windowMs: 60_000 });
         if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
 
         const composioApiKey = Deno.env.get('COMPOSIO_API_KEY');
         if (!composioApiKey) return jsonResponse({ error: 'COMPOSIO_API_KEY not configured' }, 500, corsHeaders);
 
-        // Get all orgs with payment_scanner enabled
-        const { data: modules, error: modErr } = await supabase
+        // Get orgs with payment_scanner enabled (scoped to caller's org for JWT auth)
+        let modQuery = supabase
             .from('automation_modules')
             .select('*')
             .eq('module_type', 'payment_scanner')
             .eq('enabled', true);
+
+        if (filterOrgId) {
+            modQuery = modQuery.eq('org_id', filterOrgId);
+        }
+
+        const { data: modules, error: modErr } = await modQuery;
 
         if (modErr) return jsonResponse({ error: modErr.message }, 500, corsHeaders);
         if (!modules?.length) return jsonResponse({ message: 'No orgs have payment scanner enabled', processed: 0 }, 200, corsHeaders);
