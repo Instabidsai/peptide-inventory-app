@@ -62,7 +62,7 @@ export function Pricing() {
             <div className="text-center mb-6 mt-2">
               <h3 className="text-xl font-semibold text-foreground">ThePeptideAI</h3>
               <div className="mt-4 flex items-baseline justify-center gap-1">
-                <span className="text-5xl font-bold text-foreground">$500</span>
+                <span className="text-5xl font-bold text-foreground">$799</span>
                 <span className="text-muted-foreground text-lg">/mo</span>
               </div>
               <p className="text-xs text-emerald-400 font-medium mt-2 flex items-center justify-center gap-1">

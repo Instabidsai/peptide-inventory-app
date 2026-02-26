@@ -159,7 +159,7 @@ export function Hero() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3" />
-              Built for peptide businesses. $500/mo — 7-day free trial.
+              Built for peptide businesses. $799/mo — 7-day free trial.
             </p>
           </motion.div>
 
