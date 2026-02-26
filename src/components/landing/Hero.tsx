@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { LiveBuildPreview } from "@/components/crm/LiveBuildPreview";
 import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
 
 export function Hero() {
+  const navigate = useNavigate();
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
@@ -135,11 +137,14 @@ export function Hero() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
                 size="lg"
-                onClick={() => scrollTo("final-cta")}
+                onClick={() => {
+                  sessionStorage.setItem("selected_plan", "professional");
+                  navigate("/auth");
+                }}
                 className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
                 style={shimmerStyle}
               >
-                Book a Demo
+                Start Free Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
@@ -154,7 +159,7 @@ export function Hero() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3" />
-              Built for peptide businesses. 7-day free trial.
+              Built for peptide businesses. $500/mo — 7-day free trial.
             </p>
           </motion.div>
 

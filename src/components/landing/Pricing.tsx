@@ -1,93 +1,31 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield } from "lucide-react";
-import { PricingCard } from "@/components/crm/PricingCard";
-import { useSubscriptionPlans } from "@/hooks/use-subscription";
-import { fadeInUp, scrollTo } from "./constants";
+import { useNavigate } from "react-router-dom";
+import { Check, ArrowRight, Shield, Sparkles, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { fadeInUp } from "./constants";
+
+const FEATURES = [
+  "AI-powered business management",
+  "AI Feature Builder — new modules on demand",
+  "Full inventory, lot & bottle tracking",
+  "Unlimited orders & fulfillment",
+  "Branded client portal",
+  "Partner network & commissions",
+  "White-label branding",
+  "Payment processing (Stripe + manual)",
+  "Supplier catalog access",
+  "Automations & workflows",
+  "Unlimited users",
+  "Priority support",
+];
 
 export function Pricing() {
-  const [period, setPeriod] = useState<"monthly" | "yearly">("yearly");
-  const { data: plans } = useSubscriptionPlans();
+  const navigate = useNavigate();
 
-  // Show only paid plans on landing page (free tier handled as trial messaging)
-  const visiblePlans = (plans ?? [])
-    .filter((p) => p.active && p.name !== "free")
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  // Fallback plans if DB isn't seeded — matches DB prices
-  const fallbackPlans = [
-    {
-      id: "1",
-      name: "starter",
-      display_name: "Starter",
-      price_monthly: 34900,
-      price_yearly: 349900,
-      max_users: 5,
-      max_peptides: 50,
-      max_orders_per_month: 500,
-      features: [
-        "PsiFi payment processing included",
-        "Supplier catalog access",
-        "AI Chat Assistant",
-        "Branded client portal",
-        "Inventory & order tracking",
-        "5 user accounts",
-        "Email support",
-      ],
-      stripe_monthly_price_id: null,
-      stripe_yearly_price_id: null,
-      sort_order: 1,
-      active: true,
-    },
-    {
-      id: "2",
-      name: "professional",
-      display_name: "Professional",
-      price_monthly: 49900,
-      price_yearly: 499900,
-      max_users: 25,
-      max_peptides: 200,
-      max_orders_per_month: 2000,
-      features: [
-        "Everything in Starter",
-        "AI Feature Builder",
-        "Advanced fulfillment & shipping",
-        "Partner network & commissions",
-        "White-label branding",
-        "Automations & workflows",
-        "Priority support",
-      ],
-      stripe_monthly_price_id: null,
-      stripe_yearly_price_id: null,
-      sort_order: 2,
-      active: true,
-    },
-    {
-      id: "3",
-      name: "enterprise",
-      display_name: "Enterprise",
-      price_monthly: 129900,
-      price_yearly: 1299000,
-      max_users: 999999,
-      max_peptides: 999999,
-      max_orders_per_month: 999999,
-      features: [
-        "Everything in Professional",
-        "Full automation suite",
-        "Hands-free operations",
-        "Multi-location support",
-        "Custom integrations & API",
-        "Dedicated account manager",
-        "Custom domain & SLA",
-      ],
-      stripe_monthly_price_id: null,
-      stripe_yearly_price_id: null,
-      sort_order: 3,
-      active: true,
-    },
-  ];
-
-  const displayPlans = visiblePlans.length > 0 ? visiblePlans : fallbackPlans;
+  const handleGetStarted = () => {
+    sessionStorage.setItem("selected_plan", "professional");
+    navigate("/auth");
+  };
 
   return (
     <section id="pricing" className="py-16 sm:py-24">
@@ -97,75 +35,86 @@ export function Pricing() {
             Pricing
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Simple, Transparent Pricing
+            One Plan. Everything Included.
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            Software + supplier catalog + fulfillment + payment processing — all in one price. No hidden fees, no setup costs. Every plan includes AI and a 7-day free trial.
-          </p>
-
-          {/* Premium toggle */}
-          <div className="mt-6 inline-flex items-center gap-1 bg-card/80 rounded-full p-1 border border-border/40 shadow-sm">
-            <button
-              onClick={() => setPeriod("monthly")}
-              className={`text-sm px-5 py-2 rounded-full transition-all font-medium ${
-                period === "monthly"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setPeriod("yearly")}
-              className={`text-sm px-5 py-2 rounded-full transition-all font-medium relative ${
-                period === "yearly"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Yearly
-              <span className="absolute -top-2.5 -right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white">
-                -17%
-              </span>
-            </button>
-          </div>
-          {/* Guarantee */}
-          <p className="mt-4 text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            30-day money-back guarantee. Cancel anytime.
+            Software + AI + supplier catalog + fulfillment + payment processing — all in one price.
+            No tiers to compare, no features locked behind upgrades.
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {displayPlans.map((plan, i) => (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ type: "spring", stiffness: 100, damping: 20, delay: i * 0.12 }}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 100, damping: 20 }}
+          className="max-w-lg mx-auto"
+        >
+          <div className="relative rounded-xl border border-primary bg-primary/5 shadow-card-hover p-8 flex flex-col">
+            {/* Badge */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className="bg-gradient-to-r from-primary to-emerald-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full flex items-center gap-1.5">
+                <Zap className="w-3 h-3" />
+                All-In-One
+              </span>
+            </div>
+
+            <div className="text-center mb-6 mt-2">
+              <h3 className="text-xl font-semibold text-foreground">ThePeptideAI</h3>
+              <div className="mt-4 flex items-baseline justify-center gap-1">
+                <span className="text-5xl font-bold text-foreground">$500</span>
+                <span className="text-muted-foreground text-lg">/mo</span>
+              </div>
+              <p className="text-xs text-emerald-400 font-medium mt-2 flex items-center justify-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                7-day free trial included
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                API credits billed separately based on usage
+              </p>
+            </div>
+
+            {/* Limits */}
+            <div className="grid grid-cols-3 gap-2 mb-6 p-3 rounded-lg bg-background/50 border border-border/30">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Unlimited</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Users</p>
+              </div>
+              <div className="text-center border-x border-border/30">
+                <p className="text-sm font-semibold text-foreground">Unlimited</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Products</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Unlimited</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders</p>
+              </div>
+            </div>
+
+            {/* Features */}
+            <ul className="space-y-2.5 mb-8">
+              {FEATURES.map((feature, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            <Button
+              size="lg"
+              onClick={handleGetStarted}
+              className="w-full font-semibold bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover text-base py-3 h-auto"
             >
-              <PricingCard
-                name={plan.name}
-                displayName={plan.display_name}
-                priceMonthly={plan.price_monthly}
-                priceYearly={plan.price_yearly}
-                billingPeriod={period}
-                features={plan.features}
-                maxUsers={plan.max_users}
-                maxPeptides={plan.max_peptides}
-                maxOrdersPerMonth={plan.max_orders_per_month}
-                popular={plan.name === "professional"}
-                ctaLabel={
-                  plan.name === "enterprise"
-                    ? "Contact Sales"
-                    : "Start 7-Day Free Trial"
-                }
-                onSelect={() => scrollTo("final-cta")}
-              />
-            </motion.div>
-          ))}
-        </div>
+              Start 7-Day Free Trial
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+
+            <p className="mt-4 text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+              30-day money-back guarantee. Cancel anytime.
+            </p>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

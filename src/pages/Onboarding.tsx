@@ -12,6 +12,8 @@ import {
     LogOut,
     FlaskConical,
     Building2,
+    ArrowRight,
+    Sparkles,
 } from 'lucide-react';
 import { linkReferral, consumeSessionReferral, storeSessionReferral } from '@/lib/link-referral';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
@@ -193,8 +195,84 @@ export default function Onboarding() {
     );
   }
 
-  // ── No referral: self-service signup is disabled ──
-  // Show a "contact us" message instead of the org creation form
+  // ── Self-service signup (user selected a plan from landing page) ──
+  if (selectedPlan) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+        </div>
+
+        <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground">
+              Set Up Your Business
+            </CardTitle>
+            <CardDescription className="text-muted-foreground mt-2">
+              {user?.email && (
+                <span className="block text-xs mb-2">Signed in as {user.email}</span>
+              )}
+              Enter your company name to get started. Our AI Setup Assistant will help you configure everything.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div>
+              <label htmlFor="company-name" className="text-sm font-medium text-foreground block mb-1.5">
+                Company Name
+              </label>
+              <input
+                id="company-name"
+                type="text"
+                placeholder="e.g. Pure Chain Aminos"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateOrg()}
+                className="w-full rounded-lg border border-border/60 bg-background/80 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-shadow"
+                autoFocus
+                disabled={isCreatingOrg}
+              />
+            </div>
+
+            <Button
+              className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn"
+              onClick={handleCreateOrg}
+              disabled={!companyName.trim() || isCreatingOrg}
+            >
+              {isCreatingOrg ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating your account...
+                </>
+              ) : (
+                <>
+                  Launch My Business
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              7-day free trial. No credit card required.
+            </p>
+
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-3.5 w-3.5" />
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── No plan selected and no referral: invitation only ──
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

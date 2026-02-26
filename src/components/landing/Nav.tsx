@@ -96,15 +96,11 @@ export function Nav() {
               Log In
             </Button>
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => scrollTo("final-cta")}
-            >
-              Book Demo
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => scrollTo("final-cta")}
+              onClick={() => {
+                sessionStorage.setItem("selected_plan", "professional");
+                navigate("/auth");
+              }}
               className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
             >
               Get Started
@@ -142,18 +138,10 @@ export function Nav() {
                     Log In
                   </Button>
                   <Button
-                    variant="outline"
                     onClick={() => {
                       setMobileOpen(false);
-                      scrollTo("final-cta");
-                    }}
-                  >
-                    Book Demo
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setMobileOpen(false);
-                      scrollTo("final-cta");
+                      sessionStorage.setItem("selected_plan", "professional");
+                      navigate("/auth");
                     }}
                   >
                     Get Started

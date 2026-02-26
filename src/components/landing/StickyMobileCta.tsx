@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { scrollTo } from "./constants";
 
 export function StickyMobileCta() {
   const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > 600);
@@ -25,9 +26,12 @@ export function StickyMobileCta() {
         >
           <Button
             className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
-            onClick={() => scrollTo("final-cta")}
+            onClick={() => {
+              sessionStorage.setItem("selected_plan", "professional");
+              navigate("/auth");
+            }}
           >
-            Book a Demo
+            Start Free Trial
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </motion.div>
