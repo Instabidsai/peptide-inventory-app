@@ -302,6 +302,10 @@ export default function Auth() {
   const signupParam = searchParams.get('signup');
   const isMerchantSignup = signupParam === 'merchant' || sessionStorage.getItem('merchant_signup') === 'true';
 
+  // Landing page self-service signup — sessionStorage has selected_plan from CTA buttons
+  const selectedPlan = sessionStorage.getItem('selected_plan');
+  const isSelfSignup = !!selectedPlan || isMerchantSignup;
+
   // Persist merchant signup flag across OAuth redirects
   useEffect(() => {
     if (signupParam === 'merchant') {
@@ -309,15 +313,15 @@ export default function Auth() {
     }
   }, [signupParam]);
 
-  // Determine if this visitor has a valid referral OR is a merchant self-signup
-  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isMerchantSignup);
+  // Determine if this visitor has a valid referral OR is self-signing up
+  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isSelfSignup);
 
-  // Auto-switch to signup when plan param present — BUT only if they have a referral
+  // Auto-switch to signup when plan param present OR landing page CTA used
   useEffect(() => {
-    if (planParam && mode === 'login' && hasReferral) {
+    if ((planParam || isSelfSignup) && mode === 'login' && hasReferral) {
       setMode('signup');
     }
-  }, [planParam, hasReferral]);
+  }, [planParam, isSelfSignup, hasReferral]);
 
   // Show OAuth error if redirected back with one (see main.tsx interceptor)
   useEffect(() => {
@@ -387,15 +391,14 @@ export default function Auth() {
 
     // No referral — redirect normally
     if (profile?.org_id) {
+      // Already has an org — clear any stale signup state and go to dashboard
+      sessionStorage.removeItem('selected_plan');
+      sessionStorage.removeItem('merchant_signup');
       navigate(from, { replace: true });
     } else {
       if (refParam) storeSessionReferral(refParam, roleParam);
-      // Merchant self-signup → go to merchant onboarding wizard
-      if (isMerchantSignup) {
-        navigate('/merchant-onboarding', { replace: true });
-      } else {
-        navigate('/onboarding', { replace: true });
-      }
+      // Self-signup or merchant signup → go to onboarding (picks up selected_plan)
+      navigate('/onboarding', { replace: true });
     }
   }, [loading, user, profile, navigate, from, refParam]);
 
@@ -483,8 +486,8 @@ export default function Auth() {
     }
 
     setIsLoading(false);
-    // Merchant signup — tell them to confirm email then they'll land in the wizard
-    if (isMerchantSignup) {
+    // Self-signup or merchant signup — tell them to confirm email
+    if (isSelfSignup) {
       toast({
         title: 'Account created!',
         description: 'Check your email to confirm, then log in to set up your business.',
@@ -589,17 +592,17 @@ export default function Auth() {
               transition={{ delay: 0.25 }}
             >
               <CardTitle className="text-2xl font-bold text-foreground">
-                {isMerchantSignup
+                {isSelfSignup
                   ? mode === 'login' ? 'Welcome Back' : 'Start Your Business'
                   : refParam
                     ? isPartnerInvite ? 'Join as a Partner' : "You've Been Invited"
                     : mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-1">
-                {isMerchantSignup
+                {isSelfSignup
                   ? mode === 'login'
                     ? 'Sign in to continue setting up your business'
-                    : 'Launch your peptide business — supply chain included, no inventory needed to start'
+                    : 'Create your account to get started — 7-day free trial, no credit card required'
                   : refParam
                     ? isPartnerInvite
                       ? 'Create your partner account to start earning'
