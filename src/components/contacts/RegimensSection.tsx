@@ -14,6 +14,7 @@ interface RegimensSectionProps {
     peptides: Peptide[] | undefined;
     movements: Movement[] | undefined;
     onOpenAssignInventory: (peptideId?: string, protocolItemId?: string) => void;
+    onEditProtocol: (protocolId: string) => void;
     deleteProtocol: { mutate: (id: string) => void };
     logProtocolUsage: { mutate: (args: { itemId: string }) => void };
     addProtocolSupplement: { mutate: (args: { protocol_id: string; supplement_id: string; dosage: string; frequency: string; notes: string }) => Promise<void> };
@@ -28,6 +29,7 @@ export function RegimensSection({
     peptides,
     movements,
     onOpenAssignInventory,
+    onEditProtocol,
     deleteProtocol,
     logProtocolUsage,
     addProtocolSupplement,
@@ -72,6 +74,7 @@ export function RegimensSection({
                                     key={protocol.id}
                                     protocol={protocol}
                                     onDelete={deleteProtocol.mutate}
+                                    onEdit={() => onEditProtocol(protocol.id)}
                                     onLog={logProtocolUsage.mutate}
                                     onAddSupplement={addProtocolSupplement.mutate}
                                     onDeleteSupplement={deleteProtocolSupplement.mutate}

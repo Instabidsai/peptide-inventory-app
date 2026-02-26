@@ -27,6 +27,7 @@ export function useProtocolBuilder() {
     const [initialized, setInitialized] = useState(false);
     const [includeSupplies, setIncludeSupplies] = useState(true);
     const [protocolName, setProtocolName] = useState('');
+    const [loadedProtocolId, setLoadedProtocolId] = useState<string | null>(null);
 
     // Contacts list (sales_rep sees only their assigned clients)
     const isSalesRep = profile?.role === 'sales_rep';
@@ -177,6 +178,7 @@ export function useProtocolBuilder() {
 
     const clearAll = useCallback(() => {
         setItems([]);
+        setLoadedProtocolId(null);
     }, []);
 
     const selectTier = useCallback((idx: number, tierId: string) => {
@@ -319,6 +321,7 @@ export function useProtocolBuilder() {
             return;
         }
 
+        setLoadedProtocolId(protocolId);
         if (protocol?.contact_id) {
             setSelectedContactId(protocol.contact_id);
         }
@@ -353,12 +356,15 @@ export function useProtocolBuilder() {
         const orderParam = searchParams.get('order');
         const ordersParam = searchParams.get('orders');
         const templateParam = searchParams.get('template');
+        const protocolParam = searchParams.get('protocol');
 
         if (contactParam) {
             setSelectedContactId(contactParam);
         }
 
-        if (ordersParam) {
+        if (protocolParam) {
+            loadSavedProtocol(protocolParam);
+        } else if (ordersParam) {
             const ids = ordersParam.split(',').filter(Boolean);
             if (ids.length > 0) loadFromOrders(ids);
         } else if (orderParam) {
@@ -366,7 +372,7 @@ export function useProtocolBuilder() {
         } else if (templateParam) {
             loadTemplate(templateParam);
         }
-    }, [initialized, peptides, searchParams, loadFromOrder, loadFromOrders, loadTemplate]);
+    }, [initialized, peptides, searchParams, loadFromOrder, loadFromOrders, loadTemplate, loadSavedProtocol]);
 
     // ── Auto-generate Protocol Name ─────────────────────────────
     useEffect(() => {
@@ -449,6 +455,7 @@ export function useProtocolBuilder() {
         includeSupplies,
         protocolName,
         savedProtocols,
+        loadedProtocolId,
 
         // Actions
         setSelectedContactId,

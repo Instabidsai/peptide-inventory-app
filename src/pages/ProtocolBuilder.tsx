@@ -35,7 +35,7 @@ import {
 
 export default function ProtocolBuilder() {
     const builder = useProtocolBuilder();
-    const { createProtocol } = useProtocols(builder.selectedContactId || undefined);
+    const { createProtocol, updateProtocol, deleteProtocol: deleteProtocolMutation } = useProtocols(builder.selectedContactId || undefined);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
@@ -49,22 +49,45 @@ export default function ProtocolBuilder() {
 
     const handleSaveProtocol = async () => {
         if (builder.items.length === 0) return;
+        const itemsPayload = builder.items.map(item => ({
+            peptide_id: item.peptideId,
+            dosage_amount: item.doseAmount,
+            dosage_unit: item.doseUnit,
+            frequency: item.frequency,
+            timing: item.timing,
+            notes: item.notes || undefined,
+            duration_days: 56, // 8 weeks default
+        }));
+
         try {
-            await createProtocol.mutateAsync({
-                name: builder.protocolName,
-                description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
-                contact_id: builder.selectedContactId || undefined,
-                items: builder.items.map(item => ({
-                    peptide_id: item.peptideId,
-                    dosage_amount: item.doseAmount,
-                    dosage_unit: item.doseUnit,
-                    frequency: item.frequency,
-                    timing: item.timing,
-                    notes: item.notes || undefined,
-                    duration_days: 56, // 8 weeks default
-                })),
-            });
+            if (builder.loadedProtocolId) {
+                // Update existing protocol: update name, then delete old items + re-insert
+                await updateProtocol.mutateAsync({ id: builder.loadedProtocolId, name: builder.protocolName, description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder` });
+
+                // Replace items: delete old, insert new
+                const { data: oldItems } = await supabase.from('protocol_items').select('id').eq('protocol_id', builder.loadedProtocolId);
+                if (oldItems && oldItems.length > 0) {
+                    await supabase.from('protocol_logs').delete().in('protocol_item_id', oldItems.map(i => i.id));
+                    await supabase.from('protocol_items').delete().eq('protocol_id', builder.loadedProtocolId);
+                }
+                await supabase.from('protocol_items').insert(
+                    itemsPayload.map(({ timing: _t, notes: _n, ...item }) => ({
+                        ...item,
+                        protocol_id: builder.loadedProtocolId!,
+                        duration_weeks: item.duration_days ? Math.ceil(item.duration_days / 7) : 1,
+                    }))
+                );
+                toast.success('Protocol updated');
+            } else {
+                await createProtocol.mutateAsync({
+                    name: builder.protocolName,
+                    description: `${builder.items.length} peptide${builder.items.length > 1 ? 's' : ''} — built with Protocol Builder`,
+                    contact_id: builder.selectedContactId || undefined,
+                    items: itemsPayload,
+                });
+            }
             queryClient.invalidateQueries({ queryKey: ['saved-protocols-list'] });
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
         } catch {
@@ -190,9 +213,14 @@ export default function ProtocolBuilder() {
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Wand2 className="h-7 w-7 text-primary" />
                         Protocol Builder
+                        {builder.loadedProtocolId && (
+                            <Badge variant="secondary" className="text-xs font-normal ml-2">Editing</Badge>
+                        )}
                     </h1>
                     <p className="text-muted-foreground text-sm">
-                        Build professional protocols with descriptions, reconstitution, and dosage instructions.
+                        {builder.loadedProtocolId
+                            ? `Editing "${builder.protocolName}" — make changes and click Update Protocol to save.`
+                            : 'Build professional protocols with descriptions, reconstitution, and dosage instructions.'}
                     </p>
                 </div>
                 {builder.items.length > 0 && (
@@ -203,7 +231,7 @@ export default function ProtocolBuilder() {
                         disabled={createProtocol.isPending || saved}
                     >
                         {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
-                        {saved ? 'Saved!' : 'Save Protocol'}
+                        {saved ? 'Saved!' : builder.loadedProtocolId ? 'Update Protocol' : 'Save Protocol'}
                     </Button>
                 )}
             </div>
@@ -530,7 +558,7 @@ export default function ProtocolBuilder() {
                                     disabled={createProtocol.isPending || saved}
                                 >
                                     {saved ? <Check className="h-4 w-4 mr-1.5 text-green-500" /> : <Save className="h-4 w-4 mr-1.5" />}
-                                    {saved ? 'Saved!' : 'Save Protocol'}
+                                    {saved ? 'Saved!' : builder.loadedProtocolId ? 'Update Protocol' : 'Save Protocol'}
                                 </Button>
                             </div>
                             <Separator orientation="vertical" className="h-8 hidden sm:block" />

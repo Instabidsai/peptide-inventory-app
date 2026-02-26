@@ -23,7 +23,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FlaskConical, Trash2, CheckCircle2, Plus, Pill, ShoppingBag, AlertCircle, Package } from 'lucide-react';
+import { FlaskConical, Trash2, CheckCircle2, Plus, Pill, ShoppingBag, AlertCircle, Package, Pencil } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock';
 import { useUpdateBottleQuantity } from '@/hooks/use-update-bottle-quantity';
 import { useDeleteMovement, type Movement } from '@/hooks/use-movements';
@@ -206,6 +206,11 @@ export function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement
                         <CardDescription>{protocol.description}</CardDescription>
                     </div>
                     <div className="flex gap-2">
+                        {onEdit && (
+                            <Button variant="outline" size="icon" aria-label="Edit protocol" onClick={onEdit}>
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        )}
                         <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirmOpen(true)}>
                             <Trash2 className="h-4 w-4" />
                         </Button>

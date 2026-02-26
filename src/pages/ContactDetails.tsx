@@ -206,6 +206,7 @@ export default function ContactDetails() {
                     peptides={peptides}
                     movements={movements}
                     onOpenAssignInventory={openAssignInventory}
+                    onEditProtocol={(protocolId) => navigate(`/protocol-builder?protocol=${protocolId}`)}
                     deleteProtocol={deleteProtocol}
                     logProtocolUsage={logProtocolUsage}
                     addProtocolSupplement={addProtocolSupplement}
