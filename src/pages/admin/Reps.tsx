@@ -115,6 +115,23 @@ export default function Reps() {
         },
     });
 
+    // Fetch pending partners (promoted but no auth account yet — show in Active Partners table)
+    const { data: pendingPartners } = useQuery({
+        queryKey: ['pending_partners', currentProfile?.org_id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contacts')
+                .select('id, name, email, invite_link, type, assigned_rep_id, created_at')
+                .eq('type', 'partner')
+                .is('linked_user_id', null)
+                .eq('org_id', currentProfile!.org_id!)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!currentProfile?.org_id,
+    });
+
     // Assign existing contact to a partner
     const assignContact = useMutation({
         mutationFn: async ({ contactId, repId }: { contactId: string; repId: string }) => {
@@ -308,11 +325,12 @@ export default function Reps() {
                                 </TableHeader>
                                 <TableBody>
                                     {(() => {
-                                        if (!reps || reps.length === 0) {
+                                        const hasPending = pendingPartners && pendingPartners.length > 0;
+                                        if ((!reps || reps.length === 0) && !hasPending) {
                                             return (
                                                 <TableRow>
                                                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                                        No sales reps found. Invite or promote users to get started.
+                                                        No partners found. Invite or promote users to get started.
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -432,7 +450,52 @@ export default function Reps() {
                                             ];
                                         };
 
-                                        return topLevel.flatMap(rep => renderRow(rep));
+                                        return [
+                                            ...topLevel.flatMap(rep => renderRow(rep)),
+                                            // Pending partners — promoted from contacts but no auth account yet
+                                            ...(pendingPartners || []).map(p => (
+                                                <TableRow key={`pending-${p.id}`} className="bg-amber-500/5 border-l-2 border-l-amber-500/40">
+                                                    <TableCell>
+                                                        <div className="flex gap-1">
+                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/contacts/${p.id}`)}>
+                                                                <Eye className="h-4 w-4 mr-1" /> View
+                                                            </Button>
+                                                            {p.invite_link && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="text-amber-600 border-amber-400/50 hover:bg-amber-500/10"
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            await navigator.clipboard.writeText(p.invite_link!);
+                                                                            toast({ title: 'Invite link copied' });
+                                                                        } catch {
+                                                                            toast({ title: 'Invite Link', description: p.invite_link! });
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Copy className="h-4 w-4 mr-1" /> Link
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">{p.name}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{p.email || '—'}</TableCell>
+                                                    <TableCell>0%</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">
+                                                            Invited
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">$0.00</TableCell>
+                                                    <TableCell className="text-right text-green-600 font-medium">$0.00</TableCell>
+                                                    <TableCell className="text-right">0</TableCell>
+                                                    <TableCell>
+                                                        <span className="text-muted-foreground text-xs">Pending signup</span>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )),
+                                        ];
                                     })()}
                                 </TableBody>
                             </Table>
@@ -784,78 +847,36 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
 
         setIsPromotingCustomer(true);
         try {
-            if (contact.linked_user_id) {
-                // Customer already has a login — promote their existing profile
-                const { data: existingProfile, error: profileErr } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('user_id', contact.linked_user_id)
-                    .maybeSingle();
+            // Use RPC — handles both linked and unlinked contacts, works from localhost
+            const { data, error } = await supabase.rpc('promote_contact_to_partner', {
+                p_contact_id: contact.id,
+                p_parent_rep_id: parentRepId || null,
+                p_redirect_origin: window.location.origin,
+            });
 
-                if (profileErr || !existingProfile) throw new Error('Could not find user profile');
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || 'Promotion failed');
 
-                const { error: updateErr } = await supabase
-                    .from('profiles')
-                    .update({
-                        role: 'sales_rep',
-                        commission_rate: 0,
-                        price_multiplier: 1.0,
-                        parent_rep_id: parentRepId || null,
-                    })
-                    .eq('id', existingProfile.id);
-                if (updateErr) throw updateErr;
-
-                // Update contact type to partner
-                await supabase.from('contacts').update({ type: 'partner' }).eq('id', contact.id);
-
-                toast({ title: 'Partner Created', description: `${contact.name} is now a partner.` });
-            } else {
-                // Customer has no account — create one via invite-user edge function
-                if (!contact.email) {
+            // If an invite link was generated, copy it to clipboard
+            if (data.action_link) {
+                try {
+                    await navigator.clipboard.writeText(data.action_link);
                     toast({
-                        variant: 'destructive',
-                        title: 'Email Required',
-                        description: 'Add an email to this customer first, then try again.',
+                        title: 'Partner Created — Link Copied',
+                        description: `${contact.name} is now a partner. Their invite link has been copied to your clipboard.`,
+                        duration: 10000,
                     });
-                    return;
+                } catch {
+                    toast({ title: 'Partner Created', description: data.action_link, duration: 15000 });
                 }
-
-                const { data, error } = await supabase.functions.invoke('invite-user', {
-                    body: {
-                        email: contact.email,
-                        contact_id: contact.id,
-                        role: 'sales_rep',
-                        parent_rep_id: parentRepId || undefined,
-                        redirect_origin: `${window.location.origin}/update-password`,
-                    }
-                });
-
-                if (error) throw error;
-                if (!data?.success) throw new Error(data?.error || 'Failed to create partner account');
-
-                // Update contact type to partner
-                await supabase.from('contacts').update({ type: 'partner' }).eq('id', contact.id);
-
-                // Copy invite link so they can send it
-                if (data.action_link) {
-                    try {
-                        await navigator.clipboard.writeText(data.action_link);
-                        toast({
-                            title: 'Partner Created — Link Copied',
-                            description: `${contact.name} is now a partner. Their login link has been copied to your clipboard — send it to them.`,
-                            duration: 10000,
-                        });
-                    } catch {
-                        toast({ title: 'Partner Created', description: data.action_link, duration: 15000 });
-                    }
-                } else {
-                    toast({ title: 'Partner Created', description: `${contact.name} is now a partner.` });
-                }
+            } else {
+                toast({ title: 'Partner Created', description: data.message || `${contact.name} is now a partner.` });
             }
 
             queryClient.invalidateQueries({ queryKey: ['reps'] });
             queryClient.invalidateQueries({ queryKey: ['contacts'] });
             queryClient.invalidateQueries({ queryKey: ['customer_contacts_for_promote'] });
+            queryClient.invalidateQueries({ queryKey: ['pending_partners'] });
             onOpenChange(false);
             setSelectedContactId('');
             setParentRepId('');

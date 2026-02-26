@@ -73,31 +73,32 @@ export function useRemoveHouseholdMember() {
     });
 }
 
-/** Admin action: sends invite to a household member contact via existing invite-user Edge Function. */
+/** Admin action: sends invite to a household member contact via RPC. */
 export function useInviteHouseholdMember() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ contactId, email }: { contactId: string; email: string }) => {
-            const { data, error } = await supabase.functions.invoke('invite-user', {
-                body: {
-                    email,
-                    contact_id: contactId,
-                    tier: 'family',
-                    redirect_origin: window.location.origin,
-                },
+            const { data, error } = await supabase.rpc('generate_invite_link', {
+                p_contact_id: contactId,
+                p_tier: 'family',
+                p_redirect_origin: window.location.origin,
             });
             if (error) throw error;
-            if (!data?.success) throw new Error(data?.error || 'Invite failed');
-            return data as { action_link: string; success: boolean };
+            if (!data?.success) throw new Error(data?.message || 'Invite failed');
+            return data as { action_link?: string; success: boolean; message: string };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['household-members'] });
-            try {
-                navigator.clipboard.writeText(data.action_link);
-                toast.success('Invite link copied to clipboard');
-            } catch {
-                toast.success('Invite link generated');
+            if (data.action_link) {
+                try {
+                    navigator.clipboard.writeText(data.action_link);
+                    toast.success('Invite link copied to clipboard');
+                } catch {
+                    toast.success('Invite link generated');
+                }
+            } else {
+                toast.success(data.message || 'Member already has access');
             }
         },
         onError: (e: Error) => toast.error(`Invite failed: ${e.message}`),

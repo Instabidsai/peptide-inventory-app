@@ -46,36 +46,26 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
         setIsGeneratingLink(true);
         setInviteLink('');
         try {
-            const { data, error } = await supabase.functions.invoke('invite-user', {
-                body: {
-                    email: contact?.email,
-                    contact_id: contact?.id,
-                    tier: inviteTier,
-                    redirect_origin: `${window.location.origin}/update-password`
-                }
+            const { data, error } = await supabase.rpc('generate_invite_link', {
+                p_contact_id: contact!.id,
+                p_tier: inviteTier,
+                p_redirect_origin: window.location.origin,
             });
 
             if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || 'No link returned');
 
-            if (data?.action_link) {
+            if (data.action_link) {
                 setInviteLink(data.action_link);
                 toast({ title: 'Invite Link Generated', description: 'Copy and send this link to the client.' });
                 updateContact.mutate({ id: contact!.id, tier: inviteTier });
             } else {
-                throw new Error(data?.error || 'No link returned');
+                toast({ title: 'Portal Access', description: data.message || 'Client already has access.' });
             }
-
         } catch (err) {
             logger.error('Invite failed:', err);
             const errMsg = (err as any)?.message || String(err);
-            if (errMsg?.includes('FunctionsFetchError') || errMsg?.includes('Failed to send request')) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Function Not Deployed',
-                    description: 'Please run: npx tsx scripts/invite_user_local.ts ' + contact?.email,
-                    duration: 10000
-                });
-            } else {
+            {
                 let errorDetails = errMsg;
                 const errObj = err as Record<string, unknown>;
                 if (errObj.context && typeof errObj.context === 'object') {

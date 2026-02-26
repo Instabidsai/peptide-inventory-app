@@ -908,25 +908,33 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
         setIsPromoting(true);
 
         try {
-            // Call promote-contact Edge Function — immediately creates auth user + profile + links contact
-            const { data, error: invokeError } = await supabase.functions.invoke('promote-contact', {
-                body: {
-                    contact_id: selectedContact.id,
-                    contact_name: selectedContact.name,
-                    contact_email: selectedContact.email,
-                    parent_rep_id: repId,
+            // Use RPC — works from localhost, handles both linked and unlinked contacts
+            const { data, error } = await supabase.rpc('promote_contact_to_partner', {
+                p_contact_id: selectedContact.id,
+                p_parent_rep_id: repId,
+                p_redirect_origin: window.location.origin,
+            });
+
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || 'Promotion failed');
+
+            if (data.action_link) {
+                try {
+                    await navigator.clipboard.writeText(data.action_link);
+                    toast({
+                        title: "Partner Added — Link Copied!",
+                        description: `${selectedContact.name} is now a Partner. Invite link copied to clipboard.`,
+                        duration: 10000,
+                    });
+                } catch {
+                    toast({ title: "Partner Added!", description: data.action_link, duration: 15000 });
                 }
-            });
-
-            if (invokeError) throw invokeError;
-
-            const result = typeof data === 'string' ? JSON.parse(data) : data;
-            if (!result?.success) throw new Error(result?.error || 'Promotion failed');
-
-            toast({
-                title: "Partner Added!",
-                description: `${selectedContact.name} is now a Partner in the hierarchy. They'll appear in the Partners list.`
-            });
+            } else {
+                toast({
+                    title: "Partner Added!",
+                    description: data.message || `${selectedContact.name} is now a Partner.`
+                });
+            }
 
             setPromoteOpen(false);
             refetch();
