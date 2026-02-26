@@ -49,7 +49,7 @@ function ReferralActivityCard({ repId }: { repId: string }) {
 
             const { data: orders } = await supabase
                 .from('sales_orders')
-                .select('id, total_amount, contact_id, created_at, status')
+                .select('id, total_amount, client_id, created_at, status')
                 .eq('rep_id', repId);
 
             const customerSpend: Record<string, { name: string; total: number; orderCount: number }> = {};
@@ -57,9 +57,9 @@ function ReferralActivityCard({ repId }: { repId: string }) {
                 customerSpend[client.id] = { name: client.name, total: 0, orderCount: 0 };
             }
             for (const order of (orders || [])) {
-                if (order.contact_id && customerSpend[order.contact_id]) {
-                    customerSpend[order.contact_id].total += Number(order.total_amount || 0);
-                    customerSpend[order.contact_id].orderCount += 1;
+                if (order.client_id && customerSpend[order.client_id]) {
+                    customerSpend[order.client_id].total += Number(order.total_amount || 0);
+                    customerSpend[order.client_id].orderCount += 1;
                 }
             }
 

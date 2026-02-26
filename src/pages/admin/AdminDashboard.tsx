@@ -173,9 +173,9 @@ export default function AdminDashboard() {
                     dose_amount_mg, dose_frequency, dose_interval, dose_off_days, dose_days,
                     current_quantity_mg, initial_quantity_mg,
                     peptides ( name ),
-                    contacts ( name )
+                    contacts!inner ( name, org_id )
                 `)
-                .eq('org_id', orgId!)
+                .eq('contacts.org_id', orgId!)
                 .eq('in_fridge', true)
                 .not('dose_amount_mg', 'is', null)
                 .not('dose_frequency', 'is', null)
