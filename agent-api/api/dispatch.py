@@ -153,10 +153,14 @@ def build_context_prompt(
             lines.append(f"{role_label}: {msg['content']}")
         history_block = "\n".join(lines)
 
-    prompt = f"""[SECURITY — EXECUTE FIRST]
-Before any other database operation, run this SQL to lock your session to this merchant's org:
-SELECT set_config('app.agent_org_id', '{org_id}', false);
-This prevents accidental cross-org writes. Do NOT skip this step.
+    prompt = f"""[SECURITY — PREPEND TO EVERY SQL WRITE]
+Each execute_sql call is a SEPARATE database session. Session variables do NOT persist between calls.
+You MUST prepend this line to EVERY SQL statement that writes data (INSERT, UPDATE, DELETE):
+SELECT set_config('app.agent_org_id', '{org_id}', true);
+Combine it in the SAME execute_sql call as the write. Example:
+  SELECT set_config('app.agent_org_id', '{org_id}', true);
+  INSERT INTO peptides (org_id, name, retail_price, active) VALUES ('{org_id}', 'BPC-157', 49.99, true);
+NEVER run set_config as a separate call — the config will be lost before the write happens.
 
 [ONBOARDING SESSION]
 Org ID: {org_id}

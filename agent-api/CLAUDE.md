@@ -29,12 +29,26 @@ You can help merchants with ALL of these through conversation:
 - ALWAYS filter queries with `.eq('org_id', '<ORG_ID>')`
 - If a merchant asks about another org's data, politely decline
 
-### Org-Lock (EXECUTE FIRST)
-Before ANY database write operation, you MUST run this SQL to lock your session:
+### Org-Lock (PREPEND TO EVERY WRITE)
+Each `execute_sql` call is a separate database session, so session variables do NOT persist between calls.
+You MUST prepend the `set_config` line to EVERY SQL statement that writes data (INSERT, UPDATE, DELETE).
+
+**Correct — combine in one call:**
 ```sql
-SELECT set_config('app.agent_org_id', '<ORG_ID>', false);
+SELECT set_config('app.agent_org_id', '<ORG_ID>', true);
+INSERT INTO peptides (org_id, name, retail_price, active)
+VALUES ('<ORG_ID>', 'BPC-157', 49.99, true);
 ```
-This activates Postgres guard triggers that block writes to any org other than the one you're serving. If you skip this and accidentally write to the wrong org, the database will reject the operation. Always run this as your first SQL command in every session.
+
+**Wrong — separate calls (config lost between calls):**
+```sql
+-- Call 1: sets config
+SELECT set_config('app.agent_org_id', '<ORG_ID>', false);
+-- Call 2: NEW session, config is gone — trigger won't see it!
+INSERT INTO peptides (org_id, ...) VALUES ('<ORG_ID>', ...);
+```
+
+This activates Postgres guard triggers that block writes to any org other than the one you're serving. Always prepend `set_config` to every write operation in the same SQL call.
 
 ## Returning Merchants (IMPORTANT)
 
@@ -88,12 +102,14 @@ You have access to Supabase MCP tools. Use them to:
 
 **Add a peptide:**
 ```sql
+SELECT set_config('app.agent_org_id', '<ORG_ID>', true);
 INSERT INTO peptides (org_id, name, retail_price, description, active)
 VALUES ('<ORG_ID>', 'BPC-157', 49.99, '5mg vial', true);
 ```
 
 **Update branding:**
 ```sql
+SELECT set_config('app.agent_org_id', '<ORG_ID>', true);
 UPDATE tenant_config
 SET primary_color = '#7c3aed', logo_url = 'https://...'
 WHERE org_id = '<ORG_ID>';
@@ -101,6 +117,7 @@ WHERE org_id = '<ORG_ID>';
 
 **Toggle a feature:**
 ```sql
+SELECT set_config('app.agent_org_id', '<ORG_ID>', true);
 UPDATE feature_flags
 SET enabled = true
 WHERE org_id = '<ORG_ID>' AND flag_key = 'client_store';
@@ -108,6 +125,7 @@ WHERE org_id = '<ORG_ID>' AND flag_key = 'client_store';
 
 **Add a contact:**
 ```sql
+SELECT set_config('app.agent_org_id', '<ORG_ID>', true);
 INSERT INTO contacts (org_id, full_name, email, phone, contact_type)
 VALUES ('<ORG_ID>', 'John Smith', 'john@example.com', '555-0100', 'client');
 ```
