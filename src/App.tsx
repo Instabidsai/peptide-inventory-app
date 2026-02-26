@@ -224,7 +224,7 @@ const App = () => (
                                 <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
                                 <Route path="/admin/supplements" element={<AdminSupplements />} />
                                 <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
-                                <Route path="/admin/health" element={<RoleBasedRedirect allowedRoles={['admin']}><SystemHealth /></RoleBasedRedirect>} />
+                                <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
 
                                 <Route path="/partner" element={<PartnerDashboard />} />
                                 <Route path="/partner/store" element={<PartnerStore />} />
@@ -238,6 +238,7 @@ const App = () => (
                                     <Route path="analytics" element={<VendorAnalytics />} />
                                     <Route path="billing" element={<VendorBilling />} />
                                     <Route path="health" element={<VendorHealth />} />
+                                    <Route path="system-health" element={<SystemHealth />} />
                                     <Route path="support" element={<VendorSupport />} />
                                     <Route path="onboarding" element={<VendorOnboarding />} />
                                     <Route path="messages" element={<VendorMessages />} />
