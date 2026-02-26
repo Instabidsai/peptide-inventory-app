@@ -58,6 +58,7 @@ async function organizeBatchesAndPayments() {
         // Check if exists first to avoid dupes?
         // User said "add a payment", implying it's not there.
         const { error: expenseError } = await supabase.from('expenses').insert({
+            org_id: batch1Orders[0].org_id,
             date: new Date().toISOString().split('T')[0],
             category: 'inventory',
             amount: batch1Total,
@@ -95,6 +96,7 @@ async function organizeBatchesAndPayments() {
         // Create Expense Record for Deposit
         const depositAmount = 5000;
         const { error: depositError } = await supabase.from('expenses').insert({
+            org_id: batch2Orders[0].org_id,
             date: new Date().toISOString().split('T')[0],
             category: 'inventory',
             amount: depositAmount,

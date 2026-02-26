@@ -526,7 +526,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         return data.map((e: any) => e.date + " | " + e.category + " | $" + Number(e.amount).toFixed(2) + " | " + (e.description || "no desc") + " | " + (e.recipient || "") + " | " + (e.payment_method || "") + " | " + e.status).join("\n");
       }
       case "create_expense": {
-        const { error } = await supabase.from("expenses").insert({ date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
+        const { error } = await supabase.from("expenses").insert({ org_id: orgId, date: args.date, category: args.category, amount: args.amount, description: args.description || null, recipient: args.recipient || null, payment_method: args.payment_method || null, status: args.status || "paid" });
         if (error) return "Error: " + error.message;
         return "Expense recorded: $" + args.amount.toFixed(2) + " (" + args.category + ") on " + args.date;
       }

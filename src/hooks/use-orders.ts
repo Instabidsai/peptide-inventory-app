@@ -402,13 +402,17 @@ export function useDeleteOrder() {
 export function useRecordOrderPayment() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ orderId, amount, method, date, note, isFullPayment }: { orderId: string, amount: number, method: string, date: string, note?: string, isFullPayment: boolean }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+
             // 1. Create Expense Record
             const { error: expenseError } = await supabase
                 .from('expenses')
                 .insert({
+                    org_id: profile.org_id,
                     date: date,
                     category: 'inventory',
                     amount: amount,

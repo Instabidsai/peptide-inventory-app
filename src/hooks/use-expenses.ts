@@ -9,6 +9,7 @@ export type ExpenseCategory = 'startup' | 'operating' | 'inventory' | 'commissio
 export interface Expense {
     id: string;
     created_at: string;
+    org_id: string;
     date: string;
     category: ExpenseCategory;
     amount: number;
@@ -26,10 +27,10 @@ export function useExpenses() {
     return useQuery({
         queryKey: ['expenses', orgId],
         queryFn: async () => {
-            // expenses table has no org_id column — RLS scopes via has_role(admin/staff)
             const query = supabase
                 .from('expenses')
                 .select('*')
+                .eq('org_id', orgId!)
                 .order('date', { ascending: false });
 
             const { data, error } = await query;
@@ -43,12 +44,15 @@ export function useExpenses() {
 export function useCreateExpense() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async (expense: Partial<Expense>) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+
             const { error } = await supabase
                 .from('expenses')
-                .insert([expense]);
+                .insert([{ ...expense, org_id: profile.org_id }]);
 
             if (error) throw error;
         },
