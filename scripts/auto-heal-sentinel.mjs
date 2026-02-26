@@ -65,7 +65,8 @@ const flags = new Set(process.argv.slice(2));
 const AUTO_PUSH = flags.has("--auto-push");
 
 // ── State ─────────────────────────────────────────────────────────────────
-let lastChecked = new Date().toISOString();  // Only look at errors AFTER sentinel starts
+let lastChecked = new Date().toISOString();         // Watermark for audit_log
+let lastCheckedBugReports = new Date().toISOString(); // Separate watermark for bug_reports
 let healInProgress = false;
 let lastHealFinished = 0;                     // Timestamp of last heal completion
 let pendingErrors = [];                       // Errors waiting for debounce
@@ -96,6 +97,7 @@ function isNoise(record) {
   if (/ResizeObserver/.test(msg)) return true;
   if (d.source === "fetch_error" && /HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return true;
   if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return true;
+  if (/\[hmr\] Failed to reload/.test(msg)) return true; // dev-only HMR, resolved by page refresh
   if (record.action === "bug_report" && /^(hey|help|hi|hello)\b/i.test(msg.trim())) return true;
   return false;
 }
@@ -148,20 +150,24 @@ async function pollBugReports() {
       .from("bug_reports")
       .select("id, description, page_url, console_errors, created_at, status")
       .like("description", "[AUTO]%")
-      .gt("created_at", lastChecked)
+      .gt("created_at", lastCheckedBugReports)
       .in("status", ["open", "new"])
       .order("created_at", { ascending: true })
       .limit(20);
 
     if (error || !data || data.length === 0) return [];
 
-    // Don't update watermark here — audit_log is the primary source
+    // Advance bug_reports watermark so we don't re-poll the same entries
+    lastCheckedBugReports = data[data.length - 1].created_at;
+
     return data.filter((r) => {
       const msg = r.description || "";
       if (msg.includes("self-test ping")) return false;
       if (/ResizeObserver/.test(msg)) return false;
       if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
+      if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg)) return false;
       if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return false;
+      if (/\[hmr\] Failed to reload/.test(msg)) return false;
       return true;
     });
   } catch {

@@ -171,18 +171,29 @@ const RPC_FUNCTIONS = [
 ];
 
 const EDGE_FUNCTIONS = [
-  "chat-with-ai",
   "admin-ai-chat",
-  "partner-ai-chat",
-  "invite-user",
-  "self-signup",
-  "exchange-token",
-  "promote-contact",
+  "ai-builder",
   "analyze-food",
-  "process-health-document",
-  "notify-commission",
+  "chat-with-ai",
+  "check-low-supply",
+  "check-payment-emails",
+  "composio-callback",
+  "composio-connect",
   "create-supplier-order",
+  "exchange-token",
+  "invite-user",
+  "notify-commission",
+  "partner-ai-chat",
+  "process-health-document",
+  "promote-contact",
   "provision-tenant",
+  "run-automations",
+  "scrape-brand",
+  "self-signup",
+  "send-email",
+  "sms-webhook",
+  "telegram-webhook",
+  "textbelt-webhook",
 ];
 
 async function checkRpcFunctions() {
@@ -323,12 +334,21 @@ async function checkBugReports() {
     const msg = r.error || r.name || "";
     if (msg.includes("self-test ping")) return false;
     if (msg.includes("DialogTitle")) return false; // accessibility warning, not a bug
+    // ResizeObserver — browser layout noise, never a code bug
+    if (/ResizeObserver/.test(msg)) return false;
     // ErrorBoundary test simulations — not real crashes
     if (r.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return false;
     // Auth token refresh failures — normal session expiry, not a bug
     if (/Invalid Refresh Token|Refresh Token Not Found|AuthSessionMissingError/i.test(msg)) return false;
     // HTTP 400 on PostgREST — usually a query param issue that self-resolves on page refresh
     if (r.source === "fetch_error" && /HTTP 400/.test(msg)) return false;
+    if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg)) return false; // also catch fallback-path entries
+    // HTTP 401 on edge functions — transient JWT timing, handled by retry logic
+    if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
+    // Auto-protocol generation is non-blocking — not a user-facing error
+    if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return false;
+    // HMR reload failures — dev-only, resolved by page refresh
+    if (/\[hmr\] Failed to reload/.test(msg)) return false;
     // Vague user "need help" reports without actual bug info
     if (r.type === "bug_report" && /^(hey|help|hi|hello)\b/i.test(r.error?.trim())) return false;
     return true;

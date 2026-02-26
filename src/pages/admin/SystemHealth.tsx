@@ -32,18 +32,29 @@ const RPC_FUNCTIONS = [
 ];
 
 const EDGE_FUNCTIONS = [
-  "chat-with-ai",
   "admin-ai-chat",
-  "partner-ai-chat",
-  "invite-user",
-  "self-signup",
-  "exchange-token",
-  "promote-contact",
+  "ai-builder",
   "analyze-food",
-  "process-health-document",
-  "notify-commission",
+  "chat-with-ai",
+  "check-low-supply",
+  "check-payment-emails",
+  "composio-callback",
+  "composio-connect",
   "create-supplier-order",
+  "exchange-token",
+  "invite-user",
+  "notify-commission",
+  "partner-ai-chat",
+  "process-health-document",
+  "promote-contact",
   "provision-tenant",
+  "run-automations",
+  "scrape-brand",
+  "self-signup",
+  "send-email",
+  "sms-webhook",
+  "telegram-webhook",
+  "textbelt-webhook",
 ];
 
 export default function SystemHealth() {

@@ -1,6 +1,6 @@
 @echo off
 REM ═══════════════════════════════════════════════════════════
-REM  AUTO-HEAL SENTINEL — Double-click to start
+REM  AUTO-HEAL SENTINEL — Runs forever, auto-restarts on crash
 REM  Watches for errors 24/7 and auto-fixes them
 REM ═══════════════════════════════════════════════════════════
 
@@ -15,11 +15,16 @@ set CLAUDE_CODE_ENTRYPOINT=
 echo.
 echo  ╔═══════════════════════════════════════════════╗
 echo  ║   AUTO-HEAL SENTINEL                         ║
-echo  ║   Watching for errors... Press Ctrl+C to stop ║
+echo  ║   Always-on error watcher + auto-fixer       ║
+echo  ║   Auto-restarts on crash. Ctrl+C to stop.    ║
 echo  ╚═══════════════════════════════════════════════╝
 echo.
 
-REM Run sentinel (add --auto-push to also commit+push fixes)
+:loop
+echo [%date% %time%] Starting sentinel...
 node scripts/auto-heal-sentinel.mjs
-
-pause
+echo.
+echo [%date% %time%] Sentinel exited. Restarting in 30 seconds...
+echo   (Press Ctrl+C now to stop permanently)
+timeout /t 30 /nobreak >nul
+goto loop

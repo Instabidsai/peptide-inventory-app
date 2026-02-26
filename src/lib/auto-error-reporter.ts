@@ -285,6 +285,8 @@ export function installAutoErrorReporter() {
   window.addEventListener('error', (event) => {
     // Skip script loading errors (CORS, CDN issues)
     if (event.message === 'Script error.' && !event.filename) return;
+    // ResizeObserver — browser layout noise, never a code bug
+    if (event.message?.includes('ResizeObserver')) return;
 
     sendErrorToDb({
       message: event.message,
