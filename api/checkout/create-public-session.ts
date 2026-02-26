@@ -68,10 +68,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'This order has been cancelled' });
         }
 
-        const totalDollars = Number(order.total_amount || 0);
-        if (totalDollars <= 0) {
+        const orderTotal = Number(order.total_amount || 0);
+        if (orderTotal <= 0) {
             return res.status(400).json({ error: 'Order total must be greater than zero' });
         }
+
+        // 3% card processing surcharge — calculated server-side so it can't be bypassed
+        const CARD_FEE_RATE = 0.03;
+        const cardFee = Math.round(orderTotal * CARD_FEE_RATE * 100) / 100;
+        const chargeTotal = Math.round((orderTotal + cardFee) * 100) / 100;
 
         // Clear any stale session
         if (order.psifi_session_id) {
@@ -93,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
             body: JSON.stringify({
                 name: productName,
-                price: totalDollars,
+                price: chargeTotal,
                 currency: 'USD',
                 type: 'service',
             }),
@@ -115,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const psifiPayload = {
             mode: 'payment',
-            total_amount: totalDollars,
+            total_amount: chargeTotal,
             external_id: `${orderId}-pl-${timestamp}`,
             success_url: successUrl,
             cancel_url: cancelUrl,
@@ -123,10 +128,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 productId: product.id,
                 name: productName,
                 quantity: 1,
-                price: totalDollars,
+                price: chargeTotal,
             }],
             metadata: {
                 order_id: orderId,
+                order_subtotal: orderTotal,
+                card_fee: cardFee,
+                card_fee_rate: '3%',
                 client_name: order.contacts?.name || 'Customer',
                 client_email: order.contacts?.email || '',
                 source: 'payment_link',

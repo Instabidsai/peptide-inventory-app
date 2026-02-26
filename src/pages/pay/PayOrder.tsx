@@ -53,6 +53,9 @@ export default function PayOrder() {
     const isPaid = order?.payment_status === 'paid';
     const isCancelled = order?.status === 'cancelled';
     const total = Number(order?.total_amount || 0);
+    const CARD_FEE_RATE = 0.03;
+    const cardFee = Math.round(total * CARD_FEE_RATE * 100) / 100;
+    const cardTotal = Math.round((total + cardFee) * 100) / 100;
 
     const handlePayWithCard = async () => {
         if (!orderId) return;
@@ -212,24 +215,30 @@ export default function PayOrder() {
                         <h2 className="font-semibold">Payment Options</h2>
 
                         {/* Card Payment */}
-                        <Button
-                            className="w-full"
-                            size="lg"
-                            onClick={handlePayWithCard}
-                            disabled={paying}
-                        >
-                            {paying ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Redirecting to payment...
-                                </>
-                            ) : (
-                                <>
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Pay ${total.toFixed(2)} with Card
-                                </>
-                            )}
-                        </Button>
+                        <div className="space-y-2">
+                            <Button
+                                className="w-full"
+                                size="lg"
+                                onClick={handlePayWithCard}
+                                disabled={paying}
+                            >
+                                {paying ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Redirecting to payment...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Pay ${cardTotal.toFixed(2)} with Card
+                                    </>
+                                )}
+                            </Button>
+                            <div className="text-xs text-muted-foreground text-center space-y-0.5">
+                                <p>Includes 3% processing fee (${cardFee.toFixed(2)})</p>
+                                <p>Avoid the fee — pay with Zelle, Cash App, or Venmo below</p>
+                            </div>
+                        </div>
 
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
