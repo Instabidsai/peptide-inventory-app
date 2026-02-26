@@ -327,15 +327,29 @@ async function checkBugReports() {
     if (r.source === "react_boundary" && /\b(Boom|Crash|network error|Loading chunk \d+ failed)\b/.test(msg)) return false;
     // Auth token refresh failures — normal session expiry, not a bug
     if (/Invalid Refresh Token|Refresh Token Not Found|AuthSessionMissingError/i.test(msg)) return false;
+    // HTTP 400 on PostgREST — usually a query param issue that self-resolves on page refresh
+    if (r.source === "fetch_error" && /HTTP 400/.test(msg)) return false;
+    // Vague user "need help" reports without actual bug info
+    if (r.type === "bug_report" && /^(hey|help|hi|hello)\b/i.test(r.error?.trim())) return false;
     return true;
   });
 
-  const bugCount = filtered.filter((r) => r.type === "bug_report").length;
-  const autoCount = filtered.filter((r) => r.type === "auto_error").length;
+  // Deduplicate by error message (keep first occurrence)
+  const seen = new Set();
+  const deduped = filtered.filter((r) => {
+    const key = (r.error || "").slice(0, 100);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const bugCount = deduped.filter((r) => r.type === "bug_report").length;
+  const autoCount = deduped.filter((r) => r.type === "auto_error").length;
   if (bugCount > 0) console.log(`    Found ${bugCount} bug report(s) in last 24h`);
   if (autoCount > 0) console.log(`    Found ${autoCount} auto-captured error(s) in last 24h`);
-  if (reports.length !== filtered.length) console.log(`    Filtered out ${reports.length - filtered.length} noise entries (self-test pings, accessibility warnings)`);
-  return filtered;
+  const dropped = reports.length - deduped.length;
+  if (dropped > 0) console.log(`    Filtered out ${dropped} noise/duplicate entries`);
+  return deduped;
 }
 
 function checkTypeScript() {
@@ -375,25 +389,44 @@ function checkTests() {
     return [];
   } catch (err) {
     const output = (err.stdout || "") + "\n" + (err.stderr || "");
-    // Extract failed test names
-    const failLines = output
-      .split("\n")
-      .filter((l) => l.includes("FAIL") || l.includes("AssertionError"))
-      .slice(0, 10);
-    console.log(`    FAIL: Test failures detected`);
-    return failLines.length > 0
-      ? failLines.map((l) => ({
-          type: "test_failure",
-          name: "Test",
-          error: l.trim(),
-        }))
-      : [
-          {
+    // Try to parse JSON output for clean failure info
+    let failures = [];
+    try {
+      const json = JSON.parse(output.trim());
+      if (json.testResults) {
+        for (const suite of json.testResults) {
+          for (const test of suite.assertionResults || []) {
+            if (test.status === "failed") {
+              const suiteName = suite.name?.split(/[/\\]/).pop() || "unknown";
+              const msg = (test.failureMessages || []).join("\n").slice(0, 200);
+              failures.push({
+                type: "test_failure",
+                name: `${suiteName} > ${test.fullName || test.title}`,
+                error: msg || "Test failed",
+              });
+            }
+          }
+        }
+      }
+    } catch { /* not JSON, fall back to line parsing */ }
+
+    if (failures.length === 0) {
+      // Fallback: extract FAIL lines from text output
+      const failLines = output
+        .split("\n")
+        .filter((l) => l.includes("FAIL") || l.includes("AssertionError"))
+        .slice(0, 10);
+      failures = failLines.length > 0
+        ? failLines.map((l) => ({
             type: "test_failure",
             name: "Test",
-            error: "Tests failed — check vitest output",
-          },
-        ];
+            error: l.trim().slice(0, 200),
+          }))
+        : [{ type: "test_failure", name: "Test", error: "Tests failed — check vitest output" }];
+    }
+
+    console.log(`    FAIL: ${failures.length} test failure(s) detected`);
+    return failures;
   }
 }
 
@@ -622,13 +655,16 @@ function buildReport(issues, ccResult, verification, pushed) {
   for (const [type, items] of Object.entries(issuesByType)) {
     md += `### ${typeLabels[type] || type}\n\n`;
     for (const item of items) {
-      md += `- **${item.name}**: ${item.error}\n`;
+      // Truncate for readability — full details in saved .md report
+      const name = (item.name || "").slice(0, 120);
+      const error = (item.error || "").slice(0, 200).replace(/\n/g, " ");
+      md += `- **${name}**: ${error}\n`;
     }
     md += `\n`;
   }
 
   if (ccResult?.output) {
-    md += `## Claude Code Output\n\n\`\`\`\n${ccResult.output.slice(0, 5000)}\n\`\`\`\n\n`;
+    md += `## Claude Code Output\n\n\`\`\`\n${ccResult.output.slice(0, 2000)}\n\`\`\`\n\n`;
   }
 
   if (verification && !verification.tsc) {
@@ -788,9 +824,9 @@ async function main() {
   if (DETECT_ONLY) {
     console.log("\n  --detect-only flag set. Skipping fix phase.\n");
     for (const i of allIssues) {
-      console.log(`  [${i.type}] ${i.name}: ${i.error}`);
+      console.log(`  [${i.type}] ${i.name}: ${(i.error || "").slice(0, 150)}`);
     }
-    return;
+    process.exit(allIssues.length > 0 ? 1 : 0);
   }
 
   // ── Phase 2: Auto-Fix ──
