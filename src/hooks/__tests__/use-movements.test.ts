@@ -133,8 +133,8 @@ describe('useCreateMovement', () => {
     );
   });
 
-  it('throws when user is not authenticated', async () => {
-    supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+  it('throws when user has no organization', async () => {
+    setAuthContext({ profile: { ...mockProfile, org_id: null } as any });
 
     const { result } = renderHook(() => useCreateMovement(), { wrapper: createWrapper() });
 
@@ -146,7 +146,7 @@ describe('useCreateMovement', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error?.message).toContain('Not authenticated');
+    expect(result.current.error?.message).toContain('No organization found');
   });
 });
 

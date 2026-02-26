@@ -388,6 +388,76 @@ Deno.serve(async (req) => {
             }
         }
 
+        // ── Step 13: Send Welcome Email ──
+        try {
+            const resendKey = Deno.env.get('RESEND_API_KEY');
+            if (resendKey) {
+                const brandName = body.brand_name || body.org_name;
+                const loginUrl = body.app_url || 'https://app.thepeptideai.com';
+                const welcomeHtml = `
+                    <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+                        <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:32px;border-radius:12px 12px 0 0">
+                            <h1 style="color:#fff;margin:0;font-size:24px">Welcome to ThePeptideAI</h1>
+                        </div>
+                        <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
+                            <p style="font-size:16px;color:#1f2937">Hi ${body.admin_name},</p>
+                            <p style="color:#4b5563">Your organization <strong>${brandName}</strong> has been set up and is ready to go.</p>
+                            <p style="color:#4b5563">Here's what you can do right away:</p>
+                            <ul style="color:#4b5563;line-height:1.8">
+                                <li>Add your peptide inventory</li>
+                                <li>Set up pricing tiers for partners</li>
+                                <li>Invite team members and sales reps</li>
+                                <li>Configure your brand settings</li>
+                                <li>Enable AI-powered features</li>
+                            </ul>
+                            <div style="text-align:center;margin:24px 0">
+                                <a href="${loginUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600">
+                                    Log In to Your Dashboard
+                                </a>
+                            </div>
+                            <p style="color:#6b7280;font-size:14px">
+                                Need help getting started? Reply to this email or reach out to
+                                <a href="mailto:support@thepeptideai.com" style="color:#7c3aed">support@thepeptideai.com</a>.
+                            </p>
+                            <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+                            <p style="color:#9ca3af;font-size:12px;text-align:center">
+                                ThePeptideAI — Peptide Inventory & CRM Platform
+                            </p>
+                        </div>
+                    </div>`;
+
+                const emailRes = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${resendKey}`,
+                    },
+                    body: JSON.stringify({
+                        from: 'ThePeptideAI <noreply@thepeptideai.com>',
+                        to: [body.admin_email],
+                        reply_to: 'support@thepeptideai.com',
+                        subject: `Welcome to ThePeptideAI — ${brandName} is ready!`,
+                        html: welcomeHtml,
+                    }),
+                });
+
+                if (emailRes.ok) {
+                    results.welcome_email_sent = true;
+                    console.log(`  Sent welcome email to ${body.admin_email}`);
+                } else {
+                    const errText = await emailRes.text();
+                    console.warn(`  Welcome email failed: ${errText}`);
+                    results.welcome_email_sent = false;
+                }
+            } else {
+                console.log(`  No RESEND_API_KEY — skipping welcome email`);
+                results.welcome_email_sent = false;
+            }
+        } catch (emailErr: any) {
+            console.warn(`  Welcome email error: ${emailErr.message}`);
+            results.welcome_email_sent = false;
+        }
+
         console.log(`[${VERSION}] Tenant provisioned successfully: ${org.id}`);
 
         return new Response(

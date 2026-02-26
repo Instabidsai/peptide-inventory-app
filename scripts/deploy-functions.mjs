@@ -1,25 +1,74 @@
 /**
  * Deploy edge functions via Supabase Management API.
- * Reads files from disk and uploads them.
+ * Reads files from disk (including _shared imports) and uploads them.
  *
- * Usage: node scripts/deploy-functions.mjs [function-name]
- * If no function name given, deploys all 4.
+ * Usage:
+ *   node scripts/deploy-functions.mjs                  # deploy ALL functions
+ *   node scripts/deploy-functions.mjs provision-tenant  # deploy one function
+ *   node scripts/deploy-functions.mjs --list            # list all functions
+ *
+ * Environment variables (or edit the fallbacks below):
+ *   SUPABASE_PROJECT_REF  — project reference ID
+ *   SUPABASE_ACCESS_TOKEN — personal access token from supabase.com/dashboard/account/tokens
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_REF = 'mckkegmkpqdicudnfhor';
-const ACCESS_TOKEN = 'sbp_94ff4e12ec85a9a4576569e3675f2af6e11c0430';
 const FUNCTIONS_DIR = path.join(__dirname, '..', 'supabase', 'functions');
 
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'mckkegmkpqdicudnfhor';
+const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || '';
+
+// All known shared files
+const SHARED_FILES = ['ai-core.ts', 'auth.ts', 'cors.ts', 'rate-limit.ts', 'validate.ts'];
+
+// Function registry — shared files each function imports from _shared/
 const FUNCTIONS = {
-  'admin-ai-chat': { verify_jwt: false, sharedFiles: ['ai-core.ts', 'rate-limit.ts', 'validate.ts'] },
-  'telegram-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },
-  'textbelt-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },
-  'sms-webhook': { verify_jwt: false, sharedFiles: ['ai-core.ts'] },
+  'admin-ai-chat':          { verify_jwt: false, shared: ['ai-core.ts', 'rate-limit.ts', 'validate.ts'] },
+  'ai-builder':             { verify_jwt: true,  shared: ['auth.ts', 'cors.ts'] },
+  'analyze-food':           { verify_jwt: true,  shared: [] },
+  'chat-with-ai':           { verify_jwt: false, shared: ['rate-limit.ts', 'validate.ts'] },
+  'check-low-supply':       { verify_jwt: true,  shared: ['auth.ts', 'cors.ts'] },
+  'check-payment-emails':   { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts'] },
+  'composio-callback':      { verify_jwt: false, shared: [] },
+  'composio-connect':       { verify_jwt: true,  shared: [] },
+  'create-supplier-order':  { verify_jwt: true,  shared: [] },
+  'exchange-token':         { verify_jwt: false, shared: [] },
+  'invite-user':            { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts', 'validate.ts'] },
+  'notify-commission':      { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts', 'validate.ts'] },
+  'partner-ai-chat':        { verify_jwt: false, shared: ['rate-limit.ts', 'validate.ts'] },
+  'process-health-document':{ verify_jwt: true,  shared: [] },
+  'promote-contact':        { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts', 'validate.ts'] },
+  'provision-tenant':       { verify_jwt: false, shared: [] },
+  'run-automations':        { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts'] },
+  'scrape-brand':           { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'validate.ts'] },
+  'self-signup':            { verify_jwt: false, shared: [] },
+  'send-email':             { verify_jwt: true,  shared: ['auth.ts', 'cors.ts', 'rate-limit.ts', 'validate.ts'] },
+  'sms-webhook':            { verify_jwt: false, shared: ['ai-core.ts'] },
+  'telegram-webhook':       { verify_jwt: false, shared: ['ai-core.ts'] },
+  'textbelt-webhook':       { verify_jwt: false, shared: ['ai-core.ts'] },
 };
+
+function readFunctionFiles(name) {
+  const config = FUNCTIONS[name];
+  const entryDir = path.join(FUNCTIONS_DIR, name);
+  const entrypoint = fs.readFileSync(path.join(entryDir, 'index.ts'), 'utf-8');
+
+  const files = [{ name: 'index.ts', content: entrypoint }];
+
+  for (const shared of config.shared) {
+    const sharedPath = path.join(FUNCTIONS_DIR, '_shared', shared);
+    if (fs.existsSync(sharedPath)) {
+      files.push({ name: `_shared/${shared}`, content: fs.readFileSync(sharedPath, 'utf-8') });
+    } else {
+      console.warn(`  ⚠ Shared file missing: _shared/${shared}`);
+    }
+  }
+
+  return files;
+}
 
 async function deployFunction(name) {
   const config = FUNCTIONS[name];
@@ -28,58 +77,27 @@ async function deployFunction(name) {
     return false;
   }
 
-  console.log(`\nDeploying ${name}...`);
+  console.log(`\n--- Deploying ${name} ---`);
 
-  // Read entrypoint
-  const entrypoint = fs.readFileSync(path.join(FUNCTIONS_DIR, name, 'index.ts'), 'utf-8');
-
-  // Read shared files
-  const files = [{ name: 'index.ts', content: entrypoint }];
-  for (const shared of config.sharedFiles) {
-    const content = fs.readFileSync(path.join(FUNCTIONS_DIR, '_shared', shared), 'utf-8');
-    files.push({ name: `_shared/${shared}`, content });
-  }
-
+  const files = readFunctionFiles(name);
+  const totalSize = files.reduce((s, f) => s + f.content.length, 0);
   console.log(`  Files: ${files.map(f => f.name).join(', ')}`);
-  console.log(`  Total size: ${files.reduce((s, f) => s + f.content.length, 0)} chars`);
+  console.log(`  Total size: ${(totalSize / 1024).toFixed(1)} KB`);
 
-  const body = {
-    slug: name,
-    name: name,
-    verify_jwt: config.verify_jwt,
-    entrypoint_path: 'index.ts',
-    import_map: false,
-  };
-
-  // First, create or update the function metadata
-  // Then deploy the code using the file upload endpoint
-
-  // The Management API for edge functions:
-  // POST /v1/projects/{ref}/functions — create function
-  // PATCH /v1/projects/{ref}/functions/{slug} — update function
-  // The MCP tool uses a different internal endpoint. Let me use the same approach.
-
-  // Actually, the proper way is to use the deploy endpoint
   const baseUrl = `https://api.supabase.com/v1/projects/${PROJECT_REF}/functions`;
 
-  // Check if function exists
+  // Check if function already exists
   const checkRes = await fetch(`${baseUrl}/${name}`, {
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
   });
 
   const exists = checkRes.ok;
-  console.log(`  Function ${exists ? 'exists, updating' : 'not found, creating'}...`);
+  console.log(`  ${exists ? 'Updating existing' : 'Creating new'} function...`);
 
-  // Build form data with the files
-  // The Supabase deploy API expects multipart or a specific format
-  // Let's try the approach that the MCP server uses internally
-
-  // Based on the Supabase Management API docs, we need to use the
-  // edge-functions deploy endpoint which accepts files
   const deployBody = {
     entrypoint_path: 'index.ts',
     verify_jwt: config.verify_jwt,
-    files: files,
+    files,
   };
 
   const method = exists ? 'PATCH' : 'POST';
@@ -91,33 +109,76 @@ async function deployFunction(name) {
       Authorization: `Bearer ${ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(exists ? deployBody : { ...deployBody, slug: name, name: name }),
+    body: JSON.stringify(exists ? deployBody : { ...deployBody, slug: name, name }),
   });
 
   const result = await res.text();
 
   if (res.ok) {
-    console.log(`  SUCCESS: ${name} deployed!`);
-    try { console.log(`  Response: ${JSON.parse(result).version || 'ok'}`); } catch { console.log(`  Response: ${result.slice(0, 200)}`); }
+    console.log(`  ✓ ${name} deployed successfully`);
+    try {
+      const json = JSON.parse(result);
+      if (json.version) console.log(`  Version: ${json.version}`);
+    } catch { /* ignore */ }
     return true;
   } else {
-    console.error(`  FAILED (${res.status}): ${result.slice(0, 500)}`);
+    console.error(`  ✗ FAILED (${res.status}): ${result.slice(0, 500)}`);
     return false;
   }
 }
 
 async function main() {
-  const target = process.argv[2];
-  const names = target ? [target] : Object.keys(FUNCTIONS).filter(n => n !== 'admin-ai-chat');
+  const arg = process.argv[2];
 
-  console.log(`Deploying functions: ${names.join(', ')}`);
-
-  let success = 0;
-  for (const name of names) {
-    if (await deployFunction(name)) success++;
+  if (arg === '--list') {
+    console.log('Available edge functions:\n');
+    for (const [name, config] of Object.entries(FUNCTIONS)) {
+      const jwt = config.verify_jwt ? 'JWT' : 'public';
+      const shared = config.shared.length ? config.shared.join(', ') : '(none)';
+      console.log(`  ${name.padEnd(28)} ${jwt.padEnd(8)} shared: ${shared}`);
+    }
+    console.log(`\nTotal: ${Object.keys(FUNCTIONS).length} functions`);
+    return;
   }
 
-  console.log(`\nDone: ${success}/${names.length} deployed successfully.`);
+  if (!ACCESS_TOKEN) {
+    console.error('ERROR: No access token. Set SUPABASE_ACCESS_TOKEN env var or edit the script.');
+    console.error('Get one at: https://supabase.com/dashboard/account/tokens');
+    process.exit(1);
+  }
+
+  const names = arg ? [arg] : Object.keys(FUNCTIONS);
+
+  if (arg && !FUNCTIONS[arg]) {
+    console.error(`Unknown function: ${arg}`);
+    console.error(`Run with --list to see available functions.`);
+    process.exit(1);
+  }
+
+  console.log(`Deploying ${names.length} function(s): ${names.join(', ')}\n`);
+  console.log(`Project: ${PROJECT_REF}`);
+
+  let success = 0;
+  let failed = [];
+
+  for (const name of names) {
+    try {
+      if (await deployFunction(name)) {
+        success++;
+      } else {
+        failed.push(name);
+      }
+    } catch (err) {
+      console.error(`  ✗ ${name} threw: ${err.message}`);
+      failed.push(name);
+    }
+  }
+
+  console.log(`\n========================================`);
+  console.log(`Results: ${success}/${names.length} deployed successfully`);
+  if (failed.length) {
+    console.log(`Failed: ${failed.join(', ')}`);
+  }
 }
 
 main().catch(console.error);

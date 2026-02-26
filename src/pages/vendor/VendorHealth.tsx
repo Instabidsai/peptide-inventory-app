@@ -1,13 +1,17 @@
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChurnRisk, TenantHealth } from '@/hooks/use-vendor-analytics';
 import { StatCard, HealthBadge } from './vendor-shared';
-import { AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, XCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function VendorHealth() {
     const { data: tenants, isLoading } = useChurnRisk();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     const active = (tenants || []).filter((t: TenantHealth) => t.health === 'active');
     const warning = (tenants || []).filter((t: TenantHealth) => t.health === 'warning');
@@ -15,7 +19,12 @@ export default function VendorHealth() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold">Tenant Health</h1>
+            <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold">Tenant Health</h1>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => queryClient.invalidateQueries({ queryKey: ['churn-risk'] })}>
+                    <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+                </Button>
+            </div>
 
             <div className="grid grid-cols-3 gap-4">
                 <StatCard label="Active" value={active.length} icon={CheckCircle2} subtitle="Orders in last 7 days" />

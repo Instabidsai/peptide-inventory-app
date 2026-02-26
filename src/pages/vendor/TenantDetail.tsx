@@ -9,6 +9,7 @@ import TenantConfigEditor from './TenantConfigEditor';
 import TenantFeatureToggles from './TenantFeatureToggles';
 import TenantUserList from './TenantUserList';
 import TenantSubscriptionActions from './TenantSubscriptionActions';
+import TenantNotes from './TenantNotes';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import {
     ArrowLeft,
@@ -22,6 +23,7 @@ import {
     MessageCircle,
     Zap,
     Eye,
+    Video,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -80,16 +82,28 @@ export default function TenantDetail() {
                         </div>
                     </div>
                 </div>
-                <Button
-                    onClick={() => {
-                        startImpersonation(orgId!, tenant.config?.brand_name || tenant.org_name);
-                        navigate('/');
-                    }}
-                    className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-                >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Enter as Admin
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const name = encodeURIComponent(tenant.config?.brand_name || tenant.org_name);
+                            window.open(`https://zoom.us/schedule?topic=ThePeptideAI+%E2%80%94+${name}+Check-in`, '_blank');
+                        }}
+                    >
+                        <Video className="h-4 w-4 mr-2" />
+                        Schedule Meeting
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            startImpersonation(orgId!, tenant.config?.brand_name || tenant.org_name);
+                            navigate('/');
+                        }}
+                        className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                    >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Enter as Admin
+                    </Button>
+                </div>
             </div>
 
             {/* Usage Stats */}
@@ -182,6 +196,9 @@ export default function TenantDetail() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Internal notes — full width */}
+            <TenantNotes orgId={orgId!} />
 
             {/* Feature Flags — full width below the grid */}
             <TenantFeatureToggles orgId={orgId!} />

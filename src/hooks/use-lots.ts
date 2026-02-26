@@ -147,20 +147,35 @@ export function useDeleteLot() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First delete all bottles associated with this lot
+      // Get bottle IDs for this lot (needed to clean up FK references)
+      const { data: bottles } = await supabase
+        .from('bottles')
+        .select('id')
+        .eq('lot_id', id);
+
+      const bottleIds = (bottles || []).map(b => b.id);
+
+      // Delete movement_items referencing these bottles (FK ON DELETE RESTRICT)
+      if (bottleIds.length > 0) {
+        const { error: miError } = await supabase
+          .from('movement_items')
+          .delete()
+          .in('bottle_id', bottleIds);
+        if (miError) throw miError;
+      }
+
+      // Delete bottles
       const { error: bottlesError } = await supabase
         .from('bottles')
         .delete()
         .eq('lot_id', id);
-
       if (bottlesError) throw bottlesError;
 
-      // Then delete the lot
+      // Delete the lot
       const { error } = await supabase
         .from('lots')
         .delete()
         .eq('id', id);
-
       if (error) throw error;
     },
     onSuccess: () => {

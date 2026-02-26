@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Shield, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Shield, ShieldCheck, ShieldAlert, UserMinus } from 'lucide-react';
 
 interface TenantUser {
     user_id: string;
@@ -62,6 +63,18 @@ export default function TenantUserList({ orgId }: { orgId: string }) {
         },
         enabled: !!orgId,
     });
+
+    const removeUser = async (userId: string) => {
+        if (!confirm('Remove this user from the organization?')) return;
+        const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('org_id', orgId);
+        if (error) {
+            toast({ variant: 'destructive', title: 'Failed to remove user', description: error.message });
+            return;
+        }
+        await supabase.from('profiles').update({ org_id: null }).eq('id', userId);
+        queryClient.invalidateQueries({ queryKey: ['tenant-users', orgId] });
+        toast({ title: 'User removed from organization' });
+    };
 
     const changeRole = async (userId: string, newRole: string) => {
         const { error } = await supabase
@@ -126,6 +139,9 @@ export default function TenantUserList({ orgId }: { orgId: string }) {
                                         <Badge variant="outline" className="text-[10px] whitespace-nowrap">
                                             {u.created_at ? format(new Date(u.created_at), 'MMM d') : '—'}
                                         </Badge>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeUser(u.user_id)}>
+                                            <UserMinus className="h-3.5 w-3.5" />
+                                        </Button>
                                     </div>
                                 </div>
                             );

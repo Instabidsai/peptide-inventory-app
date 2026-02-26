@@ -212,12 +212,14 @@ export function useDeleteBottle() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!profile?.org_id) throw new Error('No organization found');
+      // Delete movement_items referencing this bottle (FK ON DELETE RESTRICT)
+      await supabase.from('movement_items').delete().eq('bottle_id', id);
+
       const { error } = await supabase
         .from('bottles')
         .delete()
         .eq('id', id)
         .eq('org_id', profile.org_id);
-
       if (error) throw error;
     },
     onSuccess: () => {

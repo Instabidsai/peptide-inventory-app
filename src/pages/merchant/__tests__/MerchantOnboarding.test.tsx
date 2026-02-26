@@ -28,6 +28,13 @@ vi.mock('@/integrations/sb_client/client', () => ({
         functions: { invoke: mockInvoke },
         from: mockFrom,
         rpc: mockRpc,
+        auth: {
+            getSession: vi.fn().mockResolvedValue({
+                data: { session: { access_token: 'mock-token', user: mockUser } },
+                error: null,
+            }),
+            getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+        },
     },
 }));
 

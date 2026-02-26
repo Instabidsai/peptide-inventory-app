@@ -27,6 +27,11 @@ import { supabase } from '@/integrations/sb_client/client';
 const SB_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+// Edge functions called fire-and-forget (already .catch'd by callers) — skip reporting
+const FIRE_AND_FORGET_FUNCTIONS = new Set(['notify-commission']);
+// Edge functions replaced by RPCs — skip stale in-flight errors
+const DEPRECATED_FUNCTIONS = new Set(['invite-user']);
+
 // Save the REAL fetch before any interceptors wrap it.
 // sendErrorToDb MUST use this to avoid infinite loops with the fetch interceptor.
 const _rawFetch = window.fetch.bind(window);
@@ -164,27 +169,22 @@ export function installAutoErrorReporter() {
     try {
       const result = await origInvoke(functionName, options);
       if (result.error) {
-        sendErrorToDb({
-          message: `Edge function '${functionName}' failed: ${result.error.message || JSON.stringify(result.error)}`,
-          source: 'edge_function',
-          page: window.location.hash || '/',
-          stack: result.error instanceof Error ? result.error.stack : undefined,
-          extra: { functionName, context: result.error.context },
-          timestamp: new Date().toISOString(),
-        });
+        // Skip fire-and-forget functions (callers already .catch) and deprecated functions
+        if (!FIRE_AND_FORGET_FUNCTIONS.has(functionName) && !DEPRECATED_FUNCTIONS.has(functionName)) {
+          sendErrorToDb({
+            message: `Edge function '${functionName}' failed: ${result.error.message || JSON.stringify(result.error)}`,
+            source: 'edge_function',
+            page: window.location.hash || '/',
+            stack: result.error instanceof Error ? result.error.stack : undefined,
+            extra: { functionName, context: result.error.context },
+            timestamp: new Date().toISOString(),
+          });
+        }
       }
       return result;
     } catch (err: any) {
-      // Network-level failure (couldn't even reach the function)
-      sendErrorToDb({
-        message: `Edge function '${functionName}' network error: ${err?.message || String(err)}`,
-        source: 'edge_function',
-        page: window.location.hash || '/',
-        stack: err instanceof Error ? err.stack : undefined,
-        extra: { functionName },
-        timestamp: new Date().toISOString(),
-      });
-      throw err; // Re-throw so the calling code's catch still works
+      // Network-level failure (couldn't reach the function) — transient, not a code bug
+      throw err;
     }
   };
 
@@ -225,6 +225,12 @@ export function installAutoErrorReporter() {
         const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
         // Only report Supabase-related failures (edge functions, REST API)
         if (url.includes('supabase') || url.includes('functions/v1')) {
+          // Skip deprecated and fire-and-forget edge function errors
+          const fnMatch = url.match(/functions\/v1\/([^?/]+)/);
+          const fnName = fnMatch?.[1] || '';
+          if (FIRE_AND_FORGET_FUNCTIONS.has(fnName) || DEPRECATED_FUNCTIONS.has(fnName)) {
+            return resp;
+          }
           const bodyText = await resp.clone().text().catch(() => '');
           sendErrorToDb({
             message: `HTTP ${resp.status} ${resp.statusText}: ${url.split('?')[0]}`.slice(0, 300),
@@ -237,17 +243,7 @@ export function installAutoErrorReporter() {
       }
       return resp;
     } catch (err) {
-      // Network error (couldn't even connect)
-      const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
-      if (url.includes('supabase') || url.includes('functions/v1')) {
-        sendErrorToDb({
-          message: `Fetch failed: ${err instanceof Error ? err.message : String(err)} — ${url.split('?')[0]}`.slice(0, 300),
-          source: 'fetch_error',
-          page: window.location.hash || '/',
-          extra: { url: url.split('?')[0] },
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Network error (couldn't connect) — transient, not a code bug
       throw err;
     }
   };

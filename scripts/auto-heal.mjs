@@ -498,6 +498,26 @@ Fix each one. After fixing, run \`npx tsc --noEmit\` and \`npx vitest run\` to v
     prompt += `\n`;
   }
 
+  if (grouped.auto_error) {
+    prompt += `## Auto-Captured Runtime Errors (last 24h)\nThese errors were automatically captured from the browser. Investigate the source code and fix the root cause:\n\n`;
+    for (const i of grouped.auto_error) {
+      prompt += `- **${i.name}**\n`;
+      prompt += `  Page: ${i.page || 'unknown'}\n`;
+      prompt += `  Error: ${(i.error || '').slice(0, 300)}\n`;
+      if (i.stack) prompt += `  Stack: ${i.stack.split('\n')[0]}\n`;
+      if (i.source) prompt += `  Source: ${i.source}\n`;
+    }
+    prompt += `\n`;
+  }
+
+  if (grouped.edge_error) {
+    prompt += `## Edge Function Errors\nThese edge functions returned errors during health check:\n\n`;
+    for (const i of grouped.edge_error) {
+      prompt += `- \`${i.name}\`: ${i.error}\n`;
+    }
+    prompt += `\n`;
+  }
+
   prompt += `\n## Rules
 1. Fix the root cause, not symptoms
 2. Do NOT add unnecessary abstractions or comments
@@ -650,6 +670,7 @@ function buildReport(issues, ccResult, verification, pushed) {
     typescript: "TypeScript Errors",
     test_failure: "Test Failures",
     bug_report: "User Bug Reports",
+    auto_error: "Auto-Captured Runtime Errors",
   };
 
   for (const [type, items] of Object.entries(issuesByType)) {

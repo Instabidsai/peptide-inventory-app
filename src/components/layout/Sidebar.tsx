@@ -26,6 +26,7 @@ import {
   Rocket,
   ScrollText,
   Shield,
+  Plug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -79,6 +80,7 @@ const vendorNavigation = [
   { name: 'Onboarding', href: '/vendor/onboarding', icon: Rocket },
   { name: 'Messages', href: '/vendor/messages', icon: MessageSquare },
   { name: 'Audit', href: '/vendor/audit', icon: ScrollText },
+  { name: 'Integrations', href: '/vendor/integrations', icon: Plug },
   { name: 'Settings', href: '/vendor/settings', icon: Settings },
 ];
 

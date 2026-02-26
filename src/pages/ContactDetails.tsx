@@ -5,7 +5,7 @@ import { usePeptides } from '@/hooks/use-peptides';
 import { useMovements } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calculator, FlaskConical } from 'lucide-react';
+import { Loader2, Calculator, FlaskConical, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
@@ -53,12 +53,10 @@ export default function ContactDetails() {
         isLoading: isLoadingProtocols,
         createProtocol,
         deleteProtocol,
-        updateProtocolItem,
         logProtocolUsage,
         addProtocolSupplement,
         deleteProtocolSupplement
     } = useProtocols(id);
-    const { protocols: templates } = useProtocols(undefined); // Fetch global templates
     const { data: peptides } = usePeptides();
     const { data: movements } = useMovements(id);
 
@@ -151,19 +149,10 @@ export default function ContactDetails() {
 
     // ContactDialogs is a "render hook" - returns handlers + JSX
     const {
-        handleEditClick,
-        handleAddClick,
         openAssignInventory,
         dialogsJSX,
     } = ContactDialogs({
         contactId: id!,
-        peptides,
-        assignedProtocols,
-        createProtocol,
-        updateProtocolItem,
-        addProtocolSupplement,
-        templates,
-        onEditClick: () => {},
     });
 
     if (isLoadingContact) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -182,6 +171,13 @@ export default function ContactDetails() {
                     >
                         <FlaskConical className="mr-2 h-4 w-4" />
                         Build Protocol
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate(`/sales/new?contact_id=${id}`)}
+                    >
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        New Order
                     </Button>
                 </ContactInfoCard>
 
@@ -209,8 +205,6 @@ export default function ContactDetails() {
                     assignedProtocols={assignedProtocols}
                     peptides={peptides}
                     movements={movements}
-                    onEditClick={handleEditClick}
-                    onAddClick={handleAddClick}
                     onOpenAssignInventory={openAssignInventory}
                     deleteProtocol={deleteProtocol}
                     logProtocolUsage={logProtocolUsage}

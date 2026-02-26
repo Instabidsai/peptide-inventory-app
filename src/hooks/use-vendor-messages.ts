@@ -25,6 +25,50 @@ export function useVendorMessages() {
     });
 }
 
+export function useTenantNotes(orgId?: string) {
+    return useQuery({
+        queryKey: ['tenant-notes', orgId],
+        enabled: !!orgId,
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('vendor_messages')
+                .select('*')
+                .eq('to_org_id', orgId!)
+                .eq('message_type', 'note')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            if (error) throw error;
+            return data || [];
+        },
+    });
+}
+
+export function useAddTenantNote(orgId: string) {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    return useMutation({
+        mutationFn: async (body: string) => {
+            const { error } = await supabase.from('vendor_messages').insert({
+                from_user_id: user?.id,
+                to_org_id: orgId,
+                subject: 'Internal Note',
+                body,
+                message_type: 'note',
+            });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tenant-notes', orgId] });
+            toast({ title: 'Note saved' });
+        },
+        onError: (err: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to save note', description: err.message });
+        },
+    });
+}
+
 export function useSendVendorMessage() {
     const queryClient = useQueryClient();
     const { user } = useAuth();

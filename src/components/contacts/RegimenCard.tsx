@@ -23,7 +23,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FlaskConical, Pencil, Trash2, CheckCircle2, Plus, Pill, ShoppingBag, AlertCircle, Package } from 'lucide-react';
+import { FlaskConical, Trash2, CheckCircle2, Plus, Pill, ShoppingBag, AlertCircle, Package } from 'lucide-react';
 import { useRestockInventory } from '@/hooks/use-restock';
 import { useUpdateBottleQuantity } from '@/hooks/use-update-bottle-quantity';
 import { useDeleteMovement, type Movement } from '@/hooks/use-movements';
@@ -36,7 +36,7 @@ import type { RegimenPeptide, ConfirmDialogState } from './types';
 interface RegimenCardProps {
     protocol: Protocol;
     onDelete: (id: string) => void;
-    onEdit: () => void;
+    onEdit?: () => void;
     onLog: (args: { itemId: string }) => void;
     onAddSupplement: (args: { protocol_id: string; supplement_id: string; dosage: string; frequency: string; notes: string }) => Promise<void>;
     onDeleteSupplement: (id: string) => void;
@@ -198,7 +198,7 @@ export function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement
 
     return (
         <>
-        <Card className={`hover:border-primary/50 transition-colors cursor-pointer group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`} onClick={onEdit}>
+        <Card className={`hover:border-primary/50 transition-colors group flex flex-col h-full ${!latestMovement ? 'border-l-4 border-l-amber-400' : ''}`}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div>
@@ -206,10 +206,7 @@ export function RegimenCard({ protocol, onDelete, onEdit, onLog, onAddSupplement
                         <CardDescription>{protocol.description}</CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="icon" aria-label="Edit regimen" onClick={onEdit}>
-                            <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteConfirmOpen(true); }}>
+                        <Button variant="outline" size="icon" aria-label="Delete regimen" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirmOpen(true)}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>

@@ -1751,19 +1751,13 @@ export const RECOMMENDED_SUPPLIES = [
     {
         name: 'Bacteriostatic Water (30mL)',
         description: 'Sterile water with 0.9% benzyl alcohol for safely reconstituting lyophilized peptides',
-        link: 'https://a.co/d/4jVfHzR',
+        link: 'https://www.amazon.com/dp/B0FHLRCH8K',
         icon: 'droplets' as const,
     },
     {
-        name: '10mL Glass Mixing Vials (3-Pack)',
-        description: 'Sterile glass vials for reconstituting peptides with bacteriostatic water',
-        link: 'https://share.google/DM0zu9Ey5YF2h6pDy',
-        icon: 'vial' as const,
-    },
-    {
-        name: '0.5mL Insulin Syringes — 31G 5/16" Needles',
+        name: '0.5mL Insulin Syringes — 30G 5/16" Needles',
         description: 'Compact syringes with fine-gauge needles for subcutaneous injection',
-        link: 'https://a.co/d/0fWf0VEc',
+        link: 'https://www.amazon.com/dp/B0DMNMNKN4',
         icon: 'syringe' as const,
     },
     {

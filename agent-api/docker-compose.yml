@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  onboarding-agent:
+    build: .
+    container_name: peptide-onboarding-agent
+    restart: unless-stopped
+    ports:
+      - "3500:3500"
+    env_file:
+      - .env
+    volumes:
+      # Mount Claude Code auth credentials (populated by `claude auth login` on host)
+      - claude-auth:/root/.claude
+      # Mount MCP config
+      - ${HOME}/.mcp.json:/root/.mcp.json:ro
+      # Mount the CLAUDE.md persona (editable without rebuild)
+      - ./CLAUDE.md:/opt/peptide-agent/CLAUDE.md:ro
+    environment:
+      - AGENTAPI_URL=http://localhost:8100
+
+volumes:
+  claude-auth:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.claude

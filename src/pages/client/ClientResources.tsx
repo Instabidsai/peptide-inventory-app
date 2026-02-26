@@ -536,46 +536,153 @@ export default function ClientResources() {
                         ))}
                     </div>
 
-                    {/* Resources Grid */}
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {topicResources.length === 0 ? (
-                            <div className="col-span-full">
-                                <EmptyResourceState searchTerm={selectedTheme.name} />
-                            </div>
-                        ) : (
-                            topicResources.map(resource => (
-                                <div
-                                    key={resource.id}
-                                    onClick={() => setSelectedResource(resource)}
-                                    className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-all"
-                                    style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}
-                                >
-                                    <div className="aspect-video bg-card flex items-center justify-center relative">
-                                        {resource.thumbnail_url ? (
-                                            <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" loading="lazy" />
-                                        ) : (
-                                            <Play className="h-10 w-10 text-muted-foreground/40" />
-                                        )}
-                                        {resource.type === 'video' && resource.duration && (
-                                            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                                                {Math.floor(resource.duration / 60)}:{String(resource.duration % 60).padStart(2, '0')}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="p-3">
-                                        <h4 className="font-semibold text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
-                                        <p className="text-xs text-muted-foreground/50 line-clamp-2 mb-2">{resource.description}</p>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-muted-foreground/50 capitalize">{resource.type}</span>
-                                            <span className="text-xs text-muted-foreground/50 flex items-center gap-1">
-                                                <Eye className="h-3 w-3" /> {resource.view_count || 0}
-                                            </span>
+                    {/* Tab Content */}
+                    {topicTab === 'overview' ? (() => {
+                        const article = topicResources.find(r => r.type === 'article' && r.content);
+                        const videos = topicResources.filter(r => r.type === 'video');
+                        return (
+                            <div className="space-y-6">
+                                {/* Article writeup — front and center */}
+                                {article ? (
+                                    <div className="rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(6, 78, 59, 0.08) 100%)', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                                        <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-emerald-500/10">
+                                            <div className="p-2.5 rounded-xl bg-emerald-500/20 shrink-0">
+                                                <Atom className="h-5 w-5 text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold text-white">{selectedTheme.name}</h3>
+                                                <p className="text-xs text-muted-foreground/50 mt-0.5">Research Overview</p>
+                                            </div>
+                                        </div>
+                                        <div className="px-6 py-5">
+                                            <div
+                                                className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-emerald-300 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-gray-300 prose-p:leading-relaxed prose-li:text-gray-300 prose-strong:text-white prose-ul:my-2 prose-li:my-0.5"
+                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content!) }}
+                                            />
                                         </div>
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                                ) : (
+                                    <div className="rounded-xl p-5" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 78, 59, 0.15) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-3 rounded-xl bg-emerald-500/20 shrink-0">
+                                                <Atom className="h-6 w-6 text-emerald-400" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h3 className="text-lg font-bold text-white">{selectedTheme.name}</h3>
+                                                <p className="text-sm text-muted-foreground/70 leading-relaxed">
+                                                    {selectedTheme.description || `Explore research, videos, dosing guides and community discussion about ${selectedTheme.name}.`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Videos section — supplementary below the writeup */}
+                                {videos.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Video className="h-4 w-4 text-emerald-400" />
+                                            <h4 className="text-sm font-semibold text-white">Related Videos</h4>
+                                            <span className="text-xs text-muted-foreground/50">({videos.length})</span>
+                                        </div>
+                                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {videos.map(resource => (
+                                                <div
+                                                    key={resource.id}
+                                                    onClick={() => setSelectedResource(resource)}
+                                                    className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-all"
+                                                    style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}
+                                                >
+                                                    <div className="aspect-video bg-card flex items-center justify-center relative">
+                                                        {resource.thumbnail_url ? (
+                                                            <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" loading="lazy" />
+                                                        ) : (
+                                                            <Play className="h-10 w-10 text-muted-foreground/40" />
+                                                        )}
+                                                        {resource.duration && (
+                                                            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                                                {Math.floor(resource.duration / 60)}:{String(resource.duration % 60).padStart(2, '0')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="p-3">
+                                                        <h4 className="font-semibold text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
+                                                        <p className="text-xs text-muted-foreground/50 line-clamp-2">{resource.description}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })() : topicTab === 'discussion' ? (
+                        <div className="rounded-xl p-6 text-center space-y-4" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}>
+                            <Users className="h-10 w-10 text-emerald-400 mx-auto" />
+                            <h3 className="text-lg font-semibold">Join the {selectedTheme.name} Discussion</h3>
+                            <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
+                                Connect with others and ask questions about {selectedTheme.name}.
+                            </p>
+                            <button
+                                onClick={() => navigate('/community')}
+                                className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-white font-medium rounded-full text-sm transition-all shadow-lg shadow-emerald-500/25 inline-flex items-center gap-2"
+                            >
+                                <Users className="h-4 w-4" /> Open Community Forum
+                            </button>
+                        </div>
+                    ) : (() => {
+                        /* Research / Videos / Guides tabs — filtered by type */
+                        const typeMap: Record<string, string[]> = {
+                            research: ['article'],
+                            videos: ['video'],
+                            guides: ['guide', 'pdf'],
+                        };
+                        const types = typeMap[topicTab] || [];
+                        const filtered = topicResources.filter(r => types.includes(r.type));
+                        return (
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filtered.length === 0 ? (
+                                    <div className="col-span-full text-center py-12">
+                                        <p className="text-muted-foreground/50 text-sm">No {topicTab} found for {selectedTheme.name} yet.</p>
+                                    </div>
+                                ) : (
+                                    filtered.map(resource => (
+                                        <div
+                                            key={resource.id}
+                                            onClick={() => setSelectedResource(resource)}
+                                            className="rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-all"
+                                            style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}
+                                        >
+                                            <div className="aspect-video bg-card flex items-center justify-center relative">
+                                                {resource.thumbnail_url ? (
+                                                    <img src={resource.thumbnail_url} alt={resource.title || 'Resource thumbnail'} className="w-full h-full object-cover" loading="lazy" />
+                                                ) : resource.type === 'article' ? (
+                                                    <FileText className="h-10 w-10 text-muted-foreground/40" />
+                                                ) : (
+                                                    <Play className="h-10 w-10 text-muted-foreground/40" />
+                                                )}
+                                                {resource.type === 'video' && resource.duration && (
+                                                    <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                                        {Math.floor(resource.duration / 60)}:{String(resource.duration % 60).padStart(2, '0')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="p-3">
+                                                <h4 className="font-semibold text-sm text-white line-clamp-2 mb-1">{resource.title}</h4>
+                                                <p className="text-xs text-muted-foreground/50 line-clamp-2 mb-2">{resource.description}</p>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-muted-foreground/50 capitalize">{resource.type}</span>
+                                                    <span className="text-xs text-muted-foreground/50 flex items-center gap-1">
+                                                        <Eye className="h-3 w-3" /> {resource.view_count || 0}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        );
+                    })()}
                 </>
             )}
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '@/test/mocks/wrapper';
-import { supabase, setMockResponse, setFunctionResponse, resetMockResponses } from '@/test/mocks/supabase';
+import { supabase, setRpcResponse, resetMockResponses } from '@/test/mocks/supabase';
 import { mockToast, resetToast } from '@/test/mocks/toast';
 import { resetAuthContext } from '@/test/mocks/auth';
 import { useInviteRep } from '../use-invite';
@@ -14,9 +14,8 @@ beforeEach(() => {
 });
 
 describe('useInviteRep', () => {
-  it('invokes invite-user edge function and toasts success', async () => {
-    setFunctionResponse('invite-user', { success: true, user_id: 'new-user-1', new_user: true });
-    setMockResponse('profiles', []);
+  it('calls invite_new_rep RPC and toasts success', async () => {
+    setRpcResponse('invite_new_rep', { success: true, new_user: true, contact_id: 'c-1', action_link: '', message: 'ok' });
 
     const { result } = renderHook(() => useInviteRep(), { wrapper: createWrapper() });
 
@@ -25,15 +24,15 @@ describe('useInviteRep', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(supabase.functions.invoke).toHaveBeenCalledWith('invite-user', expect.objectContaining({
-      body: expect.objectContaining({ email: 'newrep@test.com', role: 'sales_rep' }),
+    expect(supabase.rpc).toHaveBeenCalledWith('invite_new_rep', expect.objectContaining({
+      p_email: 'newrep@test.com',
+      p_full_name: 'New Rep',
     }));
     expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Invitation Sent' }));
   });
 
-  it('updates profile with parent_rep_id when provided', async () => {
-    setFunctionResponse('invite-user', { success: true, user_id: 'new-user-2', new_user: true });
-    setMockResponse('profiles', []);
+  it('passes parent_rep_id when provided', async () => {
+    setRpcResponse('invite_new_rep', { success: true, new_user: true, contact_id: 'c-2', action_link: '', message: 'ok' });
 
     const { result } = renderHook(() => useInviteRep(), { wrapper: createWrapper() });
 
@@ -46,12 +45,13 @@ describe('useInviteRep', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    // Profile update should be called for name and parent
-    expect(supabase.from).toHaveBeenCalledWith('profiles');
+    expect(supabase.rpc).toHaveBeenCalledWith('invite_new_rep', expect.objectContaining({
+      p_parent_rep_id: 'parent-rep-1',
+    }));
   });
 
-  it('shows error toast when edge function returns failure', async () => {
-    setFunctionResponse('invite-user', { success: false, error: 'Email already exists' });
+  it('shows error toast when RPC returns failure', async () => {
+    setRpcResponse('invite_new_rep', { success: false, message: 'Email already exists' });
 
     const { result } = renderHook(() => useInviteRep(), { wrapper: createWrapper() });
 
@@ -65,8 +65,8 @@ describe('useInviteRep', () => {
     );
   });
 
-  it('shows error toast when edge function invocation fails', async () => {
-    setFunctionResponse('invite-user', null, { message: 'Edge function timeout' });
+  it('shows error toast when RPC invocation fails', async () => {
+    setRpcResponse('invite_new_rep', null, { message: 'RPC timeout' });
 
     const { result } = renderHook(() => useInviteRep(), { wrapper: createWrapper() });
 

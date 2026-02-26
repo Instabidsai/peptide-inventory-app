@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { FlaskConical, Plus, ShoppingBag, Pill } from 'lucide-react';
+import { FlaskConical, ShoppingBag, Pill } from 'lucide-react';
 import { RegimenCard } from './RegimenCard';
 import type { Protocol } from '@/types/regimen';
 import type { Peptide } from '@/hooks/use-peptides';
@@ -13,8 +13,6 @@ interface RegimensSectionProps {
     assignedProtocols: Protocol[] | undefined;
     peptides: Peptide[] | undefined;
     movements: Movement[] | undefined;
-    onEditClick: (protocol: Protocol) => void;
-    onAddClick: () => void;
     onOpenAssignInventory: (peptideId?: string, protocolItemId?: string) => void;
     deleteProtocol: { mutate: (id: string) => void };
     logProtocolUsage: { mutate: (args: { itemId: string }) => void };
@@ -29,8 +27,6 @@ export function RegimensSection({
     assignedProtocols,
     peptides,
     movements,
-    onEditClick,
-    onAddClick,
     onOpenAssignInventory,
     deleteProtocol,
     logProtocolUsage,
@@ -59,10 +55,6 @@ export function RegimensSection({
                             <p className="text-lg font-semibold text-muted-foreground">No active regimens</p>
                             <p className="text-sm text-muted-foreground/70">Assign a protocol, create a supplement stack, or just add items to their inventory.</p>
                             <div className="flex justify-center flex-wrap gap-2 mt-4">
-                                <Button variant="outline" onClick={onAddClick}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Peptide Regimen
-                                </Button>
                                 <Button variant="outline" onClick={() => onOpenAssignInventory()}>
                                     <ShoppingBag className="mr-2 h-4 w-4" />
                                     Just Add to Fridge
@@ -80,7 +72,6 @@ export function RegimensSection({
                                     key={protocol.id}
                                     protocol={protocol}
                                     onDelete={deleteProtocol.mutate}
-                                    onEdit={() => onEditClick(protocol)}
                                     onLog={logProtocolUsage.mutate}
                                     onAddSupplement={addProtocolSupplement.mutate}
                                     onDeleteSupplement={deleteProtocolSupplement.mutate}
