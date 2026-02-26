@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud,
   Wrench, Terminal, HeartPulse, Shield, AlertTriangle, Clock,
-  TrendingUp, Zap, Eye,
+  TrendingUp, Zap, Eye, Brain, GitBranch, ToggleLeft, ToggleRight,
+  Cpu, Radio, Rocket, ShieldAlert, Gauge,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -58,13 +60,57 @@ interface HealLogEntry {
   created_at: string;
 }
 
-interface SentinelStatus {
-  alive: boolean;
-  lastHeartbeat: string | null;
-  lastHealRun: string | null;
-  healCount24h: number;
-  bugReportsOpen: number;
-  loading: boolean;
+interface SentinelRun {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  bugs_processed: number;
+  patterns_matched: number;
+  ai_diagnoses: number;
+  fixes_applied: number;
+  circuit_breakers_tripped: number;
+  errors: string[] | null;
+  status: string;
+}
+
+interface ErrorPattern {
+  id: string;
+  pattern: string;
+  match_type: string;
+  category: string;
+  severity: string;
+  auto_fix_action: string | null;
+  fix_description: string | null;
+  cooldown_minutes: number;
+  enabled: boolean;
+  times_matched: number;
+  times_fixed: number;
+  last_matched_at: string | null;
+  last_fixed_at: string | null;
+}
+
+interface CircuitBreakerEvent {
+  id: string;
+  feature_key: string;
+  org_id: string | null;
+  action: string;
+  reason: string | null;
+  error_count: number | null;
+  threshold: number | null;
+  created_at: string;
+}
+
+interface DeployEvent {
+  id: string;
+  deployment_id: string | null;
+  commit_sha: string | null;
+  commit_message: string | null;
+  branch: string | null;
+  status: string;
+  source: string;
+  url: string | null;
+  deployed_at: string;
+  metadata: Record<string, unknown>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -82,10 +128,11 @@ const RPC_FUNCTIONS = [
 const EDGE_FUNCTIONS = [
   "admin-ai-chat", "ai-builder", "analyze-food", "chat-with-ai",
   "check-low-supply", "check-payment-emails", "composio-callback", "composio-connect",
-  "create-supplier-order", "exchange-token", "health-probe", "invite-user",
-  "notify-commission", "partner-ai-chat", "process-health-document", "promote-contact",
-  "provision-tenant", "run-automations", "scrape-brand", "self-signup",
-  "send-email", "sms-webhook", "telegram-webhook", "textbelt-webhook",
+  "create-supplier-order", "deploy-webhook", "exchange-token", "health-probe",
+  "invite-user", "notify-commission", "partner-ai-chat", "process-health-document",
+  "promote-contact", "provision-tenant", "run-automations", "scrape-brand",
+  "self-signup", "send-email", "sentinel-worker", "sms-webhook",
+  "telegram-webhook", "textbelt-webhook",
 ];
 
 const ERROR_SOURCES = [
@@ -98,6 +145,9 @@ const ERROR_SOURCES = [
   { name: "App Downtime", layer: "Infra", reporter: "health-probe (cron)" },
   { name: "DB Connectivity", layer: "Infra", reporter: "health-probe (cron)" },
   { name: "Edge Fn Downtime", layer: "Infra", reporter: "health-probe (cron)" },
+  { name: "AI Pattern Matching", layer: "Sentinel", reporter: "sentinel-worker (cron)" },
+  { name: "Circuit Breakers", layer: "Sentinel", reporter: "sentinel-worker (cron)" },
+  { name: "Deploy Correlation", layer: "Sentinel", reporter: "sentinel-worker + deploy-webhook" },
 ];
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -125,20 +175,15 @@ function timeAgo(iso: string): string {
 /* ------------------------------------------------------------------ */
 
 export default function SystemHealth() {
-  /* ── Manual on-demand checks (unchanged from original) ── */
+  const queryClient = useQueryClient();
   const [manualChecks, setManualChecks] = useState<HealthCheck[]>([]);
   const [running, setRunning] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
-  const [sentinel, setSentinel] = useState<SentinelStatus>({
-    alive: false, lastHeartbeat: null, lastHealRun: null,
-    healCount24h: 0, bugReportsOpen: 0, loading: true,
-  });
+  const [triggeringProbe, setTriggeringProbe] = useState(false);
+  const [triggeringSentinel, setTriggeringSentinel] = useState(false);
 
-  useEffect(() => { loadSentinelStatus(); }, []);
+  /* ── Auto-refreshing queries ── */
 
-  /* ── Auto-refreshing queries (new) ── */
-
-  // Latest health-probe results (last cycle per check_name)
   const { data: latestProbes } = useQuery<DbHealthCheck[]>({
     queryKey: ["health-probe-latest"],
     queryFn: async () => {
@@ -152,7 +197,6 @@ export default function SystemHealth() {
     refetchInterval: 30_000,
   });
 
-  // Active incidents (not resolved/failed)
   const { data: activeIncidents } = useQuery<Incident[]>({
     queryKey: ["incidents-active"],
     queryFn: async () => {
@@ -167,7 +211,6 @@ export default function SystemHealth() {
     refetchInterval: 30_000,
   });
 
-  // Recent resolved incidents (last 24h)
   const { data: recentIncidents } = useQuery<Incident[]>({
     queryKey: ["incidents-recent"],
     queryFn: async () => {
@@ -184,7 +227,6 @@ export default function SystemHealth() {
     refetchInterval: 60_000,
   });
 
-  // Recent heal log entries (last 24h)
   const { data: healLog } = useQuery<HealLogEntry[]>({
     queryKey: ["heal-log-recent"],
     queryFn: async () => {
@@ -200,9 +242,86 @@ export default function SystemHealth() {
     refetchInterval: 30_000,
   });
 
+  // Sentinel runs (last 24h)
+  const { data: sentinelRuns } = useQuery<SentinelRun[]>({
+    queryKey: ["sentinel-runs"],
+    queryFn: async () => {
+      const dayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { data } = await supabase
+        .from("sentinel_runs")
+        .select("*")
+        .gte("started_at", dayAgo)
+        .order("started_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Error patterns
+  const { data: errorPatterns } = useQuery<ErrorPattern[]>({
+    queryKey: ["error-patterns"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("error_patterns")
+        .select("*")
+        .order("times_matched", { ascending: false });
+      return data || [];
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Circuit breaker events (last 24h)
+  const { data: circuitEvents } = useQuery<CircuitBreakerEvent[]>({
+    queryKey: ["circuit-breaker-events"],
+    queryFn: async () => {
+      const dayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { data } = await supabase
+        .from("circuit_breaker_events")
+        .select("*")
+        .gte("created_at", dayAgo)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Deploy events (last 7 days)
+  const { data: deployEvents } = useQuery<DeployEvent[]>({
+    queryKey: ["deploy-events"],
+    queryFn: async () => {
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data } = await supabase
+        .from("deploy_events")
+        .select("*")
+        .gte("deployed_at", weekAgo)
+        .order("deployed_at", { ascending: false })
+        .limit(30);
+      return data || [];
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Recent AI diagnoses from bug_reports
+  const { data: aiDiagnoses } = useQuery<{ id: string; description: string; sentinel_diagnosis: string; page_url: string | null; created_at: string }[]>({
+    queryKey: ["ai-diagnoses"],
+    queryFn: async () => {
+      const dayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { data } = await supabase
+        .from("bug_reports")
+        .select("id, description, sentinel_diagnosis, page_url, created_at")
+        .not("sentinel_diagnosis", "is", null)
+        .gte("created_at", dayAgo)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return data || [];
+    },
+    refetchInterval: 30_000,
+  });
+
   /* ── Computed metrics ── */
 
-  // Deduplicate to latest result per check_name
   const latestByName = useMemo(() => {
     const map = new Map<string, DbHealthCheck>();
     for (const p of latestProbes || []) {
@@ -218,7 +337,6 @@ export default function SystemHealth() {
   const probeAllGreen = probeTotalCount > 0 && probePassCount === probeTotalCount;
   const lastProbeTime = latestProbes?.[0]?.checked_at;
 
-  // Uptime % (last 24h) — pass / total across all probes
   const uptime24h = useMemo(() => {
     if (!latestProbes || latestProbes.length === 0) return null;
     const dayAgo = Date.now() - 86400000;
@@ -228,7 +346,6 @@ export default function SystemHealth() {
     return ((passes / recent.length) * 100).toFixed(1);
   }, [latestProbes]);
 
-  // Average latency across latest probes
   const avgLatency = useMemo(() => {
     const vals = Array.from(latestByName.values())
       .filter(p => p.latency_ms !== null)
@@ -241,48 +358,57 @@ export default function SystemHealth() {
   const criticalCount = activeIncidents?.filter(i => i.severity === "critical").length || 0;
   const healSuccessCount = healLog?.filter(h => h.result === "success").length || 0;
 
-  /* ── Sentinel status (from audit_log — existing logic) ── */
+  // Sentinel stats
+  const lastSentinelRun = sentinelRuns?.[0];
+  const sentinelAlive = lastSentinelRun
+    ? (Date.now() - new Date(lastSentinelRun.started_at).getTime()) < 5 * 60_000
+    : false;
+  const sentinelBugsProcessed24h = sentinelRuns?.reduce((sum, r) => sum + (r.bugs_processed || 0), 0) || 0;
+  const sentinelAIDiagnoses24h = sentinelRuns?.reduce((sum, r) => sum + (r.ai_diagnoses || 0), 0) || 0;
+  const sentinelFixesApplied24h = sentinelRuns?.reduce((sum, r) => sum + (r.fixes_applied || 0), 0) || 0;
+  const activeBreakers = circuitEvents?.filter(e => e.action === "tripped") || [];
+  const resetBreakers = circuitEvents?.filter(e => e.action === "reset") || [];
 
-  const loadSentinelStatus = async () => {
-    setSentinel((s) => ({ ...s, loading: true }));
+  // Patterns stats
+  const totalPatterns = errorPatterns?.length || 0;
+  const activePatterns = errorPatterns?.filter(p => p.enabled).length || 0;
+  const totalPatternMatches = errorPatterns?.reduce((sum, p) => sum + (p.times_matched || 0), 0) || 0;
+
+  /* ── Trigger health probe manually ── */
+  const triggerProbe = async () => {
+    setTriggeringProbe(true);
     try {
-      const { data: heartbeat } = await supabase
-        .from("audit_log").select("created_at, details")
-        .eq("action", "sentinel_heartbeat")
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-
-      const { data: healRun } = await supabase
-        .from("audit_log").select("created_at, details")
-        .eq("action", "auto_heal_run")
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-
-      const dayAgo = new Date(Date.now() - 86400000).toISOString();
-      const { count: healCount } = await supabase
-        .from("audit_log").select("id", { count: "exact", head: true })
-        .eq("action", "auto_heal_run").gte("created_at", dayAgo);
-
-      const { count: bugCount } = await supabase
-        .from("bug_reports").select("id", { count: "exact", head: true })
-        .eq("status", "open");
-
-      const isAlive = heartbeat?.created_at
-        ? Date.now() - new Date(heartbeat.created_at).getTime() < 15 * 60 * 1000
-        : false;
-
-      setSentinel({
-        alive: isAlive,
-        lastHeartbeat: heartbeat?.created_at || null,
-        lastHealRun: healRun?.created_at || null,
-        healCount24h: healCount || 0,
-        bugReportsOpen: bugCount || 0,
-        loading: false,
-      });
-    } catch {
-      setSentinel((s) => ({ ...s, loading: false }));
+      const { error } = await supabase.functions.invoke("health-probe", { method: "POST", body: {} });
+      if (error) throw error;
+      toast.success("Health probe triggered — results will appear in ~10s");
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["health-probe-latest"] }), 10000);
+    } catch (err) {
+      toast.error(`Probe failed: ${(err as Error).message}`);
+    } finally {
+      setTriggeringProbe(false);
     }
   };
 
-  /* ── Manual health check runner (unchanged) ── */
+  /* ── Trigger sentinel manually ── */
+  const triggerSentinel = async () => {
+    setTriggeringSentinel(true);
+    try {
+      const { error } = await supabase.functions.invoke("sentinel-worker", { method: "POST", body: {} });
+      if (error) throw error;
+      toast.success("Sentinel triggered — results will appear in ~15s");
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["sentinel-runs"] });
+        queryClient.invalidateQueries({ queryKey: ["ai-diagnoses"] });
+        queryClient.invalidateQueries({ queryKey: ["circuit-breaker-events"] });
+      }, 15000);
+    } catch (err) {
+      toast.error(`Sentinel failed: ${(err as Error).message}`);
+    } finally {
+      setTriggeringSentinel(false);
+    }
+  };
+
+  /* ── Manual health check runner ── */
 
   const updateCheck = (name: string, update: Partial<HealthCheck>) => {
     setManualChecks((prev) => prev.map((c) => (c.name === name ? { ...c, ...update } : c)));
@@ -298,7 +424,6 @@ export default function SystemHealth() {
     ];
     setManualChecks(allChecks);
 
-    // DB check
     try {
       const start = performance.now();
       const { error } = await supabase.from("organizations").select("id").limit(1);
@@ -308,7 +433,6 @@ export default function SystemHealth() {
       updateCheck("Supabase Connection", { status: "fail", error: (err as Error)?.message || "Unknown" });
     }
 
-    // Auth check
     try {
       const start = performance.now();
       const { error } = await supabase.auth.getSession();
@@ -318,7 +442,6 @@ export default function SystemHealth() {
       updateCheck("Auth Service", { status: "fail", error: (err as Error)?.message || "Unknown" });
     }
 
-    // RPC checks
     for (const fn of RPC_FUNCTIONS) {
       try {
         const start = performance.now();
@@ -339,7 +462,6 @@ export default function SystemHealth() {
       }
     }
 
-    // Edge function checks
     for (const fn of EDGE_FUNCTIONS) {
       try {
         const start = performance.now();
@@ -367,25 +489,36 @@ export default function SystemHealth() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header + Status Banner ── */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6" />
-            System Health
+            System Health — Self-Healing AI
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Zero-human-in-the-loop autonomous monitoring
+            Zero-human-in-the-loop autonomous monitoring &amp; healing
             {lastProbeTime && <> &middot; Last probe: {timeAgo(lastProbeTime)}</>}
+            {lastSentinelRun && <> &middot; Last sentinel: {timeAgo(lastSentinelRun.started_at)}</>}
           </p>
         </div>
-        <Button onClick={runHealthChecks} disabled={running} variant="outline">
-          {running ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          {running ? "Running..." : "Manual Check"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={triggerProbe} disabled={triggeringProbe} variant="outline" size="sm">
+            {triggeringProbe ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Radio className="h-4 w-4 mr-1" />}
+            Run Probe
+          </Button>
+          <Button onClick={triggerSentinel} disabled={triggeringSentinel} variant="outline" size="sm">
+            {triggeringSentinel ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Brain className="h-4 w-4 mr-1" />}
+            Run Sentinel
+          </Button>
+          <Button onClick={runHealthChecks} disabled={running} variant="outline" size="sm">
+            {running ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            Full Check
+          </Button>
+        </div>
       </div>
 
-      {/* ── Top-level status badges ── */}
+      {/* ── Status badges ── */}
       <div className="flex flex-wrap gap-3">
         {probeTotalCount > 0 ? (
           <Badge variant={probeAllGreen ? "default" : "destructive"} className="text-sm px-3 py-1">
@@ -394,10 +527,20 @@ export default function SystemHealth() {
         ) : (
           <Badge variant="outline" className="text-sm px-3 py-1">No probe data yet</Badge>
         )}
+        <Badge variant={sentinelAlive ? "default" : "destructive"} className="text-sm px-3 py-1">
+          <Brain className="h-3 w-3 mr-1" />
+          Sentinel {sentinelAlive ? "Active" : "Offline"}
+        </Badge>
         {activeIncidentCount > 0 && (
           <Badge variant="destructive" className="text-sm px-3 py-1">
             {activeIncidentCount} Active Incident{activeIncidentCount > 1 ? "s" : ""}
             {criticalCount > 0 && ` (${criticalCount} critical)`}
+          </Badge>
+        )}
+        {activeBreakers.length > 0 && (
+          <Badge variant="destructive" className="text-sm px-3 py-1">
+            <ShieldAlert className="h-3 w-3 mr-1" />
+            {activeBreakers.length} Circuit Breaker{activeBreakers.length > 1 ? "s" : ""} Tripped
           </Badge>
         )}
         {activeIncidentCount === 0 && probeTotalCount > 0 && (
@@ -407,39 +550,46 @@ export default function SystemHealth() {
         )}
       </div>
 
-      {/* ── KPI Cards Row ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* ── KPI Cards ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Uptime (24h)" value={uptime24h ? `${uptime24h}%` : "—"} />
         <KpiCard icon={<Zap className="h-4 w-4" />} label="Avg Latency" value={avgLatency ? `${avgLatency}ms` : "—"} />
         <KpiCard icon={<CheckCircle2 className="h-4 w-4" />} label="Probes Passing" value={probeTotalCount > 0 ? `${probePassCount}/${probeTotalCount}` : "—"} />
         <KpiCard icon={<AlertTriangle className="h-4 w-4" />} label="Active Incidents" value={String(activeIncidentCount)} alert={activeIncidentCount > 0} />
-        <KpiCard icon={<Wrench className="h-4 w-4" />} label="Heals (24h)" value={String(healSuccessCount)} />
+        <KpiCard icon={<Wrench className="h-4 w-4" />} label="Fixes Applied (24h)" value={String(sentinelFixesApplied24h)} />
+        <KpiCard icon={<Brain className="h-4 w-4" />} label="AI Diagnoses (24h)" value={String(sentinelAIDiagnoses24h)} />
       </div>
 
-      {/* ── Tabbed sections ── */}
+      {/* ── Tabs ── */}
       <Tabs defaultValue="probes" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="probes">Probe Results</TabsTrigger>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="probes">Probes</TabsTrigger>
+          <TabsTrigger value="sentinel">
+            Sentinel
+            {sentinelAlive && <span className="ml-1 w-2 h-2 rounded-full bg-green-500 inline-block" />}
+          </TabsTrigger>
           <TabsTrigger value="incidents">
             Incidents
             {activeIncidentCount > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold w-5 h-5">{activeIncidentCount}</span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="patterns">Patterns ({totalPatterns})</TabsTrigger>
+          <TabsTrigger value="breakers">Circuit Breakers</TabsTrigger>
+          <TabsTrigger value="deploys">Deploys</TabsTrigger>
           <TabsTrigger value="healing">Healing Log</TabsTrigger>
           <TabsTrigger value="manual">Manual Check</TabsTrigger>
           <TabsTrigger value="coverage">Coverage</TabsTrigger>
         </TabsList>
 
-        {/* ── Tab: Probe Results ── */}
+        {/* ── Tab: Probes ── */}
         <TabsContent value="probes" className="space-y-4">
           {probeTotalCount === 0 ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground">
-              No autonomous probe data yet. Deploy the <code className="bg-muted px-1 rounded">health-probe</code> edge function and schedule it via pg_cron.
+              No probe data yet. The <code className="bg-muted px-1 rounded">health-probe</code> runs every 5 minutes via pg_cron.
             </CardContent></Card>
           ) : (
             <>
-              {/* Group by category */}
               {(["infra", "rpc", "edge", "app"] as const).map((cat) => {
                 const items = Array.from(latestByName.values()).filter(p => p.category === cat);
                 if (items.length === 0) return null;
@@ -471,9 +621,97 @@ export default function SystemHealth() {
           )}
         </TabsContent>
 
+        {/* ── Tab: Sentinel ── */}
+        <TabsContent value="sentinel" className="space-y-4">
+          {/* Sentinel overview */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Sentinel AI Brain
+                <Badge variant={sentinelAlive ? "default" : "destructive"} className="ml-2 text-xs">
+                  {sentinelAlive ? "ACTIVE" : "OFFLINE"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-5">
+                <MiniStat label="Last Run" value={lastSentinelRun ? timeAgo(lastSentinelRun.started_at) : "Never"} />
+                <MiniStat label="Bugs Processed (24h)" value={String(sentinelBugsProcessed24h)} />
+                <MiniStat label="Patterns Matched (24h)" value={String(sentinelRuns?.reduce((s, r) => s + (r.patterns_matched || 0), 0) || 0)} />
+                <MiniStat label="AI Diagnoses (24h)" value={String(sentinelAIDiagnoses24h)} />
+                <MiniStat label="Fixes Applied (24h)" value={String(sentinelFixesApplied24h)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sentinel runs list */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cpu className="h-4 w-4" />
+                Sentinel Runs (last 24h) ({sentinelRuns?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!sentinelRuns || sentinelRuns.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No sentinel runs yet. The sentinel runs every 2 minutes via pg_cron.</p>
+              ) : (
+                <div className="space-y-1">
+                  {sentinelRuns.map((run) => (
+                    <div key={run.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        {run.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> :
+                         run.status === "failed" ? <XCircle className="h-4 w-4 text-red-500" /> :
+                         <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                        <span className="text-sm font-mono">{timeAgo(run.started_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>{run.bugs_processed} bugs</span>
+                        <span>{run.patterns_matched} matched</span>
+                        <span>{run.ai_diagnoses} AI</span>
+                        <span>{run.fixes_applied} fixes</span>
+                        {run.circuit_breakers_tripped > 0 && (
+                          <Badge variant="destructive" className="text-[10px]">{run.circuit_breakers_tripped} breakers</Badge>
+                        )}
+                        {run.errors && run.errors.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] text-red-500">{run.errors.length} errors</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent AI Diagnoses */}
+          {(aiDiagnoses?.length || 0) > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Diagnoses (last 24h)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {aiDiagnoses?.map((d) => (
+                  <div key={d.id} className="rounded-lg border p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-muted-foreground truncate max-w-[300px]">{d.page_url || "unknown"}</span>
+                      <span className="text-xs text-muted-foreground">{timeAgo(d.created_at)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{d.description?.slice(0, 100)}</p>
+                    <p className="text-sm whitespace-pre-wrap">{d.sentinel_diagnosis}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
         {/* ── Tab: Incidents ── */}
         <TabsContent value="incidents" className="space-y-4">
-          {/* Active incidents */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -494,7 +732,6 @@ export default function SystemHealth() {
             </CardContent>
           </Card>
 
-          {/* Recent resolved */}
           {(recentIncidents?.length || 0) > 0 && (
             <Card>
               <CardHeader className="pb-2">
@@ -510,37 +747,120 @@ export default function SystemHealth() {
           )}
         </TabsContent>
 
-        {/* ── Tab: Healing Log ── */}
-        <TabsContent value="healing" className="space-y-4">
-          {/* Sentinel card */}
+        {/* ── Tab: Patterns ── */}
+        <TabsContent value="patterns" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <HeartPulse className="h-4 w-4" />
-                Auto-Heal Sentinel
-                {sentinel.loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                ) : sentinel.alive ? (
-                  <Badge variant="default" className="ml-2 text-xs">ALIVE</Badge>
-                ) : (
-                  <Badge variant="destructive" className="ml-2 text-xs">OFFLINE</Badge>
-                )}
-                <Button variant="ghost" size="sm" className="ml-auto h-7 px-2" onClick={loadSentinelStatus}>
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
+                <Gauge className="h-4 w-4" />
+                Error Patterns ({activePatterns} active / {totalPatterns} total, {totalPatternMatches} matches)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <MiniStat label="Last Heartbeat" value={sentinel.lastHeartbeat ? timeAgo(sentinel.lastHeartbeat) : "Never"} />
-                <MiniStat label="Last Heal Run" value={sentinel.lastHealRun ? timeAgo(sentinel.lastHealRun) : "Never"} />
-                <MiniStat label="Heals (24h)" value={String(sentinel.healCount24h)} />
-                <MiniStat label="Open Bug Reports" value={String(sentinel.bugReportsOpen)} alert={sentinel.bugReportsOpen > 0} />
-              </div>
+              {(!errorPatterns || errorPatterns.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No error patterns configured.</p>
+              ) : (
+                <div className="space-y-1">
+                  {errorPatterns.map((pat) => (
+                    <div key={pat.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {pat.enabled ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" /> : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                        <span className="text-sm font-mono truncate">{pat.pattern}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="outline" className="text-[10px]">{pat.match_type}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{pat.category}</Badge>
+                        <Badge variant={pat.severity === "critical" ? "destructive" : "outline"} className="text-[10px]">{pat.severity}</Badge>
+                        {pat.auto_fix_action && <Badge variant="secondary" className="text-[10px]">{pat.auto_fix_action}</Badge>}
+                        <span className="text-xs text-muted-foreground w-16 text-right">{pat.times_matched} hits</span>
+                        {pat.last_matched_at && <span className="text-xs text-muted-foreground">{timeAgo(pat.last_matched_at)}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Heal log table */}
+        {/* ── Tab: Circuit Breakers ── */}
+        <TabsContent value="breakers" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" />
+                Circuit Breaker Events (last 24h) ({circuitEvents?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!circuitEvents || circuitEvents.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No circuit breaker events. When error rates spike, the sentinel will auto-disable affected features.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {circuitEvents.map((evt) => (
+                    <div key={evt.id} className={`rounded-lg border p-3 space-y-1 ${evt.action === "tripped" ? "border-red-200 bg-red-50" : evt.action === "reset" ? "border-green-200 bg-green-50" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {evt.action === "tripped" ? <ToggleLeft className="h-4 w-4 text-red-500" /> : <ToggleRight className="h-4 w-4 text-green-500" />}
+                          <span className="text-sm font-medium">{evt.feature_key}</span>
+                          <Badge variant={evt.action === "tripped" ? "destructive" : "default"} className="text-xs">{evt.action}</Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{timeAgo(evt.created_at)}</span>
+                      </div>
+                      {evt.reason && <p className="text-xs text-muted-foreground">{evt.reason}</p>}
+                      {evt.error_count && <p className="text-xs">Errors: {evt.error_count} / Threshold: {evt.threshold}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Tab: Deploys ── */}
+        <TabsContent value="deploys" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Rocket className="h-4 w-4" />
+                Deploy Events (last 7 days) ({deployEvents?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(!deployEvents || deployEvents.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No deploy events yet. Configure the <code className="bg-muted px-1 rounded">deploy-webhook</code> in Vercel to track deployments.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {deployEvents.map((dep) => (
+                    <div key={dep.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        {dep.status === "ready" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> :
+                         dep.status === "error" ? <XCircle className="h-4 w-4 text-red-500" /> :
+                         dep.status === "building" ? <Loader2 className="h-4 w-4 animate-spin text-blue-500" /> :
+                         <Clock className="h-4 w-4 text-muted-foreground" />}
+                        <GitBranch className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm font-mono">{dep.branch || "—"}</span>
+                        {dep.commit_sha && <span className="text-xs text-muted-foreground font-mono">{dep.commit_sha.slice(0, 7)}</span>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {dep.commit_message && <span className="text-xs text-muted-foreground max-w-[300px] truncate">{dep.commit_message}</span>}
+                        <Badge variant="outline" className="text-[10px]">{dep.status}</Badge>
+                        <span className="text-xs text-muted-foreground">{timeAgo(dep.deployed_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Tab: Healing Log ── */}
+        <TabsContent value="healing" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -572,17 +892,16 @@ export default function SystemHealth() {
             </CardContent>
           </Card>
 
-          {/* Pipeline CLI commands */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Terminal className="h-4 w-4" />
-                Auto-Heal Pipeline
+                Auto-Heal Pipeline (CLI)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Detects issues and spawns Claude Code to fix automatically. Results logged to heal_log and incidents tables.
+                The sentinel runs autonomously. These CLI commands are for manual intervention.
               </p>
               <div className="grid gap-2 sm:grid-cols-3">
                 <PipelineCard label="Detect Only" cmd="npm run auto-heal:detect" desc="Scan without fixing" icon={<Eye className="h-4 w-4" />} />
@@ -609,11 +928,10 @@ export default function SystemHealth() {
 
           {manualTotalCount === 0 ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground">
-              Click "Manual Check" to test {RPC_FUNCTIONS.length} RPCs and {EDGE_FUNCTIONS.length} edge functions from your browser.
+              Click "Full Check" to test {RPC_FUNCTIONS.length} RPCs and {EDGE_FUNCTIONS.length} edge functions from your browser.
             </CardContent></Card>
           ) : (
             <>
-              {/* Infrastructure */}
               {manualChecks.filter((c) => !c.name.startsWith("RPC:") && !c.name.startsWith("Edge:")).length > 0 && (
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-base">Infrastructure</CardTitle></CardHeader>
@@ -622,14 +940,12 @@ export default function SystemHealth() {
                   </CardContent>
                 </Card>
               )}
-              {/* RPCs */}
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-base">RPC Functions ({RPC_FUNCTIONS.length})</CardTitle></CardHeader>
                 <CardContent className="space-y-1">
                   {manualChecks.filter((c) => c.name.startsWith("RPC:")).map((c) => <HealthRow key={c.name} check={c} />)}
                 </CardContent>
               </Card>
-              {/* Edge functions */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2"><Cloud className="h-4 w-4" />Edge Functions ({EDGE_FUNCTIONS.length})</CardTitle>
@@ -666,9 +982,16 @@ export default function SystemHealth() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                All {ERROR_SOURCES.length} error sources flow into <code className="bg-muted px-1 rounded">bug_reports</code> + <code className="bg-muted px-1 rounded">health_checks</code> &rarr; sentinel detects &rarr; auto-heal fixes &rarr; incidents track lifecycle.
-              </p>
+              <div className="mt-4 rounded-lg border p-4 bg-muted/50">
+                <h4 className="text-sm font-medium mb-2">Self-Healing Pipeline</h4>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p><strong>Layer 1 — Detection:</strong> auto-error-reporter (browser) + withErrorReporting (server) + health-probe (cron/5min) → bug_reports + health_checks</p>
+                  <p><strong>Layer 2 — Diagnosis:</strong> sentinel-worker (cron/2min) pattern-matches against {totalPatterns} known patterns. Unknown errors → GPT-4o-mini AI diagnosis.</p>
+                  <p><strong>Layer 3 — Healing:</strong> Auto-fix actions: create_incident, circuit_breaker (disable feature), log_only. {sentinelFixesApplied24h} fixes applied in last 24h.</p>
+                  <p><strong>Layer 4 — Correlation:</strong> deploy-webhook captures Vercel deploys. Sentinel correlates error spikes with recent deployments.</p>
+                  <p><strong>Layer 5 — Recovery:</strong> Circuit breakers auto-reset when error rate drops to 0. Incidents auto-resolve after 2 hours of silence.</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -716,6 +1039,7 @@ function IncidentRow({ incident }: { incident: Incident }) {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">{incident.status}</Badge>
           {incident.auto_healed && <Badge variant="default" className="text-xs">auto-healed</Badge>}
+          {incident.source && <Badge variant="outline" className="text-xs">{incident.source}</Badge>}
           <span className="text-xs text-muted-foreground">{timeAgo(incident.detected_at)}</span>
         </div>
       </div>
