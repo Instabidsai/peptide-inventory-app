@@ -11,6 +11,7 @@ import { useState } from 'react';
 export default function PayOrder() {
     const { orderId } = useParams<{ orderId: string }>();
     const [paying, setPaying] = useState(false);
+    const [payingPaygate, setPayingPaygate] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const { data: order, isLoading, error } = useQuery({
@@ -79,6 +80,32 @@ export default function PayOrder() {
         } catch (err: any) {
             alert(err.message || 'Payment failed. Please try again.');
             setPaying(false);
+        }
+    };
+
+    const handlePayWithPaygate365 = async () => {
+        if (!orderId) return;
+        setPayingPaygate(true);
+        try {
+            const response = await fetch('/api/checkout/create-paygate-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId }),
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || `Payment failed (${response.status})`);
+            }
+
+            const { checkout_url } = await response.json();
+            if (!checkout_url) throw new Error('No checkout URL received');
+
+            window.open(checkout_url, '_blank');
+        } catch (err: any) {
+            alert(err.message || 'Payment failed. Please try again.');
+        } finally {
+            setPayingPaygate(false);
         }
     };
 
@@ -244,6 +271,41 @@ export default function PayOrder() {
                                 <Separator className="w-full" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-card px-2 text-muted-foreground">or</span>
+                            </div>
+                        </div>
+
+                        {/* PayGate365 Card Payment */}
+                        <div className="space-y-2">
+                            <Button
+                                className="w-full"
+                                size="lg"
+                                variant="outline"
+                                onClick={handlePayWithPaygate365}
+                                disabled={payingPaygate || paying}
+                            >
+                                {payingPaygate ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Opening payment page...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Pay ${cardTotal.toFixed(2)} with Card (Alt)
+                                    </>
+                                )}
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Alternate card processor — includes 3% fee
+                            </p>
+                        </div>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Separator className="w-full" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
                                 <span className="bg-card px-2 text-muted-foreground">or pay manually</span>
                             </div>
                         </div>
@@ -285,7 +347,7 @@ export default function PayOrder() {
 
                 {/* Footer */}
                 <p className="text-xs text-center text-muted-foreground">
-                    Secure checkout powered by PsiFi
+                    Secure checkout powered by PsiFi &amp; PayGate365
                 </p>
             </div>
         </div>
