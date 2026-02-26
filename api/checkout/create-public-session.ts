@@ -101,6 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 price: chargeTotal,
                 currency: 'USD',
                 type: 'service',
+                pricing_context: 'contextual',
             }),
         });
 
