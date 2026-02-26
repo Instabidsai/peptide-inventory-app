@@ -7,11 +7,11 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * Authenticated checkout session creator — requires Supabase JWT.
  * Used by the admin/staff UI to initiate payment for an order.
  *
- * PsiFi API (from swagger spec):
- *   - payment_method: 'cardpay' = direct card (no crypto on-ramp)
+ * PsiFi API (from GET /api/v2/payment-methods):
+ *   - payment_method: 'banxa' = fiat card on-ramp (credit/debit/apple/google pay)
  *   - pricing_strategy: 'TOTAL_ONLY' = locked amount (no wallet funding)
  *   - Products need pricing_context: 'contextual' for TOTAL_ONLY
- *   - Valid providers: banxa, cardpay, psifi-account, onramper, helio, simplex
+ *   - Valid schema enum: banxa, onramper, helio, simplex
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -138,14 +138,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const product = await productRes.json();
 
-        // --- Build PsiFi checkout session — cardpay = direct card, TOTAL_ONLY = locked amount ---
+        // --- Build PsiFi checkout session — banxa = fiat card on-ramp, TOTAL_ONLY = locked amount ---
         const siteBase = process.env.PUBLIC_SITE_URL || '';
         const successUrl = `${siteBase}/#/checkout/success?orderId=${orderId}`;
         const timestamp = Date.now();
 
         const psifiPayload = {
             mode: 'payment',
-            payment_method: 'cardpay',
+            payment_method: 'banxa',
             pricing_strategy: 'TOTAL_ONLY',
             total_amount: chargeTotal,
             external_id: `${orderId}-cs-${timestamp}`,
