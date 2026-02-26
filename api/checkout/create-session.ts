@@ -147,8 +147,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const psifiPayload = {
             mode: 'payment',
-            payment_method: 'coinflow',
-            pricing_strategy: 'TOTAL_ONLY',
             total_amount: chargeTotal,
             external_id: `${orderId}-cs-${timestamp}`,
             redirect_url: successUrl,
