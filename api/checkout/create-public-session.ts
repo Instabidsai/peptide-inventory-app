@@ -8,11 +8,11 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * Auth is implicit: order UUIDs are 128-bit unguessable tokens.
  * This is the same pattern Stripe/Square/PayPal use for invoice links.
  *
- * PsiFi API requirements (discovered Feb 2026):
- *   - items[].productId is REQUIRED — must reference a registered product
- *   - items[].name and items[].price are REQUIRED alongside productId
- *   - All prices are in DOLLARS (PsiFi converts to cents internally)
- *   - payment_method field must be omitted (defaults to banxa/card)
+ * PsiFi API (from swagger spec):
+ *   - payment_method: 'cardpay' = direct card (no crypto on-ramp)
+ *   - pricing_strategy: 'TOTAL_ONLY' = locked amount (no wallet funding)
+ *   - Products need pricing_context: 'contextual' for TOTAL_ONLY
+ *   - Valid providers: banxa, cardpay, psifi-account, onramper, helio, simplex
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -98,9 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
             body: JSON.stringify({
                 name: productName,
-                price: chargeTotal,
                 currency: 'USD',
                 type: 'service',
+                pricing_context: 'contextual',
             }),
         });
 
@@ -112,26 +112,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const product = await productRes.json();
 
-        // Build checkout session
+        // Build checkout session — cardpay = direct card, TOTAL_ONLY = locked amount
         const contactEmail = (order.contacts as any)?.email || '';
         const siteBase = process.env.PUBLIC_SITE_URL || '';
         const successUrl = `${siteBase}/#/pay/${orderId}/success`;
-        const cancelUrl = `${siteBase}/#/pay/${orderId}`;
         const timestamp = Date.now();
 
         const psifiPayload = {
             mode: 'payment',
+            payment_method: 'cardpay',
+            pricing_strategy: 'TOTAL_ONLY',
             total_amount: chargeTotal,
             external_id: `${orderId}-pl-${timestamp}`,
-            success_url: successUrl,
-            cancel_url: cancelUrl,
+            redirect_url: successUrl,
             customer_email: contactEmail || undefined,
             customer_name: (order.contacts as any)?.name || undefined,
-            items: [{
+            products: [{
                 productId: product.id,
-                name: productName,
                 quantity: 1,
-                price: chargeTotal,
             }],
             metadata: {
                 order_id: orderId,
