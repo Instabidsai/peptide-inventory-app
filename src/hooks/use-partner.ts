@@ -252,6 +252,27 @@ export function useFullNetwork() {
     });
 }
 
+// Fetch all sales reps in the org (for assigning clients, network views, etc.)
+export function useAllOrgReps() {
+    const { user, profile } = useAuth();
+
+    return useQuery({
+        queryKey: ['all_org_reps', profile?.org_id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
+                .eq('role', 'sales_rep')
+                .eq('org_id', profile!.org_id!)
+                .order('full_name');
+
+            if (error) throw error;
+            return data as { id: string; full_name: string | null; email: string | null; partner_tier: string; commission_rate: number; parent_rep_id: string | null }[];
+        },
+        enabled: !!user && !!profile?.org_id,
+    });
+}
+
 export interface DownlineClient {
     id: string;
     name: string;
