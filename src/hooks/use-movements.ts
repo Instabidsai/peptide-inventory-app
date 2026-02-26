@@ -185,6 +185,7 @@ export function useMovements(contactId?: string, pagination?: PaginationState) {
       return result as Movement[];
     },
     enabled: !!orgId,
+    staleTime: 30_000, // 30s — movement list with stitching is expensive
   });
 }
 

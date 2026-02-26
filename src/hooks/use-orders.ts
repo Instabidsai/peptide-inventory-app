@@ -59,7 +59,8 @@ export function useOrders(status?: OrderStatus) {
                 .from('orders')
                 .select('*, peptides(id, name)')
                 .eq('org_id', profile!.org_id!)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(500);
 
             if (status) {
                 query = query.eq('status', status);
@@ -70,6 +71,7 @@ export function useOrders(status?: OrderStatus) {
             return data as Order[];
         },
         enabled: !!user && !!profile?.org_id,
+        staleTime: 30_000, // 30s — order list can tolerate slight staleness
     });
 }
 
@@ -95,6 +97,7 @@ export function usePendingOrdersCount() {
             return count || 0;
         },
         enabled: !!user && !!profile?.org_id,
+        staleTime: 30_000,
     });
 }
 
@@ -120,6 +123,7 @@ export function usePendingOrderValue() {
             return totalValue;
         },
         enabled: !!user && !!profile?.org_id,
+        staleTime: 30_000,
     });
 }
 
@@ -153,6 +157,7 @@ export function usePendingOrderFinancials() {
             };
         },
         enabled: !!user && !!profile?.org_id,
+        staleTime: 30_000,
     });
 }
 
@@ -212,6 +217,7 @@ export function usePendingOrdersByPeptide() {
             return byPeptide;
         },
         enabled: !!user && !!profile?.org_id,
+        staleTime: 60_000, // 1 min — aggregation doesn't need real-time
     });
 }
 

@@ -31,13 +31,15 @@ export function useExpenses() {
                 .from('expenses')
                 .select('*')
                 .eq('org_id', orgId!)
-                .order('date', { ascending: false });
+                .order('date', { ascending: false })
+                .limit(500);
 
             const { data, error } = await query;
             if (error) throw error;
             return data as Expense[];
         },
         enabled: !!orgId,
+        staleTime: 60_000, // 1 min — expenses change infrequently
     });
 }
 

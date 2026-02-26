@@ -116,6 +116,7 @@ export function usePeptides(pagination?: PaginationState) {
         });
     },
     enabled: !!user && !!profile?.org_id,
+    staleTime: 2 * 60_000, // 2 min — peptide catalog + stock counts are expensive
   });
 }
 

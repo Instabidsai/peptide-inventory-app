@@ -151,6 +151,7 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
             return data as SalesOrder[];
         },
         enabled: !!profile?.org_id,
+        staleTime: 30_000,
     });
 }
 
@@ -199,12 +200,14 @@ export function useMySalesOrders() {
         `)
                 .eq('org_id', profile!.org_id!)
                 .eq('rep_id', profile.id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(200);
 
             if (error) throw error;
             return data as SalesOrder[];
         },
         enabled: !!profile?.org_id,
+        staleTime: 30_000,
     });
 }
 
@@ -545,6 +548,9 @@ export function useUpdateSalesOrder() {
                     if (rpcError) {
                         logger.error("Commission processing failed:", rpcError);
                         toast({ title: "Warning", description: "Order updated but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                    } else {
+                        // Notify partners via SMS about their commission
+                        supabase.functions.invoke('notify-commission', { body: { sale_id: id } }).catch(() => {});
                     }
                 }
             }

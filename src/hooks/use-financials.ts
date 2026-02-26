@@ -58,8 +58,8 @@ export function useFinancialMetrics() {
                 supabase.rpc('get_inventory_valuation', { p_org_id: orgId! }),
                 supabase.from('movements').select('id, amount_paid').eq('org_id', orgId!).eq('type', 'sale'),
                 supabase.from('movements').select('id').eq('org_id', orgId!).in('type', ['internal_use', 'giveaway', 'loss']),
-                supabase.from('expenses').select('amount, category'),
-                supabase.from('commissions').select('amount, status, sale_id'),
+                supabase.from('expenses').select('amount, category').eq('org_id', orgId!),
+                supabase.from('commissions').select('amount, status, sale_id').eq('org_id', orgId!),
                 supabase.from('sales_orders').select('merchant_fee, profit_amount, cogs_amount').eq('org_id', orgId!).neq('status', 'cancelled'),
                 supabase.from('sales_orders').select('total_amount, cogs_amount').eq('org_id', orgId!).eq('payment_status', 'commission_offset').neq('status', 'cancelled'),
             ]);
@@ -246,5 +246,6 @@ export function useFinancialMetrics() {
             };
         },
         enabled: !!orgId,
+        staleTime: 2 * 60_000, // 2 min — expensive multi-query aggregation
     });
 }

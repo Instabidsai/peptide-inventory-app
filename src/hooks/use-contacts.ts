@@ -93,6 +93,7 @@ export function useContacts(type?: ContactType, pagination?: PaginationState) {
       return data as Contact[];
     },
     enabled: !!user && !!profile?.org_id,
+    staleTime: 30_000, // 30s — contacts list tolerable staleness
   });
 }
 
