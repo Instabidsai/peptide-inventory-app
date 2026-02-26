@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const lineItems = (order.sales_order_items || []).map((item: any) => ({
             name: item.peptides?.name || 'Item',
             quantity: item.quantity || 1,
-            amount: Math.round((item.unit_price || 0) * 100),
+            price: Math.round((item.unit_price || 0) * 100),
         }));
 
         const psifiPayload = {
