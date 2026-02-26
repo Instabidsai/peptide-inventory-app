@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check, X } from 'lucide-react';
+import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function PayOrder() {
@@ -14,15 +14,14 @@ export default function PayOrder() {
     const processorParam = searchParams.get('processor');
     const queryClient = useQueryClient();
 
-    const [paying, setPaying] = useState(false);
-    const [payingPaygate, setPayingPaygate] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [autoTriggered, setAutoTriggered] = useState(false);
+    const [showManual, setShowManual] = useState(false);
 
-    // Popup + polling state
-    const [waitingForPayment, setWaitingForPayment] = useState(false);
-    const [activeProcessor, setActiveProcessor] = useState<'psifi' | 'paygate365' | null>(null);
-    const popupRef = useRef<Window | null>(null);
+    // Inline iframe checkout state
+    const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+    const [loadingCheckout, setLoadingCheckout] = useState(false);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    const [iframeLoaded, setIframeLoaded] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const { data: order, isLoading, error } = useQuery({
@@ -69,7 +68,7 @@ export default function PayOrder() {
     const cardFee = Math.round(total * CARD_FEE_RATE * 100) / 100;
     const cardTotal = Math.round((total + cardFee) * 100) / 100;
 
-    // Cleanup polling + popup on unmount
+    // Cleanup polling on unmount
     useEffect(() => {
         return () => {
             if (pollRef.current) clearInterval(pollRef.current);
@@ -81,57 +80,22 @@ export default function PayOrder() {
         if (isPaid && pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
-            setWaitingForPayment(false);
-            setActiveProcessor(null);
-            setPaying(false);
-            setPayingPaygate(false);
-            popupRef.current?.close();
         }
     }, [isPaid]);
 
-    const openCheckoutPopup = useCallback((url: string) => {
-        const w = 520, h = 720;
-        const left = Math.max(0, (screen.width - w) / 2);
-        const top = Math.max(0, (screen.height - h) / 2);
-        const popup = window.open(
-            url,
-            'PaymentCheckout',
-            `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
-        );
-        popupRef.current = popup;
-        return popup;
-    }, []);
-
+    // Poll for payment completion while checkout is active
     const startPolling = useCallback(() => {
         if (pollRef.current) clearInterval(pollRef.current);
-
         pollRef.current = setInterval(async () => {
-            // Check if popup was closed by the user
-            if (popupRef.current && popupRef.current.closed) {
-                clearInterval(pollRef.current!);
-                pollRef.current = null;
-                setWaitingForPayment(false);
-                setActiveProcessor(null);
-                setPaying(false);
-                setPayingPaygate(false);
-                // Do one final check in case payment completed right as they closed
-                queryClient.invalidateQueries({ queryKey: ['public_pay_order', orderId] });
-                return;
-            }
-
-            // Poll order payment status
             try {
                 const { data } = await supabase
                     .from('sales_orders')
                     .select('payment_status')
                     .eq('id', orderId!)
                     .maybeSingle();
-
                 if (data?.payment_status === 'paid') {
                     clearInterval(pollRef.current!);
                     pollRef.current = null;
-                    popupRef.current?.close();
-                    // Refresh the order data to trigger the isPaid state
                     queryClient.invalidateQueries({ queryKey: ['public_pay_order', orderId] });
                 }
             } catch {
@@ -140,84 +104,64 @@ export default function PayOrder() {
         }, 3000);
     }, [orderId, queryClient]);
 
-    const cancelWaiting = () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = null;
-        popupRef.current?.close();
-        setWaitingForPayment(false);
-        setActiveProcessor(null);
-        setPaying(false);
-        setPayingPaygate(false);
-    };
-
-    const handlePayWithCard = async () => {
-        if (!orderId) return;
-        setPaying(true);
-        try {
-            const response = await fetch('/api/checkout/create-public-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId }),
-            });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.psifi_error || err.error || `Payment failed (${response.status})`);
-            }
-
-            const { checkout_url } = await response.json();
-            if (!checkout_url) throw new Error('No checkout URL received');
-
-            openCheckoutPopup(checkout_url);
-            setWaitingForPayment(true);
-            setActiveProcessor('psifi');
-            startPolling();
-        } catch (err: any) {
-            alert(err.message || 'Payment failed. Please try again.');
-            setPaying(false);
-        }
-    };
-
-    const handlePayWithPaygate365 = async () => {
-        if (!orderId) return;
-        setPayingPaygate(true);
+    // Auto-load PayGate365 checkout when order is ready
+    const loadCheckout = useCallback(async () => {
+        if (!orderId || checkoutUrl || loadingCheckout) return;
+        setLoadingCheckout(true);
+        setCheckoutError(null);
         try {
             const response = await fetch('/api/checkout/create-paygate-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ orderId }),
             });
-
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || `Payment failed (${response.status})`);
+                throw new Error(err.error || `Failed to load checkout (${response.status})`);
             }
-
             const { checkout_url } = await response.json();
             if (!checkout_url) throw new Error('No checkout URL received');
+            setCheckoutUrl(checkout_url);
+            startPolling();
+        } catch (err: any) {
+            setCheckoutError(err.message || 'Failed to load payment form');
+        } finally {
+            setLoadingCheckout(false);
+        }
+    }, [orderId, checkoutUrl, loadingCheckout, startPolling]);
 
-            openCheckoutPopup(checkout_url);
-            setWaitingForPayment(true);
-            setActiveProcessor('paygate365');
+    // Auto-load checkout when order data is available and payable
+    useEffect(() => {
+        if (order && !isPaid && !isCancelled && total > 0) {
+            loadCheckout();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order, isPaid, isCancelled]);
+
+    // Fallback: open PsiFi in popup if iframe is blocked or user prefers it
+    const handlePsiFiFallback = async () => {
+        if (!orderId) return;
+        try {
+            const response = await fetch('/api/checkout/create-public-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId }),
+            });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.psifi_error || err.error || `Payment failed (${response.status})`);
+            }
+            const { checkout_url } = await response.json();
+            if (!checkout_url) throw new Error('No checkout URL received');
+            const w = 520, h = 720;
+            const left = Math.max(0, (screen.width - w) / 2);
+            const top = Math.max(0, (screen.height - h) / 2);
+            window.open(checkout_url, 'PaymentCheckout', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
             startPolling();
         } catch (err: any) {
             alert(err.message || 'Payment failed. Please try again.');
-            setPayingPaygate(false);
         }
     };
-
-    // Auto-trigger specific processor when ?processor= param is present
-    useEffect(() => {
-        if (!order || isPaid || isCancelled || autoTriggered) return;
-        if (processorParam === 'psifi') {
-            setAutoTriggered(true);
-            handlePayWithCard();
-        } else if (processorParam === 'paygate365') {
-            setAutoTriggered(true);
-            handlePayWithPaygate365();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [order, processorParam, autoTriggered]);
 
     const copyOrderId = () => {
         if (orderId) {
@@ -298,42 +242,6 @@ export default function PayOrder() {
                     <p className="text-muted-foreground text-sm">Payment requested</p>
                 </div>
 
-                {/* Waiting for Payment Overlay */}
-                {waitingForPayment && (
-                    <Card className="border-primary/30 bg-primary/5">
-                        <CardContent className="pt-6 pb-5 text-center space-y-4">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                            <div className="space-y-1">
-                                <h2 className="text-lg font-semibold">Completing Payment...</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    Finish paying in the checkout window.
-                                    {activeProcessor === 'psifi' && ' (PsiFi)'}
-                                    {activeProcessor === 'paygate365' && ' (PayGate365)'}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    This page will update automatically when payment is confirmed.
-                                </p>
-                            </div>
-                            <div className="flex gap-2 justify-center">
-                                <Button variant="outline" size="sm" onClick={() => {
-                                    // Re-open popup if it was closed/blocked
-                                    if (!popupRef.current || popupRef.current.closed) {
-                                        if (activeProcessor === 'psifi') handlePayWithCard();
-                                        else if (activeProcessor === 'paygate365') handlePayWithPaygate365();
-                                    } else {
-                                        popupRef.current.focus();
-                                    }
-                                }}>
-                                    Reopen Checkout Window
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={cancelWaiting}>
-                                    <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* Order Summary */}
                 <Card>
                     <CardContent className="pt-6 space-y-4">
@@ -360,11 +268,21 @@ export default function PayOrder() {
 
                         <Separator />
 
-                        <div className="flex justify-between items-center">
-                            <span className="font-semibold">Total Due</span>
-                            <span className="text-2xl font-bold text-primary">
-                                ${total.toFixed(2)}
-                            </span>
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Subtotal</span>
+                                <span>${total.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Processing fee (3%)</span>
+                                <span>${cardFee.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-1">
+                                <span className="font-semibold">Total</span>
+                                <span className="text-2xl font-bold text-primary">
+                                    ${cardTotal.toFixed(2)}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Order ID */}
@@ -382,104 +300,128 @@ export default function PayOrder() {
                     </CardContent>
                 </Card>
 
-                {/* Payment Options — hidden when waiting */}
-                {!waitingForPayment && (
-                    <Card>
-                        <CardContent className="pt-6 space-y-4">
-                            <h2 className="font-semibold">Pay with Card</h2>
-                            <p className="text-xs text-muted-foreground -mt-2">
-                                Includes 3% processing fee (${cardFee.toFixed(2)})
-                            </p>
+                {/* Inline Card Payment — PayGate365 embedded */}
+                <Card>
+                    <CardContent className="pt-6 space-y-4">
+                        <h2 className="font-semibold flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Pay with Card
+                        </h2>
 
-                            {/* PsiFi Card Payment */}
-                            <Button
-                                className="w-full"
-                                size="lg"
-                                onClick={handlePayWithCard}
-                                disabled={paying || payingPaygate}
-                            >
-                                {paying ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Opening checkout...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} — PsiFi
-                                    </>
-                                )}
-                            </Button>
-
-                            {/* PayGate365 Card Payment */}
-                            <Button
-                                className="w-full"
-                                size="lg"
-                                variant="outline"
-                                onClick={handlePayWithPaygate365}
-                                disabled={payingPaygate || paying}
-                            >
-                                {payingPaygate ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Opening checkout...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} — PayGate365
-                                    </>
-                                )}
-                            </Button>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Separator className="w-full" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-2 text-muted-foreground">or pay manually</span>
-                                </div>
+                        {loadingCheckout && (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+                                <span className="text-sm text-muted-foreground">Loading payment form...</span>
                             </div>
+                        )}
 
-                            {/* Manual Payment Methods */}
-                            <div className="space-y-3 text-sm">
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Zelle</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Zelle, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Cash App</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Cash App, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Venmo</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Venmo, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Wire Transfer</p>
-                                    <p className="text-muted-foreground">
-                                        Contact your sales rep for wire transfer details.
-                                    </p>
-                                </div>
+                        {checkoutError && (
+                            <div className="text-center py-8 space-y-3">
+                                <p className="text-sm text-destructive">{checkoutError}</p>
+                                <Button variant="outline" size="sm" onClick={() => { setCheckoutUrl(null); loadCheckout(); }}>
+                                    Try Again
+                                </Button>
                             </div>
+                        )}
 
-                            <p className="text-xs text-center text-muted-foreground pt-2">
-                                For manual payments, your rep will confirm receipt and update the order.
-                                Reference Order #{order.id.slice(0, 8)} in your payment.
-                            </p>
-                        </CardContent>
-                    </Card>
-                )}
+                        {checkoutUrl && (
+                            <>
+                                {!iframeLoaded && (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+                                        <span className="text-sm text-muted-foreground">Loading payment form...</span>
+                                    </div>
+                                )}
+                                <iframe
+                                    src={checkoutUrl}
+                                    className="w-full border-0 rounded-lg"
+                                    style={{
+                                        height: iframeLoaded ? '600px' : '0px',
+                                        overflow: 'hidden',
+                                        transition: 'height 0.3s ease',
+                                    }}
+                                    onLoad={() => setIframeLoaded(true)}
+                                    allow="payment"
+                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                                />
+                            </>
+                        )}
+
+                        <p className="text-xs text-center text-muted-foreground">
+                            Enter your card details above to complete payment.
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* Alternative payment options — collapsed */}
+                <div className="space-y-3">
+                    <button
+                        onClick={() => setShowManual(!showManual)}
+                        className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                    >
+                        <ChevronDown className={`h-4 w-4 transition-transform ${showManual ? 'rotate-180' : ''}`} />
+                        {showManual ? 'Hide' : 'Other payment methods'}
+                    </button>
+
+                    {showManual && (
+                        <Card>
+                            <CardContent className="pt-6 space-y-4">
+                                {/* PsiFi fallback — opens in popup */}
+                                <Button
+                                    className="w-full"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handlePsiFiFallback}
+                                >
+                                    <CreditCard className="mr-2 h-4 w-4" />
+                                    Pay with Card (Apple Pay / Google Pay)
+                                </Button>
+                                <p className="text-xs text-center text-muted-foreground -mt-2">
+                                    Opens in a new window — supports Apple Pay &amp; Google Pay via Banxa
+                                </p>
+
+                                <Separator />
+
+                                {/* Manual Payment Methods */}
+                                <div className="space-y-3 text-sm">
+                                    <div className="p-3 rounded-lg border space-y-1">
+                                        <p className="font-medium">Zelle</p>
+                                        <p className="text-muted-foreground">
+                                            Send payment via Zelle, then notify your sales rep to confirm.
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-lg border space-y-1">
+                                        <p className="font-medium">Cash App</p>
+                                        <p className="text-muted-foreground">
+                                            Send payment via Cash App, then notify your sales rep to confirm.
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-lg border space-y-1">
+                                        <p className="font-medium">Venmo</p>
+                                        <p className="text-muted-foreground">
+                                            Send payment via Venmo, then notify your sales rep to confirm.
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-lg border space-y-1">
+                                        <p className="font-medium">Wire Transfer</p>
+                                        <p className="text-muted-foreground">
+                                            Contact your sales rep for wire transfer details.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-center text-muted-foreground pt-2">
+                                    For manual payments, your rep will confirm receipt and update the order.
+                                    Reference Order #{order.id.slice(0, 8)} in your payment.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
 
                 {/* Footer */}
                 <p className="text-xs text-center text-muted-foreground">
-                    Secure checkout powered by PsiFi &amp; PayGate365
+                    Secure payment processing
                 </p>
             </div>
         </div>
