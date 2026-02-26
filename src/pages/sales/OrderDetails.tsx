@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
+import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -76,8 +76,7 @@ export default function OrderDetails() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { profile } = useAuth();
-    const { data: salesOrders, isLoading } = useSalesOrders();
-    // Optimization: In real app use specific hook useSalesOrder(id), but filtering list for now is okay for prototype
+    const { data: order, isLoading } = useSalesOrder(id);
 
     const updateOrder = useUpdateSalesOrder();
     const fulfillOrder = useFulfillOrder();
@@ -125,8 +124,6 @@ export default function OrderDetails() {
         const existingIds = new Set(editItems.map(i => i.peptide_id));
         return allPeptides.filter(p => !existingIds.has(p.id));
     }, [allPeptides, editItems]);
-
-    const order = salesOrders?.find(o => o.id === id);
 
     // Auto-enter edit mode when ?edit=true is in URL
     useEffect(() => {
@@ -284,7 +281,7 @@ export default function OrderDetails() {
                 const { error } = await supabase
                     .from('sales_order_items')
                     .insert({
-                        order_id: order.id,
+                        sales_order_id: order.id,
                         peptide_id: item.peptide_id!,
                         quantity: item.quantity,
                         unit_price: item.unit_price,

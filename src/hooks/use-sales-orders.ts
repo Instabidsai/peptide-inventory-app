@@ -154,6 +154,32 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
     });
 }
 
+// Fetch a SINGLE sales order by ID — used on the detail page
+export function useSalesOrder(orderId?: string) {
+    return useQuery({
+        queryKey: ['sales_order', orderId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('sales_orders')
+                .select(`
+          *,
+          contacts (id, name, email),
+          profiles (id, full_name),
+          sales_order_items (
+            *,
+            peptides (id, name)
+          )
+        `)
+                .eq('id', orderId!)
+                .maybeSingle();
+
+            if (error) throw error;
+            return data as SalesOrder | null;
+        },
+        enabled: !!orderId,
+    });
+}
+
 export function useMySalesOrders() {
     const { profile } = useAuth();
     return useQuery({
@@ -528,6 +554,7 @@ export function useUpdateSalesOrder() {
         onSuccess: async (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['sales_order'] });
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             toast({ title: 'Order updated' });

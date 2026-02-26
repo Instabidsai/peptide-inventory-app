@@ -454,7 +454,7 @@ export default function OrderList() {
                                             </TableCell>
                                         )}
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" className="text-blue-400" asChild>
+                                            <Button variant="outline" size="sm" className="text-blue-400 border-blue-400/30 hover:bg-blue-400/10" asChild>
                                                 <Link to={`/sales/${order.id}?edit=true`}>
                                                     <Pencil className="h-4 w-4 mr-1" /> Edit
                                                 </Link>
