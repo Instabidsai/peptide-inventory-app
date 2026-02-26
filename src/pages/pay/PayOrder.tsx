@@ -234,10 +234,9 @@ export default function PayOrder() {
                                     </>
                                 )}
                             </Button>
-                            <div className="text-xs text-muted-foreground text-center space-y-0.5">
-                                <p>Includes 3% processing fee (${cardFee.toFixed(2)})</p>
-                                <p>Avoid the fee — pay with Zelle, Cash App, or Venmo below</p>
-                            </div>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Includes 3% processing fee (${cardFee.toFixed(2)})
+                            </p>
                         </div>
 
                         <div className="relative">
