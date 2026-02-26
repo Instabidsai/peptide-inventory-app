@@ -30,9 +30,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       const role = sessionStorage.getItem('partner_ref_role') || 'customer';
       return <Navigate to={`/auth?ref=${encodeURIComponent(pendingRef)}&role=${encodeURIComponent(role)}`} replace />;
     }
-    // Merchant self-signup → go to merchant onboarding wizard
+    // Merchant self-signup → create org then AI Setup Assistant
     if (sessionStorage.getItem('merchant_signup') === 'true') {
-      return <Navigate to="/merchant-onboarding" replace />;
+      sessionStorage.removeItem('merchant_signup');
+      return <Navigate to="/onboarding" replace />;
     }
     return <Navigate to="/onboarding" replace />;
   }

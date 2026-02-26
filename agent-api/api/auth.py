@@ -31,6 +31,7 @@ class UserContext:
     org_id: str
     email: str
     full_name: str
+    access_token: str
 
 
 async def verify_supabase_jwt(request: Request) -> UserContext:
@@ -74,4 +75,5 @@ async def verify_supabase_jwt(request: Request) -> UserContext:
         org_id=org_id,
         email=email,
         full_name=result.data.get("full_name", ""),
+        access_token=token,
     )

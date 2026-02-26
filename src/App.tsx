@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -85,8 +85,7 @@ const Customizations = lazyRetry(() => import("./pages/Customizations"));
 const CustomEntityPage = lazyRetry(() => import("./components/custom/CustomEntityPage"));
 const CustomReportView = lazyRetry(() => import("./components/custom/CustomReportView"));
 
-// Merchant onboarding wizard
-const MerchantOnboarding = lazyRetry(() => import("./pages/merchant/MerchantOnboarding"));
+// Merchant onboarding wizard (legacy — replaced by AI Setup Assistant)
 
 // AI Setup Assistant (post-onboarding)
 const SetupAssistant = lazyRetry(() => import("./pages/SetupAssistant"));
@@ -167,7 +166,7 @@ const App = () => (
                             <Route path="/auth" element={<Auth />} />
                             <Route path="/join" element={<Join />} />
                             <Route path="/onboarding" element={<Onboarding />} />
-                            <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
+                            <Route path="/merchant-onboarding" element={<Navigate to="/onboarding" replace />} />
                             <Route path="/update-password" element={<UpdatePassword />} />
                             <Route element={
                                 <ProtectedRoute>

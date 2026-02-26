@@ -1,15 +1,19 @@
 """
 Dispatch messages to Claude Code CLI directly via subprocess.
 Enriches prompts with org context and stores conversation history.
-Includes rate limiting, audit logging, and org-isolation enforcement.
+Includes rate limiting, audit logging, org-isolation enforcement,
+and automatic website scraping when URLs are detected.
 """
 import os
+import re
 import uuid
+import json
 import logging
 import asyncio
 import time
 from collections import defaultdict
 
+import httpx
 from supabase import create_client, Client
 
 logger = logging.getLogger("onboarding-agent.dispatch")
@@ -31,6 +35,12 @@ RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "10"))
 RATE_LIMIT_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW", "60"))
 _rate_limits: dict[str, list[float]] = defaultdict(list)
 
+# ── URL detection ──
+URL_PATTERN = re.compile(
+    r'https?://[^\s<>"\']+|www\.[^\s<>"\']+\.[^\s<>"\']+',
+    re.IGNORECASE,
+)
+
 
 def check_rate_limit(org_id: str) -> bool:
     """Return True if the org is within rate limits, False if exceeded."""
@@ -48,6 +58,109 @@ def get_supabase() -> Client:
     if _supabase is None:
         _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return _supabase
+
+
+def _extract_urls(text: str) -> list[str]:
+    """Extract URLs from a message. Returns de-duped list."""
+    urls = URL_PATTERN.findall(text)
+    seen = set()
+    result = []
+    for url in urls:
+        # Normalize
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        # Strip trailing punctuation
+        url = url.rstrip(".,;:!?)")
+        if url not in seen:
+            seen.add(url)
+            result.append(url)
+    return result
+
+
+async def _scrape_website(url: str, access_token: str) -> dict | None:
+    """
+    Call the scrape-brand Supabase edge function to extract brand identity
+    and peptide catalog from a website URL.
+
+    Returns the extraction result dict or None if scraping fails.
+    The edge function handles:
+    - Firecrawl scraping (with raw HTML fallback)
+    - CSS color extraction
+    - GPT-4o structured extraction (brand + peptides)
+    - Persistence to tenant_config + scraped_peptides
+    """
+    edge_url = f"{SUPABASE_URL}/functions/v1/scrape-brand"
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                edge_url,
+                json={"url": url, "persist": True},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Content-Type": "application/json",
+                },
+            )
+
+        if resp.status_code != 200:
+            logger.warning(f"scrape-brand returned {resp.status_code}: {resp.text[:500]}")
+            return None
+
+        data = resp.json()
+        logger.info(
+            f"scrape-brand success: {data.get('metadata', {}).get('peptides_found', 0)} peptides found"
+        )
+        return data
+
+    except Exception:
+        logger.exception(f"Failed to scrape {url}")
+        return None
+
+
+def _format_scrape_results(data: dict) -> str:
+    """Format scrape-brand results into a text block for the agent prompt."""
+    lines = ["[WEBSITE SCRAPE RESULTS]"]
+    lines.append("The system automatically scraped the merchant's website. Here's what was extracted:\n")
+
+    brand = data.get("brand", {})
+    if brand:
+        lines.append("BRAND IDENTITY:")
+        if brand.get("company_name"):
+            lines.append(f"  Company Name: {brand['company_name']}")
+        if brand.get("primary_color"):
+            lines.append(f"  Primary Color: {brand['primary_color']}")
+        if brand.get("secondary_color"):
+            lines.append(f"  Secondary Color: {brand['secondary_color']}")
+        if brand.get("font_family"):
+            lines.append(f"  Font: {brand['font_family']}")
+        if brand.get("logo_url"):
+            lines.append(f"  Logo URL: {brand['logo_url']}")
+        if brand.get("tagline"):
+            lines.append(f"  Tagline: {brand['tagline']}")
+        lines.append("")
+
+    peptides = data.get("peptides", [])
+    if peptides:
+        lines.append(f"PEPTIDE CATALOG ({len(peptides)} products found):")
+        for p in peptides:
+            price_str = f"${p['price']}" if p.get("price") else "price unknown"
+            conf = f"{int(p.get('confidence', 0) * 100)}% confidence" if p.get("confidence") else ""
+            lines.append(f"  - {p['name']} ({price_str}) {conf}")
+            if p.get("description"):
+                lines.append(f"    {p['description'][:100]}")
+        lines.append("")
+
+    meta = data.get("metadata", {})
+    if meta:
+        lines.append(f"Source URL: {meta.get('url', 'unknown')}")
+        if meta.get("persisted"):
+            lines.append("Status: Brand data has been auto-saved to tenant_config. Peptides saved to scraped_peptides (pending review).")
+        lines.append("")
+
+    lines.append("INSTRUCTIONS: Use this scraped data to set up the merchant's CRM. Apply branding, import the peptides to their catalog, and guide them through the rest of setup. If the brand data was auto-persisted, acknowledge that and ask if they want to adjust anything.")
+
+    return "\n".join(lines)
 
 
 def _fetch_org_state(org_id: str) -> str:
@@ -73,6 +186,20 @@ def _fetch_org_state(org_id: str) -> str:
         else:
             lines.append("Products: None configured yet")
 
+        # Scraped peptides (pending review)
+        scraped = sb.table("scraped_peptides") \
+            .select("name, price, confidence, status") \
+            .eq("org_id", org_id) \
+            .limit(50) \
+            .execute()
+        if scraped.data:
+            pending = [s for s in scraped.data if s.get("status") == "pending"]
+            approved = [s for s in scraped.data if s.get("status") == "approved"]
+            if pending:
+                lines.append(f"Scraped peptides awaiting review: {len(pending)}")
+            if approved:
+                lines.append(f"Scraped peptides approved: {len(approved)}")
+
         # Tenant config (branding, payments)
         config = sb.table("tenant_config") \
             .select("*") \
@@ -86,21 +213,32 @@ def _fetch_org_state(org_id: str) -> str:
                 brand_parts.append(f"color={c['primary_color']}")
             if c.get("logo_url"):
                 brand_parts.append("logo=set")
-            if c.get("business_name"):
-                brand_parts.append(f"name={c['business_name']}")
+            if c.get("business_name") or c.get("brand_name"):
+                brand_parts.append(f"name={c.get('business_name') or c.get('brand_name')}")
+            if c.get("website_url"):
+                brand_parts.append(f"website={c['website_url']}")
             lines.append(f"Branding: {', '.join(brand_parts) if brand_parts else 'Not configured'}")
 
             pay_parts = []
             if c.get("venmo_handle"):
-                pay_parts.append("Venmo")
+                pay_parts.append(f"Venmo ({c['venmo_handle']})")
             if c.get("zelle_email"):
-                pay_parts.append("Zelle")
+                pay_parts.append(f"Zelle ({c['zelle_email']})")
             if c.get("stripe_connected"):
                 pay_parts.append("Stripe")
             lines.append(f"Payments: {', '.join(pay_parts) if pay_parts else 'None configured'}")
+
+            # Fulfillment
+            ship_parts = []
+            if c.get("ship_from_name"):
+                ship_parts.append(f"from={c['ship_from_name']}")
+            if c.get("ship_from_city"):
+                ship_parts.append(f"{c['ship_from_city']}, {c.get('ship_from_state', '')}")
+            lines.append(f"Shipping: {', '.join(ship_parts) if ship_parts else 'Not configured'}")
         else:
             lines.append("Branding: Not configured")
             lines.append("Payments: None configured")
+            lines.append("Shipping: Not configured")
 
         # Contacts
         contacts = sb.table("contacts") \
@@ -111,17 +249,37 @@ def _fetch_org_state(org_id: str) -> str:
         count = contacts.count if contacts.count else 0
         lines.append(f"Contacts: {count} imported")
 
-        # Feature flags
-        flags = sb.table("feature_flags") \
-            .select("flag_key, enabled") \
+        # Feature flags (from org_features)
+        flags = sb.table("org_features") \
+            .select("feature_key, enabled") \
             .eq("org_id", org_id) \
             .eq("enabled", True) \
             .execute()
         if flags.data:
-            enabled = [f['flag_key'] for f in flags.data]
+            enabled = [f['feature_key'] for f in flags.data]
             lines.append(f"Features enabled: {', '.join(enabled)}")
         else:
             lines.append("Features: None enabled yet")
+
+        # Pricing tiers
+        tiers = sb.table("pricing_tiers") \
+            .select("name, discount_percentage") \
+            .eq("org_id", org_id) \
+            .execute()
+        if tiers.data:
+            tier_strs = [f"{t['name']} ({t['discount_percentage']}%)" for t in tiers.data]
+            lines.append(f"Pricing tiers: {', '.join(tier_strs)}")
+        else:
+            lines.append("Pricing tiers: None configured")
+
+        # Commissions
+        commissions = sb.table("commissions") \
+            .select("id", count="exact") \
+            .eq("org_id", org_id) \
+            .limit(1) \
+            .execute()
+        comm_count = commissions.count if commissions.count else 0
+        lines.append(f"Commission rules: {comm_count} configured")
 
     except Exception:
         logger.warning("Failed to fetch org state — proceeding without snapshot")
@@ -136,10 +294,12 @@ def build_context_prompt(
     full_name: str,
     message: str,
     history: list[dict],
+    scrape_block: str = "",
 ) -> str:
     """
     Build a context-enriched prompt for Claude Code.
-    Includes org state snapshot, recent conversation history, and the user's message.
+    Includes org state snapshot, scraped website data, conversation history,
+    and the user's message.
     """
     # Org state snapshot — always current regardless of history length
     state_block = _fetch_org_state(org_id)
@@ -170,7 +330,7 @@ User Name: {full_name}
 [CURRENT ORG STATE]
 {state_block if state_block else "No state data available — query the database to check."}
 
-{f"Recent conversation:{chr(10)}{history_block}{chr(10)}" if history_block else ""}
+{scrape_block + chr(10) if scrape_block else ""}{f"Recent conversation:{chr(10)}{history_block}{chr(10)}" if history_block else ""}
 Merchant says: {message}"""
 
     return prompt
@@ -203,7 +363,6 @@ async def call_claude_cli(prompt: str) -> tuple[str, str]:
         "mcp__supabase__get_project_url",
         "mcp__supabase__get_organization",
         "mcp__supabase__apply_migration",
-        "mcp__supabase__execute_sql",
         "mcp__composio__*",
     ]
 
@@ -242,15 +401,17 @@ async def dispatch_message(
     full_name: str,
     message: str,
     attachments: list[dict] | None = None,
+    access_token: str = "",
 ) -> dict:
     """
     1. Check rate limit
     2. Store user message in onboarding_messages
-    3. Build context-enriched prompt (with file contents if any)
-    4. Call Claude Code CLI
-    5. Store assistant reply in onboarding_messages
-    6. Write audit log
-    7. Return reply
+    3. Detect URLs → scrape website if found
+    4. Build context-enriched prompt (with scrape results + file contents)
+    5. Call Claude Code CLI
+    6. Store assistant reply in onboarding_messages
+    7. Write audit log
+    8. Return reply
     """
     sb = get_supabase()
 
@@ -269,7 +430,17 @@ async def dispatch_message(
         "content": message,
     }).execute()
 
-    # 3. Get recent history for context
+    # 3. Detect URLs and scrape if found
+    scrape_block = ""
+    urls = _extract_urls(message)
+    if urls and access_token:
+        # Scrape the first URL found (usually the merchant's website)
+        scrape_result = await _scrape_website(urls[0], access_token)
+        if scrape_result:
+            scrape_block = _format_scrape_results(scrape_result)
+            logger.info(f"Injected scrape results for {urls[0]}")
+
+    # 4. Get recent history for context
     history_result = sb.table("onboarding_messages") \
         .select("role, content") \
         .eq("org_id", org_id) \
@@ -279,8 +450,11 @@ async def dispatch_message(
 
     history = history_result.data or []
 
-    # 4. Build prompt and call Claude CLI
-    prompt = build_context_prompt(org_id, email, full_name, message, history[:-1])
+    # 5. Build prompt and call Claude CLI
+    prompt = build_context_prompt(
+        org_id, email, full_name, message, history[:-1],
+        scrape_block=scrape_block,
+    )
 
     # Append file attachment info to prompt if present
     if attachments:
@@ -308,7 +482,7 @@ async def dispatch_message(
 
     duration_ms = int((time.time() - start_time) * 1000)
 
-    # 5. Store assistant reply
+    # 6. Store assistant reply
     assistant_msg_id = str(uuid.uuid4())
     sb.table("onboarding_messages").insert({
         "id": assistant_msg_id,
@@ -318,7 +492,7 @@ async def dispatch_message(
         "content": reply,
     }).execute()
 
-    # 6. Write audit log
+    # 7. Write audit log
     _log_audit(sb, org_id, user_id, message, reply, tool_log, duration_ms, status)
 
     return {"reply": reply, "message_id": assistant_msg_id}

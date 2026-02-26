@@ -84,6 +84,7 @@ async def chat(req: ChatRequest, user: UserContext = Depends(verify_supabase_jwt
             full_name=user.full_name,
             message=req.message.strip(),
             attachments=attachments,
+            access_token=user.access_token,
         )
         return ChatResponse(reply=result["reply"], message_id=result.get("message_id"))
     except RateLimitExceeded:

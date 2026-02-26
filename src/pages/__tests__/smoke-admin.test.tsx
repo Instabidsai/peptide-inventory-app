@@ -219,15 +219,9 @@ describe('Admin Pages — Smoke Tests', () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it('MerchantOnboarding renders without crashing', async () => {
-    // MerchantOnboarding returns null when profile.org_id exists (already onboarded)
-    // so we clear org_id to test the actual onboarding UI
-    setAuthContext({
-      profile: { ...mockProfile, org_id: null } as any,
-      organization: null as any,
-    });
-    const MerchantOnboarding = (await import('../merchant/MerchantOnboarding')).default;
-    const { container } = render(<MerchantOnboarding />, { wrapper: createPageWrapper(['/merchant-onboarding']) });
+  it('SetupAssistant renders without crashing', async () => {
+    const SetupAssistant = (await import('../SetupAssistant')).default;
+    const { container } = render(<SetupAssistant />, { wrapper: createPageWrapper(['/setup-assistant']) });
     expect(container.firstChild).toBeTruthy();
   });
 });

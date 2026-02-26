@@ -14,28 +14,24 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = '.csv,.pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls';
 
 const QUICK_ACTIONS = [
+  'Here\'s my website',
   'Import my peptide catalog',
   'Set up payment methods',
   'Configure my branding',
-  'Connect Stripe',
-  'Set up the client portal',
+  'Set up shipping',
   'Configure partner commissions',
 ];
 
 const WELCOME_MESSAGE: OnboardingMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: `Welcome to ThePeptideAI! I'm your **Setup Assistant** — I'll help you get your business up and running.
+  content: `Welcome to ThePeptideAI! I'm your **Setup Assistant** — I'll build out your entire business platform.
 
-Here's what we can set up together:
-1. **Import your peptide catalog** — add products from a list or describe what you sell
-2. **Set up payment methods** — Venmo, Zelle, or Stripe
-3. **Configure your branding** — colors, logo, tagline
-4. **Connect integrations** — email, calendar, Stripe
-5. **Set up your client portal** — store, messaging, resources
-6. **Configure partner commissions** — tiers and percentages
+**The fastest way to get started:** share your website URL and I'll automatically extract your branding, products, pricing, and everything I can find. One link and I'll set up most of your CRM for you.
 
-Where would you like to start? Or just tell me what you need!`,
+Or tell me about your business and we'll set things up step by step — products, payments, branding, shipping, the works.
+
+What would you like to do?`,
   created_at: new Date().toISOString(),
 };
 
