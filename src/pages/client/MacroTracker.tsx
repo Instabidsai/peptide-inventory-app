@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/sb_client/client";
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,11 +66,9 @@ export default function MacroTracker() {
     const analyzeImage = async (base64Image: string) => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.functions.invoke('analyze-food', {
-                body: { image: base64Image }
-            });
+            const { data, error } = await invokeEdgeFunction<AnalysisResult>('analyze-food', { image: base64Image });
 
-            if (error) throw error;
+            if (error) throw new Error(error.message);
 
             setResult(data);
             toast.success("Analysis complete!");

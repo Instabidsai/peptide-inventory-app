@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -206,10 +207,8 @@ export function useTriggerScan() {
 
     return useMutation({
         mutationFn: async () => {
-            const { data, error } = await supabase.functions.invoke('check-payment-emails', {
-                body: {},
-            });
-            if (error) throw error;
+            const { data, error } = await invokeEdgeFunction('check-payment-emails', {});
+            if (error) throw new Error(error.message);
             return data;
         },
         onSuccess: (data) => {

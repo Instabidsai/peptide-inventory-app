@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
@@ -18,11 +19,9 @@ export default function Join() {
         setError(null);
 
         try {
-            const { data, error: invokeError } = await supabase.functions.invoke('exchange-token', {
-                body: { token }
-            });
+            const { data, error: invokeError } = await invokeEdgeFunction<{ url?: string; error?: string }>('exchange-token', { token });
 
-            if (invokeError) throw invokeError;
+            if (invokeError) throw new Error(invokeError.message);
             if (data.error) throw new Error(data.error);
 
             if (data.url) {

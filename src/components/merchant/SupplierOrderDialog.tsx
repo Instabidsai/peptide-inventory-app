@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice, getMarkupForQuantity, getTierForQuantity } from '@/hooks/use-wholesale-pricing';
@@ -43,13 +44,8 @@ function useCreateSupplierOrder() {
 
     return useMutation({
         mutationFn: async (payload: { items: { peptide_id: string; quantity: number; unit_price: number }[] }) => {
-            const { data, error } = await supabase.functions.invoke('create-supplier-order', {
-                body: payload,
-                headers: {
-                    Authorization: `Bearer ${session?.access_token}`,
-                },
-            });
-            if (error) throw error;
+            const { data, error } = await invokeEdgeFunction<{ success: boolean; error?: string }>('create-supplier-order', payload as unknown as Record<string, unknown>);
+            if (error) throw new Error(error.message);
             if (!data?.success) throw new Error(data?.error || 'Order creation failed');
             return data;
         },

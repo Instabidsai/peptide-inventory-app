@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,11 +82,9 @@ function WebsiteScrapeStep({
         setError('');
 
         try {
-            const { data, error: fnErr } = await supabase.functions.invoke('scrape-brand', {
-                body: { url: url.trim(), persist: false },
-            });
+            const { data, error: fnErr } = await invokeEdgeFunction<{ brand: any; peptides: any; error?: string }>('scrape-brand', { url: url.trim(), persist: false });
 
-            if (fnErr) throw fnErr;
+            if (fnErr) throw new Error(fnErr.message);
             if (data?.error) throw new Error(data.error);
 
             onResult(
@@ -550,14 +549,12 @@ export default function MerchantOnboarding() {
         setIsCreating(true);
 
         try {
-            const { data, error } = await supabase.functions.invoke('self-signup', {
-                body: {
-                    org_name: companyName.trim(),
-                    plan_name: 'professional',
-                },
+            const { data, error } = await invokeEdgeFunction<{ org_id?: string; error?: string }>('self-signup', {
+                org_name: companyName.trim(),
+                plan_name: 'professional',
             });
 
-            if (error) throw error;
+            if (error) throw new Error(error.message);
             if (data?.error) throw new Error(data.error);
 
             // Update tenant config with branding + subdomain + path

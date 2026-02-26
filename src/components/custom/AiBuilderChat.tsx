@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,11 +27,9 @@ export function AiBuilderChat() {
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
-      const { data, error } = await supabase.functions.invoke('ai-builder', {
-        body: { message, history },
-      });
-      if (error) throw error;
-      return data as { reply: string; tool_calls?: { name: string; arguments: Record<string, unknown> }[] };
+      const { data, error } = await invokeEdgeFunction<{ reply: string; tool_calls?: { name: string; arguments: Record<string, unknown> }[] }>('ai-builder', { message, history });
+      if (error) throw new Error(error.message);
+      return data!;
     },
     onSuccess: (data) => {
       setMessages(prev => [

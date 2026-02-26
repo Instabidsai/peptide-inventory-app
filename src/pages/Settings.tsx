@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -108,12 +109,8 @@ function BrandingTab({ orgId }: { orgId: string }) {
     if (!scrapeUrl.trim()) return;
     setScraping(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-      const resp = await supabase.functions.invoke('scrape-brand', {
-        body: { url: scrapeUrl, persist: true },
-      });
-      if (resp.error) throw resp.error;
+      const resp = await invokeEdgeFunction<{ brand?: any; error?: string }>('scrape-brand', { url: scrapeUrl, persist: true });
+      if (resp.error) throw new Error(resp.error.message);
       const result = resp.data;
       if (result?.brand) {
         const b = result.brand;

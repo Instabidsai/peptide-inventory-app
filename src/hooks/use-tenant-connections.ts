@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,11 +40,9 @@ export function useConnectService() {
   return useMutation({
     mutationFn: async (service: string) => {
       if (!profile?.org_id) throw new Error('No org');
-      const { data, error } = await supabase.functions.invoke('composio-connect', {
-        body: { service, org_id: profile.org_id },
-      });
-      if (error) throw error;
-      return data as { redirect_url: string; connection_id: string };
+      const { data, error } = await invokeEdgeFunction<{ redirect_url: string; connection_id: string }>('composio-connect', { service, org_id: profile.org_id });
+      if (error) throw new Error(error.message);
+      return data!;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tenant-connections', profile?.org_id] });

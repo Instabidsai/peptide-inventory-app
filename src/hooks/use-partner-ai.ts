@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/ai-utils';
@@ -49,6 +50,7 @@ export function usePartnerAI() {
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
       if (import.meta.env.DEV) {
+        await supabase.auth.refreshSession();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Not authenticated');
         const res = await fetch('/functions/v1/partner-ai-chat', {
@@ -66,11 +68,9 @@ export function usePartnerAI() {
         }
         return await res.json() as { reply: string };
       }
-      const { data, error } = await supabase.functions.invoke('partner-ai-chat', {
-        body: { message },
-      });
-      if (error) throw error;
-      return data as { reply: string };
+      const { data, error } = await invokeEdgeFunction<{ reply: string }>('partner-ai-chat', { message });
+      if (error) throw new Error(error.message);
+      return data!;
     },
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),

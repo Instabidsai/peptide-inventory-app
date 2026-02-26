@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -86,9 +87,8 @@ export function useAIKnowledge() {
             if (docError) throw docError;
 
             // Trigger processing
-            await supabase.functions.invoke('process-health-document', {
-                body: { document_id: doc.id },
-            });
+            const { error: procError } = await invokeEdgeFunction('process-health-document', { document_id: doc.id });
+            if (procError) throw new Error(procError.message);
 
             return doc;
         },

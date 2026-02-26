@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -60,14 +61,12 @@ export default function Onboarding() {
     setIsCreatingOrg(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('self-signup', {
-        body: {
-          org_name: companyName.trim(),
-          plan_name: selectedPlan || '',
-        },
+      const { data, error } = await invokeEdgeFunction<{ org_id?: string; error?: string }>('self-signup', {
+        org_name: companyName.trim(),
+        plan_name: selectedPlan || '',
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
       // Clear the selected plan from sessionStorage

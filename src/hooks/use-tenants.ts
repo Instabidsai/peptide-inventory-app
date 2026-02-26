@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
@@ -96,14 +97,9 @@ export function useProvisionTenant() {
             subdomain?: string;
             seed_supplier_catalog?: boolean;
         }) => {
-            const { data, error } = await supabase.functions.invoke('provision-tenant', {
-                body: payload,
-                headers: {
-                    Authorization: `Bearer ${session?.access_token}`,
-                },
-            });
+            const { data, error } = await invokeEdgeFunction<{ success: boolean; error?: string; org_id?: string }>('provision-tenant', payload as unknown as Record<string, unknown>);
 
-            if (error) throw error;
+            if (error) throw new Error(error.message);
             if (!data?.success) throw new Error(data?.error || 'Provisioning failed');
             return data;
         },

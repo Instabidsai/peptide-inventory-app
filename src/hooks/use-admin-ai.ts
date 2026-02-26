@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/ai-utils';
@@ -51,7 +52,7 @@ export function useAdminAI() {
     mutationFn: async (message: string) => {
       // In dev mode, use Vite proxy to bypass Supabase gateway CORS restrictions
       if (import.meta.env.DEV) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.refreshSession();
         if (!session) throw new Error('Not authenticated');
         const res = await fetch('/functions/v1/admin-ai-chat', {
           method: 'POST',
@@ -68,12 +69,10 @@ export function useAdminAI() {
         }
         return await res.json() as { reply: string };
       }
-      // Production: use Supabase client (CORS works for production domains)
-      const { data, error } = await supabase.functions.invoke('admin-ai-chat', {
-        body: { message },
-      });
-      if (error) throw error;
-      return data as { reply: string };
+      // Production: use wrapper with auto token-refresh
+      const { data, error } = await invokeEdgeFunction<{ reply: string }>('admin-ai-chat', { message });
+      if (error) throw new Error(error.message);
+      return data!;
     },
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
