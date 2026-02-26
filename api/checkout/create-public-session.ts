@@ -9,10 +9,10 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * This is the same pattern Stripe/Square/PayPal use for invoice links.
  *
  * PsiFi API requirements (discovered Feb 2026):
- *   - products[].productId + quantity is REQUIRED
+ *   - items[].productId is REQUIRED — must reference a registered product
+ *   - items[].name and items[].price are REQUIRED alongside productId
  *   - All prices are in DOLLARS (PsiFi converts to cents internally)
- *   - payment_method: 'coinflow' = direct card (no Banxa crypto on-ramp)
- *   - pricing_strategy: 'TOTAL_ONLY' = locks amount (no wallet funding step)
+ *   - payment_method field must be omitted (defaults to banxa/card)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -101,7 +101,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 price: chargeTotal,
                 currency: 'USD',
                 type: 'service',
-                pricing_context: 'contextual',
             }),
         });
 
@@ -124,18 +123,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             mode: 'payment',
             total_amount: chargeTotal,
             external_id: `${orderId}-pl-${timestamp}`,
-            redirect_url: successUrl,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
             customer_email: contactEmail || undefined,
             customer_name: (order.contacts as any)?.name || undefined,
-            merchant_pays_fees: false,
-            products: [{
+            items: [{
                 productId: product.id,
+                name: productName,
                 quantity: 1,
+                price: chargeTotal,
             }],
             metadata: {
                 order_id: orderId,
-                order_subtotal: String(orderTotal),
-                card_fee: String(cardFee),
+                order_subtotal: orderTotal,
+                card_fee: cardFee,
                 card_fee_rate: '3%',
                 client_name: (order.contacts as any)?.name || 'Customer',
                 client_email: contactEmail || '',
