@@ -1,2 +1,22 @@
-# Replace with your Supabase project ID (found in Settings → General)
-project_id = "YOUR_PROJECT_ID"
+# Supabase project configuration
+# Project ID is set via supabase link, not here.
+
+[functions]
+# CRITICAL: verify_jwt MUST be false for all functions.
+#
+# WHY: Supabase's gateway checks JWTs BEFORE your function code runs.
+# When the frontend refreshes a token, there's a race window where the
+# old token is expired and the new one hasn't arrived. The gateway
+# returns 401 and your function never sees the request.
+#
+# INSTEAD: All functions handle auth internally via _shared/auth.ts
+# which uses a service-role client to call supabase.auth.getUser().
+# This is MORE secure (3-layer auth: header → JWT → role check)
+# and immune to token timing races.
+#
+# Auth patterns used:
+#   User-facing functions → authenticateRequest() from _shared/auth.ts
+#   Cron/scheduled        → authenticateCron() with CRON_SECRET
+#   Webhooks              → HMAC signature validation
+#   Health checks         → handleHealthCheck() bypass
+verify_jwt = false
