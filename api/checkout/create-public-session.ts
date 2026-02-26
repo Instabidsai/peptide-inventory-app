@@ -9,10 +9,10 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * This is the same pattern Stripe/Square/PayPal use for invoice links.
  *
  * PsiFi API requirements (discovered Feb 2026):
- *   - items[].productId is REQUIRED — must reference a registered product
- *   - items[].name and items[].price are REQUIRED alongside productId
+ *   - products[].productId + quantity is REQUIRED
  *   - All prices are in DOLLARS (PsiFi converts to cents internally)
- *   - payment_method field must be omitted (defaults to banxa/card)
+ *   - payment_method: 'coinflow' = direct card (no Banxa crypto on-ramp)
+ *   - pricing_strategy: 'TOTAL_ONLY' = locks amount (no wallet funding step)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -120,23 +120,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const psifiPayload = {
             mode: 'payment',
+            payment_method: 'coinflow',
+            pricing_strategy: 'TOTAL_ONLY',
             total_amount: chargeTotal,
             external_id: `${orderId}-pl-${timestamp}`,
-            success_url: successUrl,
-            cancel_url: cancelUrl,
-            items: [{
+            redirect_url: successUrl,
+            customer_email: contactEmail || undefined,
+            customer_name: (order.contacts as any)?.name || undefined,
+            merchant_pays_fees: false,
+            products: [{
                 productId: product.id,
-                name: productName,
                 quantity: 1,
-                price: chargeTotal,
             }],
             metadata: {
                 order_id: orderId,
-                order_subtotal: orderTotal,
-                card_fee: cardFee,
+                order_subtotal: String(orderTotal),
+                card_fee: String(cardFee),
                 card_fee_rate: '3%',
-                client_name: order.contacts?.name || 'Customer',
-                client_email: order.contacts?.email || '',
+                client_name: (order.contacts as any)?.name || 'Customer',
+                client_email: contactEmail || '',
                 source: 'payment_link',
             },
         };
