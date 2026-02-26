@@ -103,7 +103,7 @@ export default function Onboarding() {
         description: `${companyName.trim()} is ready to go.`,
       });
 
-      navigate('/', { replace: true });
+      navigate('/setup-assistant', { replace: true });
     } catch (err) {
       const message = (err as any)?.message || 'Could not create your organization. Please try again.';
       toast({

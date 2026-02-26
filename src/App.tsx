@@ -88,6 +88,9 @@ const CustomReportView = lazyRetry(() => import("./components/custom/CustomRepor
 // Merchant onboarding wizard
 const MerchantOnboarding = lazyRetry(() => import("./pages/merchant/MerchantOnboarding"));
 
+// AI Setup Assistant (post-onboarding)
+const SetupAssistant = lazyRetry(() => import("./pages/SetupAssistant"));
+
 // Public marketing
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
@@ -253,6 +256,7 @@ const App = () => (
                                 <Route path="/movements" element={<Movements />} />
                                 <Route path="/movements/new" element={<MovementWizard />} />
                                 <Route path="/ai" element={<AIAssistant />} />
+                                <Route path="/setup-assistant" element={<RoleBasedRedirect allowedRoles={['admin']}><SetupAssistant /></RoleBasedRedirect>} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/customizations" element={<Customizations />} />
                                 <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />
