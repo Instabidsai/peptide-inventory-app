@@ -107,10 +107,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!psifiResponse.ok) {
             const errorBody = await psifiResponse.text();
-            console.error('PsiFi API error:', psifiResponse.status, errorBody);
+            console.error('PsiFi API error:', psifiResponse.status, 'body:', errorBody, 'payload:', JSON.stringify(psifiPayload));
             return res.status(502).json({
                 error: 'Payment processor error',
                 details: psifiResponse.status,
+                psifi_error: errorBody,
             });
         }
 
