@@ -167,7 +167,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Attach user context to Sentry for error attribution
-      Sentry.setUser({ id: userId, email: profileData?.full_name || undefined });
+      Sentry.setUser({ id: userId, email: profileData?.email || profileData?.full_name || undefined });
+      Sentry.setTag('user_role', profileData?.role || 'unknown');
+      Sentry.setTag('org_id', profileData?.org_id || 'none');
+      Sentry.setTag('partner_tier', profileData?.partner_tier || 'none');
       Sentry.setContext('app', {
         role: profileData?.role,
         org_id: profileData?.org_id,

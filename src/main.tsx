@@ -11,8 +11,13 @@ if (sentryDsn) {
     dsn: sentryDsn,
     environment: import.meta.env.MODE,
     enabled: import.meta.env.PROD,
+    release: __APP_VERSION__,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+    ],
     tracesSampleRate: 0.3,
-    replaysSessionSampleRate: 0,
+    replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
   });
 }
@@ -74,10 +79,12 @@ createRoot(document.getElementById("root")!).render(<App />);
 // ─── Web Vitals ─────────────────────────────────────────────────────────────
 import { onCLS, onFID, onLCP, onTTFB, onINP } from 'web-vitals';
 
-function reportVital(metric: { name: string; value: number; id: string }) {
-  // In production, send to Sentry as custom measurement
+function reportVital(metric: { name: string; value: number; id: string; rating: string }) {
   if (import.meta.env.PROD && sentryDsn) {
-    Sentry.metrics?.distribution(metric.name, metric.value, { unit: 'millisecond', tags: { id: metric.id } });
+    Sentry.setMeasurement(metric.name, metric.value, metric.name === 'CLS' ? '' : 'millisecond');
+    if (metric.rating === 'poor') {
+      Sentry.captureMessage(`Poor Web Vital: ${metric.name} = ${metric.value}`, { level: 'warning', tags: { vital: metric.name, rating: metric.rating } });
+    }
   }
 }
 

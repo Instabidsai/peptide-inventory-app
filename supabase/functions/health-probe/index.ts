@@ -534,6 +534,58 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
         failures.push(`Resend API: ${(err as Error).message}`);
       }
     }
+
+    // 9d. Sentry error monitoring connectivity
+    const sentryStart = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch("https://o4510946464825344.ingest.us.sentry.io/api/4510946492481536/envelope/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-sentry-envelope" },
+        body: '{"dsn":"https://4fd1eb56f566ab77787e2d18f26b5e2e@o4510946464825344.ingest.us.sentry.io/4510946492481536"}\n{"type":"check_in"}\n{"monitor_slug":"health-probe","status":"ok"}',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const latency = Date.now() - sentryStart;
+      results.push({ check_name: "dep:sentry", category: "dependency", status: res.ok ? "pass" : "fail", latency_ms: latency, error_message: res.ok ? null : `HTTP ${res.status}` });
+      if (!res.ok) failures.push(`Sentry: HTTP ${res.status}`);
+    } catch (err) {
+      results.push({ check_name: "dep:sentry", category: "dependency", status: "fail", latency_ms: Date.now() - sentryStart, error_message: (err as Error).message });
+      failures.push(`Sentry: ${(err as Error).message}`);
+    }
+
+    // 9e. Sentry unresolved issue spike detection (requires SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT)
+    const sentryToken = Deno.env.get("SENTRY_AUTH_TOKEN");
+    const sentryOrg = Deno.env.get("SENTRY_ORG");
+    const sentryProject = Deno.env.get("SENTRY_PROJECT");
+    if (sentryToken && sentryOrg && sentryProject) {
+      const spikeStart = Date.now();
+      try {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(
+          `https://sentry.io/api/0/projects/${sentryOrg}/${sentryProject}/issues/?query=is:unresolved+firstSeen:>${oneHourAgo}&limit=1`,
+          { headers: { Authorization: `Bearer ${sentryToken}` }, signal: controller.signal }
+        );
+        clearTimeout(timeout);
+        if (res.ok) {
+          const totalHits = parseInt(res.headers.get("X-Hits") || "0", 10);
+          const isSpike = totalHits > 10;
+          results.push({
+            check_name: "dep:sentry_issues",
+            category: "dependency",
+            status: isSpike ? "fail" : "pass",
+            latency_ms: Date.now() - spikeStart,
+            error_message: isSpike ? `${totalHits} new unresolved Sentry issues in last hour` : null,
+          });
+          // Also track as resource metric
+          resourceMetrics.push({ metric_name: "sentry_new_issues_1h", metric_value: totalHits, unit: "count", status: isSpike ? "critical" : "ok", threshold_warning: 5, threshold_critical: 10 });
+          if (isSpike) failures.push(`Sentry: ${totalHits} new issues in last hour`);
+        }
+      } catch { /* skip if Sentry API unreachable */ }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

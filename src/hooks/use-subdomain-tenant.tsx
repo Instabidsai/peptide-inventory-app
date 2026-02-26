@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
 import { getSubdomain } from '@/lib/subdomain';
 import { logger } from '@/lib/logger';
@@ -124,6 +125,8 @@ export function SubdomainTenantProvider({ children }: { children: ReactNode }) {
                 } else {
                     setTenant(data as SubdomainTenant);
                     applyBranding(data as SubdomainTenant);
+                    Sentry.setTag('tenant', data.subdomain);
+                    Sentry.setTag('tenant_org', data.org_id);
                 }
                 setIsLoading(false);
             });

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import fs from 'fs';
 import path from "path"
 import { fileURLToPath } from "url"
@@ -26,8 +27,13 @@ function vercelSPAPlugin() {
   }
 }
 
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     host: "0.0.0.0",
     port: 4550,
@@ -49,6 +55,14 @@ export default defineConfig(({ mode }) => ({
       eslint: { lintCommand: 'eslint src/', useFlatConfig: true }
     }),
     vercelSPAPlugin(),
+    mode === 'production' && process.env.SENTRY_AUTH_TOKEN &&
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      release: { name: pkg.version },
+      sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+    }),
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -60,6 +74,7 @@ export default defineConfig(({ mode }) => ({
     pure: mode === 'production' ? ['console.log', 'console.debug'] : [],
   },
   build: {
+    sourcemap: !!process.env.SENTRY_AUTH_TOKEN,
     rollupOptions: {
       output: {
         manualChunks: {
