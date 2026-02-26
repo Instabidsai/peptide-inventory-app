@@ -62,9 +62,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'This order has been cancelled' });
         }
 
-        // If there's already an active checkout session, don't create a duplicate
-        if (order.psifi_session_id && order.psifi_status !== 'failed' && order.psifi_status !== 'cancelled') {
-            // Still create a new session — the old one may have expired
+        // Clear any stale session so PsiFi doesn't reject duplicate external_id
+        if (order.psifi_session_id) {
+            await supabase
+                .from('sales_orders')
+                .update({ psifi_session_id: null, psifi_status: null })
+                .eq('id', orderId);
         }
 
         // Build PsiFi checkout session
@@ -74,14 +77,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const totalCents = Math.round((order.total_amount || 0) * 100);
 
+        if (totalCents <= 0) {
+            return res.status(400).json({ error: 'Order total must be greater than zero' });
+        }
+
+        // Use unique external_id per attempt to avoid PsiFi duplicate rejection
+        const timestamp = Date.now();
+        const externalId = `${orderId}-pl-${timestamp}`;
+
         const psifiPayload = {
             mode: 'payment',
             total_amount: totalCents,
-            external_id: orderId,
+            external_id: externalId,
             success_url: successUrl,
             cancel_url: cancelUrl,
             payment_method: 'card',
             metadata: {
+                order_id: orderId,
                 client_name: order.contacts?.name || 'Customer',
                 client_email: order.contacts?.email || '',
                 item_count: order.sales_order_items?.length || 0,
@@ -100,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': psifiApiKey,
-                'Idempotency-Key': `paylink-${orderId}-${Date.now()}`,
+                'Idempotency-Key': `paylink-${orderId}-${timestamp}`,
             },
             body: JSON.stringify(psifiPayload),
         });

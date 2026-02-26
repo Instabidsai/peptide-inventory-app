@@ -66,7 +66,7 @@ export default function PayOrder() {
 
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || `Payment failed (${response.status})`);
+                throw new Error(err.psifi_error || err.error || `Payment failed (${response.status})`);
             }
 
             const { checkout_url } = await response.json();
