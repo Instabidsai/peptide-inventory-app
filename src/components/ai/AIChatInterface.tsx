@@ -1,14 +1,14 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAI } from '@/hooks/use-ai';
 import { useAIKnowledge } from '@/hooks/use-ai-knowledge';
 import { PeptideAIKnowledgePanel } from './PeptideAIKnowledgePanel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Bot, User, Plus, Paperclip, Brain, MessageCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, Send, Bot, User, Plus, Paperclip, Brain, MessageCircle, Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,13 +33,16 @@ export const AIChatInterface = () => {
     const [knowledgePanelOpen, setKnowledgePanelOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Typewriter state
     const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
     const [typedLength, setTypedLength] = useState(0);
     const prevMessageCountRef = useRef(0);
     const wasLoadingRef = useRef(false);
+
+    // Copy-to-clipboard state
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     // Auto-scroll on new content
     useEffect(() => {
@@ -81,12 +84,32 @@ export const AIChatInterface = () => {
         return () => clearTimeout(timer);
     }, [typingMessageId, typedLength, messages]);
 
+    // Auto-resize textarea to fit content (max ~4 lines)
+    const adjustTextareaHeight = useCallback(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }, []);
+
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [input, adjustTextareaHeight]);
+
     const handleSend = (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!input.trim() || isLoading) return;
         sendMessage(input);
         setInput('');
-        requestAnimationFrame(() => inputRef.current?.focus());
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+        requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +133,23 @@ export const AIChatInterface = () => {
 
         // Reset file input
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleCopy = async (content: string, msgId: string) => {
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopiedId(msgId);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch {
+            toast({ variant: 'destructive', title: 'Copy failed' });
+        }
+    };
+
+    const skipTypewriter = () => {
+        if (typingMessageId) {
+            const msg = messages.find(m => m.id === typingMessageId);
+            if (msg) setTypedLength(msg.content.length);
+        }
     };
 
     // Count docs being processed
@@ -175,41 +215,70 @@ export const AIChatInterface = () => {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {/* Starter questions when conversation is empty */}
+                            {/* Starter questions with staggered spring entrance */}
                             {messages.length === 0 && !isLoading && (
-                                <div className="flex flex-col items-center justify-center py-8 space-y-5">
-                                    <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-8 space-y-5"
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                        className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center"
+                                    >
                                         <MessageCircle className="h-7 w-7 text-emerald-400" />
-                                    </div>
+                                    </motion.div>
                                     <div className="text-center space-y-1">
-                                        <p className="font-semibold text-sm">How can I help{firstName ? `, ${firstName}` : ''}?</p>
-                                        <p className="text-xs text-muted-foreground/60">Ask me anything about your peptides and protocols</p>
+                                        <motion.p
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.15 }}
+                                            className="font-semibold text-sm"
+                                        >
+                                            How can I help{firstName ? `, ${firstName}` : ''}?
+                                        </motion.p>
+                                        <motion.p
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.25 }}
+                                            className="text-xs text-muted-foreground/60"
+                                        >
+                                            Ask me anything about your peptides and protocols
+                                        </motion.p>
                                     </div>
                                     <div className="flex flex-wrap justify-center gap-2 max-w-sm">
-                                        {STARTER_QUESTIONS.map((q) => (
-                                            <Button
+                                        {STARTER_QUESTIONS.map((q, i) => (
+                                            <motion.div
                                                 key={q}
-                                                variant="outline"
-                                                size="sm"
-                                                className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]"
-                                                onClick={() => { sendMessage(q); }}
+                                                initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 400, damping: 25 }}
                                             >
-                                                {q}
-                                            </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-colors"
+                                                    onClick={() => { sendMessage(q); }}
+                                                >
+                                                    {q}
+                                                </Button>
+                                            </motion.div>
                                         ))}
                                     </div>
-                                </div>
+                                </motion.div>
                             )}
 
                             <AnimatePresence mode="popLayout">
                                 {messages.map((msg) => (
                                     <motion.div
                                         key={msg.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.3 }}
+                                        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                                         className={cn(
-                                            "flex w-full gap-2.5",
+                                            "flex w-full gap-2.5 group/msg",
                                             msg.role === 'user' ? "justify-end" : "justify-start",
                                             msg.isOptimistic && msg.role === 'user' && "opacity-70"
                                         )}
@@ -225,11 +294,14 @@ export const AIChatInterface = () => {
                                                 "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
                                                 msg.role === 'user'
                                                     ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                    : "bg-white/[0.04] border border-white/[0.06] rounded-tl-sm"
+                                                    : "bg-white/[0.04] border border-white/[0.06] rounded-tl-sm",
+                                                isTypewriting(msg) && "cursor-pointer"
                                             )}
+                                            onClick={isTypewriting(msg) ? skipTypewriter : undefined}
+                                            title={isTypewriting(msg) ? "Click to skip animation" : undefined}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300 text-emerald-300/90">
+                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300 prose-code:text-emerald-200 prose-code:bg-emerald-950/40 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-emerald-950/30 prose-pre:border prose-pre:border-emerald-500/10 prose-pre:rounded-lg text-emerald-300/90">
                                                     <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
                                                     {isTypewriting(msg) && (
                                                         <span className="inline-block w-0.5 h-4 bg-emerald-400 ml-0.5 animate-pulse align-middle" />
@@ -240,10 +312,28 @@ export const AIChatInterface = () => {
                                             )}
                                             {!isTypewriting(msg) && (
                                                 <div className={cn(
-                                                    "text-[10px] mt-1.5 opacity-50",
-                                                    msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
+                                                    "flex items-center gap-2 mt-1.5",
+                                                    msg.role === 'user' ? "justify-end" : "justify-between"
                                                 )}>
-                                                    {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                    <span className={cn(
+                                                        "text-[10px] opacity-50",
+                                                        msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
+                                                    )}>
+                                                        {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                    {msg.role === 'assistant' && msg.id !== 'welcome' && (
+                                                        <button
+                                                            onClick={() => handleCopy(msg.content, msg.id)}
+                                                            className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/[0.06]"
+                                                            aria-label="Copy response"
+                                                        >
+                                                            {copiedId === msg.id ? (
+                                                                <Check className="h-3 w-3 text-emerald-400" />
+                                                            ) : (
+                                                                <Copy className="h-3 w-3 text-muted-foreground/50" />
+                                                            )}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -257,12 +347,12 @@ export const AIChatInterface = () => {
                                 ))}
                             </AnimatePresence>
 
-                            {/* Animated thinking dots matching landing page */}
+                            {/* Enhanced thinking dots with scale animation */}
                             {isLoading && (
                                 <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
+                                    initial={{ opacity: 0, y: 12 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.3 }}
+                                    transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                                     className="flex gap-2.5"
                                 >
                                     <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
@@ -274,11 +364,15 @@ export const AIChatInterface = () => {
                                                 <motion.div
                                                     key={i}
                                                     className="w-1.5 h-1.5 rounded-full bg-emerald-400/70"
-                                                    animate={{ opacity: [0.3, 1, 0.3] }}
+                                                    animate={{
+                                                        opacity: [0.3, 1, 0.3],
+                                                        scale: [0.85, 1.2, 0.85],
+                                                    }}
                                                     transition={{
-                                                        duration: 1,
+                                                        duration: 1.2,
                                                         repeat: Infinity,
-                                                        delay: i * 0.2,
+                                                        delay: i * 0.15,
+                                                        ease: 'easeInOut',
                                                     }}
                                                 />
                                             ))}
@@ -292,8 +386,8 @@ export const AIChatInterface = () => {
                     )}
                 </ScrollArea>
 
-                {/* Input Area */}
-                <form onSubmit={handleSend} className="p-3 border-t border-border/40 bg-background/60 flex gap-2">
+                {/* Input Area — auto-expanding textarea with Enter-to-send */}
+                <form onSubmit={handleSend} className="p-3 border-t border-border/40 bg-background/60 flex items-end gap-2">
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -316,23 +410,34 @@ export const AIChatInterface = () => {
                             <Paperclip className="h-4 w-4" />
                         )}
                     </Button>
-                    <Input
-                        ref={inputRef}
+                    <textarea
+                        ref={textareaRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Ask about protocols, symptoms, bloodwork..."
-                        className="flex-1 h-10 rounded-xl bg-white/[0.04] border-white/[0.06] text-sm placeholder:text-muted-foreground/40"
+                        rows={1}
+                        className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm placeholder:text-muted-foreground/40 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isLoading}
                     />
-                    <Button
-                        type="submit"
-                        size="icon"
-                        disabled={isLoading || !input.trim()}
-                        className="h-10 w-10 rounded-xl shrink-0"
-                    >
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        <span className="sr-only">Send</span>
-                    </Button>
+                    <TooltipProvider delayDuration={400}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="submit"
+                                    size="icon"
+                                    disabled={isLoading || !input.trim()}
+                                    className="h-10 w-10 rounded-xl shrink-0"
+                                >
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    <span className="sr-only">Send</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                                <p>Send <kbd className="ml-1 inline-flex h-4 items-center rounded border border-border/50 px-1 font-mono text-[10px]">↵</kbd></p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </form>
             </div>
 
