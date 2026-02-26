@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.86.1";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitizeString } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -321,7 +322,7 @@ async function executeTool(
     }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     if (req.method === 'OPTIONS') {
@@ -588,7 +589,7 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
-});
+}));
 
 /** Build live health data context from the user's protocols, inventory, etc. */
 async function buildHealthContext(supabase: any, contact: { id: string; name: string }): Promise<string> {

@@ -6,6 +6,7 @@ import {
   loadSmartContext,
   runAILoop,
 } from "../_shared/ai-core.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * Twilio SMS webhook handler.
@@ -109,7 +110,7 @@ function twimlError(msg: string): Response {
 }
 
 // ── Main handler ───────────────────────────────────────────────
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("sms-webhook", async (req) => {
   // Twilio sends POST with form-encoded body
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
@@ -224,4 +225,4 @@ Deno.serve(async (req) => {
     console.error("SMS webhook error:", err);
     return twimlError("Sorry, something went wrong. Try again in a moment.");
   }
-});
+}));

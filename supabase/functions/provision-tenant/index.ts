@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const VERSION = "2.0.0";
 
@@ -54,7 +55,7 @@ interface ProvisionRequest {
     seed_supplier_catalog?: boolean;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("provision-tenant", async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     if (req.method === 'OPTIONS') {
@@ -486,4 +487,4 @@ Deno.serve(async (req) => {
             }
         );
     }
-});
+}));

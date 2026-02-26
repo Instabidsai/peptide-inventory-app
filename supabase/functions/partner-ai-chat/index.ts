@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitizeString } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
@@ -310,7 +311,7 @@ async function executeTool(
 
 // ── Main Handler ──────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("partner-ai-chat", async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -435,4 +436,4 @@ Deno.serve(async (req) => {
     console.error(err);
     return json({ error: (err as Error).message || "Internal error" }, 500);
   }
-});
+}));

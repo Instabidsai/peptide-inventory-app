@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import OpenAI from "https://esm.sh/openai@4.28.0";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -22,7 +23,7 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-serve(async (req) => {
+serve(withErrorReporting("process-health-document", async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     if (req.method === 'OPTIONS') {
@@ -248,7 +249,7 @@ serve(async (req) => {
             headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }
-});
+}));
 
 /** Chunk text with overlap */
 function chunkText(text: string, chunkSize: number, overlap: number): string[] {

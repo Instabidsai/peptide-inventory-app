@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -20,7 +21,7 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-serve(async (req) => {
+serve(withErrorReporting("exchange-token", async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     if (req.method === 'OPTIONS') {
@@ -88,4 +89,4 @@ serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         )
     }
-})
+}))

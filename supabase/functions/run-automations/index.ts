@@ -3,6 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authenticateCron, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * run-automations — Cron-triggered automation executor.
@@ -208,7 +209,7 @@ async function executeAction(
     }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("run-automations", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -279,4 +280,4 @@ Deno.serve(async (req) => {
         console.error("[run-automations]", err);
         return jsonResponse({ error: (err as Error).message || "Internal error" }, 500, corsHeaders);
     }
-});
+}));

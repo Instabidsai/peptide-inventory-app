@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
@@ -852,7 +853,7 @@ async function executeTool(
     }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("ai-builder", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -946,4 +947,4 @@ Deno.serve(async (req) => {
         console.error("[ai-builder]", err);
         return jsonResponse({ error: (err as Error).message || "Internal error" }, 500, corsHeaders);
     }
-});
+}));

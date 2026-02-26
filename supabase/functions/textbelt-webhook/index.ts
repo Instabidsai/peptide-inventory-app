@@ -6,6 +6,7 @@ import {
   loadSmartContext,
   runAILoop,
 } from "../_shared/ai-core.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * Textbelt reply webhook handler.
@@ -50,7 +51,7 @@ async function validateTextbeltSignature(
 }
 
 // ── Main handler ─────────────────────────────────────────────
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("textbelt-webhook", async (req) => {
   // Only accept POST
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
@@ -172,4 +173,4 @@ Deno.serve(async (req) => {
     console.error("Textbelt webhook error:", err);
     return new Response("OK", { status: 200 }); // Always 200 so Textbelt doesn't retry
   }
-});
+}));

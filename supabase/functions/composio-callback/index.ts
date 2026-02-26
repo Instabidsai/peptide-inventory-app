@@ -1,7 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("composio-callback", async (req) => {
     try {
         const sbUrl = Deno.env.get('SUPABASE_URL');
         const sbServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -83,4 +84,4 @@ Deno.serve(async (req) => {
             headers: { 'Location': `${appUrl}/#/settings?tab=integrations&error=${encodeURIComponent(error.message)}` },
         });
     }
-});
+}));

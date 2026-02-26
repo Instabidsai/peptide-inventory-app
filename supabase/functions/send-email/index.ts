@@ -5,6 +5,7 @@ import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { isValidEmail, sanitizeString } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * send-email — Supabase Edge Function
@@ -35,7 +36,7 @@ async function getResendKey(): Promise<string> {
     }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("send-email", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -130,4 +131,4 @@ Deno.serve(async (req) => {
         console.error("[send-email] Error:", err);
         return jsonResponse({ error: "Internal server error" }, 500, corsHeaders);
     }
-});
+}));

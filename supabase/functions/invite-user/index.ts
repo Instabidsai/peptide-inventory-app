@@ -4,10 +4,11 @@ import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { isValidEmail, isValidUuid } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const VERSION = "2.0.0"; // Auth + rate limiting + validation
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("invite-user", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -127,4 +128,4 @@ Deno.serve(async (req) => {
             error: (err as Error).message,
         }, 500, corsHeaders);
     }
-});
+}));

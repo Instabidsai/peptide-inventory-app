@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -21,7 +22,7 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("self-signup", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -262,4 +263,4 @@ Deno.serve(async (req) => {
         console.error('[self-signup] Error:', err.message);
         return json({ error: err.message || 'Internal error' }, 500);
     }
-});
+}));

@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/sb_client/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud, Wrench, Terminal } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, RefreshCw, Activity, Cloud, Wrench, Terminal, HeartPulse, Shield, AlertTriangle } from "lucide-react";
 
 interface HealthCheck {
   name: string;
   status: "pass" | "fail" | "pending";
   latencyMs?: number;
   error?: string;
+}
+
+interface SentinelStatus {
+  alive: boolean;
+  lastHeartbeat: string | null;
+  lastHealRun: string | null;
+  healCount24h: number;
+  bugReportsOpen: number;
+  loading: boolean;
 }
 
 const RPC_FUNCTIONS = [
@@ -57,10 +66,83 @@ const EDGE_FUNCTIONS = [
   "textbelt-webhook",
 ];
 
+const ERROR_SOURCES = [
+  { name: "Browser JS Errors", layer: "Browser", reporter: "auto-error-reporter" },
+  { name: "Fetch/API Errors", layer: "Browser", reporter: "auto-error-reporter" },
+  { name: "React Crashes", layer: "Browser", reporter: "auto-error-reporter" },
+  { name: "Unhandled Rejections", layer: "Browser", reporter: "auto-error-reporter" },
+  { name: "Edge Function Crashes", layer: "Server", reporter: "withErrorReporting" },
+  { name: "RPC/Database Errors", layer: "Browser", reporter: "auto-error-reporter" },
+  { name: "App Downtime", layer: "Infra", reporter: "sentinel health probe" },
+  { name: "DB Connectivity", layer: "Infra", reporter: "sentinel health probe" },
+  { name: "Edge Fn Downtime", layer: "Infra", reporter: "sentinel health probe" },
+];
+
 export default function SystemHealth() {
   const [checks, setChecks] = useState<HealthCheck[]>([]);
   const [running, setRunning] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
+  const [sentinel, setSentinel] = useState<SentinelStatus>({
+    alive: false, lastHeartbeat: null, lastHealRun: null,
+    healCount24h: 0, bugReportsOpen: 0, loading: true,
+  });
+
+  useEffect(() => {
+    loadSentinelStatus();
+  }, []);
+
+  const loadSentinelStatus = async () => {
+    setSentinel((s) => ({ ...s, loading: true }));
+    try {
+      // Last heartbeat from audit_log
+      const { data: heartbeat } = await supabase
+        .from("audit_log")
+        .select("created_at, details")
+        .eq("action", "sentinel_heartbeat")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Last heal run from audit_log
+      const { data: healRun } = await supabase
+        .from("audit_log")
+        .select("created_at, details")
+        .eq("action", "auto_heal_run")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Heal runs in last 24h
+      const dayAgo = new Date(Date.now() - 86400000).toISOString();
+      const { count: healCount } = await supabase
+        .from("audit_log")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "auto_heal_run")
+        .gte("created_at", dayAgo);
+
+      // Open bug reports
+      const { count: bugCount } = await supabase
+        .from("bug_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open");
+
+      // Sentinel is "alive" if heartbeat was within last 15 min
+      const isAlive = heartbeat?.created_at
+        ? Date.now() - new Date(heartbeat.created_at).getTime() < 15 * 60 * 1000
+        : false;
+
+      setSentinel({
+        alive: isAlive,
+        lastHeartbeat: heartbeat?.created_at || null,
+        lastHealRun: healRun?.created_at || null,
+        healCount24h: healCount || 0,
+        bugReportsOpen: bugCount || 0,
+        loading: false,
+      });
+    } catch {
+      setSentinel((s) => ({ ...s, loading: false }));
+    }
+  };
 
   const updateCheck = (name: string, update: Partial<HealthCheck>) => {
     setChecks((prev) => prev.map((c) => (c.name === name ? { ...c, ...update } : c)));
@@ -178,6 +260,82 @@ export default function SystemHealth() {
           </Badge>
         </div>
       )}
+
+      {/* Sentinel Status Card — always visible */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <HeartPulse className="h-5 w-5" />
+            Auto-Heal Sentinel
+            {sentinel.loading ? (
+              <Loader2 className="h-4 w-4 animate-spin ml-2" />
+            ) : sentinel.alive ? (
+              <Badge variant="default" className="ml-2 text-xs">ALIVE</Badge>
+            ) : (
+              <Badge variant="destructive" className="ml-2 text-xs">OFFLINE</Badge>
+            )}
+            <Button variant="ghost" size="sm" className="ml-auto h-7 px-2" onClick={loadSentinelStatus}>
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Last Heartbeat</p>
+              <p className="text-sm font-mono">
+                {sentinel.lastHeartbeat ? new Date(sentinel.lastHeartbeat).toLocaleString() : "Never"}
+              </p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Last Heal Run</p>
+              <p className="text-sm font-mono">
+                {sentinel.lastHealRun ? new Date(sentinel.lastHealRun).toLocaleString() : "Never"}
+              </p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Heals (24h)</p>
+              <p className="text-sm font-mono">{sentinel.healCount24h}</p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Open Bug Reports</p>
+              <p className="text-sm font-mono flex items-center gap-1">
+                {sentinel.bugReportsOpen > 0 && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                {sentinel.bugReportsOpen}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Error Coverage Matrix */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Error Coverage Matrix ({ERROR_SOURCES.length} sources)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5">
+            {ERROR_SOURCES.map((src) => (
+              <div key={src.name} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm">{src.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-xs">{src.layer}</Badge>
+                  <span className="text-xs text-muted-foreground font-mono">{src.reporter}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            All {ERROR_SOURCES.length} error sources flow into <code className="bg-muted px-1 rounded">bug_reports</code> → sentinel detects → auto-heal fixes → verify → email report.
+          </p>
+        </CardContent>
+      </Card>
 
       {totalCount === 0 && (
         <Card>

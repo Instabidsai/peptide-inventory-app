@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -28,7 +29,7 @@ interface OrderItem {
     unit_price: number;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("create-supplier-order", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -249,4 +250,4 @@ Deno.serve(async (req) => {
             error.message.includes('Unauthorized') ? 403 : 400,
         );
     }
-});
+}));

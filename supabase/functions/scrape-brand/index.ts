@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { sanitizeString } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * scrape-brand: Extract brand identity + peptide catalog from a website URL.
@@ -257,7 +258,7 @@ ${markdown.slice(0, 12000)}`;
 
 // ── Main handler ────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("scrape-brand", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -393,4 +394,4 @@ Deno.serve(async (req) => {
             corsHeaders
         );
     }
-});
+}));

@@ -6,6 +6,7 @@ import {
   loadSmartContext,
   runAILoop,
 } from "../_shared/ai-core.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * Telegram Bot webhook handler.
@@ -54,7 +55,7 @@ async function sendTelegramMessage(chatId: string | number, text: string) {
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("telegram-webhook", async (req) => {
   // Only accept POST
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
@@ -150,4 +151,4 @@ Deno.serve(async (req) => {
     console.error("Telegram webhook error:", err);
     return new Response("OK", { status: 200 }); // Always return 200 so Telegram doesn't retry
   }
-});
+}));

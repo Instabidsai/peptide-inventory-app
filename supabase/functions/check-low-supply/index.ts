@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { authenticateCron, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * check-low-supply — Daily cron that scans client_inventory,
@@ -127,7 +128,7 @@ function vialDailyUsage(vial: {
     }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("check-low-supply", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -363,4 +364,4 @@ Deno.serve(async (req) => {
         console.error("[check-low-supply]", err);
         return jsonResponse({ error: (err as Error).message || "Internal error" }, 500, corsHeaders);
     }
-});
+}));

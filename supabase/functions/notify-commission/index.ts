@@ -4,6 +4,7 @@ import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { isValidUuid } from "../_shared/validate.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 /**
  * Notify partners via SMS when they earn a commission.
@@ -15,7 +16,7 @@ import { isValidUuid } from "../_shared/validate.ts";
  *   TEXTBELT_API_KEY — for sending SMS
  */
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("notify-commission", async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const preflight = handleCors(req);
     if (preflight) return preflight;
@@ -131,4 +132,4 @@ Deno.serve(async (req) => {
         console.error("notify-commission error:", err);
         return jsonResponse({ error: (err as Error).message || "Internal error" }, 500, corsHeaders);
     }
-});
+}));

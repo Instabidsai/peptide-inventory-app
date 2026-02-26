@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -36,7 +37,7 @@ const SERVICE_TO_APP: Record<string, string> = {
     notion: 'notion',
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("composio-connect", async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     if (req.method === 'OPTIONS') {
@@ -144,4 +145,4 @@ Deno.serve(async (req) => {
             }
         );
     }
-});
+}));

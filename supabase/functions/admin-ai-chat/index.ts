@@ -9,6 +9,7 @@ import {
   loadSmartContext,
   runAILoop,
 } from "../_shared/ai-core.ts";
+import { withErrorReporting } from "../_shared/error-reporter.ts";
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("origin") || "*";
@@ -19,7 +20,7 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withErrorReporting("admin-ai-chat", async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (body: object, status = 200) =>
@@ -89,4 +90,4 @@ Deno.serve(async (req) => {
     console.error(err);
     return json({ error: (err as Error).message || "Internal error" }, 500);
   }
-});
+}));
