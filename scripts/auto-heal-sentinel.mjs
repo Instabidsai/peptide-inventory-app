@@ -217,14 +217,18 @@ async function triggerHeal(errorSummary) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     log(`HEALED: Auto-heal completed in ${elapsed}s`);
 
-    // Log tail of output
+    // Log key lines from output
     const lines = output.split("\n").filter(Boolean);
     const summaryLine = lines.find((l) => l.includes("Issues found:")) || "";
     const tscLine = lines.find((l) => l.includes("Post-fix tsc:")) || "";
     const testLine = lines.find((l) => l.includes("Post-fix tests:")) || "";
+    const emailLine = lines.find((l) => l.includes("Email sent") || l.includes("Email failed") || l.includes("skipping email")) || "";
+    const pushLine = lines.find((l) => l.includes("Pushed to") || l.includes("Skipping push")) || "";
     if (summaryLine) log(`  ${summaryLine.trim()}`);
     if (tscLine) log(`  ${tscLine.trim()}`);
     if (testLine) log(`  ${testLine.trim()}`);
+    if (emailLine) log(`  ${emailLine.trim()}`);
+    if (pushLine) log(`  ${pushLine.trim()}`);
 
   } catch (err) {
     const elapsed = ((Date.now() - Date.now()) / 1000).toFixed(1);
