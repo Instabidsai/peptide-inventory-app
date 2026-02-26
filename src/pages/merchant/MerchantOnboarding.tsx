@@ -485,15 +485,15 @@ function SuccessStep() {
             <div>
                 <h2 className="text-2xl font-bold">You're Live!</h2>
                 <p className="text-muted-foreground mt-1">
-                    Your peptide business is ready to go — complete with a pre-loaded product catalog and supply chain access.
+                    Your business is set up. Now let's finish configuring everything — payments, commissions, integrations, and more.
                 </p>
             </div>
             <div className="space-y-3">
-                <Button className="w-full" onClick={() => navigate('/', { replace: true })}>
-                    Go to Dashboard <ArrowRight className="h-4 w-4 ml-1" />
+                <Button className="w-full" onClick={() => navigate('/setup-assistant', { replace: true })}>
+                    Continue Setup with AI Assistant <Sparkles className="h-4 w-4 ml-1" />
                 </Button>
-                <Button variant="outline" className="w-full" onClick={() => navigate('/settings', { replace: true })}>
-                    Customize Settings
+                <Button variant="outline" className="w-full" onClick={() => navigate('/', { replace: true })}>
+                    Skip — Go to Dashboard
                 </Button>
             </div>
         </div>

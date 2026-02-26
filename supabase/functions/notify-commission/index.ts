@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authenticateRequest, AuthError } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
@@ -12,6 +13,8 @@ import { withErrorReporting } from "../_shared/error-reporter.ts";
  *
  * POST body: { sale_id: uuid }
  *
+ * Auth: admin JWT OR service-role key (for server-to-server / webhook calls)
+ *
  * Required env vars:
  *   TEXTBELT_API_KEY — for sending SMS
  */
@@ -22,14 +25,32 @@ Deno.serve(withErrorReporting("notify-commission", async (req) => {
     if (preflight) return preflight;
 
     try {
-        // Auth: require admin
-        const { user, orgId, supabase } = await authenticateRequest(req, {
-            requireRole: ['admin', 'super_admin'],
-        });
+        // Auth: admin JWT or service-role key (for webhook/server calls)
+        let supabase;
+        let orgId: string;
 
-        // Rate limit: 10 req/min (commission notifications are infrequent)
-        const rl = checkRateLimit(user.id, { maxRequests: 10, windowMs: 60_000 });
-        if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
+        const authHeader = req.headers.get("Authorization");
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        const sbUrl = Deno.env.get("SUPABASE_URL");
+        const token = authHeader?.replace("Bearer ", "") || "";
+
+        if (serviceKey && token === serviceKey) {
+            // Server-to-server call (e.g. PsiFi webhook) — use service-role client
+            supabase = createClient(sbUrl!, serviceKey);
+            // orgId will be derived from the order below
+            orgId = "";
+        } else {
+            // Normal user auth — require admin role
+            const auth = await authenticateRequest(req, {
+                requireRole: ['admin', 'super_admin'],
+            });
+            supabase = auth.supabase;
+            orgId = auth.orgId;
+
+            // Rate limit: 10 req/min (commission notifications are infrequent)
+            const rl = checkRateLimit(auth.user.id, { maxRequests: 10, windowMs: 60_000 });
+            if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs, corsHeaders);
+        }
 
         const textbeltKey = Deno.env.get("TEXTBELT_API_KEY");
         if (!textbeltKey) return jsonResponse({ ok: false, error: "TEXTBELT_API_KEY not set" }, 500, corsHeaders);
@@ -39,7 +60,7 @@ Deno.serve(withErrorReporting("notify-commission", async (req) => {
             return jsonResponse({ error: "Valid sale_id (UUID) required" }, 400, corsHeaders);
         }
 
-        // Get commissions for this sale — scoped to caller's org
+        // Get commissions for this sale
         const { data: commissions } = await supabase
             .from("commissions")
             .select("partner_id, amount, type")
@@ -47,15 +68,21 @@ Deno.serve(withErrorReporting("notify-commission", async (req) => {
 
         if (!commissions?.length) return jsonResponse({ ok: true, notified: 0 }, 200, corsHeaders);
 
-        // Get order context — verify it belongs to caller's org
-        const { data: order } = await supabase
+        // Get order context — for service-key calls, derive orgId from the order
+        const orderQuery = supabase
             .from("sales_orders")
             .select("total_amount, org_id, contacts(name)")
-            .eq("id", sale_id)
-            .eq("org_id", orgId)
-            .single();
+            .eq("id", sale_id);
 
-        if (!order) return jsonResponse({ error: "Order not found in your organization" }, 404, corsHeaders);
+        // If we have an orgId from user auth, scope to it
+        if (orgId) orderQuery.eq("org_id", orgId);
+
+        const { data: order } = await orderQuery.single();
+
+        if (!order) return jsonResponse({ error: "Order not found" }, 404, corsHeaders);
+
+        // Use the order's org_id for partner lookups
+        const effectiveOrgId = orgId || order.org_id;
 
         const customerName = (order.contacts as any)?.name || "a customer";
         const orderTotal = Number(order.total_amount || 0).toFixed(2);
@@ -85,7 +112,7 @@ Deno.serve(withErrorReporting("notify-commission", async (req) => {
             const { data: contact } = await supabase
                 .from("contacts")
                 .select("phone")
-                .eq("org_id", orgId)
+                .eq("org_id", effectiveOrgId)
                 .eq("linked_user_id", profile.user_id)
                 .single();
 

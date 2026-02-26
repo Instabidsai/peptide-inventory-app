@@ -540,7 +540,7 @@ Deno.serve(withErrorReporting("check-payment-emails", async (req) => {
                         console.error(`[check-payment-emails] Failed to update movement ${movementId}:`, updateErr.message);
                     }
 
-                    await supabase.from('payment_email_queue').insert({
+                    await supabase.from('payment_email_queue').upsert({
                         org_id: orgId,
                         gmail_message_id: messageId,
                         sender_name: senderName,
@@ -556,11 +556,11 @@ Deno.serve(withErrorReporting("check-payment-emails", async (req) => {
                         auto_posted_at: new Date().toISOString(),
                         ai_suggested_contact_id: aiSuggestedContactId,
                         ai_reasoning: aiReasoning,
-                    });
+                    }, { onConflict: 'org_id,gmail_message_id', ignoreDuplicates: true });
 
                     autoPosted++;
                 } else {
-                    await supabase.from('payment_email_queue').insert({
+                    await supabase.from('payment_email_queue').upsert({
                         org_id: orgId,
                         gmail_message_id: messageId,
                         sender_name: senderName,
@@ -575,7 +575,7 @@ Deno.serve(withErrorReporting("check-payment-emails", async (req) => {
                         confidence,
                         ai_suggested_contact_id: aiSuggestedContactId,
                         ai_reasoning: aiReasoning,
-                    });
+                    }, { onConflict: 'org_id,gmail_message_id', ignoreDuplicates: true });
 
                     queued++;
                 }

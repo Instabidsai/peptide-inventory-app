@@ -179,6 +179,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             console.log(`[PsiFi Webhook] Order ${orderId} marked as PAID`);
 
+            // Process commissions + notify partners via SMS
+            const { data: orderCheck } = await supabase
+                .from('sales_orders')
+                .select('commission_amount')
+                .eq('id', orderId)
+                .single();
+
+            if (orderCheck && (orderCheck.commission_amount ?? 0) > 0) {
+                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: orderId });
+                if (rpcError) {
+                    console.error(`[PsiFi Webhook] Commission processing failed for ${orderId}:`, rpcError);
+                } else {
+                    console.log(`[PsiFi Webhook] Commissions processed for ${orderId}`);
+                    // Notify partners — fire-and-forget, don't block webhook response
+                    await supabase.functions.invoke('notify-commission', { body: { sale_id: orderId } })
+                        .catch((e: any) => console.error(`[PsiFi Webhook] notify-commission failed:`, e));
+                }
+            }
+
         } else if (TERMINAL_FAILURE.includes(statusLower)) {
             // Payment failed/cancelled
             const { error: updateError } = await supabase

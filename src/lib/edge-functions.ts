@@ -60,9 +60,7 @@ export async function invokeEdgeFunction<T = unknown>(
     const isAuthError =
       msg.includes("401") ||
       msg.includes("Unauthorized") ||
-      msg.includes("non-2xx") ||
-      msg.includes("JWT") ||
-      msg.includes("Invalid");
+      msg.includes("JWT");
 
     if (isAuthError) {
       const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
@@ -71,6 +69,15 @@ export async function invokeEdgeFunction<T = unknown>(
         return { data: retry.data as T, error: retry.error };
       }
       return { data: null, error: { message: "Session expired — please sign in again" } };
+    }
+
+    // Extract actual error from edge function response if available
+    const context = (error as any).context;
+    if (context) {
+      const detail = typeof context === "string" ? context : context?.error || context?.message;
+      if (detail) {
+        return { data: null, error: { message: String(detail) } };
+      }
     }
   }
 
