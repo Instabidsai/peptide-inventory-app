@@ -31,6 +31,8 @@ import {
     X,
     Minus,
     Plus,
+    Link2,
+    Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -69,7 +71,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
@@ -85,6 +87,7 @@ export default function OrderDetails() {
     const getRates = useGetShippingRates();
     const buyLabel = useBuyShippingLabel();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
@@ -101,6 +104,10 @@ export default function OrderDetails() {
     const [newItemPeptideId, setNewItemPeptideId] = useState<string>('');
     const [newItemQty, setNewItemQty] = useState(1);
     const [newItemPrice, setNewItemPrice] = useState<number>(0);
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [editItemQty, setEditItemQty] = useState(0);
+    const [editItemPrice, setEditItemPrice] = useState(0);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     // Fetch peptides for the "Add Item" picker
     const { data: allPeptides } = useQuery({
@@ -316,6 +323,41 @@ export default function OrderDetails() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const deleteItem = async (itemId: string) => {
+        if ((order?.sales_order_items?.length || 0) <= 1) {
+            toast({ variant: 'destructive', title: 'Cannot remove the last item' });
+            return;
+        }
+        const { error } = await supabase.from('sales_order_items').delete().eq('id', itemId);
+        if (error) {
+            toast({ variant: 'destructive', title: 'Failed to remove item', description: error.message });
+            return;
+        }
+        const remaining = order!.sales_order_items?.filter(i => i.id !== itemId) || [];
+        const newTotal = remaining.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+        updateOrder.mutate({ id: order!.id, total_amount: newTotal });
+        queryClient.invalidateQueries({ queryKey: ['sales_order', id] });
+        toast({ title: 'Item removed' });
+    };
+
+    const saveItemEdit = async (itemId: string) => {
+        const { error } = await supabase.from('sales_order_items')
+            .update({ quantity: editItemQty, unit_price: editItemPrice })
+            .eq('id', itemId);
+        if (error) {
+            toast({ variant: 'destructive', title: 'Failed to update item', description: error.message });
+            return;
+        }
+        const updatedItems = (order!.sales_order_items || []).map(i =>
+            i.id === itemId ? { ...i, quantity: editItemQty, unit_price: editItemPrice } : i
+        );
+        const newTotal = updatedItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+        updateOrder.mutate({ id: order!.id, total_amount: newTotal });
+        setEditingItemId(null);
+        queryClient.invalidateQueries({ queryKey: ['sales_order', id] });
+        toast({ title: 'Item updated' });
     };
 
     return (
@@ -587,14 +629,84 @@ export default function OrderDetails() {
                                 ) : (
                                     <div className="space-y-3">
                                         {order.sales_order_items?.map(item => (
-                                            <div key={item.id} className="flex justify-between items-center bg-muted/20 p-3 rounded-lg">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">{item.peptides?.name}</span>
-                                                    <span className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.unit_price.toFixed(2)}</span>
-                                                </div>
-                                                <span className="font-bold">
-                                                    ${(item.quantity * item.unit_price).toFixed(2)}
-                                                </span>
+                                            <div key={item.id} className="flex items-center gap-2 bg-muted/20 p-3 rounded-lg">
+                                                {editingItemId === item.id ? (
+                                                    <>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="font-medium">{item.peptides?.name}</span>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs text-muted-foreground">Qty:</span>
+                                                                <Input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    className="w-16 h-7 text-sm"
+                                                                    value={editItemQty}
+                                                                    onChange={(e) => setEditItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                                                />
+                                                                <span className="text-xs text-muted-foreground">× $</span>
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    step={0.01}
+                                                                    className="w-20 h-7 text-sm"
+                                                                    value={editItemPrice}
+                                                                    onChange={(e) => setEditItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <span className="font-bold w-20 text-right">
+                                                            ${(editItemQty * editItemPrice).toFixed(2)}
+                                                        </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-green-500 hover:text-green-400"
+                                                            onClick={() => saveItemEdit(item.id)}
+                                                        >
+                                                            <Save className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => setEditingItemId(null)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex-1 flex flex-col">
+                                                            <span className="font-medium">{item.peptides?.name}</span>
+                                                            <span className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.unit_price.toFixed(2)}</span>
+                                                        </div>
+                                                        <span className="font-bold">
+                                                            ${(item.quantity * item.unit_price).toFixed(2)}
+                                                        </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-blue-400 hover:text-blue-300"
+                                                            title="Edit item"
+                                                            onClick={() => {
+                                                                setEditingItemId(item.id);
+                                                                setEditItemQty(item.quantity);
+                                                                setEditItemPrice(item.unit_price);
+                                                            }}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-400"
+                                                            title="Remove item"
+                                                            onClick={() => deleteItem(item.id)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -745,6 +857,27 @@ export default function OrderDetails() {
                                 onClick={() => navigate(`/protocol-builder?order=${order.id}&contact=${order.client_id}`)}
                             >
                                 <Wand2 className="mr-2 h-4 w-4" /> Generate Protocol
+                            </Button>
+
+                            <Separator />
+
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    const base = window.location.origin + window.location.pathname;
+                                    const link = `${base}#/pay/${order.id}`;
+                                    navigator.clipboard.writeText(link);
+                                    setLinkCopied(true);
+                                    setTimeout(() => setLinkCopied(false), 2500);
+                                    toast({ title: 'Payment link copied to clipboard' });
+                                }}
+                            >
+                                {linkCopied ? (
+                                    <><Check className="mr-2 h-4 w-4 text-green-500" /> Link Copied!</>
+                                ) : (
+                                    <><Link2 className="mr-2 h-4 w-4" /> Copy Payment Link</>
+                                )}
                             </Button>
                         </CardContent>
                     </Card>

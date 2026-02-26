@@ -78,6 +78,7 @@ const VendorMessages = lazyRetry(() => import("./pages/vendor/VendorMessages"));
 const VendorAudit = lazyRetry(() => import("./pages/vendor/VendorAudit"));
 const VendorSettings = lazyRetry(() => import("./pages/vendor/VendorSettings"));
 const VendorSupplyOrders = lazyRetry(() => import("./pages/vendor/VendorSupplyOrders"));
+const VendorIntegrations = lazyRetry(() => import("./pages/vendor/VendorIntegrations"));
 
 // Custom engine
 const Customizations = lazyRetry(() => import("./pages/Customizations"));
@@ -91,6 +92,10 @@ const MerchantOnboarding = lazyRetry(() => import("./pages/merchant/MerchantOnbo
 const CrmLanding = lazyRetry(() => import("./pages/CrmLanding"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
+
+// Public payment links (no auth required)
+const PayOrder = lazyRetry(() => import("./pages/pay/PayOrder"));
+const PaySuccess = lazyRetry(() => import("./pages/pay/PaySuccess"));
 
 // Client Portal
 import { ClientLayout } from "@/components/layout/ClientLayout";
@@ -152,6 +157,8 @@ const App = () => (
                             <Route path="/crm" element={<CrmLanding />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/pay/:orderId" element={<PayOrder />} />
+                            <Route path="/pay/:orderId/success" element={<PaySuccess />} />
                             <Route path="/auth" element={<Auth />} />
                             <Route path="/join" element={<Join />} />
                             <Route path="/onboarding" element={<Onboarding />} />
@@ -232,6 +239,7 @@ const App = () => (
                                     <Route path="messages" element={<VendorMessages />} />
                                     <Route path="audit" element={<VendorAudit />} />
                                     <Route path="settings" element={<VendorSettings />} />
+                                    <Route path="integrations" element={<VendorIntegrations />} />
                                 </Route>
 
                                 <Route path="/bottles" element={<Bottles />} />
