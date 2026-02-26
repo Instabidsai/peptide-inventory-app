@@ -55,6 +55,7 @@ export function useCheckout() {
                 .maybeSingle();
 
             if (orderError) throw new Error(`Failed to create order: ${orderError.message}`);
+            if (!order) throw new Error('Failed to create order: no data returned');
 
             // 2. Create order items
             const orderItems = input.items.map(item => ({

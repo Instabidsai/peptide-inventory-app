@@ -646,7 +646,7 @@ export function useFulfillOrder() {
             // 3. Allocate Inventory (FIFO)
             const allocatedBottles: Array<{ peptideId: string; peptideName: string; bottleId: string; lotNumber: string | null }> = [];
 
-            for (const item of order.sales_order_items) {
+            for (const item of (order.sales_order_items || [])) {
                 // Find in-stock bottles for this peptide, ordered by creation (FIFO)
                 const { data: bottles, error: bError } = await supabase
                     .from('bottles')
