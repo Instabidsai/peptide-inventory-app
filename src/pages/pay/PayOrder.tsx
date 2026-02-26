@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,13 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function PayOrder() {
     const { orderId } = useParams<{ orderId: string }>();
+    const [searchParams] = useSearchParams();
+    const processorParam = searchParams.get('processor');
     const [paying, setPaying] = useState(false);
     const [payingPaygate, setPayingPaygate] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [autoTriggered, setAutoTriggered] = useState(false);
 
     const { data: order, isLoading, error } = useQuery({
         queryKey: ['public_pay_order', orderId],
@@ -57,6 +60,19 @@ export default function PayOrder() {
     const CARD_FEE_RATE = 0.03;
     const cardFee = Math.round(total * CARD_FEE_RATE * 100) / 100;
     const cardTotal = Math.round((total + cardFee) * 100) / 100;
+
+    // Auto-trigger specific processor when ?processor= param is present
+    useEffect(() => {
+        if (!order || isPaid || isCancelled || autoTriggered) return;
+        if (processorParam === 'psifi') {
+            setAutoTriggered(true);
+            handlePayWithCard();
+        } else if (processorParam === 'paygate365') {
+            setAutoTriggered(true);
+            handlePayWithPaygate365();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order, processorParam, autoTriggered]);
 
     const handlePayWithCard = async () => {
         if (!orderId) return;
@@ -241,7 +257,7 @@ export default function PayOrder() {
                     <CardContent className="pt-6 space-y-4">
                         <h2 className="font-semibold">Payment Options</h2>
 
-                        {/* Card Payment */}
+                        {/* PsiFi Card Payment */}
                         <div className="space-y-2">
                             <Button
                                 className="w-full"
@@ -257,7 +273,7 @@ export default function PayOrder() {
                                 ) : (
                                     <>
                                         <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} with Card
+                                        Pay ${cardTotal.toFixed(2)} with Card — PsiFi
                                     </>
                                 )}
                             </Button>
@@ -292,12 +308,12 @@ export default function PayOrder() {
                                 ) : (
                                     <>
                                         <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} with Card (Alt)
+                                        Pay ${cardTotal.toFixed(2)} with Card — PayGate365
                                     </>
                                 )}
                             </Button>
                             <p className="text-xs text-muted-foreground text-center">
-                                Alternate card processor — includes 3% fee
+                                Includes 3% processing fee (${cardFee.toFixed(2)})
                             </p>
                         </div>
 

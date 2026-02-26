@@ -861,24 +861,52 @@ export default function OrderDetails() {
 
                             <Separator />
 
-                            <Button
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => {
-                                    const base = window.location.origin + window.location.pathname;
-                                    const link = `${base}#/pay/${order.id}`;
-                                    navigator.clipboard.writeText(link);
-                                    setLinkCopied(true);
-                                    setTimeout(() => setLinkCopied(false), 2500);
-                                    toast({ title: 'Payment link copied to clipboard' });
-                                }}
-                            >
-                                {linkCopied ? (
-                                    <><Check className="mr-2 h-4 w-4 text-green-500" /> Link Copied!</>
-                                ) : (
-                                    <><Link2 className="mr-2 h-4 w-4" /> Copy Payment Link</>
-                                )}
-                            </Button>
+                            {/* Payment Link Options */}
+                            <div className="space-y-2">
+                                <span className="text-sm font-semibold block">Send Payment Link</span>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        const base = window.location.origin + window.location.pathname;
+                                        const link = `${base}#/pay/${order.id}`;
+                                        navigator.clipboard.writeText(link);
+                                        setLinkCopied(true);
+                                        setTimeout(() => setLinkCopied(false), 2500);
+                                        toast({ title: 'Payment link copied — customer chooses method' });
+                                    }}
+                                >
+                                    {linkCopied ? (
+                                        <><Check className="mr-2 h-4 w-4 text-green-500" /> Link Copied!</>
+                                    ) : (
+                                        <><Link2 className="mr-2 h-4 w-4" /> Copy Link (All Options)</>
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        const base = window.location.origin + window.location.pathname;
+                                        const link = `${base}#/pay/${order.id}?processor=psifi`;
+                                        navigator.clipboard.writeText(link);
+                                        toast({ title: 'PsiFi payment link copied' });
+                                    }}
+                                >
+                                    <CreditCard className="mr-2 h-4 w-4" /> Copy PsiFi Link
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        const base = window.location.origin + window.location.pathname;
+                                        const link = `${base}#/pay/${order.id}?processor=paygate365`;
+                                        navigator.clipboard.writeText(link);
+                                        toast({ title: 'PayGate365 payment link copied' });
+                                    }}
+                                >
+                                    <CreditCard className="mr-2 h-4 w-4" /> Copy PayGate365 Link
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
