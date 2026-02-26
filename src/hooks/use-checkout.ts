@@ -151,7 +151,6 @@ export function useValidatedCheckout() {
                 p_items: input.items.map(i => ({ peptide_id: i.peptide_id, quantity: i.quantity })),
                 p_shipping_address: input.shipping_address || null,
                 p_notes: input.notes || null,
-                p_payment_method: 'card',
                 p_delivery_method: input.delivery_method || 'ship',
             });
 
