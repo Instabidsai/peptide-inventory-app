@@ -100,23 +100,25 @@ export default function PartnerStore() {
 
     // Get all active peptides with pricing
     const { data: peptides, isLoading, isError } = useQuery({
-        queryKey: ['partner_store_peptides'],
+        queryKey: ['partner_store_peptides', profile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('peptides')
                 .select('*')
                 .eq('active', true)
+                .eq('org_id', profile!.org_id!)
                 .order('name');
             if (error) throw error;
             return data;
         },
+        enabled: !!profile?.org_id,
     });
 
     // Fetch stock counts for display
     const { data: stockCounts } = useQuery({
-        queryKey: ['partner_stock_counts'],
+        queryKey: ['partner_stock_counts', profile?.org_id],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_peptide_stock_counts');
+            const { data, error } = await supabase.rpc('get_peptide_stock_counts', { p_org_id: profile!.org_id! });
             if (error) return {};
             const result: Record<string, number> = {};
             (data || []).forEach((item: { peptide_id: string; stock_count: number }) => {
@@ -124,6 +126,7 @@ export default function PartnerStore() {
             });
             return result;
         },
+        enabled: !!profile?.org_id,
     });
 
     const priceMultiplier = Number(partnerProfile?.price_multiplier) || 1.0;
@@ -134,11 +137,12 @@ export default function PartnerStore() {
 
     // Fetch avg lot costs — always needed for Partner 2x cost pricing
     const { data: lotCosts } = useQuery({
-        queryKey: ['partner_lot_costs'],
+        queryKey: ['partner_lot_costs', profile?.org_id],
         queryFn: async () => {
             const { data: lots } = await supabase
                 .from('lots')
                 .select('peptide_id, cost_per_unit')
+                .eq('org_id', profile!.org_id!)
                 .gt('cost_per_unit', 0);
             if (!lots) return {};
             const costMap: Record<string, { total: number; count: number }> = {};
@@ -154,6 +158,7 @@ export default function PartnerStore() {
             });
             return result;
         },
+        enabled: !!profile?.org_id,
     });
 
     // Partner price = 2x avg cost (hard-coded for all partners)

@@ -269,18 +269,10 @@ export function useMovementItems(movementId: string) {
 export function useCreateMovement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async (input: CreateMovementInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, org_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
       if (!profile?.org_id) throw new Error('No organization found');
 
       const bottleIds = input.items.map(i => i.bottle_id).filter(Boolean) as string[];

@@ -219,18 +219,10 @@ export function usePendingOrdersByPeptide() {
 export function useCreateOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async (input: CreateOrderInput) => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('org_id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
             if (!profile?.org_id) throw new Error('No organization found');
 
             const { data, error } = await supabase
@@ -287,18 +279,10 @@ export function useUpdateOrder() {
 export function useMarkOrderReceived() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async (input: MarkReceivedInput) => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('org_id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
             if (!profile?.org_id) throw new Error('No organization found');
 
             // Get the order to find the peptide_id

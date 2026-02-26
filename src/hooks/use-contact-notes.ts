@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ContactNote {
     id: string;
@@ -31,19 +32,15 @@ export function useContactNotes(contactId?: string) {
 export function useCreateContactNote() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ contact_id, content }: { contact_id: string; content: string }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+
+            // Get real auth user for actor tracking (created_by)
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('org_id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            if (!profile?.org_id) throw new Error('No organization found');
 
             const { data, error } = await supabase
                 .from('contact_notes')

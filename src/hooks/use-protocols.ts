@@ -57,21 +57,11 @@ export function useProtocols(contactId?: string) {
 
     const createProtocol = useMutation({
         mutationFn: async ({ name, description, contact_id, items }: { name: string; description?: string; contact_id?: string, items?: Array<{ peptide_id: string; dosage_amount: number; dosage_unit: string; frequency: string; timing?: string; notes?: string; duration_days?: number; duration_weeks?: number; cost_multiplier?: number }> }) => {
-            const { data: user } = await supabase.auth.getUser();
-            if (!user.user) throw new Error('Not authenticated');
-
-            // Fetch profile to get org_id reliably
-            const { data: fetchedProfile } = await supabase
-                .from('profiles')
-                .select('org_id')
-                .eq('user_id', user.user.id)
-                .maybeSingle();
-
-            if (!fetchedProfile?.org_id) throw new Error('Organization ID not found');
+            if (!profile?.org_id) throw new Error('Organization ID not found');
 
             const { data: protocol, error } = await supabase
                 .from('protocols')
-                .insert({ name, description, contact_id, org_id: fetchedProfile.org_id })
+                .insert({ name, description, contact_id, org_id: profile.org_id })
                 .select()
                 .maybeSingle();
 

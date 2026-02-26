@@ -159,16 +159,7 @@ export function useMySalesOrders() {
     return useQuery({
         queryKey: ['my_sales_orders', profile?.org_id],
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
-
-            const { data: userProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            if (!userProfile) throw new Error('Profile not found');
+            if (!profile?.id) throw new Error('Profile not found');
 
             const { data, error } = await supabase
                 .from('sales_orders')
@@ -181,7 +172,7 @@ export function useMySalesOrders() {
           )
         `)
                 .eq('org_id', profile!.org_id!)
-                .eq('rep_id', userProfile.id)
+                .eq('rep_id', profile.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -194,20 +185,24 @@ export function useMySalesOrders() {
 export function useCreateSalesOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile: authProfile } = useAuth();
 
     return useMutation({
         mutationFn: async (input: CreateSalesOrderInput) => {
+            if (!authProfile?.org_id) throw new Error('No organization found');
+
+            // Fetch the real actor's business settings (commission, pricing) — NOT impersonated
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
             const { data: rawProfile } = await supabase
                 .from('profiles')
-                .select('id, org_id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
+                .select('id, commission_rate, price_multiplier, pricing_mode, cost_plus_markup')
                 .eq('user_id', user.id)
                 .maybeSingle();
 
-            if (!rawProfile?.org_id) throw new Error('No organization found');
-            const profile = rawProfile as { id: string; org_id: string; commission_rate: number | null; price_multiplier: number | null; pricing_mode: string | null; cost_plus_markup: number | null };
+            if (!rawProfile) throw new Error('Profile not found');
+            const profile = { ...rawProfile, org_id: authProfile.org_id } as { id: string; org_id: string; commission_rate: number | null; price_multiplier: number | null; pricing_mode: string | null; cost_plus_markup: number | null };
 
             // Determine the actual rep for this order:
             // If the client has an assigned_rep_id, attribute the order to that rep
@@ -572,6 +567,7 @@ export function useUpdateSalesOrder() {
 export function useFulfillOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile: authProfile } = useAuth();
 
     return useMutation({
         mutationFn: async (orderId: string) => {
@@ -592,16 +588,8 @@ export function useFulfillOrder() {
             if (!order) throw new Error('Order not found');
             if (order.status === 'fulfilled') throw new Error('Order already fulfilled');
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
-
-            // Look up profiles.id (FK target) from auth user id
-            const { data: currentProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            const profileId = currentProfile?.id || user.id;
+            const profileId = authProfile?.id;
+            if (!profileId) throw new Error('Not authenticated');
 
             // Track all mutations for rollback on failure
             let movementId: string | null = null;
