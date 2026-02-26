@@ -118,7 +118,7 @@ export function usePendingPaymentCount() {
 export function useApprovePayment() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({
@@ -152,7 +152,7 @@ export function useApprovePayment() {
                 .from('payment_email_queue')
                 .update({
                     status: 'approved',
-                    reviewed_by: user?.id,
+                    reviewed_by: profile?.id ?? null,
                     reviewed_at: new Date().toISOString(),
                 })
                 .eq('id', queueItemId);
@@ -174,7 +174,7 @@ export function useApprovePayment() {
 export function useRejectPayment() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ queueItemId, notes }: { queueItemId: string; notes?: string }) => {
@@ -182,7 +182,7 @@ export function useRejectPayment() {
                 .from('payment_email_queue')
                 .update({
                     status: 'rejected',
-                    reviewed_by: user?.id,
+                    reviewed_by: profile?.id ?? null,
                     reviewed_at: new Date().toISOString(),
                     notes: notes || null,
                 })
@@ -256,7 +256,7 @@ export function useToggleAutomation() {
 export function useSkipPayment() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ queueItemId }: { queueItemId: string }) => {
@@ -264,7 +264,7 @@ export function useSkipPayment() {
                 .from('payment_email_queue')
                 .update({
                     status: 'skipped',
-                    reviewed_by: user?.id,
+                    reviewed_by: profile?.id ?? null,
                     reviewed_at: new Date().toISOString(),
                 })
                 .eq('id', queueItemId);

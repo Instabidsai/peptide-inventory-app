@@ -124,7 +124,7 @@ function isNoise(record) {
   if (d.source === "fetch_error" && /HTTP 400/.test(msg) && !/rpc\//.test(msg)) return true;
   if (/ResizeObserver/.test(msg)) return true;
   if (d.source === "fetch_error" && /HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return true;
-  if (d.source === "fetch_error" && /HTTP 409/.test(msg)) return true;  // upsert race conditions
+  if (d.source === "fetch_error" && /HTTP 409/.test(msg) && /duplicate key|unique.constraint/i.test(msg)) return true;  // upsert race conditions (not FK violations)
   if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return true;
   if (/\[hmr\] Failed to reload/.test(msg)) return true;
   if (record.action === "bug_report" && /^(hey|help|hi|hello)\b/i.test(msg.trim())) return true;
@@ -192,7 +192,7 @@ async function pollBugReports() {
       if (/ResizeObserver/.test(msg)) return false;
       if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
       if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg) && !/rpc\//.test(msg)) return false;
-      if (/HTTP 409/.test(msg)) return false;  // upsert race conditions
+      if (/HTTP 409/.test(msg) && /duplicate key|unique.constraint/i.test(msg)) return false;  // upsert race conditions (not FK violations)
       if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return false;
       if (/\[hmr\] Failed to reload/.test(msg)) return false;
       if (/sentinel_heartbeat|health_probe/.test(msg)) return false;

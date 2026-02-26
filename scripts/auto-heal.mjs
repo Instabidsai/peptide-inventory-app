@@ -346,8 +346,8 @@ async function checkBugReports() {
     if (/HTTP 400/.test(msg) && /rest\/v1\//.test(msg) && !/rpc\//.test(msg)) return false;
     // HTTP 401 on edge functions — transient JWT timing, handled by retry logic
     if (/HTTP 401/.test(msg) && /functions\/v1\//.test(msg)) return false;
-    // HTTP 409 Conflict — upsert race conditions, not real bugs
-    if (/HTTP 409/.test(msg)) return false;
+    // HTTP 409 Conflict — only suppress benign upsert race conditions, NOT FK violations
+    if (/HTTP 409/.test(msg) && /duplicate key|unique.constraint/i.test(msg)) return false;
     // Auto-protocol generation is non-blocking — not a user-facing error
     if (/Auto-protocol generation failed \(non-blocking\)/.test(msg)) return false;
     // HMR reload failures — dev-only, resolved by page refresh
