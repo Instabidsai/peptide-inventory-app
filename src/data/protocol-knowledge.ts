@@ -401,7 +401,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'PM',
         administrationRoute: 'subcutaneous',
         stackGroup: 'Evening GH Stack',
-        stackLabel: 'Evening Stack Part 1',
+        stackLabel: 'Evening Stack Part 2 — Inject AFTER Ipamorelin',
+        warningText: 'NEVER mix Tesamorelin and Ipamorelin in the same syringe. They bind to different receptors — simultaneous injection creates biological noise and risks receptor desensitization. Must be administered as two separate injections spaced 15-20 minutes apart. Empty stomach is NON-NEGOTIABLE — food (especially carbs) completely blunts GH release.',
         dosingTiers: [
             {
                 id: 'conservative',
@@ -410,7 +411,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 doseUnit: 'mg',
                 frequency: 'daily',
                 timing: 'PM',
-                notes: 'FDA: Start at 1 mg daily for week 1 to assess tolerability, then increase to 2 mg.',
+                notes: 'FDA: Start at 1 mg daily for week 1 to assess tolerability, then increase to 2 mg. Inject AFTER Ipamorelin (15-20 min wait). Empty stomach required.',
             },
             {
                 id: 'standard',
@@ -419,7 +420,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 doseUnit: 'mg',
                 frequency: 'daily',
                 timing: 'PM',
-                notes: 'FDA-approved dose (Egrifta). Abdomen-only injection site per FDA label. Evening administration preferred to coincide with nocturnal GH release. Empty stomach recommended.',
+                notes: 'FDA-approved dose (Egrifta). Abdomen-only injection site per FDA label. Inject AFTER Ipamorelin — wait 15-20 minutes. Empty stomach is non-negotiable; elevated blood glucose/insulin suppresses GH release.',
             },
         ],
     },
@@ -434,7 +435,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'PM',
         administrationRoute: 'subcutaneous',
         stackGroup: 'Evening GH Stack',
-        stackLabel: 'Evening Stack Part 2',
+        stackLabel: 'Evening Stack Part 1 — Inject FIRST',
+        warningText: 'When stacking with Tesamorelin: Inject Ipamorelin FIRST (the "starter pistol"), then wait 15-20 minutes before injecting Tesamorelin. Must be on a completely empty stomach — elevated blood glucose/insulin suppresses growth hormone secretion.',
         dosingTiers: [
             {
                 id: 'conservative',
@@ -453,7 +455,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
                 doseUnit: 'mcg',
                 frequency: 'daily',
                 timing: 'Before bed',
-                notes: 'Dr. Bachmeyer: 200\u2013300 mcg per administration. Fasted, 30\u201360 minutes before bed on empty stomach. Administer Ipamorelin first, wait 15\u201320 min, then CJC-1295.',
+                notes: 'Dr. Bachmeyer: 200–300 mcg per administration. Fasted, 30–60 minutes before bed on completely empty stomach. Inject Ipamorelin FIRST (the "starter pistol"), then wait 15–20 minutes before injecting Tesamorelin or CJC-1295. Never mix in the same syringe.',
                 cyclePattern: '8\u201312 weeks on, 4 weeks off.',
             },
             {
@@ -1636,6 +1638,30 @@ export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
     return null;
 }
 
+// ── Stack Sequencing Warnings ──────────────────────────────────
+// Rendered once per stack group when multiple items share a stackGroup.
+
+export interface StackWarning {
+    title: string;
+    steps: { label: string; detail: string }[];
+    warnings: string[];
+}
+
+export const STACK_WARNINGS: Record<string, StackWarning> = {
+    'Evening GH Stack': {
+        title: 'GH Stack — Critical Sequencing Rules',
+        steps: [
+            { label: 'Step 1 (Minute Zero)', detail: 'Inject Ipamorelin first — it acts as the "starter pistol," priming your pituitary gland for maximum GH release.' },
+            { label: 'Step 2 (Wait 15–20 Minutes)', detail: 'Allow the Ipamorelin to fully prime the pituitary receptors before the next injection.' },
+            { label: 'Step 3 (The Blast)', detail: 'Inject Tesamorelin — it triggers a massive, natural pulse of growth hormone from the primed pituitary.' },
+        ],
+        warnings: [
+            'NEVER mix these peptides in the same syringe. They bind to completely different receptors — simultaneous injection creates biological noise and risks receptor desensitization.',
+            'Empty stomach is NON-NEGOTIABLE. Food (especially carbs) completely blunts GH release. Elevated blood glucose and insulin suppress growth hormone secretion.',
+        ],
+    },
+};
+
 // ── Pre-built Protocol Templates ───────────────────────────────
 
 export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
@@ -1656,10 +1682,10 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     },
     {
         name: 'GH Stack (Evening)',
-        description: '2x Tesamorelin 20mg + Ipamorelin for growth hormone optimization',
+        description: 'Ipamorelin + 2x Tesamorelin 20mg for growth hormone optimization',
         category: 'gh_stack',
         icon: 'TrendingUp',
-        peptideNames: ['Tesamorelin 20mg', 'Tesamorelin 20mg', 'Ipamorelin'],
+        peptideNames: ['Ipamorelin', 'Tesamorelin 20mg', 'Tesamorelin 20mg'],
     },
     {
         name: 'Weight Loss',

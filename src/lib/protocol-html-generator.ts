@@ -2,7 +2,7 @@
 // Generates professional HTML + plain-text protocol documents
 // for email, print, and clipboard delivery.
 
-import { RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, type SupplementNote, type DosingTier } from '@/data/protocol-knowledge';
+import { RECOMMENDED_SUPPLIES, RECONSTITUTION_VIDEO_URL, STACK_WARNINGS, type SupplementNote, type DosingTier } from '@/data/protocol-knowledge';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -138,6 +138,66 @@ function escapeHtml(str: string): string {
         .replace(/"/g, '&quot;');
 }
 
+// ── Stack Warning Helpers ──────────────────────────────────────
+
+function generateStackWarningsHtml(items: EnrichedProtocolItem[]): string {
+    // Collect unique stackGroups that appear more than once
+    const groupCounts = new Map<string, number>();
+    for (const item of items) {
+        const sg = (item as { stackGroup?: string }).stackGroup;
+        if (!sg) continue;
+        // stackGroup is on the knowledge, but we carry stackLabel which encodes Part 1/2
+        // We need to check if there are both Part 1 and Part 2 items
+        groupCounts.set(sg, (groupCounts.get(sg) || 0) + 1);
+    }
+
+    // Detect stack groups from stackLabel patterns
+    const hasEvening = items.some(i => i.stackLabel?.includes('Part 1')) && items.some(i => i.stackLabel?.includes('Part 2'));
+    if (!hasEvening) return '';
+
+    const warning = STACK_WARNINGS['Evening GH Stack'];
+    if (!warning) return '';
+
+    const stepsHtml = warning.steps.map(s =>
+        `<p style="margin:0 0 6px;color:#991B1B;font-size:14px;line-height:1.6;"><strong>${escapeHtml(s.label)}:</strong> ${escapeHtml(s.detail)}</p>`
+    ).join('');
+
+    const warningsHtml = warning.warnings.map(w =>
+        `<p style="margin:0 0 6px;color:#991B1B;font-size:13px;font-weight:600;">${escapeHtml(w)}</p>`
+    ).join('');
+
+    return `
+        <div style="margin:0 0 28px;padding:16px 20px;background:#FEF2F2;border:2px solid #EF4444;border-radius:12px;">
+            <h3 style="margin:0 0 12px;color:#991B1B;font-size:16px;font-weight:700;">\u26A0\uFE0F ${escapeHtml(warning.title)}</h3>
+            ${stepsHtml}
+            <div style="margin:12px 0 0;padding:10px 14px;background:#FEE2E2;border-radius:8px;">
+                ${warningsHtml}
+            </div>
+        </div>`;
+}
+
+function generateStackWarningsText(items: EnrichedProtocolItem[]): string[] {
+    const hasEvening = items.some(i => i.stackLabel?.includes('Part 1')) && items.some(i => i.stackLabel?.includes('Part 2'));
+    if (!hasEvening) return [];
+
+    const warning = STACK_WARNINGS['Evening GH Stack'];
+    if (!warning) return [];
+
+    const lines: string[] = [];
+    lines.push('');
+    lines.push(`\u26A0 ${warning.title.toUpperCase()}`);
+    lines.push('\u2501'.repeat(40));
+    for (const s of warning.steps) {
+        lines.push(`${s.label}: ${s.detail}`);
+    }
+    lines.push('');
+    for (const w of warning.warnings) {
+        lines.push(`\u26A0 ${w}`);
+    }
+    lines.push('\u2501'.repeat(40));
+    return lines;
+}
+
 // ── HTML Generator ─────────────────────────────────────────────
 
 export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Admin', includeSupplies = true }: GeneratorOptions): string {
@@ -191,7 +251,12 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
         }
 
         // Timing
-        sections += `<p style="margin:8px 0;color:#374151;font-size:14px;"><strong>Timing:</strong> ${escapeHtml(item.timing === 'none' ? 'No specific preference' : item.timing)}${item.stackLabel && item.stackLabel.includes('Part 2') ? ' (Take this shot 30 minutes AFTER the previous).' : item.stackLabel && item.stackLabel.includes('Part 1') ? ' (Take this shot 1st, on an empty stomach).' : '.'}</p>`;
+        const timingNote = item.stackLabel?.includes('Part 1')
+            ? ' (Inject this FIRST, on an empty stomach).'
+            : item.stackLabel?.includes('Part 2')
+            ? ' (Inject this 15–20 minutes AFTER the previous shot).'
+            : '.';
+        sections += `<p style="margin:8px 0;color:#374151;font-size:14px;"><strong>Timing:</strong> ${escapeHtml(item.timing === 'none' ? 'No specific preference' : item.timing)}${timingNote}</p>`;
 
         // Draw — ALWAYS included when available, prominent styling
         if (units !== null && ml !== null) {
@@ -281,6 +346,9 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
             ${clientName ? `<p style="margin:8px 0 0;color:#6B7280;font-size:14px;">Prepared for <strong>${escapeHtml(clientName)}</strong></p>` : ''}
         </div>
 
+        <!-- Stack Sequencing Warnings -->
+        ${generateStackWarningsHtml(items)}
+
         <!-- Protocol Items -->
         ${itemsHtml}
 
@@ -333,6 +401,9 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'Peptid
 
     lines.push('\u2501'.repeat(40));
 
+    // Stack sequencing warnings (e.g., Ipamorelin + Tesamorelin)
+    lines.push(...generateStackWarningsText(items));
+
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const ml = calcMl(item);
@@ -370,7 +441,12 @@ export function generateProtocolPlainText({ items, clientName, orgName = 'Peptid
         }
 
         const timingText = item.timing === 'none' ? 'No specific preference' : item.timing;
-        lines.push(`Timing: ${timingText}.`);
+        const timingNoteTxt = item.stackLabel?.includes('Part 1')
+            ? ' (Inject this FIRST, on an empty stomach).'
+            : item.stackLabel?.includes('Part 2')
+            ? ' (Inject this 15–20 minutes AFTER the previous shot).'
+            : '.';
+        lines.push(`Timing: ${timingText}${timingNoteTxt}`);
 
         if (units !== null && ml !== null) {
             lines.push(`>>> DRAW: ${units} units (${formatMl(ml)} mL) on a U-100 insulin syringe.`);
