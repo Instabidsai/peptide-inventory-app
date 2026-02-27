@@ -183,7 +183,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
             dosage: '15\u201330 mg daily',
             reason: 'Take a Zinc supplement daily to balance copper levels.',
             productName: 'Thorne Zinc Picolinate 15mg',
-            productLink: 'https://www.amazon.com/dp/B000FGWDTM',
+            productLink: 'https://www.amazon.com/Thorne-Research-Picolinate-Absorbable-Reproductive/dp/B0797NSHQX',
         }],
         dosingTiers: [
             {
@@ -431,7 +431,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         warningText: 'NEVER mix Tesamorelin and Ipamorelin in the same syringe. They bind to different receptors — simultaneous injection creates biological noise and risks receptor desensitization. Must be administered as two separate injections spaced 15-20 minutes apart. Empty stomach is NON-NEGOTIABLE — food (especially carbs) completely blunts GH release.',
         supplementNotes: [
             { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release during sleep and enhances the GH pulse from Tesamorelin.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -469,7 +469,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         warningText: 'When stacking with Tesamorelin: Inject Ipamorelin FIRST (the "starter pistol"), then wait 15-20 minutes before injecting Tesamorelin. Must be on a completely empty stomach — elevated blood glucose/insulin suppresses growth hormone secretion.',
         supplementNotes: [
             { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Enhances GH release during sleep — take with evening Ipamorelin dose.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for growth hormone production and IGF-1 conversion.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for growth hormone production and IGF-1 conversion.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -735,7 +735,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         stackLabel: 'Evening Stack Part 1 (Alt)',
         supplementNotes: [
             { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release during sleep — take with evening CJC-1295 dose.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for GH production and IGF-1 signaling from CJC-1295.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for GH production and IGF-1 signaling from CJC-1295.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -874,7 +874,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         supplementNotes: [
             { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Critical immune modulator — supports T-cell differentiation driven by TA-1.', productName: 'Sports Research Vitamin D3+K2', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
             { name: 'Vitamin C', dosage: '1\u20132 g daily', reason: 'Supports immune cell function and NK cell activity enhanced by Thymosin Alpha-1.', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+sustained+release' },
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential for thymic function and T-cell maturation — the same pathway TA-1 activates.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential for thymic function and T-cell maturation — the same pathway TA-1 activates.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -983,7 +983,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         warningText: 'Hexarelin is the MOST prone to desensitization among GHRPs. Strict cycling is non-negotiable. Can elevate cortisol and prolactin. Must be taken fasted.',
         supplementNotes: [
             { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release and sleep quality — essential cofactor for GH signaling.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -1034,7 +1034,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         category: 'gh_stack',
         supplementNotes: [
             { name: 'Magnesium Glycinate', dosage: '400 mg', reason: 'Supports GH release and sleep quality', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
-            { name: 'Zinc', dosage: '30 mg', reason: 'Critical cofactor for GH production', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg', reason: 'Critical cofactor for GH production', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
         ],
         dosingTiers: [
             {
@@ -1447,7 +1447,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '8-12 weeks on, 4 weeks off. Get bloodwork before and after each cycle.',
         category: 'sexual_health',
         supplementNotes: [
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for testosterone synthesis stimulated by Kisspeptin', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for testosterone synthesis stimulated by Kisspeptin', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/Thorne-Zinc-Picolinate-Well-Absorbed-Supplement/dp/B0012ZQPKG' },
             { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Supports HPG axis function and testosterone production', productName: 'Sports Research Vitamin D3+K2 5000 IU', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
             { name: 'Magnesium', dosage: '400 mg daily', reason: 'Supports hormone production and sleep quality', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg' },
         ],
