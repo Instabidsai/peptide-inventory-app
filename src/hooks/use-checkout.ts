@@ -159,13 +159,13 @@ export function useValidatedCheckout() {
 
             if (error) throw new Error(`Order RPC failed: ${error.message}`);
 
-            const result = data as { success: boolean; error?: string; order_id?: string; total_amount?: number };
+            const result = data as { success: boolean; error?: string; order_id?: string; total?: number };
             if (!result.success) {
                 throw new Error(result.error || 'Order validation failed');
             }
 
             const orderId = result.order_id!;
-            trackOrderCreated(orderId, result.total_amount!);
+            trackOrderCreated(orderId, result.total ?? 0);
 
             // 2. Mark order as submitted (RPC creates it as 'draft')
             await supabase
@@ -211,7 +211,7 @@ export function useValidatedCheckout() {
             trackCheckoutRedirect(orderId);
             window.location.href = checkout_url;
 
-            return { id: orderId, total_amount: result.total_amount! };
+            return { id: orderId, total_amount: result.total ?? 0 };
         },
         onError: (error: Error) => {
             trackCheckoutError(error.message);

@@ -497,12 +497,12 @@ export function useCreateValidatedOrder() {
 
             if (error) throw new Error(`Order RPC failed: ${error.message}`);
 
-            const result = data as { success: boolean; error?: string; order_id?: string; total_amount?: number };
+            const result = data as { success: boolean; error?: string; order_id?: string; total?: number };
             if (!result.success) {
                 throw new Error(result.error || 'Order validation failed');
             }
 
-            return { id: result.order_id!, total_amount: result.total_amount! };
+            return { id: result.order_id!, total_amount: result.total ?? 0 };
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
