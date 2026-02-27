@@ -214,7 +214,7 @@ export default function ProtocolBuilder() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Wand2 className="h-7 w-7 text-primary" />
-                        Protocol Builder
+                        {builder.orgName ? `${builder.orgName} Protocol Builder` : 'Protocol Builder'}
                         {builder.loadedProtocolId && (
                             <Badge variant="secondary" className="text-xs font-normal ml-2">Editing</Badge>
                         )}
