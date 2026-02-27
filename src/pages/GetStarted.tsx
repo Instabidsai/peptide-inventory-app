@@ -55,7 +55,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function GetStarted() {
-  const [mode, setMode] = useState<'login' | 'signup'>('signup');
+  // Default to login if ?mode=login in URL, otherwise signup
+  const initialMode = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '').get('mode') === 'login' ? 'login' : 'signup';
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -83,20 +85,22 @@ export default function GetStarted() {
     }
   }, [loading, user, profile, navigate]);
 
-  if (loading) {
+  if (loading || user) {
+    const message = user ? 'Setting up your account...' : 'Loading...';
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // If user is logged in, show a brief loading state while redirect useEffect fires
-  if (user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Setting up your account...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
+        </div>
+        <div className="w-full max-w-md relative z-10">
+          <Card className="bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20">
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">{message}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
