@@ -70,7 +70,7 @@ export function CartSummary({
 }: CartSummaryProps) {
     return (
         <AnimatePresence>
-        {cart.length > 0 && (
+        {(cart.length > 0 || orderPlaced) && (
             <motion.div
                 ref={cartRef}
                 initial={{ opacity: 0, y: 24, scale: 0.97 }}

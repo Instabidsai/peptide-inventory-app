@@ -299,8 +299,6 @@ export default function ClientStore() {
                 contact_id: contact?.id,
             });
             setOrderPlaced(true);
-            setCart([]);
-            setNotes('');
             toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: (err as any)?.message || 'Unknown error' });
@@ -397,6 +395,8 @@ export default function ClientStore() {
                 onOrderPlacedReset={() => {
                     setOrderPlaced(false);
                     setPaymentMethod('card');
+                    setCart([]);
+                    setNotes('');
                 }}
                 placingOrder={placingOrder}
                 checkoutPending={checkout.isPending}
