@@ -299,6 +299,7 @@ export default function Auth() {
   const pending = peekPendingReferral();
   const refParam = searchParams.get('ref') || pending?.refId || null;
   const roleParam = (searchParams.get('role') || pending?.role || 'customer') as 'customer' | 'partner';
+  const orgParam = searchParams.get('org') || pending?.orgId || null;
   const isPartnerInvite = roleParam === 'partner';
 
   // Plan selection from CRM landing page (e.g. /auth?mode=signup&plan=starter)
@@ -372,7 +373,7 @@ export default function Auth() {
       const email = user.email || '';
       const name = profile.full_name || user.user_metadata?.full_name || email;
 
-      linkReferral(user.id, email, name, refParam, roleParam).then(async (result) => {
+      linkReferral(user.id, email, name, refParam, roleParam, orgParam).then(async (result) => {
         linkingInProgress.current = false;
         if (result.success) {
           sessionStorage.removeItem('partner_ref');
@@ -384,7 +385,7 @@ export default function Auth() {
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
           // Keep referral in sessionStorage so Onboarding can retry
-          if (refParam) storeSessionReferral(refParam, roleParam);
+          if (refParam) storeSessionReferral(refParam, roleParam, orgParam);
           toast({ variant: 'destructive', title: 'Referral link error', description: `Error: ${result.error || 'Unknown'} | ref=${refParam?.slice(0,8)}… | user=${user.id.slice(0,8)}…`, duration: 15000 });
           navigate('/onboarding', { replace: true });
         }
@@ -402,7 +403,7 @@ export default function Auth() {
       sessionStorage.removeItem('merchant_signup');
       navigate(from, { replace: true });
     } else {
-      if (refParam) storeSessionReferral(refParam, roleParam);
+      if (refParam) storeSessionReferral(refParam, roleParam, orgParam);
       // Self-signup or merchant signup → go to onboarding (picks up selected_plan)
       navigate('/onboarding', { replace: true });
     }
@@ -476,7 +477,7 @@ export default function Auth() {
     if (refParam) {
       const { data: { user: newUser }, error: userErr } = await supabase.auth.getUser();
       if (newUser) {
-        const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam);
+        const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam, orgParam);
         if (result.success) {
           sessionStorage.removeItem('partner_ref');
           sessionStorage.removeItem('partner_ref_role');
@@ -488,13 +489,13 @@ export default function Auth() {
           return;
         }
         // linkReferral failed — store ref for retry and show the actual error
-        storeSessionReferral(refParam, roleParam);
+        storeSessionReferral(refParam, roleParam, orgParam);
         setIsLoading(false);
         toast({ variant: 'destructive', title: 'Referral link error (signup)', description: `Error: ${result.error || 'Unknown'} | ref=${refParam?.slice(0,8)}…`, duration: 15000 });
         return;
       } else {
         // User not confirmed yet — store referral for later
-        storeSessionReferral(refParam, roleParam);
+        storeSessionReferral(refParam, roleParam, orgParam);
       }
     }
 
@@ -547,7 +548,7 @@ export default function Auth() {
     setIsGoogleLoading(true);
     // Persist referral params across OAuth redirect
     if (refParam) {
-      storeSessionReferral(refParam, roleParam);
+      storeSessionReferral(refParam, roleParam, orgParam);
     }
     // Always redirect to base URL — hash routes break OAuth token exchange.
     // ProtectedRoute will redirect new users (no org) to /onboarding,

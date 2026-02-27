@@ -29,7 +29,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     // peekPendingReferral checks both sessionStorage AND localStorage (cross-tab persistence)
     const pending = peekPendingReferral();
     if (pending) {
-      return <Navigate to={`/auth?ref=${encodeURIComponent(pending.refId)}&role=${encodeURIComponent(pending.role)}`} replace />;
+      const orgSuffix = pending.orgId ? `&org=${encodeURIComponent(pending.orgId)}` : '';
+      return <Navigate to={`/auth?ref=${encodeURIComponent(pending.refId)}&role=${encodeURIComponent(pending.role)}${orgSuffix}`} replace />;
     }
     // Merchant self-signup → create org then AI Setup Assistant
     if (sessionStorage.getItem('merchant_signup') === 'true') {

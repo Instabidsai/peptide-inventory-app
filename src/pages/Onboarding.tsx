@@ -22,7 +22,7 @@ import { useTenantConfig } from '@/hooks/use-tenant-config';
 export default function Onboarding() {
   const [isLinking, setIsLinking] = useState(false);
   const [linkFailed, setLinkFailed] = useState(false);
-  const [failedRef, setFailedRef] = useState<{ refId: string; role: 'customer' | 'partner' } | null>(null);
+  const [failedRef, setFailedRef] = useState<{ refId: string; role: 'customer' | 'partner'; orgId?: string | null } | null>(null);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const { user, profile, refreshProfile, signOut } = useAuth();
@@ -35,7 +35,7 @@ export default function Onboarding() {
   // Check if user came from landing page with a selected plan
   const selectedPlan = localStorage.getItem('selected_plan');
 
-  const attemptLink = (ref: { refId: string; role: 'customer' | 'partner' }) => {
+  const attemptLink = (ref: { refId: string; role: 'customer' | 'partner'; orgId?: string | null }) => {
     if (!user) return;
     setIsLinking(true);
     setLinkFailed(false);
@@ -43,7 +43,7 @@ export default function Onboarding() {
     const email = user.email || '';
     const name = profile?.full_name || user.user_metadata?.full_name || email;
 
-    linkReferral(user.id, email, name, ref.refId, ref.role).then(async (result) => {
+    linkReferral(user.id, email, name, ref.refId, ref.role, ref.orgId).then(async (result) => {
       if (result.success) {
         await refreshProfile();
         queryClient.invalidateQueries({ queryKey: ['client-profile'] });
@@ -56,7 +56,7 @@ export default function Onboarding() {
         setIsLinking(false);
         setLinkFailed(true);
         setFailedRef(ref);
-        storeSessionReferral(ref.refId, ref.role);
+        storeSessionReferral(ref.refId, ref.role, ref.orgId);
       }
     });
   };

@@ -12,15 +12,18 @@ interface ReferralLinkCardProps {
     partnerTier?: string;
     /** Current user's role — admins always see both links */
     userRole?: string;
+    /** Effective org_id — ensures signups land in the correct tenant (multi-tenancy) */
+    orgId?: string | null;
 }
 
-export function ReferralLinkCard({ profileId, partnerTier, userRole }: ReferralLinkCardProps) {
+export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId }: ReferralLinkCardProps) {
     const [copiedType, setCopiedType] = useState<string | null>(null);
 
     if (!profileId) return null;
 
-    const customerUrl = `${window.location.origin}/#/auth?ref=${profileId}`;
-    const partnerUrl = `${window.location.origin}/#/auth?ref=${profileId}&role=partner`;
+    const orgSuffix = orgId ? `&org=${orgId}` : '';
+    const customerUrl = `${window.location.origin}/#/auth?ref=${profileId}${orgSuffix}`;
+    const partnerUrl = `${window.location.origin}/#/auth?ref=${profileId}&role=partner${orgSuffix}`;
     const canRecruit = userRole === 'admin' || userRole === 'super_admin' || CAN_RECRUIT_TIERS.includes(partnerTier || '');
 
     const handleCopy = async (url: string, type: string) => {

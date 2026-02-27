@@ -57,7 +57,9 @@ if (sentryDsn) {
     const refId = sessionStorage.getItem('partner_ref');
     if (refId) {
       const role = sessionStorage.getItem('partner_ref_role') || 'customer';
-      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(refId) + '&role=' + encodeURIComponent(role));
+      const org = sessionStorage.getItem('partner_ref_org') || '';
+      const orgSuffix = org ? '&org=' + encodeURIComponent(org) : '';
+      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(refId) + '&role=' + encodeURIComponent(role) + orgSuffix);
     } else if (localStorage.getItem('selected_plan')) {
       // SaaS signup via /get-started — send to onboarding to create org
       window.history.replaceState(null, '', window.location.pathname + '#/onboarding');
