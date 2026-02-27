@@ -18,11 +18,11 @@
     --primary: 160 84% 39%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 217 33% 17%;
+    --secondary: 217 33% 22%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 68%;
+    --muted: 217 33% 22%;
+    --muted-foreground: 215 20% 75%;
 
     --accent: 160 84% 39%;
     --accent-foreground: 210 40% 98%;
@@ -30,8 +30,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
+    --border: 217 33% 28%;
+    --input: 217 33% 28%;
     --ring: 160 84% 39%;
 
     --radius: 0.75rem;
@@ -40,9 +40,9 @@
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 160 84% 39%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent: 217 33% 16%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 20%;
+    --sidebar-border: 217 33% 28%;
     --sidebar-ring: 160 84% 39%;
 
     /* Secondary accent — indigo/blue to break emerald monotone */

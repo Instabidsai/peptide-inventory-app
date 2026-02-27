@@ -479,7 +479,7 @@ function ClientDashboardContent() {
                     </button>
                 </motion.div>
                 <motion.div
-                    className="w-full max-w-md border border-border/50 rounded-xl p-4 mt-6 bg-white/[0.02]"
+                    className="w-full max-w-md border border-border/50 rounded-xl p-4 mt-6 bg-muted/20"
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
@@ -504,7 +504,7 @@ function ClientDashboardContent() {
     return (
         <div className="space-y-6 pb-20">
             {/* Header / Greeting Hero */}
-            <GlassCard className="border-white/[0.04] overflow-hidden relative">
+            <GlassCard className="border-border/40 overflow-hidden relative">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/[0.08] rounded-full blur-3xl pointer-events-none" />
                 <div className="absolute inset-y-0 left-0 w-1 bg-gradient-brand rounded-l-xl" />
                 <CardContent className="pt-5 pb-4 pl-5">
@@ -521,7 +521,7 @@ function ClientDashboardContent() {
                             Good {today.getHours() < 12 ? 'Morning' : today.getHours() < 18 ? 'Afternoon' : 'Evening'},{' '}
                             <span className="text-gradient-primary">{contact?.name?.split(' ')[0] || 'Friend'}</span>
                         </h1>
-                        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-white/[0.04] flex-wrap">
+                        <div className="flex items-center gap-4 mt-2 pt-2 border-t border-border/40 flex-wrap">
                             {isHousehold && (
                                 <span className="text-xs font-medium text-muted-foreground/50 flex items-center gap-1">
                                     <Users className="h-3 w-3 text-violet-400" />
@@ -574,7 +574,7 @@ function ClientDashboardContent() {
                             localStorage.setItem('household-banner-dismissed', 'true');
                             setBannerDismissed(true);
                         }}
-                        className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
+                        className="text-muted-foreground/50 hover:text-muted-foreground/60 transition-colors shrink-0"
                         title="Dismiss"
                     >
                         <X className="h-3.5 w-3.5" />
@@ -604,7 +604,7 @@ function ClientDashboardContent() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{unreadMessages} New Message{unreadMessages !== 1 ? 's' : ''}</p>
-                                <p className="text-[10px] text-muted-foreground/40">From your care team</p>
+                                <p className="text-[10px] text-muted-foreground/60">From your care team</p>
                             </div>
                         </button>
                     )}
@@ -622,7 +622,7 @@ function ClientDashboardContent() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{unreadNotifications} Alert{(unreadNotifications ?? 0) !== 1 ? 's' : ''}</p>
-                                <p className="text-[10px] text-muted-foreground/40">Updates & reminders</p>
+                                <p className="text-[10px] text-muted-foreground/60">Updates & reminders</p>
                             </div>
                         </button>
                     )}
@@ -637,7 +637,7 @@ function ClientDashboardContent() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{latestWeight.weight} lbs</p>
-                                <p className="text-[10px] text-muted-foreground/40">Last weigh-in</p>
+                                <p className="text-[10px] text-muted-foreground/60">Last weigh-in</p>
                             </div>
                         </button>
                     )}
@@ -652,7 +652,7 @@ function ClientDashboardContent() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">${(outstandingBalance ?? 0).toFixed(2)} due</p>
-                                <p className="text-[10px] text-muted-foreground/40">Outstanding balance</p>
+                                <p className="text-[10px] text-muted-foreground/60">Outstanding balance</p>
                             </div>
                         </button>
                     )}
@@ -661,11 +661,11 @@ function ClientDashboardContent() {
             </SectionErrorBoundary>
 
             <Tabs defaultValue="protocol" className="w-full">
-                <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-white/[0.04] p-1">
-                    <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
+                <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-muted/40 p-1">
+                    <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-muted/50 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         My Protocol
                     </TabsTrigger>
-                    <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-white/[0.08] data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
+                    <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-muted/50 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         <Sparkles className="h-3.5 w-3.5" />
                         Peptide AI
                     </TabsTrigger>
@@ -675,7 +675,7 @@ function ClientDashboardContent() {
                     {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
                     <SectionErrorBoundary section="Today's Doses">
                     {hasDosesToday && (
-                        <GlassCard className="border-white/[0.04] overflow-hidden">
+                        <GlassCard className="border-border/40 overflow-hidden">
                             <CardContent className="pt-5 pb-4">
                                 {isHousehold ? (
                                     <HouseholdDoseSection
@@ -699,7 +699,7 @@ function ClientDashboardContent() {
 
                     {/* ─── Rest Day / No Schedule Message ─── */}
                     {!hasDosesToday && hasScheduledVials && (
-                        <GlassCard className="border-white/[0.04] overflow-hidden relative">
+                        <GlassCard className="border-border/40 overflow-hidden relative">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
                             <CardContent className="py-8">
                                 <div className="flex flex-col items-center gap-3 text-center">
@@ -718,7 +718,7 @@ function ClientDashboardContent() {
                                         </p>
                                     </div>
                                     {gamified.streak > 0 && (
-                                        <div className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+                                        <div className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full bg-muted/40 border border-border/50">
                                             <Flame className="h-3.5 w-3.5 text-orange-400" />
                                             <span className="text-xs font-semibold text-muted-foreground/70">{gamified.streak} day streak</span>
                                         </div>
@@ -757,7 +757,7 @@ function ClientDashboardContent() {
                                     </span>
                                 </div>
                                 {isHousehold && (
-                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground/40 pl-[52px]">
+                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground/60 pl-[52px]">
                                         <span>You: <span className="font-semibold text-primary/70">{personalDone}/{personalDoses.length}</span></span>
                                         <span>Family total: {doneDoses}/{totalDoses}</span>
                                     </div>
@@ -781,7 +781,7 @@ function ClientDashboardContent() {
                         <div className="flex items-center gap-2 px-1">
                             <Calendar className="h-4 w-4 text-muted-foreground/50" />
                             <h3 className="text-sm font-semibold tracking-tight">{isHousehold ? 'Family Schedule' : 'Your Schedule'}</h3>
-                            <span className="text-[10px] text-muted-foreground/40">Tap any day to see details</span>
+                            <span className="text-[10px] text-muted-foreground/60">Tap any day to see details</span>
                         </div>
                     <ProtocolCalendar
                         inventory={inventory || []}
@@ -802,7 +802,7 @@ function ClientDashboardContent() {
                     <div className="flex justify-center">
                         <button
                             onClick={() => setChangeRequestOpen(true)}
-                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground/60 hover:text-primary bg-white/[0.02] hover:bg-primary/5 border border-white/[0.06] hover:border-primary/20 px-4 py-2.5 rounded-xl transition-all"
+                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground/60 hover:text-primary bg-muted/20 hover:bg-primary/5 border border-border/50 hover:border-primary/20 px-4 py-2.5 rounded-xl transition-all"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             Want to adjust your dosage or schedule? Request a change
@@ -817,34 +817,34 @@ function ClientDashboardContent() {
 
                     {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
                     <SectionErrorBoundary section="My Progress">
-                    <GlassCard className="border-white/[0.04] overflow-hidden">
+                    <GlassCard className="border-border/40 overflow-hidden">
                         <button
                             onClick={() => setStatsOpen(prev => !prev)}
-                            className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-white/[0.02]"
+                            className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-muted/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-white/[0.04] text-muted-foreground/60">
+                                <div className="p-2 rounded-xl bg-muted/40 text-muted-foreground/60">
                                     <Target className="h-4 w-4" />
                                 </div>
                                 <span className="font-semibold text-sm tracking-tight">My Progress</span>
-                                <span className="text-xs text-muted-foreground/40">
+                                <span className="text-xs text-muted-foreground/60">
                                     {gamified.adherenceRate}% consistency
                                 </span>
                             </div>
-                            <div className={cn("p-1 rounded-lg bg-white/[0.04] transition-transform duration-200", statsOpen && "rotate-180")}>
-                                <ChevronDown className="h-4 w-4 text-muted-foreground/40" />
+                            <div className={cn("p-1 rounded-lg bg-muted/40 transition-transform duration-200", statsOpen && "rotate-180")}>
+                                <ChevronDown className="h-4 w-4 text-muted-foreground/60" />
                             </div>
                         </button>
                         <div className={statsOpen ? '' : 'hidden'}>
                             <CardContent className="pt-0 pb-4 space-y-4">
                                 {/* Stats Row */}
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
+                                    <div className="rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col items-center gap-1.5">
                                         <Flame className="h-4 w-4 text-primary" />
                                         <div className="text-2xl font-bold tracking-tight text-primary">{gamified.streak}</div>
                                         <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Day Streak</div>
                                     </div>
-                                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
+                                    <div className="rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col items-center gap-1.5">
                                         <Target className="h-4 w-4 text-primary" />
                                         <div className="text-2xl font-bold tracking-tight text-primary">{gamified.adherenceRate}%</div>
                                         <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Consistency</div>
@@ -866,7 +866,7 @@ function ClientDashboardContent() {
                     {/* ─── Full Regimen Link ─── */}
                     <motion.button
                         onClick={() => navigate('/my-regimen')}
-                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-primary/10 transition-all duration-300 group"
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40 hover:bg-muted/40 hover:border-primary/10 transition-all duration-300 group"
                         whileTap={{ scale: 0.98 }}
                     >
                         <div className="flex items-center gap-3">
@@ -875,10 +875,10 @@ function ClientDashboardContent() {
                             </div>
                             <div className="text-left">
                                 <div className="font-semibold text-sm tracking-tight">My Wellness Hub</div>
-                                <div className="text-xs text-muted-foreground/40">Manage supplies, log health data, and view your full plan</div>
+                                <div className="text-xs text-muted-foreground/60">Manage supplies, log health data, and view your full plan</div>
                             </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
                     </motion.button>
                 </TabsContent>
 

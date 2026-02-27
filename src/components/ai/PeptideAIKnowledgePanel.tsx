@@ -100,9 +100,9 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" role="presentation" aria-hidden="true" onClick={onClose} />
 
             {/* Panel */}
-            <div className="relative w-full max-w-sm bg-card/95 backdrop-blur-xl border-l border-white/[0.06] shadow-overlay animate-in slide-in-from-right duration-200">
+            <div className="relative w-full max-w-sm bg-card/95 backdrop-blur-xl border-l border-border/50 shadow-overlay animate-in slide-in-from-right duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
                     <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
                         <div>
@@ -121,7 +121,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                     <div className="p-4 space-y-3">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/60" />
                             </div>
                         ) : (
                             <>
@@ -143,7 +143,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                             )}
                                         </div>
                                         <ChevronDown className={cn(
-                                            "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
+                                            "h-3.5 w-3.5 text-muted-foreground/60 transition-transform",
                                             expandedSections.has('profile') && "rotate-180"
                                         )} />
                                     </button>
@@ -151,13 +151,13 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                         <div className="space-y-3 mt-1">
                                             {!hasProfile ? (
                                                 <div className="text-center py-6">
-                                                    <div className="h-10 w-10 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-2">
-                                                        <Heart className="h-5 w-5 text-muted-foreground/30" />
+                                                    <div className="h-10 w-10 rounded-xl bg-muted/40 flex items-center justify-center mx-auto mb-2">
+                                                        <Heart className="h-5 w-5 text-muted-foreground/50" />
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground/40">
+                                                    <p className="text-xs text-muted-foreground/60">
                                                         No health profile yet.
                                                     </p>
-                                                    <p className="text-[11px] text-muted-foreground/30 mt-1">
+                                                    <p className="text-[11px] text-muted-foreground/50 mt-1">
                                                         Tell Peptide AI about your conditions, goals,<br />medications, and it will build your profile.
                                                     </p>
                                                 </div>
@@ -168,7 +168,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                         const items = healthProfile?.[key as keyof typeof healthProfile] as string[] | undefined;
                                                         if (!items?.length) return null;
                                                         return (
-                                                            <div key={key} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                            <div key={key} className="rounded-xl bg-muted/20 border border-border/40 p-2.5">
                                                                 <div className="flex items-center gap-1.5 mb-2">
                                                                     <Icon className={cn("h-3 w-3", color)} />
                                                                     <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
@@ -185,7 +185,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                                     ? "bg-orange-500/10 border-orange-500/20 text-orange-300"
                                                                                     : key === 'goals'
                                                                                         ? "bg-primary/10 border-primary/20 text-primary"
-                                                                                        : "bg-white/[0.04] border-white/[0.06]"
+                                                                                        : "bg-muted/40 border-border/50"
                                                                             )}
                                                                         >
                                                                             {item}
@@ -198,13 +198,13 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
 
                                                     {/* Lab Values — styled like a real lab report */}
                                                     {labEntries.length > 0 && (
-                                                        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                        <div className="rounded-xl bg-muted/20 border border-border/40 p-2.5">
                                                             <div className="flex items-center gap-1.5 mb-2">
                                                                 <Activity className="h-3 w-3 text-amber-400" />
                                                                 <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                                                                     Lab Values
                                                                 </span>
-                                                                <span className="text-[9px] text-muted-foreground/30 ml-auto">
+                                                                <span className="text-[9px] text-muted-foreground/50 ml-auto">
                                                                     {labEntries.length} markers
                                                                 </span>
                                                             </div>
@@ -226,7 +226,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                                 ) : flag === 'low' ? (
                                                                                     <TrendingDown className="h-3 w-3 text-amber-400" />
                                                                                 ) : (
-                                                                                    <Minus className="h-3 w-3 text-muted-foreground/30" />
+                                                                                    <Minus className="h-3 w-3 text-muted-foreground/50" />
                                                                                 )}
                                                                                 <span className="text-muted-foreground/70">{formatLabKey(key)}</span>
                                                                             </div>
@@ -246,7 +246,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
 
                                                     {/* Notes */}
                                                     {healthProfile?.notes && (
-                                                        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-2.5">
+                                                        <div className="rounded-xl bg-muted/20 border border-border/40 p-2.5">
                                                             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Notes</span>
                                                             <p className="text-xs text-muted-foreground/60 mt-1 whitespace-pre-line">{healthProfile.notes}</p>
                                                         </div>
@@ -270,14 +270,14 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                             </h3>
                                         </div>
                                         <ChevronDown className={cn(
-                                            "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
+                                            "h-3.5 w-3.5 text-muted-foreground/60 transition-transform",
                                             expandedSections.has('documents') && "rotate-180"
                                         )} />
                                     </button>
                                     {expandedSections.has('documents') && (
                                         <div className="space-y-2 mt-1">
                                             {documents.length === 0 ? (
-                                                <p className="text-xs text-muted-foreground/40 py-2">
+                                                <p className="text-xs text-muted-foreground/60 py-2">
                                                     No documents uploaded yet. Use the paperclip in chat to upload lab results, bloodwork, or health records.
                                                 </p>
                                             ) : (
@@ -287,9 +287,9 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                     return (
                                                         <div
                                                             key={doc.id}
-                                                            className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                                                            className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/20 border border-border/40"
                                                         >
-                                                            <div className="h-8 w-8 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 mt-0.5">
+                                                            <div className="h-8 w-8 rounded-lg bg-muted/40 flex items-center justify-center shrink-0 mt-0.5">
                                                                 <Icon className="h-4 w-4 text-muted-foreground/60" />
                                                             </div>
                                                             <div className="min-w-0 flex-1">
@@ -305,7 +305,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                     ) : (
                                                                         <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
                                                                     )}
-                                                                    <span className="text-[10px] text-muted-foreground/40">
+                                                                    <span className="text-[10px] text-muted-foreground/60">
                                                                         {doc.status === 'completed' ? 'Processed' : doc.status === 'failed' ? 'Failed' : 'Processing...'}
                                                                         {' · '}
                                                                         {format(new Date(doc.created_at), 'MMM d')}
@@ -333,14 +333,14 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                             </h3>
                                         </div>
                                         <ChevronDown className={cn(
-                                            "h-3.5 w-3.5 text-muted-foreground/40 transition-transform",
+                                            "h-3.5 w-3.5 text-muted-foreground/60 transition-transform",
                                             expandedSections.has('insights') && "rotate-180"
                                         )} />
                                     </button>
                                     {expandedSections.has('insights') && (
                                         <div className="space-y-3 mt-1">
                                             {Object.keys(groupedInsights).length === 0 ? (
-                                                <p className="text-xs text-muted-foreground/40 py-2">
+                                                <p className="text-xs text-muted-foreground/60 py-2">
                                                     No insights yet. As you chat with Peptide AI, it will automatically save research findings and observations here.
                                                 </p>
                                             ) : (
@@ -354,7 +354,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                 <span className="text-[11px] font-semibold text-muted-foreground/70">
                                                                     {config.label}
                                                                 </span>
-                                                                <span className="text-[9px] text-muted-foreground/30 ml-auto">
+                                                                <span className="text-[9px] text-muted-foreground/50 ml-auto">
                                                                     {items.length}
                                                                 </span>
                                                             </div>
@@ -362,13 +362,13 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                 {items.map((insight) => (
                                                                     <div
                                                                         key={insight.id}
-                                                                        className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.03]"
+                                                                        className="p-2 rounded-lg bg-muted/20 border border-border/30"
                                                                     >
                                                                         <p className="text-xs font-medium">{insight.title}</p>
                                                                         <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-2">
                                                                             {insight.content}
                                                                         </p>
-                                                                        <span className="text-[9px] text-muted-foreground/30 mt-1 block">
+                                                                        <span className="text-[9px] text-muted-foreground/50 mt-1 block">
                                                                             {insight.source === 'document' ? 'From document' : 'From conversation'}
                                                                             {' · '}
                                                                             {format(new Date(insight.created_at), 'MMM d')}
