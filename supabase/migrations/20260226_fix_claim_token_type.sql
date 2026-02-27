@@ -65,7 +65,7 @@ BEGIN
 
     v_claim_token := gen_random_uuid();
     v_expires_at := now() + interval '7 days';
-    v_invite_link := p_redirect_origin || '/join?token=' || v_claim_token::text;
+    v_invite_link := p_redirect_origin || '/#/join?token=' || v_claim_token::text;
 
     UPDATE contacts
     SET claim_token = v_claim_token,
@@ -133,7 +133,7 @@ BEGIN
 
     v_claim_token := gen_random_uuid();
     v_expires_at := now() + interval '7 days';
-    v_invite_link := p_redirect_origin || '/join?token=' || v_claim_token::text;
+    v_invite_link := p_redirect_origin || '/#/join?token=' || v_claim_token::text;
 
     UPDATE contacts
     SET claim_token = v_claim_token,
@@ -213,7 +213,7 @@ BEGIN
 
     v_claim_token := gen_random_uuid();
     v_expires_at := now() + interval '7 days';
-    v_invite_link := p_redirect_origin || '/join?token=' || v_claim_token::text;
+    v_invite_link := p_redirect_origin || '/#/join?token=' || v_claim_token::text;
 
     UPDATE contacts
     SET claim_token = v_claim_token,

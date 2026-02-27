@@ -92,7 +92,7 @@ BEGIN
     -- Generate invite link for when they eventually create an account
     v_claim_token := gen_random_uuid();
     v_expires_at := now() + interval '7 days';
-    v_invite_link := p_redirect_origin || '/join?token=' || v_claim_token::text;
+    v_invite_link := p_redirect_origin || '/#/join?token=' || v_claim_token::text;
 
     -- Update contact
     UPDATE contacts

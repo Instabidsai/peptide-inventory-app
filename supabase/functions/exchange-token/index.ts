@@ -61,7 +61,7 @@ serve(withErrorReporting("exchange-token", async (req) => {
         // Use URL constructor for safety (Fixes the "concatenation" bug)
         // If baseUrlRaw is "https://app...", this ensures we get "https://app.../update-password"
         const siteUrl = new URL(baseUrlRaw);
-        const redirectUrlObj = new URL('/update-password', siteUrl);
+        const redirectUrlObj = new URL('/#/update-password', siteUrl);
         const redirectUrl = redirectUrlObj.toString();
 
         const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({

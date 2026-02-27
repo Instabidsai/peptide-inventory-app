@@ -41,7 +41,7 @@ Deno.serve(withErrorReporting("invite-user", async (req) => {
         const claimToken = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         const baseUrl = redirect_origin || Deno.env.get('PUBLIC_SITE_URL') || '';
-        const safeLink = `${baseUrl}/join?token=${claimToken}`;
+        const safeLink = `${baseUrl}/#/join?token=${claimToken}`;
 
         // Update Contact with Token — scope to caller's org
         if (contact_id) {

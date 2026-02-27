@@ -73,7 +73,7 @@ BEGIN
     -- Contact has no auth account — generate claim token + invite link
     v_claim_token := gen_random_uuid();
     v_expires_at := now() + interval '7 days';
-    v_invite_link := p_redirect_origin || '/join?token=' || v_claim_token::text;
+    v_invite_link := p_redirect_origin || '/#/join?token=' || v_claim_token::text;
 
     -- Update contact with claim token and partner type
     UPDATE contacts
