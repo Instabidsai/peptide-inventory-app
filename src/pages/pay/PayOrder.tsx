@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,18 +10,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function PayOrder() {
     const { orderId } = useParams<{ orderId: string }>();
-    const [searchParams] = useSearchParams();
-    const processorParam = searchParams.get('processor');
     const queryClient = useQueryClient();
 
     const [copied, setCopied] = useState(false);
     const [showManual, setShowManual] = useState(false);
 
-    // Inline iframe checkout state
-    const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-    const [loadingCheckout, setLoadingCheckout] = useState(false);
+    // Card checkout state
+    const [payingCard, setPayingCard] = useState(false);
+    const [waitingForPayment, setWaitingForPayment] = useState(false);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    const [iframeLoaded, setIframeLoaded] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const { data: order, isLoading, error } = useQuery({
@@ -104,10 +101,10 @@ export default function PayOrder() {
         }, 3000);
     }, [orderId, queryClient]);
 
-    // Auto-load PayGate365 checkout when order is ready
-    const loadCheckout = useCallback(async () => {
-        if (!orderId || checkoutUrl || loadingCheckout) return;
-        setLoadingCheckout(true);
+    // Open PayGate365 checkout → goes directly to Stripe card form (no provider selection)
+    const handlePayWithCard = useCallback(async () => {
+        if (!orderId || payingCard) return;
+        setPayingCard(true);
         setCheckoutError(null);
         try {
             const response = await fetch('/api/checkout/create-paygate-session', {
@@ -117,51 +114,20 @@ export default function PayOrder() {
             });
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || `Failed to load checkout (${response.status})`);
+                throw new Error(err.error || `Failed to start checkout (${response.status})`);
             }
             const { checkout_url } = await response.json();
             if (!checkout_url) throw new Error('No checkout URL received');
-            setCheckoutUrl(checkout_url);
+            // Open directly to Stripe card form in new tab
+            window.open(checkout_url, '_blank');
+            setWaitingForPayment(true);
             startPolling();
         } catch (err: any) {
-            setCheckoutError(err.message || 'Failed to load payment form');
+            setCheckoutError(err.message || 'Failed to start payment');
         } finally {
-            setLoadingCheckout(false);
+            setPayingCard(false);
         }
-    }, [orderId, checkoutUrl, loadingCheckout, startPolling]);
-
-    // Auto-load checkout when order data is available and payable
-    useEffect(() => {
-        if (order && !isPaid && !isCancelled && total > 0) {
-            loadCheckout();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [order, isPaid, isCancelled]);
-
-    // Fallback: open PsiFi in popup if iframe is blocked or user prefers it
-    const handlePsiFiFallback = async () => {
-        if (!orderId) return;
-        try {
-            const response = await fetch('/api/checkout/create-public-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId }),
-            });
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.psifi_error || err.error || `Payment failed (${response.status})`);
-            }
-            const { checkout_url } = await response.json();
-            if (!checkout_url) throw new Error('No checkout URL received');
-            const w = 520, h = 720;
-            const left = Math.max(0, (screen.width - w) / 2);
-            const top = Math.max(0, (screen.height - h) / 2);
-            window.open(checkout_url, 'PaymentCheckout', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
-            startPolling();
-        } catch (err: any) {
-            alert(err.message || 'Payment failed. Please try again.');
-        }
-    };
+    }, [orderId, payingCard, startPolling]);
 
     const copyOrderId = () => {
         if (orderId) {
@@ -300,56 +266,52 @@ export default function PayOrder() {
                     </CardContent>
                 </Card>
 
-                {/* Inline Card Payment — PayGate365 embedded */}
+                {/* Card Payment — one click to Stripe form */}
                 <Card>
                     <CardContent className="pt-6 space-y-4">
-                        <h2 className="font-semibold flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Pay with Card
-                        </h2>
-
-                        {loadingCheckout && (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
-                                <span className="text-sm text-muted-foreground">Loading payment form...</span>
-                            </div>
-                        )}
-
-                        {checkoutError && (
-                            <div className="text-center py-8 space-y-3">
-                                <p className="text-sm text-destructive">{checkoutError}</p>
-                                <Button variant="outline" size="sm" onClick={() => { setCheckoutUrl(null); loadCheckout(); }}>
-                                    Try Again
+                        {waitingForPayment ? (
+                            <div className="text-center py-6 space-y-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                                <div className="space-y-1">
+                                    <p className="font-semibold">Waiting for payment...</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Complete your card payment in the tab that just opened.
+                                        This page will update automatically.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handlePayWithCard}
+                                >
+                                    Reopen payment page
                                 </Button>
                             </div>
-                        )}
-
-                        {checkoutUrl && (
+                        ) : (
                             <>
-                                {!iframeLoaded && (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
-                                        <span className="text-sm text-muted-foreground">Loading payment form...</span>
-                                    </div>
+                                <Button
+                                    className="w-full h-14 text-lg"
+                                    onClick={handlePayWithCard}
+                                    disabled={payingCard}
+                                >
+                                    {payingCard ? (
+                                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                    ) : (
+                                        <CreditCard className="h-5 w-5 mr-2" />
+                                    )}
+                                    {payingCard ? 'Opening...' : `Pay $${cardTotal.toFixed(2)} with Card`}
+                                </Button>
+
+                                {checkoutError && (
+                                    <p className="text-sm text-center text-destructive">{checkoutError}</p>
                                 )}
-                                <iframe
-                                    src={checkoutUrl}
-                                    className="w-full border-0 rounded-lg"
-                                    style={{
-                                        height: iframeLoaded ? '600px' : '0px',
-                                        overflow: 'hidden',
-                                        transition: 'height 0.3s ease',
-                                    }}
-                                    onLoad={() => setIframeLoaded(true)}
-                                    allow="payment"
-                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
-                                />
+
+                                <p className="text-xs text-center text-muted-foreground">
+                                    Visa, Mastercard, Apple Pay, Google Pay accepted.
+                                    Opens secure payment form.
+                                </p>
                             </>
                         )}
-
-                        <p className="text-xs text-center text-muted-foreground">
-                            Enter your card details above to complete payment.
-                        </p>
                     </CardContent>
                 </Card>
 
@@ -366,22 +328,6 @@ export default function PayOrder() {
                     {showManual && (
                         <Card>
                             <CardContent className="pt-6 space-y-4">
-                                {/* PsiFi fallback — opens in popup */}
-                                <Button
-                                    className="w-full"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handlePsiFiFallback}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Pay with Card (Apple Pay / Google Pay)
-                                </Button>
-                                <p className="text-xs text-center text-muted-foreground -mt-2">
-                                    Opens in a new window — supports Apple Pay &amp; Google Pay via Banxa
-                                </p>
-
-                                <Separator />
-
                                 {/* Manual Payment Methods */}
                                 <div className="space-y-3 text-sm">
                                     <div className="p-3 rounded-lg border space-y-1">

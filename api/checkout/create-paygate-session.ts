@@ -100,9 +100,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(502).json({ error: 'Payment processor returned invalid data' });
         }
 
-        // Build hosted checkout URL
+        // Build hosted checkout URL — go directly to Stripe provider, skip provider selection page
         const contactEmail = (order.contacts as any)?.email || '';
-        const checkoutUrl = `https://checkout.365payment.co/pay.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd`;
+        const checkoutUrl = `https://checkout.paygate.to/process-payment.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd&provider=stripe`;
 
         // Update order with payment method
         await supabase
