@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
+import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, useDeleteSalesOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import {
     Plus,
     Link2,
     Check,
+    Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -82,6 +83,7 @@ export default function OrderDetails() {
 
     const updateOrder = useUpdateSalesOrder();
     const fulfillOrder = useFulfillOrder();
+    const deleteOrder = useDeleteSalesOrder();
     const payWithCredit = usePayWithCredit();
     const shipLabel = useCreateShippingLabel();
     const getRates = useGetShippingRates();
@@ -89,6 +91,7 @@ export default function OrderDetails() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
     const [editing, setEditing] = useState(false);
@@ -907,6 +910,19 @@ export default function OrderDetails() {
                                     <CreditCard className="mr-2 h-4 w-4" /> Copy PayGate365 Link
                                 </Button>
                             </div>
+
+                            <Separator />
+
+                            {/* Delete Order */}
+                            <Button
+                                variant="destructive"
+                                className="w-full"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                disabled={deleteOrder.isPending}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {deleteOrder.isPending ? 'Deleting...' : 'Delete Order'}
+                            </Button>
                         </CardContent>
                     </Card>
 
@@ -1201,6 +1217,34 @@ export default function OrderDetails() {
                             onClick={() => handleStatusChange('cancelled')}
                         >
                             Cancel Order
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Order Confirmation */}
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Permanently Delete This Order?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove this order and all related records including
+                            order items, commissions, inventory movements, and client inventory entries.
+                            {order.status === 'fulfilled' && ' Bottles will be returned to stock.'}
+                            {' '}This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                deleteOrder.mutate(order.id, {
+                                    onSuccess: () => navigate('/sales'),
+                                });
+                            }}
+                        >
+                            Delete Permanently
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

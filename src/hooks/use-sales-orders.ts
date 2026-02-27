@@ -480,6 +480,7 @@ export interface ValidatedOrderInput {
     notes?: string;
     payment_method?: string;
     delivery_method?: string;
+    contact_id?: string;
 }
 
 export function useCreateValidatedOrder() {
@@ -493,6 +494,7 @@ export function useCreateValidatedOrder() {
                 p_shipping_address: input.shipping_address || null,
                 p_notes: input.notes || null,
                 p_delivery_method: input.delivery_method || 'ship',
+                ...(input.contact_id ? { p_contact_id: input.contact_id } : {}),
             });
 
             if (error) throw new Error(`Order RPC failed: ${error.message}`);
@@ -840,6 +842,70 @@ export function useDeleteSalesOrder() {
     return useMutation({
         mutationFn: async (id: string) => {
             if (!profile?.org_id) throw new Error('No organization found');
+
+            // ── 1. Find the fulfillment movement linked to this order ──
+            const { data: movements } = await supabase
+                .from('movements')
+                .select('id')
+                .like('notes', `%[SO:${id}]%`);
+
+            const movementIds = (movements || []).map(m => m.id);
+
+            // ── 2. If there was a fulfillment, reverse inventory changes ──
+            if (movementIds.length > 0) {
+                // 2a. Find bottles that were sold via movement_items
+                const { data: moveItems } = await supabase
+                    .from('movement_items')
+                    .select('bottle_id')
+                    .in('movement_id', movementIds);
+
+                const bottleIds = (moveItems || []).map(mi => mi.bottle_id).filter(Boolean);
+
+                // 2b. Revert bottle status back to in_stock
+                if (bottleIds.length > 0) {
+                    const { error: bottleErr } = await supabase
+                        .from('bottles')
+                        .update({ status: 'in_stock' })
+                        .in('id', bottleIds);
+                    if (bottleErr) logger.error('Revert bottles failed:', bottleErr);
+                }
+
+                // 2c. Delete client_inventory entries linked to these movements
+                for (const mid of movementIds) {
+                    await supabase
+                        .from('client_inventory')
+                        .delete()
+                        .eq('movement_id', mid);
+                }
+
+                // 2d. Delete movement_items
+                for (const mid of movementIds) {
+                    await supabase
+                        .from('movement_items')
+                        .delete()
+                        .eq('movement_id', mid);
+                }
+
+                // 2e. Delete the movements themselves
+                await supabase
+                    .from('movements')
+                    .delete()
+                    .in('id', movementIds);
+            }
+
+            // ── 3. Delete commissions tied to this sale ──
+            await supabase
+                .from('commissions')
+                .delete()
+                .eq('sale_id', id);
+
+            // ── 4. Delete sales_order_items ──
+            await supabase
+                .from('sales_order_items')
+                .delete()
+                .eq('order_id', id);
+
+            // ── 5. Finally delete the sales order itself ──
             const { error } = await supabase
                 .from('sales_orders')
                 .delete()
@@ -851,7 +917,15 @@ export function useDeleteSalesOrder() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
             queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
-            toast({ title: 'Order deleted' });
+            queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+            queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
+            queryClient.invalidateQueries({ queryKey: ['contact_order_stats'] });
+            toast({ title: 'Order deleted', description: 'All related records have been removed.' });
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to delete order', description: error.message });
