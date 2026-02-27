@@ -223,6 +223,8 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
   const isConnected = wooConnection?.status === 'connected';
   const isPending = wooConnection?.status === 'pending';
   const connectedStoreUrl = wooConnection?.metadata?.store_url || '';
+  const webhookCreated = wooConnection?.metadata?.webhook_created !== false;
+  const webhookDeliveryUrl = wooConnection?.metadata?.webhook_delivery_url || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-webhook?org_id=${orgId}`;
 
   const handleConnect = async () => {
     if (!storeUrl.trim()) {
@@ -374,6 +376,38 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
                 {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
               </Button>
             </div>
+
+            {/* Webhook not created warning */}
+            {!webhookCreated && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 space-y-3">
+                <p className="text-sm font-medium text-amber-400">One more step: Add the order webhook</p>
+                <p className="text-xs text-muted-foreground">
+                  We couldn't auto-create the webhook on your store. Just do this one step:
+                </p>
+                <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Go to <span className="font-mono">WooCommerce → Settings → Advanced → Webhooks → Add webhook</span></li>
+                  <li>Name: <strong>ThePeptideAI Order Sync</strong> | Status: <strong>Active</strong> | Topic: <strong>Order updated</strong></li>
+                  <li>Delivery URL — copy this:</li>
+                </ol>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-muted/50 px-3 py-2 rounded text-[11px] break-all select-all">{webhookDeliveryUrl}</code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(webhookDeliveryUrl);
+                      toast({ title: 'Copied!' });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Secret: leave blank (we handle verification). API Version: <strong>WP REST API Integration v3</strong>. Click <strong>Save</strong>.
+                </p>
+              </div>
+            )}
 
             {/* Product Sync */}
             <div className="border-t pt-4 space-y-3">
