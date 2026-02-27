@@ -17,7 +17,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight, DollarSign, Percent } from 'lucide-react';
+import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight, DollarSign, Percent, Wand2, Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -32,6 +32,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { logger } from '@/lib/logger';
+import { useOrgProtocolTemplates } from '@/hooks/use-org-protocol-templates';
+import { findPeptideByName } from '@/hooks/use-protocol-builder';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface CartItem {
     peptide: Peptide;
@@ -66,6 +70,7 @@ export default function NewOrder() {
     const isPreviewMode = !!previewRepId;
 
     const createOrder = useCreateSalesOrder();
+    const { templates: orgTemplates } = useOrgProtocolTemplates();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedContactId, setSelectedContactId] = useState<string>('');
@@ -334,6 +339,32 @@ export default function NewOrder() {
         setCart(prev => prev.filter(item => item.peptide.id !== id));
     };
 
+    const TEMPLATE_ICON_MAP: Record<string, React.ElementType> = {
+        Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield,
+    };
+
+    const loadTemplateToCart = (template: typeof orgTemplates[number]) => {
+        if (!activePeptides?.length) return;
+        let added = 0;
+        const missing: string[] = [];
+        for (const name of template.peptideNames) {
+            const peptide = findPeptideByName(activePeptides, name);
+            if (peptide) {
+                addToCart(peptide);
+                added++;
+            } else {
+                missing.push(name);
+            }
+        }
+        if (added > 0 && missing.length === 0) {
+            toast.success(`"${template.name}" — ${added} peptide${added !== 1 ? 's' : ''} added to cart`);
+        } else if (added > 0 && missing.length > 0) {
+            toast.info(`Added ${added} peptide${added !== 1 ? 's' : ''}. Not in catalog: ${missing.join(', ')}`);
+        } else {
+            toast.error(`None of the "${template.name}" peptides are in your catalog`);
+        }
+    };
+
     const cartTotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
     // Calculate total commission — chain-based when chain exists, per-item rates otherwise
@@ -566,6 +597,42 @@ export default function NewOrder() {
                             </PopoverContent>
                         </Popover>
                     </div>
+
+                    {/* Protocol Template Quick-Picks */}
+                    {orgTemplates.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold flex items-center gap-2">
+                                <Wand2 className="h-4 w-4" /> Quick Protocols
+                            </label>
+                            <ScrollArea className="w-full whitespace-nowrap">
+                                <div className="flex gap-2 pb-1">
+                                    {orgTemplates.map((template) => {
+                                        const IconComp = TEMPLATE_ICON_MAP[template.icon] || Sparkles;
+                                        return (
+                                            <button
+                                                key={template.id}
+                                                onClick={() => loadTemplateToCart(template)}
+                                                disabled={!selectedContactId}
+                                                className={cn(
+                                                    'flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all',
+                                                    'bg-card/50 hover:bg-primary/10 hover:border-primary/50 hover:scale-[1.02]',
+                                                    'disabled:opacity-40 disabled:cursor-not-allowed',
+                                                )}
+                                                title={template.description}
+                                            >
+                                                <IconComp className="h-3.5 w-3.5 text-primary" />
+                                                <span className="truncate max-w-[120px]">{template.name}</span>
+                                                <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-0.5">
+                                                    {template.peptideNames.length}
+                                                </Badge>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <ScrollBar orientation="horizontal" />
+                            </ScrollArea>
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         {cart.length === 0 ? (
@@ -855,6 +922,13 @@ export default function NewOrder() {
                         {createOrder.isPending ? "Processing..." : (
                             <>Create Order <ChevronRight className="ml-2 h-4 w-4" /></>
                         )}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => navigate(`/protocol-builder${selectedContactId ? `?contact=${selectedContactId}` : ''}`)}
+                    >
+                        <Wand2 className="mr-2 h-4 w-4" /> Build Protocol
                     </Button>
                 </CardFooter>
             </Card>

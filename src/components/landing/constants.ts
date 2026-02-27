@@ -3,7 +3,7 @@ import type React from "react";
 // ─── Platform branding (customize here for your own platform) ────
 export const PLATFORM = {
   name: "ThePeptideAI",
-  supportEmail: "hello@thepeptideai.com",
+  supportEmail: "admin@thepeptideai.com",
   legalEmail: "legal@thepeptideai.com",
 } as const;
 

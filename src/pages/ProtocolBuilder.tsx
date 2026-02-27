@@ -24,6 +24,7 @@ import {
     CalendarPlus,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { useOrgProtocolTemplates } from '@/hooks/use-org-protocol-templates';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -35,6 +36,7 @@ import {
 
 export default function ProtocolBuilder() {
     const builder = useProtocolBuilder();
+    const { templates: orgTemplates } = useOrgProtocolTemplates();
     const { createProtocol, updateProtocol, deleteProtocol: deleteProtocolMutation } = useProtocols(builder.selectedContactId || undefined);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -320,8 +322,9 @@ export default function ProtocolBuilder() {
                     </div>
                 </div>
                 <TemplatePicker
-                    onSelect={builder.loadTemplate}
+                    onSelect={(name) => builder.loadTemplate(name, orgTemplates)}
                     activeItemCount={builder.items.length}
+                    templates={orgTemplates}
                 />
             </div>
 
@@ -513,13 +516,13 @@ export default function ProtocolBuilder() {
                                 </p>
                             </div>
                             <div className="flex justify-center gap-3 flex-wrap">
-                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Healing Stack')}>
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Healing Stack', orgTemplates)}>
                                     Healing Stack
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('GH Stack (Evening)')}>
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('GH Stack (Evening)', orgTemplates)}>
                                     GH Stack
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Weight Loss')}>
+                                <Button variant="outline" size="sm" onClick={() => builder.loadTemplate('Weight Loss', orgTemplates)}>
                                     Weight Loss
                                 </Button>
                             </div>

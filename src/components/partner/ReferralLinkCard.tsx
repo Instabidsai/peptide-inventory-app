@@ -22,8 +22,9 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId }: Re
     if (!profileId) return null;
 
     const orgSuffix = orgId ? `&org=${orgId}` : '';
-    const customerUrl = `${window.location.origin}/#/auth?ref=${profileId}${orgSuffix}`;
-    const partnerUrl = `${window.location.origin}/#/auth?ref=${profileId}&role=partner${orgSuffix}`;
+    // Use /join? path (not /#/auth?) so links survive SMS/text apps that strip hash fragments
+    const customerUrl = `${window.location.origin}/join?ref=${profileId}${orgSuffix}`;
+    const partnerUrl = `${window.location.origin}/join?ref=${profileId}&role=partner${orgSuffix}`;
     const canRecruit = userRole === 'admin' || userRole === 'super_admin' || CAN_RECRUIT_TIERS.includes(partnerTier || '');
 
     const handleCopy = async (url: string, type: string) => {

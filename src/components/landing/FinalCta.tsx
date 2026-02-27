@@ -38,7 +38,7 @@ export function FinalCta() {
       ];
       const body = `Hi, I'd like to apply to join ThePeptideAI.\n\n${lines.join("\n")}`;
       window.open(
-        `mailto:hello@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
+        `mailto:admin@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
         "_self",
       );
     } finally {
@@ -154,7 +154,7 @@ export function FinalCta() {
               className="text-muted-foreground hover:text-foreground"
               onClick={() => {
                 window.open(
-                  "mailto:hello@thepeptideai.com?subject=" + encodeURIComponent("Demo Request — ThePeptideAI"),
+                  "mailto:admin@thepeptideai.com?subject=" + encodeURIComponent("Demo Request — ThePeptideAI"),
                   "_self",
                 );
               }}

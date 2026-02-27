@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 
 const PLATFORM = {
     name: 'ThePeptideAI',
-    supportEmail: 'hello@thepeptideai.com',
+    supportEmail: 'admin@thepeptideai.com',
     legalEmail: 'legal@thepeptideai.com',
 } as const;
 

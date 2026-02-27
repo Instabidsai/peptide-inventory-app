@@ -4,7 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
-import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
+import { lookupKnowledge } from '@/data/protocol-knowledge';
+import type { ProtocolTemplate } from '@/data/protocol-knowledge';
 import {
     type EnrichedProtocolItem,
     type IncludeSections,
@@ -13,6 +14,19 @@ import {
 } from '@/lib/protocol-html-generator';
 import { toast } from 'sonner';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+
+// Normalize peptide name for fuzzy matching: strip dosage suffix, hyphens, spaces, lowercase
+export const normalizePeptideName = (name: string) =>
+    name.replace(/\s*\d+\s*(mg|iu|ml)\s*$/i, '').replace(/[-\s]+/g, '').toLowerCase().trim();
+
+// Find a peptide by name with fuzzy normalization
+export function findPeptideByName(peptides: Peptide[], name: string): Peptide | undefined {
+    const norm = normalizePeptideName(name);
+    return peptides.find(p => {
+        const np = normalizePeptideName(p.name);
+        return np === norm || np.includes(norm) || norm.includes(np);
+    });
+}
 
 // ── Hook ───────────────────────────────────────────────────────
 
@@ -175,11 +189,7 @@ export function useProtocolBuilder() {
 
     const addPeptideByName = useCallback((name: string) => {
         if (!peptides) return;
-        const peptide = peptides.find(p =>
-            p.name.toLowerCase() === name.toLowerCase() ||
-            p.name.toLowerCase().includes(name.toLowerCase()) ||
-            name.toLowerCase().includes(p.name.toLowerCase())
-        );
+        const peptide = findPeptideByName(peptides, name);
         if (peptide) addPeptide(peptide);
     }, [peptides, addPeptide]);
 
@@ -256,23 +266,28 @@ export function useProtocolBuilder() {
 
     // ── Template Loading ───────────────────────────────────────
 
-    const loadTemplate = useCallback((templateName: string) => {
+    const loadTemplate = useCallback((templateName: string, orgTemplates?: ProtocolTemplate[]) => {
         if (!peptides) return;
-        const template = PROTOCOL_TEMPLATES.find(t => t.name === templateName);
+        const pool = orgTemplates ?? [];
+        const template = pool.find(t => t.name === templateName);
         if (!template) return;
 
         const newItems: EnrichedProtocolItem[] = [];
+        const missing: string[] = [];
         for (const name of template.peptideNames) {
-            const peptide = peptides.find(p =>
-                p.name.toLowerCase() === name.toLowerCase() ||
-                p.name.toLowerCase().includes(name.toLowerCase()) ||
-                name.toLowerCase().includes(p.name.toLowerCase())
-            );
+            const peptide = findPeptideByName(peptides, name);
             if (peptide) {
                 newItems.push(enrichPeptide(peptide, template.defaultTierId));
+            } else {
+                missing.push(name);
             }
         }
         setItems(newItems);
+        if (missing.length > 0 && newItems.length > 0) {
+            toast.info(`Loaded ${newItems.length} peptide${newItems.length !== 1 ? 's' : ''}. Not in your catalog: ${missing.join(', ')}`);
+        } else if (newItems.length === 0) {
+            toast.error(`None of the template peptides are in your catalog (${template.peptideNames.join(', ')})`);
+        }
     }, [peptides, enrichPeptide]);
 
     // ── Order Loading ──────────────────────────────────────────

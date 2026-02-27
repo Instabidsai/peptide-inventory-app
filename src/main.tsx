@@ -35,6 +35,27 @@ if (sentryDsn) {
   (window as unknown as { __recentConsoleErrors: string[] }).__recentConsoleErrors = errors;
 })();
 
+// ─── SMS-Safe Referral Interceptor ───────────────────────────────────────────
+// Referral links sent via text use /join?ref=...&role=...&org=... (no hash)
+// because SMS apps strip everything after # in URLs.
+// Convert to HashRouter format before React renders.
+;(function interceptReferralPath() {
+  if (window.location.pathname !== '/join') return;
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  if (!ref) return;
+  const role = params.get('role') || 'customer';
+  const org = params.get('org');
+  const orgSuffix = org ? `&org=${encodeURIComponent(org)}` : '';
+  // Store referral in sessionStorage + localStorage as backup
+  sessionStorage.setItem('partner_ref', ref);
+  sessionStorage.setItem('partner_ref_role', role);
+  if (org) sessionStorage.setItem('partner_ref_org', org);
+  localStorage.setItem('partner_ref', JSON.stringify({ refId: ref, role, orgId: org || null, ts: Date.now() }));
+  // Rewrite URL to hash-based route
+  window.history.replaceState(null, '', `/#/auth?ref=${encodeURIComponent(ref)}&role=${encodeURIComponent(role)}${orgSuffix}`);
+})();
+
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────
 // Supabase implicit OAuth puts tokens in the URL hash (#access_token=xxx&...)
 // which conflicts with HashRouter (also uses the hash for routing).

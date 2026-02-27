@@ -307,10 +307,10 @@ export default function Onboarding() {
               Need immediate assistance?
             </p>
             <a
-              href="mailto:hello@thepeptideai.com?subject=Account Setup Request"
+              href="mailto:admin@thepeptideai.com?subject=Account Setup Request"
               className="text-primary hover:text-primary/80 font-medium text-sm underline underline-offset-2 transition-colors"
             >
-              hello@thepeptideai.com
+              admin@thepeptideai.com
             </a>
           </div>
 

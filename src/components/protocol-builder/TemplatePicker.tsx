@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
+import type { ProtocolTemplate } from '@/data/protocol-knowledge';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
@@ -34,9 +34,10 @@ const ICON_COLORS: Record<string, string> = {
 interface TemplatePickerProps {
     onSelect: (templateName: string) => void;
     activeItemCount: number;
+    templates: ProtocolTemplate[];
 }
 
-export function TemplatePicker({ onSelect, activeItemCount }: TemplatePickerProps) {
+export function TemplatePicker({ onSelect, activeItemCount, templates }: TemplatePickerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -65,7 +66,7 @@ export function TemplatePicker({ onSelect, activeItemCount }: TemplatePickerProp
                 aria-label="Protocol templates"
                 onKeyDown={handleKeyDown}
             >
-                {PROTOCOL_TEMPLATES.map((template) => {
+                {templates.map((template) => {
                     const IconComponent = ICON_MAP[template.icon] || Sparkles;
                     const colorClass = CATEGORY_COLORS[template.category] || '';
                     const iconColor = ICON_COLORS[template.category] || 'text-muted-foreground';

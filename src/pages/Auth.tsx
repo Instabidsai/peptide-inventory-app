@@ -718,7 +718,7 @@ export default function Auth() {
             ) : (
               <p className="text-xs text-muted-foreground/70 text-center">
                 New to ThePeptideAI?{' '}
-                <a href="mailto:hello@thepeptideai.com" className="text-primary/80 hover:text-primary transition-colors underline underline-offset-2">
+                <a href="mailto:admin@thepeptideai.com" className="text-primary/80 hover:text-primary transition-colors underline underline-offset-2">
                   Contact us
                 </a>{' '}
                 or{' '}
