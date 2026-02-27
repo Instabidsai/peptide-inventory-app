@@ -27,6 +27,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
+import { BrandLogo } from '@/components/ui/brand-logos';
 
 // ─── Service Configs ───
 
@@ -120,7 +121,7 @@ function OAuthConnectionsSection() {
                 return (
                   <div key={svc.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/40">
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">{svc.icon}</span>
+                      <BrandLogo id={svc.id} fallbackEmoji={svc.icon} className="h-6 w-6" />
                       <div>
                         <p className="text-sm font-medium">{svc.label}</p>
                         <p className="text-xs text-muted-foreground">{svc.description}</p>
@@ -250,7 +251,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <span className="text-xl">🛒</span> WooCommerce Integration
+          <BrandLogo id="woocommerce" className="h-6 w-6 inline-block align-middle mr-1" /> WooCommerce Integration
         </CardTitle>
         <CardDescription>
           Connect your WooCommerce store to automatically sync orders, contacts, and inventory
@@ -729,7 +730,8 @@ export default function Integrations() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
           <p className="text-sm text-muted-foreground">
-            Connect your services to sync products, orders, and communications
+            Connect your services to sync products, orders, and communications.
+            Connected services are automatically available to your AI assistant.
           </p>
         </div>
       </motion.div>
