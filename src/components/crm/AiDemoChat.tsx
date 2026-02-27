@@ -248,7 +248,7 @@ export function AiDemoChat({
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   msg.role === "user"
-                    ? "bg-primary/20 text-primary"
+                    ? "bg-muted/60 text-foreground"
                     : "bg-primary/20 text-primary"
                 }`}
               >
@@ -262,7 +262,7 @@ export function AiDemoChat({
                 className={`text-sm leading-relaxed pt-1 ${
                   msg.role === "user"
                     ? "text-foreground"
-                    : "text-primary/90"
+                    : "text-foreground/90"
                 }`}
               >
                 {msg.text}
@@ -281,7 +281,7 @@ export function AiDemoChat({
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   messages[currentIndex].role === "user"
-                    ? "bg-primary/20 text-primary"
+                    ? "bg-muted/60 text-foreground"
                     : "bg-primary/20 text-primary"
                 }`}
               >
@@ -295,11 +295,11 @@ export function AiDemoChat({
                 className={`text-sm leading-relaxed pt-1 ${
                   messages[currentIndex].role === "user"
                     ? "text-foreground"
-                    : "text-primary/90"
+                    : "text-foreground/90"
                 }`}
               >
                 {typedText}
-                <span className="inline-block w-0.5 h-4 bg-current ml-0.5 animate-pulse" />
+                <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse" />
               </div>
             </motion.div>
           )}
@@ -346,8 +346,8 @@ export function AiDemoChat({
                     <span
                       className={
                         i <= buildStep
-                          ? "text-primary/90"
-                          : "text-muted-foreground/50"
+                          ? "text-foreground/80"
+                          : "text-muted-foreground/70"
                       }
                     >
                       {step}
@@ -374,7 +374,7 @@ export function AiDemoChat({
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-primary/70"
+                    className="w-1.5 h-1.5 rounded-full bg-foreground/60"
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{
                       duration: 1,
@@ -442,7 +442,7 @@ export function AiDemoChat({
       {showInputBar && (
         <div className="border-t border-border/40 bg-background/40 px-4 py-3">
           <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-3 py-2">
-            <span className="text-sm text-muted-foreground/50 flex-1">Ask AI to build something...</span>
+            <span className="text-sm text-muted-foreground/70 flex-1">Ask AI to build something...</span>
             <div className="w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
               <ArrowUp className="w-3.5 h-3.5 text-primary/60" />
             </div>

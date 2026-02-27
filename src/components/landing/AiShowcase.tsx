@@ -631,7 +631,7 @@ export function AiShowcase() {
                                     </div>
                                     <div>
                                       <p className="text-sm text-muted-foreground/60 font-medium">Waiting for AI...</p>
-                                      <p className="text-xs text-muted-foreground/40 mt-1">Preview will appear here as AI builds</p>
+                                      <p className="text-xs text-muted-foreground/60 mt-1">Preview will appear here as AI builds</p>
                                     </div>
                                   </motion.div>
                                 )}
