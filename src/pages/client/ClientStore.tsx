@@ -37,7 +37,7 @@ export default function ClientStore() {
     const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE } = useTenantConfig();
     const [cart, setCart] = useState<CartItem[]>(() => {
         try {
             const saved = localStorage.getItem('peptide_cart');
@@ -55,6 +55,7 @@ export default function ClientStore() {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
+    const [cartInView, setCartInView] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Track store page view
@@ -64,6 +65,18 @@ export default function ClientStore() {
     useEffect(() => {
         localStorage.setItem('peptide_cart', JSON.stringify(cart));
     }, [cart]);
+
+    // Hide floating pill when cart section is visible
+    useEffect(() => {
+        const el = cartRef.current;
+        if (!el) { setCartInView(false); return; }
+        const observer = new IntersectionObserver(
+            ([entry]) => setCartInView(entry.isIntersecting),
+            { threshold: 0.1 },
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    });
 
     // Auto-fill shipping address from contact profile
     useEffect(() => {
@@ -237,6 +250,10 @@ export default function ClientStore() {
     const handleCardCheckout = async () => {
         if (!user?.id) return;
         if (cart.length === 0) return;
+        if (!contact?.id) {
+            toast({ variant: 'destructive', title: 'Profile not ready', description: 'Your account is still loading. Please try again in a moment.' });
+            return;
+        }
         if (!shippingAddress.trim()) {
             toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before checking out.' });
             return;
@@ -249,6 +266,7 @@ export default function ClientStore() {
             })),
             shipping_address: shippingAddress || undefined,
             notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
+            contact_id: contact?.id,
         }, {
             onSuccess: () => { localStorage.removeItem('peptide_cart'); },
         });
@@ -256,7 +274,11 @@ export default function ClientStore() {
 
     // Non-card checkout -- server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
-        if (!contact?.id || cart.length === 0) return;
+        if (cart.length === 0) return;
+        if (!contact?.id) {
+            toast({ variant: 'destructive', title: 'Profile not ready', description: 'Your account is still loading. Please try again in a moment.' });
+            return;
+        }
         if (!shippingAddress.trim()) {
             toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before placing your order.' });
             return;
@@ -274,6 +296,7 @@ export default function ClientStore() {
                 shipping_address: shippingAddress || undefined,
                 notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}. Payment via ${methodLabel}.\n${notes}`,
                 payment_method: paymentMethod,
+                contact_id: contact?.id,
             });
             setOrderPlaced(true);
             setCart([]);
@@ -379,6 +402,7 @@ export default function ClientStore() {
                 checkoutPending={checkout.isPending}
                 zelleEmail={ZELLE_EMAIL}
                 venmoHandle={VENMO_HANDLE}
+                cashappHandle={CASHAPP_HANDLE}
                 copiedZelle={copiedZelle}
                 onCopyZelle={copyZelleEmail}
                 onCheckout={handleCheckout}
@@ -411,7 +435,7 @@ export default function ClientStore() {
             <FloatingCartPill
                 itemCount={itemCount}
                 cartTotal={cartTotal}
-                visible={cart.length > 0}
+                visible={cart.length > 0 && !cartInView}
                 onScrollToCart={() => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
 

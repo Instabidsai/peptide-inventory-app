@@ -35,6 +35,7 @@ interface CartSummaryProps {
     checkoutPending: boolean;
     zelleEmail: string;
     venmoHandle: string;
+    cashappHandle: string;
     copiedZelle: boolean;
     onCopyZelle: () => void;
     onCheckout: () => void;
@@ -59,6 +60,7 @@ export function CartSummary({
     checkoutPending,
     zelleEmail,
     venmoHandle,
+    cashappHandle,
     copiedZelle,
     onCopyZelle,
     onCheckout,
@@ -202,9 +204,18 @@ export function CartSummary({
                             {/* Cash App info */}
                             {paymentMethod === 'cashapp' && (
                                 <div className="bg-green-950/30 border border-green-800 rounded-lg p-3 space-y-2">
-                                    <p className="text-xs font-medium text-green-300">Pay via Cash App</p>
+                                    <p className="text-xs font-medium text-green-300">Pay via Cash App to {cashappHandle || '$cashtag'}</p>
+                                    <a
+                                        href={`https://cash.app/${cashappHandle?.replace('@', '$')}/${cartTotal.toFixed(2)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-sm font-medium text-green-400 hover:underline"
+                                    >
+                                        <ExternalLink className="h-3 w-3" />
+                                        Open Cash App — ${cartTotal.toFixed(2)}
+                                    </a>
                                     <p className="text-xs text-muted-foreground">
-                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via Cash App. We'll confirm when received.
+                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via the link above or search {cashappHandle || 'our Cash App'} in the Cash App.
                                     </p>
                                 </div>
                             )}
@@ -270,6 +281,9 @@ export function CartSummary({
                                     {paymentMethod === 'venmo' && (
                                         <> to <strong>@{venmoHandle}</strong></>
                                     )}
+                                    {paymentMethod === 'cashapp' && (
+                                        <> to <strong>{cashappHandle}</strong></>
+                                    )}
                                 </p>
                             </div>
                             {paymentMethod === 'zelle' && (
@@ -287,6 +301,18 @@ export function CartSummary({
                                     <Button variant="outline" size="sm">
                                         <ExternalLink className="h-3 w-3 mr-1" />
                                         Open Venmo to Pay
+                                    </Button>
+                                </a>
+                            )}
+                            {paymentMethod === 'cashapp' && (
+                                <a
+                                    href={`https://cash.app/${cashappHandle?.replace('@', '$')}/${cartTotal.toFixed(2)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Button variant="outline" size="sm">
+                                        <ExternalLink className="h-3 w-3 mr-1" />
+                                        Open Cash App to Pay
                                     </Button>
                                 </a>
                             )}
