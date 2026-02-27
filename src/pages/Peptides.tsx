@@ -73,7 +73,7 @@ export default function Peptides() {
   const deletePeptide = useDeletePeptide();
 
   const { isEnabled } = useOrgFeatures();
-  const { data: tenantConfig } = useTenantConfig();
+  const tenantConfig = useTenantConfig();
   const { data: orgTier } = useOrgWholesaleTier();
   const { data: allTiers } = useWholesaleTiers();
   const showWholesaleTab = isEnabled('wholesale_catalog') && !!tenantConfig?.supplier_org_id;
