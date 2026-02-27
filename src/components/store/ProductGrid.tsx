@@ -49,7 +49,7 @@ export function ProductGrid({
                     <h2 className="text-lg font-bold tracking-tight">Our Collection</h2>
                 </div>
                 {filteredPeptides && (
-                    <Badge variant="secondary" className="text-xs bg-white/[0.06] border-white/[0.08]">
+                    <Badge variant="secondary" className="text-xs bg-muted/50 border-border/60">
                         {filteredPeptides.length} items
                     </Badge>
                 )}
@@ -82,7 +82,7 @@ export function ProductGrid({
                 </div>
             ) : filteredPeptides?.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
-                    <div className="h-16 w-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+                    <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-4">
                         <Search className="h-8 w-8 text-muted-foreground/30" />
                     </div>
                     <p className="text-sm font-medium">{searchQuery ? 'No results found' : 'No peptides available'}</p>
@@ -125,7 +125,7 @@ export function ProductGrid({
                                 whileTap={{ scale: 0.97 }}
                             >
                             <GlassCard
-                                className="group cursor-pointer hover:bg-white/[0.09] hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
+                                className="group cursor-pointer hover:bg-muted/60 hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
                                 onClick={() => onSelectPeptide(peptide)}
                             >
                                 {/* Top accent bar */}
@@ -137,7 +137,7 @@ export function ProductGrid({
                                     <div className="flex items-start gap-3.5">
                                         <div className="relative shrink-0">
                                             <div className="absolute inset-0 rounded-xl bg-gradient-brand blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                                            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-white/[0.08] flex items-center justify-center group-hover:border-primary/20 transition-colors">
+                                            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/60 flex items-center justify-center group-hover:border-primary/20 transition-colors">
                                                 <Dna className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors" />
                                             </div>
                                         </div>
@@ -166,20 +166,20 @@ export function ProductGrid({
                                     {/* Dosing hint tags */}
                                     {knowledge && (
                                         <div className="flex flex-wrap gap-1.5">
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
                                                 {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}
                                             </span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
                                                 {knowledge.defaultFrequency}
                                             </span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/45 font-medium">
+                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
                                                 {knowledge.defaultTiming}
                                             </span>
                                         </div>
                                     )}
 
                                     {/* Price + actions row */}
-                                    <div className="flex items-end justify-between pt-2 border-t border-white/[0.05]">
+                                    <div className="flex items-end justify-between pt-2 border-t border-border/50">
                                         <div>
                                             {hasDiscount && (
                                                 <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25">
@@ -206,11 +206,11 @@ export function ProductGrid({
                                         </div>
                                         <div className="flex flex-col items-end" onClick={e => e.stopPropagation()}>
                                             {inCart ? (
-                                                <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-xl p-1 border border-white/[0.08]">
+                                                <div className="flex items-center gap-0.5 bg-muted/50 rounded-xl p-1 border border-border/60">
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-9 w-9 rounded-lg hover:bg-white/[0.1]"
+                                                        className="h-9 w-9 rounded-lg hover:bg-muted/60"
                                                         onClick={() => updateQuantity(peptide.id, -1)}
                                                         aria-label={`Decrease quantity of ${peptide.name}`}
                                                     >
@@ -222,7 +222,7 @@ export function ProductGrid({
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-9 w-9 rounded-lg hover:bg-white/[0.1]"
+                                                        className="h-9 w-9 rounded-lg hover:bg-muted/60"
                                                         onClick={() => updateQuantity(peptide.id, 1)}
                                                         aria-label={`Increase quantity of ${peptide.name}`}
                                                     >

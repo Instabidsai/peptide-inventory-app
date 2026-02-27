@@ -99,14 +99,14 @@ export function HouseholdDoseSection({
                     <div key={memberId} className="space-y-3">
                         {/* Member header */}
                         <div className="flex items-center gap-2">
-                            <div className={cn("p-1.5 rounded-lg bg-white/[0.04]", colorClass)}>
+                            <div className={cn("p-1.5 rounded-lg bg-muted/40", colorClass)}>
                                 <User className="h-3.5 w-3.5" />
                             </div>
                             <span className={cn("text-sm font-semibold tracking-tight", colorClass)}>
                                 {name}
                             </span>
                             {isCurrentUser && (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground/60">
+                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground/60">
                                     You
                                 </span>
                             )}

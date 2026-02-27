@@ -14,9 +14,9 @@ interface ComplianceHeatmapProps {
 }
 
 function getCellColor(completed: number, total: number): string {
-    if (total === 0) return 'bg-white/[0.04]';
+    if (total === 0) return 'bg-muted/40';
     const pct = (completed / total) * 100;
-    if (pct === 0) return 'bg-white/[0.04]';
+    if (pct === 0) return 'bg-muted/40';
     if (pct < 33) return 'bg-primary/20';
     if (pct < 66) return 'bg-primary/40';
     if (pct < 100) return 'bg-primary/60';
@@ -76,7 +76,7 @@ export function ComplianceHeatmap({ data }: ComplianceHeatmapProps) {
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-muted-foreground/70">90-Day History</span>
                     {totalScheduledDays > 0 && (
-                        <span className="text-[10px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] text-muted-foreground/40 bg-muted/40 px-2 py-0.5 rounded-full">
                             {overallPct}% perfect days
                         </span>
                     )}
@@ -127,7 +127,7 @@ export function ComplianceHeatmap({ data }: ComplianceHeatmapProps) {
                     {/* Legend */}
                     <div className="flex items-center justify-end gap-1.5 mt-2.5">
                         <span className="text-[9px] text-muted-foreground/30">Less</span>
-                        <div className="h-[9px] w-[9px] rounded-[2px] bg-white/[0.04]" />
+                        <div className="h-[9px] w-[9px] rounded-[2px] bg-muted/40" />
                         <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/20" />
                         <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/40" />
                         <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/60" />

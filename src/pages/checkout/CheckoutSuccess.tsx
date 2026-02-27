@@ -203,10 +203,10 @@ export default function CheckoutSuccess() {
                             ].map((step, i) => (
                                 <div key={step.label} className="flex items-start gap-3">
                                     <div className="flex flex-col items-center">
-                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center ${step.active ? 'bg-primary/15' : 'bg-white/[0.04]'}`}>
+                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center ${step.active ? 'bg-primary/15' : 'bg-muted/40'}`}>
                                             <step.icon className={`h-3.5 w-3.5 ${step.active ? 'text-primary' : 'text-muted-foreground/40'}`} />
                                         </div>
-                                        {i < 3 && <div className={`w-px h-5 ${step.active ? 'bg-primary/30' : 'bg-white/[0.06]'}`} />}
+                                        {i < 3 && <div className={`w-px h-5 ${step.active ? 'bg-primary/30' : 'bg-muted/50'}`} />}
                                     </div>
                                     <p className={`text-sm pt-1 ${step.active ? 'font-medium' : 'text-muted-foreground/50'}`}>
                                         {step.label}
@@ -256,7 +256,7 @@ export default function CheckoutSuccess() {
                         </div>
 
                         {/* Full Order ID with copy */}
-                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border border-border/50">
                             <span className="text-xs text-muted-foreground/60">Order ID:</span>
                             <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
                             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>

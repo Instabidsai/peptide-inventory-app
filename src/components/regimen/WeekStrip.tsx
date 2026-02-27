@@ -33,7 +33,7 @@ function WeekStripBase({ inventory }: WeekStripProps) {
     if (scheduledVials.length === 0) return null;
 
     return (
-        <GlassCard className="border-white/[0.04] overflow-hidden">
+        <GlassCard className="border-border/40 overflow-hidden">
             <CardContent className="py-4 px-2">
                 <div className="flex justify-around items-center">
                     {DAYS_OF_WEEK.map((day, i) => {
@@ -54,7 +54,7 @@ function WeekStripBase({ inventory }: WeekStripProps) {
                                     "relative h-10 w-10 rounded-2xl flex flex-col items-center justify-center transition-all duration-300",
                                     isToday && count > 0 && "bg-primary/20 shadow-[0_0_20px_hsl(var(--primary)/0.15)]",
                                     isToday && count === 0 && "bg-primary/10 ring-2 ring-primary/30",
-                                    !isToday && count > 0 && "bg-white/[0.04]",
+                                    !isToday && count > 0 && "bg-muted/40",
                                     !isToday && count === 0 && "bg-transparent",
                                 )}>
                                     <span className={cn(

@@ -395,7 +395,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
     // ── Empty state ──
     if (scheduledVials.length === 0) {
         return (
-            <GlassCard className="border-white/[0.04]">
+            <GlassCard className="border-border/40">
                 <CardContent className="py-10 text-center space-y-3">
                     <CalendarDays className="h-10 w-10 text-muted-foreground/30 mx-auto" />
                     <p className="text-lg font-bold text-muted-foreground/60">No schedule set up yet</p>
@@ -422,7 +422,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
             {/* ═══════════════════════════════════════════════ */}
             {/* TODAY'S DOSES — The main thing a user cares about */}
             {/* ═══════════════════════════════════════════════ */}
-            <GlassCard className="border-white/[0.04]">
+            <GlassCard className="border-border/40">
                 <CardContent className="py-5 px-4">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">
@@ -500,7 +500,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
             {/* ═══════════════════════════════════════════════ */}
             {/* CALENDAR — Collapsible, for browsing other days */}
             {/* ═══════════════════════════════════════════════ */}
-            <GlassCard className="border-white/[0.04]">
+            <GlassCard className="border-border/40">
                 <CardContent className="py-3 px-4">
                     <button
                         onClick={() => { setCalendarOpen(prev => !prev); if (calendarOpen) setSelectedDay(null); }}
@@ -563,7 +563,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                                                 isTodayCell && 'ring-2 ring-primary/50',
                                                 isSelected && 'bg-primary/15 ring-2 ring-primary/60',
                                                 !isCurrentMonth && 'opacity-25',
-                                                dayDoses.length > 0 && !isSelected && !isTodayCell && 'hover:bg-white/[0.06]',
+                                                dayDoses.length > 0 && !isSelected && !isTodayCell && 'hover:bg-muted/50',
                                             )}
                                         >
                                             <span className={cn(

@@ -91,7 +91,7 @@ function HouseholdSection() {
     return (
         <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">My Household</p>
-            <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+            <Card className="bg-card/60 backdrop-blur-md border-border/50 overflow-hidden">
                 <CardContent className="p-0">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-8">
@@ -254,7 +254,7 @@ function HouseholdSection() {
                             {isOwner && !showAddForm && (
                                 <button
                                     onClick={() => setShowAddForm(true)}
-                                    className="flex items-center gap-2 w-full px-4 py-3 hover:bg-white/[0.03] transition-colors text-muted-foreground/60"
+                                    className="flex items-center gap-2 w-full px-4 py-3 hover:bg-muted/30 transition-colors text-muted-foreground/60"
                                 >
                                     <UserPlus className="h-3.5 w-3.5" />
                                     <span className="text-xs font-medium">Add family member</span>
@@ -422,7 +422,7 @@ export default function ClientSettings() {
             {/* Profile Section */}
             <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">Profile</p>
-                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                <Card className="bg-card/60 backdrop-blur-md border-border/50 overflow-hidden">
                     <CardContent className="p-0">
                         <Form {...profileForm}>
                             <form onSubmit={profileForm.handleSubmit(handleUpdateProfile)}>
@@ -467,11 +467,11 @@ export default function ClientSettings() {
             {/* Security Section */}
             <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 px-1">Security</p>
-                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                <Card className="bg-card/60 backdrop-blur-md border-border/50 overflow-hidden">
                     <CardContent className="p-0">
                         <button
                             onClick={() => navigate('/update-password')}
-                            className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-white/[0.03] transition-colors press-scale"
+                            className="flex items-center justify-between w-full px-4 py-3.5 hover:bg-muted/30 transition-colors press-scale"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="p-1.5 rounded-lg bg-blue-500/10">
@@ -487,7 +487,7 @@ export default function ClientSettings() {
 
             {/* Sign Out */}
             <div className="space-y-1">
-                <Card className="bg-card/60 backdrop-blur-md border-white/[0.06] overflow-hidden">
+                <Card className="bg-card/60 backdrop-blur-md border-border/50 overflow-hidden">
                     <CardContent className="p-0">
                         <button
                             onClick={handleSignOut}

@@ -28,7 +28,7 @@ export function ProtocolDetailSheet({
 }: ProtocolDetailSheetProps) {
     return (
         <Sheet open={!!selectedProtocol} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-white/[0.1]">
+            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-border/60">
                 {selectedProtocol && (() => {
                     const { template, matched } = selectedProtocol;
                     const Icon = ICON_MAP[template.icon] || Package;
@@ -73,12 +73,12 @@ export function ProtocolDetailSheet({
                                                 initial={{ opacity: 0, x: -12 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: idx * 0.08, duration: 0.3 }}
-                                                className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors space-y-2.5"
+                                                className="p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors space-y-2.5"
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         {qty > 1 && (
-                                                            <span className="text-[10px] font-bold bg-white/[0.08] px-2 py-0.5 rounded-full">{qty}x</span>
+                                                            <span className="text-[10px] font-bold bg-muted/50 px-2 py-0.5 rounded-full">{qty}x</span>
                                                         )}
                                                         <p className="font-bold text-sm">{p.name}</p>
                                                     </div>
@@ -109,7 +109,7 @@ export function ProtocolDetailSheet({
                                                                 { label: knowledge.defaultTiming },
                                                                 { label: knowledge.administrationRoute },
                                                             ].map((tag, i) => (
-                                                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-muted-foreground/50 font-medium">
+                                                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground/50 font-medium">
                                                                     {tag.label}
                                                                 </span>
                                                             ))}
@@ -127,7 +127,7 @@ export function ProtocolDetailSheet({
                                 </div>
 
                                 {/* Total + Add All */}
-                                <div className="border-t border-white/[0.06] pt-5 space-y-4">
+                                <div className="border-t border-border/50 pt-5 space-y-4">
                                     {(() => {
                                         const sheetRetail = matched.reduce((sum, p) => sum + Number(p.retail_price || 0), 0);
                                         const sheetHasDiscount = bundlePrice < sheetRetail && sheetRetail > 0;

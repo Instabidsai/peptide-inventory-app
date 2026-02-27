@@ -48,7 +48,7 @@ export function ProductDetailSheet({
 }: ProductDetailSheetProps) {
     return (
         <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-white/[0.1]">
+            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-border/60">
                 {selectedPeptide && (() => {
                     const price = getClientPrice(selectedPeptide);
                     const retail = Number(selectedPeptide.retail_price || 0);
@@ -91,17 +91,17 @@ export function ProductDetailSheet({
                                         <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/10 border border-primary/15 text-primary/70 font-semibold">
                                             {dk.defaultDoseAmount} {dk.defaultDoseUnit}
                                         </span>
-                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/50 font-medium">
                                             {dk.defaultFrequency}
                                         </span>
-                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/50 font-medium">
                                             {dk.defaultTiming}
                                         </span>
-                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium capitalize">
+                                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/50 font-medium capitalize">
                                             {dk.administrationRoute}
                                         </span>
                                         {dk.vialSizeMg > 0 && (
-                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-muted-foreground/50 font-medium">
+                                            <span className="text-[10px] px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/50 font-medium">
                                                 {dk.vialSizeMg}mg vial
                                             </span>
                                         )}
@@ -134,12 +134,12 @@ export function ProductDetailSheet({
                                 {/* Add to cart / quantity */}
                                 {inCart ? (
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" aria-label="Decrease quantity" onClick={() => updateQuantity(selectedPeptide.id, -1)}>
+                                        <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-muted/40 border border-border/50">
+                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-border/60" aria-label="Decrease quantity" onClick={() => updateQuantity(selectedPeptide.id, -1)}>
                                                 <Minus className="h-5 w-5" />
                                             </Button>
                                             <span className="text-3xl font-extrabold w-14 text-center">{inCart.quantity}</span>
-                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-white/[0.1]" aria-label="Increase quantity" onClick={() => updateQuantity(selectedPeptide.id, 1)}>
+                                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-border/60" aria-label="Increase quantity" onClick={() => updateQuantity(selectedPeptide.id, 1)}>
                                                 <Plus className="h-5 w-5" />
                                             </Button>
                                         </div>
@@ -183,7 +183,7 @@ export function ProductDetailSheet({
                                         </div>
                                         <div className="space-y-2">
                                             {dk.dosingTiers.map((tier, idx) => (
-                                                <div key={tier.id} className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                                <div key={tier.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-2">
                                                     <div className="flex items-center justify-between">
                                                         <p className="text-xs font-bold text-foreground/90">{tier.label}</p>
                                                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 font-semibold">
@@ -198,7 +198,7 @@ export function ProductDetailSheet({
                                                         <p className="text-[11px] text-muted-foreground/55 leading-relaxed">{tier.notes}</p>
                                                     )}
                                                     {tier.dosageSchedule && (
-                                                        <p className="text-[10px] text-muted-foreground/40 leading-relaxed whitespace-pre-line font-mono bg-white/[0.02] rounded-lg p-2 border border-white/[0.04]">
+                                                        <p className="text-[10px] text-muted-foreground/40 leading-relaxed whitespace-pre-line font-mono bg-muted/20 rounded-lg p-2 border border-border/40">
                                                             {tier.dosageSchedule}
                                                         </p>
                                                     )}
@@ -239,7 +239,7 @@ export function ProductDetailSheet({
                                         </div>
                                         <div className="space-y-2">
                                             {dk.supplementNotes.map((supp, idx) => (
-                                                <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-start gap-3">
+                                                <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border/50 flex items-start gap-3">
                                                     <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                                                         <Pill className="h-3.5 w-3.5 text-primary/60" />
                                                     </div>
@@ -268,7 +268,7 @@ export function ProductDetailSheet({
                                                 return (
                                                     <div
                                                         key={idx}
-                                                        className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors cursor-pointer"
+                                                        className="p-3.5 rounded-xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
                                                         onClick={() => {
                                                             // Find and open this protocol template
                                                             const template = PROTOCOL_TEMPLATES.find(t => t.name === stack.templateName);
@@ -303,7 +303,7 @@ export function ProductDetailSheet({
                                 )}
 
                                 {/* Storage & Handling */}
-                                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                                <div className="p-4 rounded-2xl bg-muted/30 border border-border/50 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <Shield className="h-3.5 w-3.5 text-primary/60" />
                                         <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Storage & Handling</p>

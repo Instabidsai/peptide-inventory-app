@@ -74,7 +74,7 @@ export function ProtocolBundles({
                                 whileTap={{ scale: 0.97 }}
                             >
                                 <GlassCard
-                                    className={`cursor-pointer group ${catStyle.hoverGlow} ${catStyle.borderHover} hover:bg-white/[0.07] transition-all duration-300`}
+                                    className={`cursor-pointer group ${catStyle.hoverGlow} ${catStyle.borderHover} hover:bg-muted/50 transition-all duration-300`}
                                     onClick={() => onSelectProtocol({ template, matched: matchedPeptides })}
                                 >
                                     {/* Gradient accent bar at top */}
@@ -95,12 +95,12 @@ export function ProtocolBundles({
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {uniqueMatched.map((p) => (
-                                                <Badge key={p.id} variant="secondary" className="text-[10px] px-3 py-1 bg-white/[0.06] border border-white/[0.08] font-medium rounded-lg backdrop-blur-sm">
+                                                <Badge key={p.id} variant="secondary" className="text-[10px] px-3 py-1 bg-muted/50 border border-border/60 font-medium rounded-lg backdrop-blur-sm">
                                                     {expectedQty[p.id] > 1 ? `${expectedQty[p.id]}x ` : ''}{p.name}
                                                 </Badge>
                                             ))}
                                         </div>
-                                        <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                                        <div className="flex items-center justify-between pt-3 border-t border-border/50">
                                             <div>
                                                 {(() => {
                                                     const bundleRetail = matchedPeptides.reduce((sum, p) => sum + Number(p.retail_price || 0), 0);

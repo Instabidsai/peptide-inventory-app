@@ -248,8 +248,14 @@ export default function ClientStore() {
 
     // Card checkout -- validated server-side pricing + PsiFi payment redirect
     const handleCardCheckout = async () => {
-        if (!user?.id) return;
-        if (cart.length === 0) return;
+        if (!user?.id) {
+            toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
+            return;
+        }
+        if (cart.length === 0) {
+            toast({ variant: 'destructive', title: 'Cart is empty', description: 'Add items to your cart before checking out.' });
+            return;
+        }
         if (!contact?.id) {
             toast({ variant: 'destructive', title: 'Profile not ready', description: 'Your account is still loading. Please try again in a moment.' });
             return;
@@ -274,7 +280,14 @@ export default function ClientStore() {
 
     // Non-card checkout -- server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
-        if (cart.length === 0) return;
+        if (!user?.id) {
+            toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
+            return;
+        }
+        if (cart.length === 0) {
+            toast({ variant: 'destructive', title: 'Cart is empty', description: 'Add items to your cart before placing an order.' });
+            return;
+        }
         if (!contact?.id) {
             toast({ variant: 'destructive', title: 'Profile not ready', description: 'Your account is still loading. Please try again in a moment.' });
             return;
@@ -308,7 +321,7 @@ export default function ClientStore() {
     };
 
     const handleCheckout = () => {
-        trackBeginCheckout(itemCount, cartTotal);
+        try { trackBeginCheckout(itemCount, cartTotal); } catch { /* analytics must never block checkout */ }
         if (paymentMethod === 'card') {
             handleCardCheckout();
         } else {
@@ -412,8 +425,8 @@ export default function ClientStore() {
             />
 
             {/* Info card */}
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="h-7 w-7 rounded-lg bg-white/[0.05] flex items-center justify-center shrink-0 mt-0.5">
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-muted/20 border border-border/40">
+                <div className="h-7 w-7 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 mt-0.5">
                     <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
                 </div>
                 <p className="text-xs text-muted-foreground/40 leading-relaxed">

@@ -9,11 +9,11 @@ const GlassCard = forwardRef<HTMLDivElement, React.ComponentProps<typeof Card>>(
         className={cn(
             "relative overflow-hidden rounded-2xl",
             // Elevated glass surface
-            "bg-gradient-to-br from-white/[0.07] via-white/[0.04] to-white/[0.02]",
+            "bg-gradient-to-br from-muted/50 via-muted/30 to-muted/20",
             "backdrop-blur-2xl",
             // Multi-layer border for depth
-            "border border-white/[0.10]",
-            "ring-1 ring-inset ring-white/[0.06]",
+            "border border-border/60",
+            "ring-1 ring-inset ring-border/50",
             // Deep layered shadow for "popping off the page"
             "shadow-[0_4px_6px_-1px_rgba(0,0,0,0.15),0_12px_24px_-4px_rgba(0,0,0,0.2),0_24px_48px_-8px_rgba(0,0,0,0.15)]",
             // Smooth transitions + hover lift

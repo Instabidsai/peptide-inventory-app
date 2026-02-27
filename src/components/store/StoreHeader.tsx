@@ -48,7 +48,7 @@ function StoreHeaderBase({ priceMultiplier, searchQuery, onSearchChange }: Store
                     placeholder="Search peptides..."
                     value={searchQuery}
                     onChange={e => onSearchChange(e.target.value)}
-                    className="pl-10 h-11 rounded-xl bg-white/[0.04] border-white/[0.08] backdrop-blur-sm placeholder:text-muted-foreground/40"
+                    className="pl-10 h-11 rounded-xl bg-muted/40 border-border/60 backdrop-blur-sm placeholder:text-muted-foreground/40"
                 />
             </div>
         </>

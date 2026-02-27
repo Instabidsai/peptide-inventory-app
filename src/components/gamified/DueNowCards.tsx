@@ -51,7 +51,7 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                 "flex items-center gap-3 p-4 rounded-2xl border transition-colors duration-300",
                 dose.isTaken
                     ? "bg-primary/[0.06] border-primary/15"
-                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] hover:border-primary/15 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
+                    : "bg-muted/20 border-border/50 hover:bg-muted/40 hover:border-primary/15 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
             )}
         >
             {/* Color dot */}
@@ -106,7 +106,7 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                     </motion.div>
                 ) : dose.isOtherMember && !dose.isUnlinkedMember ? (
                     <motion.div key="theirs" className="flex flex-col items-center gap-0.5 shrink-0">
-                        <div className="h-10 w-10 rounded-xl bg-white/[0.04] flex items-center justify-center" title="Only they can log their own dose">
+                        <div className="h-10 w-10 rounded-xl bg-muted/40 flex items-center justify-center" title="Only they can log their own dose">
                             <Syringe className="h-4 w-4 text-muted-foreground/30" />
                         </div>
                         <span className="text-[10px] text-muted-foreground/40 font-medium">Their dose</span>
@@ -162,7 +162,7 @@ function TimeWindowSection({ window: timeWindow, doses, currentWindow, onLogDose
                         Now
                     </span>
                 )}
-                <span className="ml-auto text-[11px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[11px] text-muted-foreground/40 bg-muted/40 px-2 py-0.5 rounded-full">
                     {doneCount}/{doses.length}
                 </span>
             </div>
