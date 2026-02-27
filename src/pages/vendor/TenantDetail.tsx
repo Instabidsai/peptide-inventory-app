@@ -10,6 +10,7 @@ import TenantFeatureToggles from './TenantFeatureToggles';
 import TenantUserList from './TenantUserList';
 import TenantSubscriptionActions from './TenantSubscriptionActions';
 import TenantNotes from './TenantNotes';
+import TenantWholesaleEditor from './TenantWholesaleEditor';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import {
     ArrowLeft,
@@ -122,6 +123,9 @@ export default function TenantDetail() {
 
                 {/* Editable Configuration */}
                 <TenantConfigEditor orgId={orgId!} config={tenant.config} />
+
+                {/* Wholesale / Supplier Controls */}
+                <TenantWholesaleEditor orgId={orgId!} config={tenant.config} />
 
                 {/* User Management */}
                 <TenantUserList orgId={orgId!} />

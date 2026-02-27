@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePeptides } from '@/hooks/use-peptides';
+import { useSupplierCatalog } from '@/hooks/use-supplier-catalog';
 import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice, getMarkupForQuantity, getTierForQuantity } from '@/hooks/use-wholesale-pricing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,7 @@ export default function SupplierOrderDialog() {
     const { toast } = useToast();
     const { organization } = useAuth();
 
-    const { data: peptides, isLoading: peptidesLoading } = usePeptides();
+    const { data: supplierPeptides, isLoading: peptidesLoading } = useSupplierCatalog();
     const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
     const { data: allTiers, isLoading: tiersLoading } = useWholesaleTiers();
     const createOrder = useCreateSupplierOrder();
@@ -87,8 +87,8 @@ export default function SupplierOrderDialog() {
         ? [...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units)[0]?.markup_amount || 25
         : 25;
 
-    // Only show peptides that have a base_cost set
-    const catalogPeptides = (peptides || []).filter(p => (p.base_cost ?? 0) > 0);
+    // Supplier catalog already returns only active items with base_cost from the RPC
+    const catalogPeptides = (supplierPeptides || []).filter(p => (p.base_cost ?? 0) > 0);
 
     const updateQty = (peptide: typeof catalogPeptides[0], delta: number) => {
         const newCart = new Map(cart);
@@ -239,8 +239,8 @@ export default function SupplierOrderDialog() {
                                             <TableRow key={p.id} className={qty > 0 ? 'bg-primary/5' : ''}>
                                                 <TableCell>
                                                     <div className="font-medium">{p.name}</div>
-                                                    {qty >= 50 && activeTier && (
-                                                        <span className="text-xs text-green-600">{activeTier.name} tier</span>
+                                                    {activeTier && qty >= activeTier.min_monthly_units && (
+                                                        <span className="text-xs text-green-600">Volume discount applied</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium text-green-600">

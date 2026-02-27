@@ -13,6 +13,8 @@ export interface TenantDetail {
         app_url: string;
         logo_url: string;
         primary_color: string;
+        secondary_color: string;
+        font_family: string;
         ship_from_name: string;
         ship_from_city: string;
         ship_from_state: string;
@@ -21,6 +23,8 @@ export interface TenantDetail {
         cashapp_handle: string;
         ai_system_prompt_override: string;
         session_timeout_minutes: number;
+        wholesale_tier_id: string | null;
+        supplier_org_id: string | null;
     } | null;
     subscription: {
         plan_name: string;
@@ -108,6 +112,8 @@ export function useTenantDetail(orgId: string | undefined) {
                     app_url: config.app_url || '',
                     logo_url: config.logo_url || '',
                     primary_color: config.primary_color || '#7c3aed',
+                    secondary_color: config.secondary_color || '',
+                    font_family: config.font_family || '',
                     ship_from_name: config.ship_from_name || '',
                     ship_from_city: config.ship_from_city || '',
                     ship_from_state: config.ship_from_state || '',
@@ -116,6 +122,8 @@ export function useTenantDetail(orgId: string | undefined) {
                     cashapp_handle: config.cashapp_handle || '',
                     ai_system_prompt_override: config.ai_system_prompt_override || '',
                     session_timeout_minutes: config.session_timeout_minutes || 60,
+                    wholesale_tier_id: config.wholesale_tier_id || null,
+                    supplier_org_id: config.supplier_org_id || null,
                 } : null,
                 subscription: sub ? {
                     plan_name: (sub.plan as { display_name?: string; name?: string } | null)?.display_name

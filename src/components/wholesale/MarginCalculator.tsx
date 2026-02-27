@@ -12,7 +12,7 @@ import {
     calculateMarginPct,
     type WholesaleTier,
 } from '@/hooks/use-wholesale-pricing';
-import { usePeptides, type Peptide } from '@/hooks/use-peptides';
+import { useSupplierCatalog, type SupplierPeptide } from '@/hooks/use-supplier-catalog';
 
 interface MarginCalculatorProps {
     /** Override tier instead of reading from org config (for onboarding preview) */
@@ -22,19 +22,19 @@ interface MarginCalculatorProps {
 }
 
 export default function MarginCalculator({ previewTier, compact }: MarginCalculatorProps) {
-    const { data: peptides, isLoading: peptidesLoading } = usePeptides();
+    const { data: supplierPeptides, isLoading: peptidesLoading } = useSupplierCatalog();
     const { data: orgTierData, isLoading: tierLoading } = useOrgWholesaleTier();
     const { data: allTiers } = useWholesaleTiers();
 
     const tier = previewTier ?? orgTierData?.tier ?? null;
     const isLoading = peptidesLoading || (!previewTier && tierLoading);
 
-    // Filter to peptides that have a base cost set (supplier cost)
+    // Filter to supplier peptides that have both base cost and retail price
     const pricedPeptides = useMemo(
-        () => (peptides ?? []).filter((p): p is Peptide & { base_cost: number; retail_price: number } =>
+        () => (supplierPeptides ?? []).filter((p): p is SupplierPeptide & { base_cost: number; retail_price: number } =>
             (p.base_cost ?? 0) > 0 && (p.retail_price ?? 0) > 0
         ),
-        [peptides],
+        [supplierPeptides],
     );
 
     // Calculate per-peptide pricing
@@ -119,8 +119,8 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                                 <DollarSign className="h-4 w-4 text-amber-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground">Your Tier</p>
-                                <p className="text-lg font-semibold">{tier.name}</p>
+                                <p className="text-xs text-muted-foreground">Your Markup</p>
+                                <p className="text-lg font-semibold">+${tier.markup_amount.toFixed(2)}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -132,8 +132,7 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                 <CardHeader className="pb-2">
                     <CardTitle className="text-base">Wholesale Pricing Breakdown</CardTitle>
                     <CardDescription>
-                        At your <Badge variant="secondary" className="mx-1">{tier.name}</Badge> tier,
-                        you pay cost + ${tier.markup_amount.toFixed(0)} per product.
+                        At your current volume, you pay cost + ${tier.markup_amount.toFixed(2)} per product.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="px-0 pb-0">
@@ -193,10 +192,10 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                     <CardContent className="py-4 px-5 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium">
-                                Upgrade to <span className="text-primary">{nextTier.name}</span> tier
+                                Want a <span className="text-primary">better price</span>?
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Order {nextTier.min_monthly_units}+ units/month — pay only cost + ${nextTier.markup_amount.toFixed(0)} per unit
+                                Order {nextTier.min_monthly_units}+ units/month and pay only cost + ${nextTier.markup_amount.toFixed(2)} per unit
                             </p>
                         </div>
                         <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />

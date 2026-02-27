@@ -43,7 +43,8 @@ import MarginCalculator from '@/components/wholesale/MarginCalculator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
-import { useOrgWholesaleTier, calculateWholesalePrice } from '@/hooks/use-wholesale-pricing';
+import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice } from '@/hooks/use-wholesale-pricing';
+import { useSupplierCatalog, type SupplierPeptide } from '@/hooks/use-supplier-catalog';
 import {
   Select,
   SelectContent,
@@ -74,7 +75,9 @@ export default function Peptides() {
   const { isEnabled } = useOrgFeatures();
   const { data: tenantConfig } = useTenantConfig();
   const { data: orgTier } = useOrgWholesaleTier();
+  const { data: allTiers } = useWholesaleTiers();
   const showWholesaleTab = isEnabled('wholesale_catalog') && !!tenantConfig?.supplier_org_id;
+  const { data: supplierCatalog, isLoading: supplierLoading } = useSupplierCatalog(showWholesaleTab);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -123,10 +126,15 @@ export default function Peptides() {
 
   const isWholesaleView = activeTab === 'wholesale' && showWholesaleTab;
   const myCatalogPeptides = peptides?.filter(p => p.catalog_source !== 'supplier') || [];
-  const wholesalePeptides = peptides?.filter(p => p.catalog_source === 'supplier') || [];
-  const basePeptides = isWholesaleView ? wholesalePeptides : myCatalogPeptides;
 
-  const filteredPeptides = basePeptides.filter((p) => {
+  // Wholesale view: filter supplier catalog; My Catalog view: filter own peptides
+  const filteredSupplierCatalog = (supplierCatalog || []).filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const filteredPeptides = isWholesaleView ? [] : myCatalogPeptides.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? p.active : !p.active);
@@ -181,7 +189,7 @@ export default function Peptides() {
   // Track which wholesale items are already in My Catalog (by name)
   const catalogNameSet = new Set(myCatalogPeptides.map(p => p.name.toLowerCase()));
 
-  const handleAddToCatalog = async (peptide: Peptide) => {
+  const handleAddToCatalog = async (peptide: SupplierPeptide) => {
     try {
       setAddingToCatalog(prev => new Set(prev).add(peptide.id));
       const wholesalePrice = calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0);
@@ -233,9 +241,9 @@ export default function Peptides() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">Peptides</h1>
-              {filteredPeptides && (
+              {(isWholesaleView ? filteredSupplierCatalog : filteredPeptides) && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">
-                  {filteredPeptides.length} products
+                  {(isWholesaleView ? filteredSupplierCatalog.length : filteredPeptides.length)} products
                 </span>
               )}
             </div>
@@ -337,7 +345,10 @@ export default function Peptides() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'catalog' | 'wholesale')}>
           <TabsList>
             <TabsTrigger value="catalog">My Catalog</TabsTrigger>
-            <TabsTrigger value="wholesale">Wholesale Available</TabsTrigger>
+            <TabsTrigger value="wholesale">
+              <Warehouse className="h-3.5 w-3.5 mr-1.5" />
+              The Peptide AI Wholesale Catalog
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       )}
@@ -389,285 +400,334 @@ export default function Peptides() {
           </div>
         </CardHeader>
         <CardContent>
-          {isError ? (
-            <QueryError message="Failed to load peptides." onRetry={() => refetch()} />
-          ) : isLoading ? (
-            <TableSkeleton rows={5} columns={4} />
-          ) : filteredPeptides?.length === 0 ? (
-            <EmptyState
-              icon={FlaskConical}
-              title="No peptides found"
-              description="Get started by adding your first peptide to the catalog"
-            />
-          ) : isMobile ? (
-            <div className="space-y-3">
-              {sortedPeptides?.map((peptide, index) => (
-                <motion.div
-                  key={peptide.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: index * 0.04 }}
-                >
-                  <Card
-                    className={!isWholesaleView ? "cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all" : ""}
-                    {...(!isWholesaleView ? {
-                      role: "button" as const,
-                      tabIndex: 0,
-                      'aria-label': `Edit ${peptide.name}`,
-                      onClick: () => openEditDialog(peptide),
-                      onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditDialog(peptide); } },
-                    } : {})}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-medium">{peptide.name}</p>
-                            {!isWholesaleView && peptide.catalog_source === 'website' && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
-                                <Globe className="h-2.5 w-2.5" /> Web
-                              </Badge>
+          {isWholesaleView ? (
+            /* ── WHOLESALE CATALOG VIEW ── */
+            supplierLoading ? (
+              <TableSkeleton rows={5} columns={4} />
+            ) : filteredSupplierCatalog.length === 0 ? (
+              <EmptyState
+                icon={Warehouse}
+                title="No wholesale products available"
+                description="Your supplier hasn't added any products yet"
+              />
+            ) : (
+              <>
+                {/* Volume pricing legend */}
+                {allTiers && allTiers.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-2 items-center">
+                    <span className="text-xs text-muted-foreground font-medium">Volume pricing:</span>
+                    {[...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                      <Badge key={t.id} variant={orgTier?.id === t.id ? 'default' : 'outline'} className="text-xs">
+                        {t.min_monthly_units}+ units: cost + ${t.markup_amount}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {isMobile ? (
+                  <div className="space-y-3">
+                    {filteredSupplierCatalog.map((peptide, index) => (
+                      <motion.div key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.04 }}>
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="font-medium">{peptide.name}</p>
+                                <p className="text-xs text-muted-foreground">{peptide.sku || 'No SKU'}</p>
+                              </div>
+                              <Badge variant="outline" className="text-xs">MSRP ${(peptide.retail_price || 0).toFixed(2)}</Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 text-xs mb-2">
+                              {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                <Badge key={t.id} variant={orgTier?.id === t.id ? 'default' : 'secondary'} className="text-[10px]">
+                                  {t.min_monthly_units}+: ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                                </Badge>
+                              ))}
+                            </div>
+                            {canEdit && (
+                              <div className="mt-2">
+                                {catalogNameSet.has(peptide.name.toLowerCase()) ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
+                                    <Check className="h-3 w-3" /> Already in My Catalog
+                                  </Badge>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="gap-1 text-xs w-full" disabled={addingToCatalog.has(peptide.id)} onClick={(e) => { e.stopPropagation(); handleAddToCatalog(peptide); }}>
+                                    <ShoppingCart className="h-3.5 w-3.5" />
+                                    {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
+                                  </Button>
+                                )}
+                              </div>
                             )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto" role="region" aria-label="Wholesale catalog table" tabIndex={0}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>SKU</TableHead>
+                          {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                            <TableHead key={t.id} className="text-right">
+                              {t.min_monthly_units}+ units
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-right">MSRP</TableHead>
+                          <TableHead className="text-right">Your Margin</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSupplierCatalog.map((peptide, index) => {
+                          const yourCost = calculateWholesalePrice(peptide.base_cost, orgTier?.markup_amount || allTiers?.[0]?.markup_amount || 25);
+                          const margin = (peptide.retail_price || 0) - yourCost;
+                          const pct = peptide.retail_price ? (margin / peptide.retail_price * 100) : 0;
+                          return (
+                            <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50">
+                              <TableCell className="font-medium">{peptide.name}</TableCell>
+                              <TableCell className="text-muted-foreground">{peptide.sku || '-'}</TableCell>
+                              {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                <TableCell key={t.id} className={`text-right tabular-nums ${orgTier?.id === t.id ? 'font-semibold text-primary' : ''}`}>
+                                  ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                                </TableCell>
+                              ))}
+                              <TableCell className="text-right tabular-nums">${(peptide.retail_price || 0).toFixed(2)}</TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                <span className={margin > 0 ? 'text-green-600' : 'text-red-500'}>
+                                  ${margin.toFixed(2)} ({pct.toFixed(0)}%)
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {canEdit && (
+                                  catalogNameSet.has(peptide.name.toLowerCase()) ? (
+                                    <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
+                                      <Check className="h-3 w-3" /> Added
+                                    </Badge>
+                                  ) : (
+                                    <Button variant="outline" size="sm" className="gap-1 text-xs" disabled={addingToCatalog.has(peptide.id)} onClick={() => handleAddToCatalog(peptide)}>
+                                      <ShoppingCart className="h-3.5 w-3.5" />
+                                      {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
+                                    </Button>
+                                  )
+                                )}
+                              </TableCell>
+                            </motion.tr>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            /* ── MY CATALOG VIEW ── */
+            isError ? (
+              <QueryError message="Failed to load peptides." onRetry={() => refetch()} />
+            ) : isLoading ? (
+              <TableSkeleton rows={5} columns={4} />
+            ) : filteredPeptides?.length === 0 ? (
+              <EmptyState
+                icon={FlaskConical}
+                title="No peptides found"
+                description="Get started by adding your first peptide to the catalog"
+              />
+            ) : isMobile ? (
+              <div className="space-y-3">
+                {sortedPeptides?.map((peptide, index) => (
+                  <motion.div
+                    key={peptide.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.04 }}
+                  >
+                    <Card
+                      className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Edit ${peptide.name}`}
+                      onClick={() => openEditDialog(peptide)}
+                      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditDialog(peptide); } }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium">{peptide.name}</p>
+                              {peptide.catalog_source === 'website' && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
+                                  <Globe className="h-2.5 w-2.5" /> Web
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{peptide.sku || 'No SKU'}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground">{peptide.sku || 'No SKU'}</p>
+                          <Badge variant={peptide.active ? 'default' : 'secondary'} className="text-xs">
+                            {peptide.active ? 'Active' : 'Inactive'}
+                          </Badge>
                         </div>
-                        <Badge variant={peptide.active ? 'default' : 'secondary'} className="text-xs">
-                          {peptide.active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-sm">
+                        <div className="flex items-center gap-3 text-sm">
+                          <Badge variant="outline" className={
+                            (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
+                            (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
+                          }>
+                            {peptide.stock_count || 0} Vials
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            ${(peptide.retail_price || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto" role="region" aria-label="Peptides table" tabIndex={0}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableTableHead columnKey="name" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Name</SortableTableHead>
+                    <SortableTableHead columnKey="sku" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>SKU</SortableTableHead>
+                    <SortableTableHead columnKey="stock" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>In Stock</SortableTableHead>
+                    <TableHead>On Order</TableHead>
+                    <TableHead>Next Delivery</TableHead>
+                    <SortableTableHead columnKey="cost" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>
+                      {isPartner ? 'Cost' : 'Avg Cost'}
+                    </SortableTableHead>
+                    <SortableTableHead columnKey="msrp" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>MSRP</SortableTableHead>
+                    <SortableTableHead columnKey="status" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Status</SortableTableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedPeptides?.map((peptide, index) => (
+                    <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            className="text-left hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer"
+                            onClick={() => setHistoryPeptide(peptide)}
+                            title="View Sales History"
+                          >
+                            {peptide.name}
+                          </button>
+                          {peptide.catalog_source === 'website' && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
+                              <Globe className="h-2.5 w-2.5" /> Web
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {peptide.sku || '-'}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className={
                           (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
                           (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
                         }>
                           {peptide.stock_count || 0} Vials
                         </Badge>
-                        {isWholesaleView ? (
-                          <>
-                            <span className="text-muted-foreground">
-                              Cost: ${calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0).toFixed(2)}
-                            </span>
-                            <span className="text-muted-foreground">
-                              MSRP: ${(peptide.retail_price || 0).toFixed(2)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            ${(peptide.retail_price || 0).toFixed(2)}
-                          </span>
+                        {(peptide.stock_count || 0) === 0 && (
+                          <span className="text-xs text-red-500 block">Out of Stock</span>
                         )}
-                      </div>
-                      {isWholesaleView && canEdit && (
-                        <div className="mt-2">
-                          {catalogNameSet.has(peptide.name.toLowerCase()) ? (
-                            <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
-                              <Check className="h-3 w-3" /> Already in My Catalog
-                            </Badge>
-                          ) : (
+                        {(peptide.stock_count || 0) > 0 && (peptide.stock_count || 0) < 5 && (
+                          <span className="text-xs text-amber-500 block">Low Stock</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {pendingByPeptide?.[peptide.id]?.totalOrdered ? (
+                          <Badge variant="secondary" className="bg-amber-500/20 text-amber-600">
+                            {pendingByPeptide[peptide.id].totalOrdered} ordered
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {pendingByPeptide?.[peptide.id]?.nextDelivery ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            {format(new Date(pendingByPeptide[peptide.id].nextDelivery!), 'MMM d')}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      {isPartner ? (
+                        <TableCell>
+                          {(() => {
+                            const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                            return `$${(baseCost + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}`;
+                          })()}
+                        </TableCell>
+                      ) : (
+                        <TableCell>
+                          {(() => {
+                            const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                            return `$${baseCost.toFixed(2)}`;
+                          })()}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        ${(peptide.retail_price || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={peptide.active}
+                            onCheckedChange={() => handleToggleActive(peptide)}
+                            disabled={!canEdit}
+                          />
+                          <Badge variant={peptide.active ? 'default' : 'secondary'}>
+                            {peptide.active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {canEdit && (
                             <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs w-full"
-                              disabled={addingToCatalog.has(peptide.id)}
-                              onClick={(e) => { e.stopPropagation(); handleAddToCatalog(peptide); }}
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit peptide"
+                              onClick={() => openEditDialog(peptide)}
                             >
-                              <ShoppingCart className="h-3.5 w-3.5" />
-                              {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View Sales History"
+                            aria-label="View history"
+                            onClick={() => setHistoryPeptide(peptide)}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              aria-label="Delete peptide"
+                              onClick={() => setDeletingPeptide(peptide)}
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="overflow-x-auto" role="region" aria-label="Peptides table" tabIndex={0}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHead columnKey="name" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Name</SortableTableHead>
-                  <SortableTableHead columnKey="sku" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>SKU</SortableTableHead>
-                  <SortableTableHead columnKey="stock" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>In Stock</SortableTableHead>
-                  {!isWholesaleView && <TableHead>On Order</TableHead>}
-                  {!isWholesaleView && <TableHead>Next Delivery</TableHead>}
-                  <SortableTableHead columnKey="cost" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>
-                    {isWholesaleView ? 'Your Cost' : isPartner ? 'Cost' : 'Avg Cost'}
-                  </SortableTableHead>
-                  <SortableTableHead columnKey="msrp" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>MSRP</SortableTableHead>
-                  {isWholesaleView && <TableHead>Margin</TableHead>}
-                  {!isWholesaleView && <SortableTableHead columnKey="status" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Status</SortableTableHead>}
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPeptides?.map((peptide, index) => (
-                  <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          className="text-left hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer"
-                          onClick={() => setHistoryPeptide(peptide)}
-                          title="View Sales History"
-                        >
-                          {peptide.name}
-                        </button>
-                        {!isWholesaleView && peptide.catalog_source === 'website' && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400/50 text-blue-600 gap-0.5">
-                            <Globe className="h-2.5 w-2.5" /> Web
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {peptide.sku || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={
-                        (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
-                        (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
-                      }>
-                        {peptide.stock_count || 0} Vials
-                      </Badge>
-                      {(peptide.stock_count || 0) === 0 && (
-                        <span className="text-xs text-red-500 block">Out of Stock</span>
-                      )}
-                      {(peptide.stock_count || 0) > 0 && (peptide.stock_count || 0) < 5 && (
-                        <span className="text-xs text-amber-500 block">Low Stock</span>
-                      )}
-                    </TableCell>
-                    {!isWholesaleView && (
-                    <TableCell>
-                      {pendingByPeptide?.[peptide.id]?.totalOrdered ? (
-                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-600">
-                          {pendingByPeptide[peptide.id].totalOrdered} ordered
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    )}
-                    {!isWholesaleView && (
-                    <TableCell>
-                      {pendingByPeptide?.[peptide.id]?.nextDelivery ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {format(new Date(pendingByPeptide[peptide.id].nextDelivery!), 'MMM d')}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    )}
-                    {isWholesaleView ? (
-                      <TableCell>
-                        ${calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0).toFixed(2)}
                       </TableCell>
-                    ) : isPartner ? (
-                      <TableCell>
-                        {/* Partner sees (AvgCost OR PendingCost) + overhead (default 4.00) */}
-                        {(() => {
-                          const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
-                          return `$${(baseCost + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}`;
-                        })()}
-                      </TableCell>
-                    ) : (
-                      <TableCell>
-                        {(() => {
-                          const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
-                          return `$${baseCost.toFixed(2)}`;
-                        })()}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      ${(peptide.retail_price || 0).toFixed(2)}
-                    </TableCell>
-                    {isWholesaleView && (
-                    <TableCell>
-                      {(() => {
-                        const yourCost = calculateWholesalePrice(peptide.base_cost || 0, orgTier?.markup_amount || 0);
-                        const margin = (peptide.retail_price || 0) - yourCost;
-                        const pct = peptide.retail_price ? (margin / peptide.retail_price * 100) : 0;
-                        return (
-                          <span className={margin > 0 ? 'text-green-600' : 'text-red-500'}>
-                            ${margin.toFixed(2)} ({pct.toFixed(0)}%)
-                          </span>
-                        );
-                      })()}
-                    </TableCell>
-                    )}
-                    {!isWholesaleView && (
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={peptide.active}
-                          onCheckedChange={() => handleToggleActive(peptide)}
-                          disabled={!canEdit}
-                        />
-                        <Badge variant={peptide.active ? 'default' : 'secondary'}>
-                          {peptide.active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    )}
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {isWholesaleView && canEdit && (
-                          catalogNameSet.has(peptide.name.toLowerCase()) ? (
-                            <Badge variant="outline" className="text-green-600 border-green-400/50 gap-1">
-                              <Check className="h-3 w-3" /> Added
-                            </Badge>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs"
-                              disabled={addingToCatalog.has(peptide.id)}
-                              onClick={() => handleAddToCatalog(peptide)}
-                            >
-                              <ShoppingCart className="h-3.5 w-3.5" />
-                              {addingToCatalog.has(peptide.id) ? 'Adding...' : 'Add to My Catalog'}
-                            </Button>
-                          )
-                        )}
-                        {canEdit && !isWholesaleView && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Edit peptide"
-                            onClick={() => openEditDialog(peptide)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="View Sales History"
-                          aria-label="View history"
-                          onClick={() => setHistoryPeptide(peptide)}
-                        >
-                          <History className="h-4 w-4" />
-                        </Button>
-                        {canDelete && !isWholesaleView && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            aria-label="Delete peptide"
-                            onClick={() => setDeletingPeptide(peptide)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-            </div>
+                    </motion.tr>
+                  ))}
+                </TableBody>
+              </Table>
+              </div>
+            )
           )}
         </CardContent>
       </Card>
