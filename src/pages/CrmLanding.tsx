@@ -6,6 +6,7 @@ import { BackToTop } from "@/components/landing/BackToTop";
 import { StickyMobileCta } from "@/components/landing/StickyMobileCta";
 
 // Lazy-load everything below the hero to avoid blocking the main thread
+const BusinessLogin = lazy(() => import("@/components/landing/BusinessLogin").then(m => ({ default: m.BusinessLogin })));
 const TwoPathFork = lazy(() => import("@/components/landing/TwoPathFork").then(m => ({ default: m.TwoPathFork })));
 const TrustBar = lazy(() => import("@/components/landing/TrustBar").then(m => ({ default: m.TrustBar })));
 const PainPoints = lazy(() => import("@/components/landing/PainPoints").then(m => ({ default: m.PainPoints })));
@@ -62,6 +63,7 @@ export default function CrmLanding() {
       <Hero />
       {showBatch1 && (
         <Suspense fallback={null}>
+          <BusinessLogin />
           <TwoPathFork />
           <TrustBar />
           <PainPoints />
