@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
-import { linkReferral, storeSessionReferral } from '@/lib/link-referral';
+import { linkReferral, storeSessionReferral, peekPendingReferral } from '@/lib/link-referral';
 import { trackAuthPageView, trackLoginStart, trackSignupStart, trackOAuthStart, trackAuthSuccess, trackAuthError } from '@/lib/funnel-tracker';
 
 const loginSchema = z.object({
@@ -293,9 +293,10 @@ export default function Auth() {
   // Track auth page view
   useEffect(() => { trackAuthPageView(); }, []);
 
-  // Detect referral param from URL or sessionStorage (persists across Google OAuth redirect)
-  const refParam = searchParams.get('ref') || sessionStorage.getItem('partner_ref');
-  const roleParam = (searchParams.get('role') || sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
+  // Detect referral param from URL, sessionStorage, or localStorage (cross-tab persistence)
+  const pending = peekPendingReferral();
+  const refParam = searchParams.get('ref') || pending?.refId || null;
+  const roleParam = (searchParams.get('role') || pending?.role || 'customer') as 'customer' | 'partner';
   const isPartnerInvite = roleParam === 'partner';
 
   // Plan selection from CRM landing page (e.g. /auth?mode=signup&plan=starter)
@@ -314,7 +315,7 @@ export default function Auth() {
   }, [signupParam]);
 
   // Determine if this visitor has a valid referral OR is a merchant self-signup
-  const hasReferral = !!(refParam || sessionStorage.getItem('partner_ref') || isMerchantSignup);
+  const hasReferral = !!(refParam || isMerchantSignup);
 
   // Auto-switch to signup when plan param present — BUT only if they have a referral
   useEffect(() => {
@@ -356,6 +357,7 @@ export default function Auth() {
         // Already linked to an org — skip referral, go home
         sessionStorage.removeItem('partner_ref');
         sessionStorage.removeItem('partner_ref_role');
+        localStorage.removeItem('pending_referral');
         navigate(from, { replace: true });
         return;
       }
@@ -373,6 +375,7 @@ export default function Auth() {
         if (result.success) {
           sessionStorage.removeItem('partner_ref');
           sessionStorage.removeItem('partner_ref_role');
+          localStorage.removeItem('pending_referral');
           await refreshProfile();
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });

@@ -74,7 +74,13 @@ serve(withErrorReporting("exchange-token", async (req) => {
 
         if (linkError) throw linkError
 
-        // 3. Return the Magic Link
+        // 3. Invalidate the claim token so it can't be reused
+        await supabaseClient
+            .from('contacts')
+            .update({ claim_token: null, claim_token_expires_at: null })
+            .eq('id', contacts.id)
+
+        // 4. Return the Magic Link
         return new Response(
             JSON.stringify({
                 success: true,

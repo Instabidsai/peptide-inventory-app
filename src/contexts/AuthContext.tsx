@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
 import { logger } from '@/lib/logger';
+import { hasPendingReferral } from '@/lib/link-referral';
 
 type AppRole = 'admin' | 'staff' | 'fulfillment' | 'viewer' | 'client' | 'customer' | 'sales_rep' | 'super_admin';
 
@@ -85,7 +86,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Auto-create profile if missing (Google OAuth, failed signup insert, etc.)
       if (!profileData) {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: { user: currentUser }, error: getUserError } = await supabase.auth.getUser();
+        if (getUserError) {
+          logger.error('AuthProvider: getUser failed (stale session?)', getUserError.message);
+          await supabase.auth.signOut();
+          setProfile(null);
+          setUserRole(null);
+          setOrganization(null);
+          return;
+        }
         if (currentUser) {
           const meta = currentUser.user_metadata || {};
           const { data: newProfile } = await supabase
@@ -104,9 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Auto-link: if profile has no org, check if their email matches an existing contact
-      // Uses server-side RPC (SECURITY DEFINER) to bypass RLS — new users can't read contacts table
-      if (profileData && !profileData.org_id && profileData.email) {
+      // Auto-link: if profile has no org, check if their email matches an existing contact.
+      // Uses server-side RPC (SECURITY DEFINER) to bypass RLS — new users can't read contacts table.
+      // IMPORTANT: Skip this when a referral is pending — link_referral sets more fields
+      // (parent_rep_id, pricing, tier, etc.) and must be the single authority.
+      if (profileData && !profileData.org_id && profileData.email && !hasPendingReferral()) {
         const { data: linkResult } = await supabase.rpc('auto_link_contact_by_email', {
           p_user_id: userId,
           p_email: profileData.email,
@@ -313,7 +324,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Use scope:'local' to skip the server call — avoids 403 when session is already expired
+    await supabase.auth.signOut({ scope: 'local' });
     setProfile(null);
     setUserRole(null);
     setOrganization(null);
