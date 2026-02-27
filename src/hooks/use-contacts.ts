@@ -164,16 +164,27 @@ export function useUpdateContact() {
         .from('contacts')
         .update(input)
         .eq('id', id)
-        .select()
+        .select('*, linked_user_id')
         .maybeSingle();
 
       if (error) throw error;
+
+      // Sync name to linked profile so partner area stays current
+      if (input.name && data?.linked_user_id) {
+        await supabase
+          .from('profiles')
+          .update({ full_name: input.name })
+          .eq('user_id', data.linked_user_id);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
       queryClient.invalidateQueries({ queryKey: ['full_network'] });
+      queryClient.invalidateQueries({ queryKey: ['all_org_reps'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_downline'] });
       toast({ title: 'Customer updated successfully' });
     },
     onError: (error: Error) => {
