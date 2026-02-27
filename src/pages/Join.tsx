@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
-import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
@@ -19,12 +18,15 @@ export default function Join() {
         setError(null);
 
         try {
-            const { data, error: invokeError } = await invokeEdgeFunction<{ url?: string; error?: string }>('exchange-token', { token });
+            // Call exchange-token directly (no auth wrapper — user isn't signed in yet)
+            const { data, error: invokeError } = await supabase.functions.invoke('exchange-token', {
+                body: { token },
+            });
 
             if (invokeError) throw new Error(invokeError.message);
-            if (data.error) throw new Error(data.error);
+            if (data?.error) throw new Error(data.error);
 
-            if (data.url) {
+            if (data?.url) {
                 window.location.href = data.url;
             } else {
                 throw new Error("No redirect URL returned");
