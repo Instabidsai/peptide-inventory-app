@@ -90,7 +90,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const previewRole = ((userRole?.role === 'admin' || userRole?.role === 'super_admin') && rawPreviewRole) ? rawPreviewRole : null;
 
   const effectiveRole = previewRole || (
-    (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep' : userRole?.role
+    (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep'
+    : userRole?.role || authProfile?.role
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,9 +137,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
     const roleForNav = effectiveRole === 'super_admin' ? 'admin' : effectiveRole;
 
-    if (item.roles && !item.roles.includes(organization?.role || roleForNav || '')) {
-      if (!roleForNav) return false;
-      if (!item.roles.includes(roleForNav)) return false;
+    if (item.roles) {
+      if (!roleForNav || !item.roles.includes(roleForNav)) return false;
     }
 
     if (effectiveRole === 'sales_rep') {
