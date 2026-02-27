@@ -106,6 +106,10 @@ export default function PayOrder() {
         if (!orderId || payingCard) return;
         setPayingCard(true);
         setCheckoutError(null);
+
+        // Open tab SYNCHRONOUSLY on click (before any async work) so mobile browsers don't block it
+        const payWindow = window.open('about:blank', '_blank');
+
         try {
             const response = await fetch('/api/checkout/create-paygate-session', {
                 method: 'POST',
@@ -118,11 +122,19 @@ export default function PayOrder() {
             }
             const { checkout_url } = await response.json();
             if (!checkout_url) throw new Error('No checkout URL received');
-            // Open directly to Stripe card form in new tab
-            window.open(checkout_url, '_blank');
+
+            if (payWindow && !payWindow.closed) {
+                // Navigate the pre-opened tab to the checkout URL
+                payWindow.location.href = checkout_url;
+            } else {
+                // Popup was blocked — redirect in same tab as fallback
+                window.location.href = checkout_url;
+            }
             setWaitingForPayment(true);
             startPolling();
         } catch (err: any) {
+            // Close the blank tab if it opened
+            if (payWindow && !payWindow.closed) payWindow.close();
             setCheckoutError(err.message || 'Failed to start payment');
         } finally {
             setPayingCard(false);
