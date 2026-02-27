@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { GlassCard } from '@/components/ui/glass-card';
+import { AddressAutocomplete } from './AddressAutocomplete';
 import {
     ShoppingCart,
     Plus,
@@ -137,16 +137,11 @@ export function CartSummary({
                     </div>
 
                     {/* Shipping */}
-                    <div className="space-y-2">
-                        <label htmlFor="cart-shipping" className="text-sm font-semibold">Shipping Address</label>
-                        <Textarea
-                            id="cart-shipping"
-                            placeholder="Enter your shipping address..."
-                            value={shippingAddress}
-                            onChange={e => onShippingAddressChange(e.target.value)}
-                            rows={2}
-                        />
-                    </div>
+                    <AddressAutocomplete
+                        value={shippingAddress}
+                        onChange={onShippingAddressChange}
+                        disabled={orderPlaced}
+                    />
 
                     {/* Notes */}
                     <div className="space-y-2">
