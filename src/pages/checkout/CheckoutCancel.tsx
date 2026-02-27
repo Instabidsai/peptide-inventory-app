@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, RefreshCw, ShieldCheck, Copy, Check, CreditCard, Globe, HelpCircle } from 'lucide-react';
+import { trackCheckoutCancelled } from '@/lib/funnel-tracker';
 
 export default function CheckoutCancel() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const orderId = searchParams.get('orderId');
     const [copied, setCopied] = useState(false);
+
+    useEffect(() => { trackCheckoutCancelled(orderId); }, []);
 
     const copyOrderId = () => {
         if (orderId) {
@@ -34,7 +37,7 @@ export default function CheckoutCancel() {
                     <p className="text-muted-foreground">
                         Your payment was not processed. No charges have been made.
                     </p>
-                    <div className="flex items-center justify-center gap-2 text-xs text-emerald-400">
+                    <div className="flex items-center justify-center gap-2 text-xs text-primary">
                         <ShieldCheck className="h-3.5 w-3.5" />
                         <span>Your items are still saved — you can try again anytime</span>
                     </div>
@@ -47,7 +50,7 @@ export default function CheckoutCancel() {
                     <span className="text-xs text-muted-foreground/60">Order ID:</span>
                     <code className="text-xs font-mono flex-1 truncate">{orderId}</code>
                     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>
-                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
                     </Button>
                 </div>
             )}

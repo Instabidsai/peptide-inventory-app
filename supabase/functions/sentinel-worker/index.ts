@@ -315,6 +315,13 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // ═══════════════════════════════════════════════════════════
     await doHousekeeping(supabase);
 
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 12: Business Logic Auto-Repair
+    // Reads health_checks with category='business_logic' + status != 'pass'
+    // from the last 10 minutes and attempts automatic fixes.
+    // ═══════════════════════════════════════════════════════════
+    await repairBusinessLogicViolations(supabase, stats, runErrors);
+
     await finishRun(supabase, runId, stats, runErrors, "completed");
 
     return jsonResponse(
@@ -1177,6 +1184,179 @@ async function doHousekeeping(supabase: ReturnType<typeof createClient>): Promis
     .eq("status", "open")
     .not("sentinel_processed_at", "is", null)
     .lt("created_at", sevenDaysAgo);
+}
+
+/**
+ * Phase 12: Business Logic Auto-Repair
+ * Reads recent health_check failures with category='business_logic'
+ * and applies targeted fixes for each known violation type.
+ */
+async function repairBusinessLogicViolations(
+  supabase: ReturnType<typeof createClient>,
+  stats: Record<string, number>,
+  runErrors: string[],
+): Promise<void> {
+  try {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: violations } = await supabase
+      .from("health_checks")
+      .select("check_name, error_message")
+      .eq("category", "business_logic")
+      .neq("status", "pass")
+      .gte("checked_at", tenMinAgo);
+
+    if (!violations?.length) return;
+
+    const seen = new Set<string>();
+    for (const v of violations) {
+      if (seen.has(v.check_name)) continue;
+      seen.add(v.check_name);
+
+      try {
+        switch (v.check_name) {
+          case "biz:fulfilled_no_commission": {
+            // Re-trigger commission calculation for fulfilled+paid orders missing commissions
+            const { data: orders } = await supabase
+              .from("sales_orders")
+              .select("id")
+              .eq("status", "fulfilled")
+              .eq("payment_status", "paid")
+              .limit(20);
+            if (!orders?.length) break;
+            const { data: comms } = await supabase
+              .from("commission_transactions")
+              .select("sales_order_id")
+              .in("sales_order_id", orders.map((o) => o.id));
+            const commSet = new Set(comms?.map((c) => c.sales_order_id) ?? []);
+            const missing = orders.filter((o) => !commSet.has(o.id));
+            for (const order of missing.slice(0, 5)) {
+              await supabase.rpc("process_sale_commission", { p_order_id: order.id }).catch(() => {});
+              stats.fixes_applied++;
+            }
+            await logHealAction(supabase, "biz:fulfilled_no_commission", `Triggered commission for ${missing.length} orders`);
+            break;
+          }
+
+          case "biz:unapplied_commissions": {
+            // Apply pending commissions
+            await supabase.rpc("apply_commissions_to_owed").catch(() => {});
+            stats.fixes_applied++;
+            await logHealAction(supabase, "biz:unapplied_commissions", "Ran apply_commissions_to_owed RPC");
+            break;
+          }
+
+          case "biz:negative_credit": {
+            // Set negative credits to 0
+            const { data: negProfiles } = await supabase
+              .from("profiles")
+              .select("id, store_credit")
+              .lt("store_credit", 0)
+              .limit(50);
+            if (negProfiles?.length) {
+              for (const p of negProfiles) {
+                await supabase
+                  .from("profiles")
+                  .update({ store_credit: 0 })
+                  .eq("id", p.id);
+              }
+              stats.fixes_applied++;
+              await logHealAction(supabase, "biz:negative_credit", `Reset ${negProfiles.length} profiles from negative credit`);
+            }
+            break;
+          }
+
+          case "biz:orphaned_orders": {
+            // Cancel orders with no items (older than 10 min)
+            const tenMinAgo2 = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            const { data: allOrders } = await supabase
+              .from("sales_orders")
+              .select("id")
+              .lt("created_at", tenMinAgo2)
+              .neq("status", "cancelled")
+              .limit(100);
+            if (!allOrders?.length) break;
+            const { data: items } = await supabase
+              .from("sales_order_items")
+              .select("sales_order_id")
+              .in("sales_order_id", allOrders.map((o) => o.id));
+            const hasItems = new Set(items?.map((i) => i.sales_order_id) ?? []);
+            const orphaned = allOrders.filter((o) => !hasItems.has(o.id));
+            if (orphaned.length) {
+              await supabase
+                .from("sales_orders")
+                .update({ status: "cancelled", notes: "Auto-cancelled: no order items (sentinel Phase 12)" })
+                .in("id", orphaned.map((o) => o.id));
+              stats.fixes_applied++;
+              await logHealAction(supabase, "biz:orphaned_orders", `Cancelled ${orphaned.length} orphaned orders`);
+            }
+            break;
+          }
+
+          case "biz:orphaned_bottles": {
+            // Mark orphaned sold bottles as 'lost'
+            const { data: orphanedBottles } = await supabase
+              .from("bottles")
+              .select("id")
+              .eq("status", "sold")
+              .is("order_item_id", null)
+              .limit(50);
+            if (orphanedBottles?.length) {
+              await supabase
+                .from("bottles")
+                .update({ status: "lost", notes: "Auto-marked lost: sold but no order item (sentinel Phase 12)" })
+                .in("id", orphanedBottles.map((b) => b.id));
+              stats.fixes_applied++;
+              await logHealAction(supabase, "biz:orphaned_bottles", `Marked ${orphanedBottles.length} orphaned bottles as lost`);
+            }
+            break;
+          }
+
+          case "biz:stale_payment_queue": {
+            // Re-trigger payment scan for stale entries
+            const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+            const cronSecret = Deno.env.get("CRON_SECRET") || "";
+            if (supabaseUrl && cronSecret) {
+              await fetch(`${supabaseUrl}/functions/v1/process-payments`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${cronSecret}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ source: "sentinel-phase12" }),
+              }).catch(() => {});
+              stats.fixes_applied++;
+              await logHealAction(supabase, "biz:stale_payment_queue", "Re-triggered process-payments edge function");
+            }
+            break;
+          }
+
+          default: {
+            // Unknown biz check — log as escalation
+            await supabase.from("error_log").insert({
+              level: "warning",
+              source: "sentinel:phase12",
+              message: `Unhandled business logic violation: ${v.check_name} — ${v.error_message}`,
+            }).catch(() => {});
+            break;
+          }
+        }
+      } catch (fixErr) {
+        runErrors.push(`Phase12 fix ${v.check_name}: ${(fixErr as Error).message}`);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Phase12: ${(err as Error).message}`);
+  }
+}
+
+async function logHealAction(
+  supabase: ReturnType<typeof createClient>,
+  check: string,
+  action: string,
+): Promise<void> {
+  await supabase.from("heal_log").insert({
+    source: "sentinel:phase12",
+    action_type: "auto_fix",
+    description: `[${check}] ${action}`,
+    created_at: new Date().toISOString(),
+  }).catch(() => {});
 }
 
 async function finishRun(

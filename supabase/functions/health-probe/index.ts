@@ -675,6 +675,158 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // Section 10d: Business Logic Invariant Checks
+  // Uses Supabase client queries (service_role bypasses RLS)
+  // ═══════════════════════════════════════════════════════════
+  async function bizCheck(
+    name: string,
+    queryFn: () => Promise<number>,
+    threshold: number,
+    level: "fail" | "warn",
+  ) {
+    const start = Date.now();
+    try {
+      const cnt = await queryFn();
+      const latency = Date.now() - start;
+      const passed = cnt <= threshold;
+      results.push({
+        check_name: name,
+        category: "business_logic",
+        status: passed ? "pass" : level,
+        latency_ms: latency,
+        error_message: passed ? null : `Found ${cnt} violations (threshold: ${threshold})`,
+      });
+      if (!passed && level === "fail") failures.push(`${name}: ${cnt} violations`);
+    } catch (err) {
+      const msg = (err as Error).message || String(err);
+      // Tables/columns that don't exist yet = skip gracefully
+      if (msg.includes("does not exist") || msg.includes("42P01")) {
+        results.push({ check_name: name, category: "business_logic", status: "pass", latency_ms: Date.now() - start, error_message: null });
+      } else {
+        results.push({ check_name: name, category: "business_logic", status: "fail", latency_ms: Date.now() - start, error_message: msg });
+        failures.push(`${name}: ${msg}`);
+      }
+    }
+  }
+
+  // 1. Fulfilled orders with no commission record
+  await bizCheck("biz:fulfilled_no_commission", async () => {
+    const { data: orders } = await supabase
+      .from("sales_orders")
+      .select("id")
+      .eq("status", "fulfilled")
+      .eq("payment_status", "paid")
+      .limit(100);
+    if (!orders?.length) return 0;
+    const { data: commissions } = await supabase
+      .from("commission_transactions")
+      .select("sales_order_id")
+      .in("sales_order_id", orders.map((o) => o.id));
+    const commOrderIds = new Set(commissions?.map((c) => c.sales_order_id) ?? []);
+    return orders.filter((o) => !commOrderIds.has(o.id)).length;
+  }, 0, "fail");
+
+  // 2. Stale payment queue entries (pending > 1 hour)
+  await bizCheck("biz:stale_payment_queue", async () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("payment_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", oneHourAgo);
+    return count ?? 0;
+  }, 0, "fail");
+
+  // 3. Unapplied commissions older than 24h
+  await bizCheck("biz:unapplied_commissions", async () => {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("commission_transactions")
+      .select("*", { count: "exact", head: true })
+      .eq("applied", false)
+      .lt("created_at", oneDayAgo);
+    return count ?? 0;
+  }, 5, "warn");
+
+  // 4. Negative store credit on any profile
+  await bizCheck("biz:negative_credit", async () => {
+    const { count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .lt("store_credit", 0);
+    return count ?? 0;
+  }, 0, "fail");
+
+  // 5. Orphaned orders (no items, older than 10 min)
+  await bizCheck("biz:orphaned_orders", async () => {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: orders } = await supabase
+      .from("sales_orders")
+      .select("id")
+      .lt("created_at", tenMinAgo)
+      .limit(200);
+    if (!orders?.length) return 0;
+    const { data: items } = await supabase
+      .from("sales_order_items")
+      .select("sales_order_id")
+      .in("sales_order_id", orders.map((o) => o.id));
+    const withItems = new Set(items?.map((i) => i.sales_order_id) ?? []);
+    return orders.filter((o) => !withItems.has(o.id)).length;
+  }, 0, "warn");
+
+  // 6. Payment scan stall (pending items but none processed in 30 min)
+  await bizCheck("biz:payment_scan_stall", async () => {
+    const { count: pendingCount } = await supabase
+      .from("payment_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending");
+    if (!pendingCount) return 0;
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabase
+      .from("payment_queue")
+      .select("*", { count: "exact", head: true })
+      .gte("updated_at", thirtyMinAgo);
+    return (recentCount ?? 0) === 0 ? 1 : 0;
+  }, 0, "fail");
+
+  // 7. Email delivery failures in last hour
+  await bizCheck("biz:email_delivery", async () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("sent_emails")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "failed")
+      .gte("created_at", oneHourAgo);
+    return count ?? 0;
+  }, 3, "warn");
+
+  // 8. Orphaned bottles (sold but no order item link)
+  await bizCheck("biz:orphaned_bottles", async () => {
+    const { count } = await supabase
+      .from("bottles")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "sold")
+      .is("order_item_id", null);
+    return count ?? 0;
+  }, 0, "warn");
+
+  // 9. Active peptides with no lot cost data
+  await bizCheck("biz:missing_lot_cost", async () => {
+    const { data: active } = await supabase
+      .from("peptides")
+      .select("id")
+      .eq("active", true);
+    if (!active?.length) return 0;
+    const { data: lots } = await supabase
+      .from("lots")
+      .select("peptide_id")
+      .gt("cost_per_unit", 0)
+      .in("peptide_id", active.map((p) => p.id));
+    const withCost = new Set(lots?.map((l) => l.peptide_id) ?? []);
+    return active.filter((p) => !withCost.has(p.id)).length;
+  }, 0, "warn");
+
+  // ═══════════════════════════════════════════════════════════
   // Write results to health_checks table
   // ═══════════════════════════════════════════════════════════
   const now = new Date().toISOString();

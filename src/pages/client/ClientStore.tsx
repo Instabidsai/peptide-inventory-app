@@ -29,6 +29,7 @@ import {
 } from '@/components/store';
 import { canSeePeptide, calculateClientPrice } from '@/components/store/utils';
 import { MAX_ITEM_QTY } from '@/components/store/constants';
+import { trackStorePageView, trackAddToCart, trackCartUpdate, trackRemoveFromCart, trackBeginCheckout, trackProductView } from '@/lib/funnel-tracker';
 
 export default function ClientStore() {
     const { user, userRole, profile: authProfile } = useAuth();
@@ -55,6 +56,9 @@ export default function ClientStore() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
     const [searchParams, setSearchParams] = useSearchParams();
+
+    // Track store page view
+    useEffect(() => { trackStorePageView(); }, []);
 
     // Persist cart to localStorage
     useEffect(() => {
@@ -135,6 +139,7 @@ export default function ClientStore() {
 
     const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {
         const price = getClientPrice(peptide);
+        trackAddToCart(peptide.id, peptide.name, 1);
         setCart(prev => {
             const existing = prev.find(i => i.peptide_id === peptide.id);
             if (existing) {
@@ -158,13 +163,22 @@ export default function ClientStore() {
     };
 
     const updateQuantity = (peptideId: string, delta: number) => {
-        setCart(prev =>
-            prev.map(i => {
+        setCart(prev => {
+            const item = prev.find(i => i.peptide_id === peptideId);
+            if (item) {
+                const newQty = Math.max(0, item.quantity + delta);
+                if (newQty === 0) {
+                    trackRemoveFromCart(peptideId);
+                } else {
+                    trackCartUpdate(peptideId, newQty);
+                }
+            }
+            return prev.map(i => {
                 if (i.peptide_id !== peptideId) return i;
                 const newQty = Math.min(MAX_ITEM_QTY, Math.max(0, i.quantity + delta));
                 return { ...i, quantity: newQty };
-            }).filter(i => i.quantity > 0)
-        );
+            }).filter(i => i.quantity > 0);
+        });
     };
 
     const cartTotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
@@ -273,6 +287,7 @@ export default function ClientStore() {
     };
 
     const handleCheckout = () => {
+        trackBeginCheckout(itemCount, cartTotal);
         if (paymentMethod === 'card') {
             handleCardCheckout();
         } else {
@@ -341,7 +356,7 @@ export default function ClientStore() {
                 getClientPrice={getClientPrice}
                 addToCart={addToCart}
                 updateQuantity={updateQuantity}
-                onSelectPeptide={setSelectedPeptide}
+                onSelectPeptide={(p: any) => { trackProductView(p.id, p.name); setSelectedPeptide(p); }}
             />
 
             {/* Cart Summary */}

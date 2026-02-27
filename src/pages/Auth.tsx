@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { linkReferral, storeSessionReferral } from '@/lib/link-referral';
+import { trackAuthPageView, trackLoginStart, trackSignupStart, trackOAuthStart, trackAuthSuccess, trackAuthError } from '@/lib/funnel-tracker';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -42,8 +43,8 @@ function getPasswordStrength(password: string): { score: number; label: string; 
   if (score <= 1) return { score: 20, label: 'Weak', color: 'bg-red-500' };
   if (score <= 2) return { score: 40, label: 'Fair', color: 'bg-orange-500' };
   if (score <= 3) return { score: 60, label: 'Good', color: 'bg-yellow-500' };
-  if (score <= 4) return { score: 80, label: 'Strong', color: 'bg-emerald-500' };
-  return { score: 100, label: 'Very Strong', color: 'bg-emerald-400' };
+  if (score <= 4) return { score: 80, label: 'Strong', color: 'bg-primary' };
+  return { score: 100, label: 'Very Strong', color: 'bg-primary' };
 }
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -289,6 +290,9 @@ export default function Auth() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
+  // Track auth page view
+  useEffect(() => { trackAuthPageView(); }, []);
+
   // Detect referral param from URL or sessionStorage (persists across Google OAuth redirect)
   const refParam = searchParams.get('ref') || sessionStorage.getItem('partner_ref');
   const roleParam = (searchParams.get('role') || sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
@@ -419,11 +423,13 @@ export default function Auth() {
   }
 
   const handleLogin = async (data: LoginFormData) => {
+    trackLoginStart();
     setIsLoading(true);
     const { error } = await signIn(data.email, data.password);
     setIsLoading(false);
 
     if (error) {
+      trackAuthError('email_login', error.message);
       toast({
         variant: 'destructive',
         title: 'Login failed',
@@ -431,10 +437,13 @@ export default function Auth() {
           ? 'Invalid email or password. Please try again.'
           : error.message,
       });
+    } else {
+      trackAuthSuccess('email_login');
     }
   };
 
   const handleSignup = async (data: SignupFormData) => {
+    trackSignupStart();
     setIsLoading(true);
     // Persist selected plan for onboarding to pick up
     if (planParam) {
@@ -443,6 +452,7 @@ export default function Auth() {
     const { error } = await signUp(data.email, data.password, data.fullName);
 
     if (error) {
+      trackAuthError('email_signup', error.message);
       setIsLoading(false);
       let message = error.message;
       if (error.message.includes('already registered')) {
@@ -526,6 +536,7 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
+    trackOAuthStart('google');
     setIsGoogleLoading(true);
     // Persist referral params across OAuth redirect
     if (refParam) {

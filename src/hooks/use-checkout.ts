@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { trackCheckoutStart, trackOrderCreated, trackCheckoutRedirect, trackCheckoutError } from '@/lib/funnel-tracker';
 
 interface CheckoutItem {
     peptide_id: string;
@@ -146,6 +147,7 @@ export function useValidatedCheckout() {
         }) => {
             if (!user?.id) throw new Error('Not authenticated');
             if (input.items.length === 0) throw new Error('Cart is empty');
+            trackCheckoutStart(input.items.length);
 
             // 1. Create order with server-validated prices
             const { data, error } = await supabase.rpc('create_validated_order', {
@@ -163,6 +165,7 @@ export function useValidatedCheckout() {
             }
 
             const orderId = result.order_id!;
+            trackOrderCreated(orderId, result.total_amount!);
 
             // 2. Mark order as submitted (RPC creates it as 'draft')
             await supabase
@@ -205,11 +208,13 @@ export function useValidatedCheckout() {
             } catch {
                 throw new Error('Invalid checkout URL received');
             }
+            trackCheckoutRedirect(orderId);
             window.location.href = checkout_url;
 
             return { id: orderId, total_amount: result.total_amount! };
         },
         onError: (error: Error) => {
+            trackCheckoutError(error.message);
             toast({
                 variant: 'destructive',
                 title: 'Checkout failed',

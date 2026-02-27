@@ -115,6 +115,14 @@ Deno.serve(withErrorReporting("send-email", async (req) => {
         if (!response.ok) {
             const errText = await response.text();
             console.error("[send-email] Resend error:", response.status, errText);
+            // Fire-and-forget: log failed email
+            supabase.from("sent_emails").insert({
+                recipient: recipients.join(", "),
+                subject: cleanSubject,
+                template: body.template || null,
+                status: "failed",
+                error_message: `${response.status}: ${errText.slice(0, 500)}`,
+            }).then(() => {}, () => {});
             return jsonResponse(
                 { error: "Email delivery failed", detail: errText },
                 502, corsHeaders,
@@ -122,6 +130,13 @@ Deno.serve(withErrorReporting("send-email", async (req) => {
         }
 
         const result = await response.json();
+        // Fire-and-forget: log successful email
+        supabase.from("sent_emails").insert({
+            recipient: recipients.join(", "),
+            subject: cleanSubject,
+            template: body.template || null,
+            status: "sent",
+        }).then(() => {}, () => {});
         return jsonResponse({ sent: true, id: result.id }, 200, corsHeaders);
 
     } catch (err) {

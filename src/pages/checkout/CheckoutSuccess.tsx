@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { trackSuccessPageView, trackPaymentConfirmed, trackPaymentTimeout } from '@/lib/funnel-tracker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,27 @@ export default function CheckoutSuccess() {
     const [copied, setCopied] = useState(false);
     const [pollCount, setPollCount] = useState(0);
     const pollingTimedOut = pollCount >= 40; // 40 polls × 3s = 2 minutes
+    const trackedPaid = useRef(false);
+    const trackedTimeout = useRef(false);
+
+    // Track success page view
+    useEffect(() => { trackSuccessPageView(orderId); }, []);
+
+    // Track payment confirmed
+    useEffect(() => {
+        if (isPaid && !trackedPaid.current) {
+            trackedPaid.current = true;
+            trackPaymentConfirmed(orderId!, Number(order?.total_amount || 0));
+        }
+    }, [isPaid]);
+
+    // Track polling timeout
+    useEffect(() => {
+        if (pollingTimedOut && !isPaid && !trackedTimeout.current) {
+            trackedTimeout.current = true;
+            trackPaymentTimeout(orderId!);
+        }
+    }, [pollingTimedOut, isPaid]);
 
     const copyOrderId = () => {
         if (orderId) {
@@ -181,10 +203,10 @@ export default function CheckoutSuccess() {
                             ].map((step, i) => (
                                 <div key={step.label} className="flex items-start gap-3">
                                     <div className="flex flex-col items-center">
-                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center ${step.active ? 'bg-emerald-500/15' : 'bg-white/[0.04]'}`}>
-                                            <step.icon className={`h-3.5 w-3.5 ${step.active ? 'text-emerald-400' : 'text-muted-foreground/40'}`} />
+                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center ${step.active ? 'bg-primary/15' : 'bg-white/[0.04]'}`}>
+                                            <step.icon className={`h-3.5 w-3.5 ${step.active ? 'text-primary' : 'text-muted-foreground/40'}`} />
                                         </div>
-                                        {i < 3 && <div className={`w-px h-5 ${step.active ? 'bg-emerald-500/30' : 'bg-white/[0.06]'}`} />}
+                                        {i < 3 && <div className={`w-px h-5 ${step.active ? 'bg-primary/30' : 'bg-white/[0.06]'}`} />}
                                     </div>
                                     <p className={`text-sm pt-1 ${step.active ? 'font-medium' : 'text-muted-foreground/50'}`}>
                                         {step.label}
@@ -238,7 +260,7 @@ export default function CheckoutSuccess() {
                             <span className="text-xs text-muted-foreground/60">Order ID:</span>
                             <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
                             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>
-                                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                                {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
                             </Button>
                         </div>
 
