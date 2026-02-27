@@ -100,9 +100,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(502).json({ error: 'Payment processor returned invalid data' });
         }
 
-        // Build hosted checkout URL — go directly to Stripe provider, skip provider selection page
+        // Fetch the checkout page server-side to extract the creditcard signature
+        // (PayGate365 generates it server-side; we scrape it to skip the provider selection page)
         const contactEmail = (order.contacts as any)?.email || '';
-        const checkoutUrl = `https://checkout.paygate.to/process-payment.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd&provider=stripe`;
+        const payPageUrl = `https://checkout.365payment.co/pay.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd`;
+        const payPageRes = await fetch(payPageUrl);
+        const payPageHtml = await payPageRes.text();
+
+        // Extract signature from the creditcard provider URL in the page JS
+        const sigMatch = payPageHtml.match(/signature=([^'"&\s]+)/);
+        let checkoutUrl: string;
+
+        if (sigMatch) {
+            // Go directly to creditcard (MoonPay) provider with extracted signature
+            const signature = sigMatch[1];
+            checkoutUrl = `https://checkout.paygate.to/process-payment.php?currency=usd&address=${addressIn}&amount=${chargeTotal}&provider=creditcard&email=${encodeURIComponent(contactEmail)}&signature=${signature}`;
+        } else {
+            // Fallback: send to provider selection page if signature extraction fails
+            console.error('Could not extract creditcard signature from pay.php');
+            checkoutUrl = payPageUrl;
+        }
 
         // Update order with payment method
         await supabase
