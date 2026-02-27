@@ -20,5 +20,8 @@ export function useClientProfile() {
             return data;
         },
         enabled: !!user,
+        // For new users, contact may not exist yet (created async by linkReferral).
+        // Poll every 2s while null so the UI auto-resolves without a page refresh.
+        refetchInterval: (query) => (query.state.data === null ? 2000 : false),
     });
 }

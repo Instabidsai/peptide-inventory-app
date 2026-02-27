@@ -305,20 +305,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) return { error };
 
-    // Create initial profile if signup successful
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: data.user.id,
-          email: email,
-          full_name: fullName,
-        }, { onConflict: 'user_id' });
-
-      if (profileError) {
-        logger.error('Error creating profile:', profileError);
-      }
-    }
+    // Profile is auto-created by the handle_new_user DB trigger (SECURITY DEFINER).
+    // No client-side upsert needed — it would fail with RLS 42501 before email confirmation.
 
     return { error: null };
   };
@@ -392,4 +380,8 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+export function useAuthOptional(): AuthContextType | null {
+  return useContext(AuthContext) ?? null;
 }

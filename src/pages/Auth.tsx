@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -280,6 +281,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { signIn, signUp, user, profile, loading, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -377,6 +379,7 @@ export default function Auth() {
           sessionStorage.removeItem('partner_ref_role');
           localStorage.removeItem('pending_referral');
           await refreshProfile();
+          queryClient.invalidateQueries({ queryKey: ['client-profile'] });
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         } else {
@@ -478,6 +481,7 @@ export default function Auth() {
           sessionStorage.removeItem('partner_ref');
           sessionStorage.removeItem('partner_ref_role');
           await refreshProfile();
+          queryClient.invalidateQueries({ queryKey: ['client-profile'] });
           setIsLoading(false);
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
           navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });

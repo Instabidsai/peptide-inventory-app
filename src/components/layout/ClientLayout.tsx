@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
@@ -8,17 +8,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { useTenantTheme } from '@/hooks/use-tenant-theme';
+import { useClientProfile } from '@/hooks/use-client-profile';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FloatingHelpWidget } from '@/components/client/FloatingHelpWidget';
+import { RouteProgress } from '@/components/ui/route-progress';
 
 export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { userRole, user, profile, signOut } = useAuth();
-    const { brand_name: brandName } = useTenantConfig();
+    const { brand_name: brandName, logo_url } = useTenantConfig();
+    useTenantTheme();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
+
+    // Guard: new customers may not have a contact record yet (created async by linkReferral).
+    // useClientProfile polls every 2s while null, so this auto-resolves.
+    const { data: contact, isLoading: isContactLoading } = useClientProfile();
+    const contactPending = !isContactLoading && contact === null;
 
     const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback', user?.id],
@@ -70,6 +79,7 @@ export function ClientLayout() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+            <RouteProgress />
             <div className="fixed inset-0 pointer-events-none noise-overlay z-0 opacity-[0.012]" />
             <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
                 Skip to main content
@@ -77,19 +87,19 @@ export function ClientLayout() {
             {/* Top Bar */}
             <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/[0.06] bg-background/60 backdrop-blur-2xl px-4 justify-between shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_4px_30px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center gap-2.5 relative group cursor-pointer" role="button" tabIndex={0} onClick={() => navigate('/dashboard')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/dashboard'); } }}>
-                    <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
-                    <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] overflow-hidden flex items-center justify-center">
-                        <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-primary/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
+                    <div className="relative p-1 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_hsl(var(--primary)/0.15)] overflow-hidden flex items-center justify-center">
+                        <img src={logo_url || "/logo.png"} alt={brandName || "Logo"} className="h-6 w-6 object-contain group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     <span className="font-bold text-lg tracking-tight text-gradient-primary relative z-10">{brandName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Notification Bell */}
-                    <Button variant="ghost" size="icon" className="relative" aria-label="Notifications" onClick={() => navigate('/notifications')}>
+                    <Button variant="ghost" size="icon" className="relative" aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`} onClick={() => navigate('/notifications')}>
                         <Bell className="h-5 w-5" />
                         {unreadNotifications && unreadNotifications > 0 && (
                             <>
-                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 border-2 border-card text-[10px] font-bold text-white leading-none px-1 z-10">
+                                <span aria-live="polite" className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 border-2 border-card text-[10px] font-bold text-white leading-none px-1 z-10">
                                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                                 </span>
                                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 animate-ping opacity-75" />
@@ -108,7 +118,7 @@ export function ClientLayout() {
                         </Button>
                     )}
                     {isSalesRep && !isAdmin && (
-                        <Button variant="outline" size="sm" onClick={() => navigate('/partner')} className="border-emerald-500/20 hover:bg-emerald-500/10 hover:text-emerald-400">
+                        <Button variant="outline" size="sm" onClick={() => navigate('/partner')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                             <Briefcase className="mr-2 h-4 w-4" />
                             Partner Portal
                         </Button>
@@ -119,17 +129,30 @@ export function ClientLayout() {
             {/* Content */}
             <main id="main-content" className="flex-1 p-4 pb-24 overflow-x-hidden">
                 <ErrorBoundary>
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={location.pathname}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -8 }}
-                            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                        >
-                            <Outlet />
-                        </motion.div>
-                    </AnimatePresence>
+                    {contactPending ? (
+                        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                            <div className="relative">
+                                <div className="h-12 w-12 rounded-full border-2 border-primary/20" />
+                                <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                            </div>
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-semibold">Setting up your account...</h2>
+                                <p className="text-sm text-muted-foreground max-w-xs">We're getting everything ready for you. This usually takes just a moment.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={location.pathname}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                            >
+                                <Outlet />
+                            </motion.div>
+                        </AnimatePresence>
+                    )}
                 </ErrorBoundary>
             </main>
 
@@ -138,7 +161,7 @@ export function ClientLayout() {
 
             {/* Bottom Navigation (Mobile First) */}
             <div className="fixed bottom-0 left-0 right-0 border-t border-white/[0.06] bg-background/60 backdrop-blur-2xl shadow-[0_-1px_0_0_rgba(255,255,255,0.04)_inset,0_-4px_30px_rgba(0,0,0,0.12)] z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-                <nav className="flex justify-around items-center h-16">
+                <nav aria-label="Tab navigation" className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = item.path === '/menu'
                             ? ['/menu', '/account', '/health', '/messages', '/community', '/my-regimen', '/macro-tracker', '/body-composition', '/notifications'].includes(location.pathname)
@@ -157,7 +180,7 @@ export function ClientLayout() {
                                     {isActive && (
                                         <motion.div
                                             layoutId="nav-pill"
-                                            className="absolute inset-0 bg-primary/10 rounded-xl shadow-[0_2px_12px_rgba(16,185,129,0.25)]"
+                                            className="absolute inset-0 bg-primary/10 rounded-xl shadow-[0_2px_12px_hsl(var(--primary)/0.25)]"
                                             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                                         />
                                     )}

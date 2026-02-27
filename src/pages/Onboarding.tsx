@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
 import { invokeEdgeFunction } from '@/lib/edge-functions';
@@ -25,6 +26,7 @@ export default function Onboarding() {
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const { user, profile, refreshProfile, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { toast } = useToast();
   const linkAttempted = useRef(false);
@@ -44,6 +46,7 @@ export default function Onboarding() {
     linkReferral(user.id, email, name, ref.refId, ref.role).then(async (result) => {
       if (result.success) {
         await refreshProfile();
+        queryClient.invalidateQueries({ queryKey: ['client-profile'] });
         toast({
           title: 'Welcome!',
           description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been connected.',
@@ -201,13 +204,13 @@ export default function Onboarding() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
         </div>
 
         <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
+              <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl ring-1 ring-primary/20">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
             </div>
@@ -241,7 +244,7 @@ export default function Onboarding() {
             </div>
 
             <Button
-              className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn"
+              className="w-full bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90 shadow-btn"
               onClick={handleCreateOrg}
               disabled={!companyName.trim() || isCreatingOrg}
             >
@@ -277,13 +280,13 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
       </div>
 
       <Card className="w-full max-w-md bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
+            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl ring-1 ring-primary/20">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
           </div>
