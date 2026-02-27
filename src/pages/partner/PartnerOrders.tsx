@@ -351,7 +351,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
 
     return (
         <Sheet open={!!order} onOpenChange={(open) => { if (!open) { setEditing(false); onClose(); } }}>
-            <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
+            <SheetContent side="bottom" className="rounded-t-2xl max-h-[85dvh] overflow-y-auto">
                 <SheetHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <SheetTitle className="text-lg font-bold text-left">Order Details</SheetTitle>
@@ -372,7 +372,7 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
                         <span className="text-xs text-muted-foreground">Order ID:</span>
                         <code className="text-xs font-mono flex-1 truncate">{order.id}</code>
                         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Copy order ID" onClick={copyOrderId}>
-                            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground/50" />}
                         </Button>
                     </div>
 
@@ -399,8 +399,8 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
 
                     {/* Tracking */}
                     {order.tracking_number && (
-                        <div className="flex items-center gap-2 text-sm p-2.5 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15">
-                            <Truck className="h-4 w-4 text-emerald-500" />
+                        <div className="flex items-center gap-2 text-sm p-2.5 rounded-lg bg-primary/[0.06] border border-primary/15">
+                            <Truck className="h-4 w-4 text-primary" />
                             <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
                             <a
                                 href={getTrackingUrl(order.carrier, order.tracking_number)}
@@ -619,7 +619,7 @@ function OrderCard({ order, commission, repName, myName, onClick }: { order: Ord
                         {/* Tracking link */}
                         {order.tracking_number && (
                             <div className="flex items-center gap-2 mt-2 text-xs">
-                                <Truck className="h-3 w-3 text-emerald-500" />
+                                <Truck className="h-3 w-3 text-primary" />
                                 <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
                                 <a
                                     href={getTrackingUrl(order.carrier, order.tracking_number)}

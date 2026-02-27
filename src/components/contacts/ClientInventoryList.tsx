@@ -206,14 +206,14 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                 <Card key={peptideName} className="overflow-hidden">
                                     <div className="bg-muted/30 px-4 py-3 border-b flex justify-between items-center">
                                         <div className="flex items-center gap-2">
-                                            <FlaskConical className="h-4 w-4 text-emerald-600" />
+                                            <FlaskConical className="h-4 w-4 text-primary" />
                                             <span className="font-semibold text-sm">{peptideName}</span>
                                         </div>
                                         <div className="flex gap-3 text-xs">
                                             <div className="font-medium">
                                                 {group.items.length} vial{group.items.length !== 1 && 's'}
                                             </div>
-                                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                                                 {group.totalMg.toFixed(1)}mg Total
                                             </Badge>
                                         </div>
@@ -234,7 +234,7 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                                     {/* Visual Bar */}
                                                     <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                                                         <div
-                                                            className="h-full bg-emerald-500"
+                                                            className="h-full bg-primary"
                                                             style={{ width: `${item.vial_size_mg > 0 ? Math.min((item.current_quantity_mg / item.vial_size_mg) * 100, 100) : 0}%` }}
                                                         />
                                                     </div>
@@ -262,7 +262,7 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                                                 'Mark this vial as fully used? It will be removed from current stock.',
                                                                 () => markAsUsed.mutate(item.id)
                                                             )}>
-                                                                <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
+                                                                <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-primary" /> Mark as Used Up
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
                                                                 <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
@@ -334,7 +334,7 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                                 {items.map((item) => (
                                                     <Card key={item.id} className="relative overflow-hidden group border border-border/60 shadow-card">
-                                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-muted-foreground' : item.current_quantity_mg > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                        <div className={`absolute top-0 left-0 w-1 h-full ${item.status === 'archived' ? 'bg-muted-foreground' : item.current_quantity_mg > 0 ? 'bg-primary' : 'bg-red-500'}`} />
 
                                                         {/* Action Menu */}
                                                         {movementStatus === 'active' && (
@@ -357,7 +357,7 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                                                             'Mark this vial as fully used? It will be removed from current stock.',
                                                                             () => markAsUsed.mutate(item.id)
                                                                         )}>
-                                                                            <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Mark as Used Up
+                                                                            <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-primary" /> Mark as Used Up
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => returnToStock.mutate(item)}>
                                                                             <RefreshCcw className="mr-2 h-3.5 w-3.5" /> Return to Stock
@@ -409,7 +409,7 @@ export function ClientInventoryList({ contactId, contactName, assignedProtocols 
                                                                 <div className="text-xs text-muted-foreground text-right">
                                                                     <div>/ {item.vial_size_mg}mg size</div>
                                                                     {item.current_quantity_mg < item.vial_size_mg && (
-                                                                        <div className="text-xs text-emerald-600 font-medium">
+                                                                        <div className="text-xs text-primary font-medium">
                                                                             -{(item.vial_size_mg > 0 ? (1 - (item.current_quantity_mg / item.vial_size_mg)) * 100 : 0).toFixed(0)}% used
                                                                         </div>
                                                                     )}

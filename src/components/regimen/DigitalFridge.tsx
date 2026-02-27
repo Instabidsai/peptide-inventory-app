@@ -72,11 +72,11 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
 
     return (
         <>
-        <Card className="h-full flex flex-col border-emerald-500/20 bg-emerald-950/10">
+        <Card className="h-full flex flex-col border-primary/20 bg-primary/5/10">
             <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <div className="p-1.5 rounded-md bg-emerald-500/20 text-emerald-400">
+                        <div className="p-1.5 rounded-md bg-primary/20 text-primary">
                             <Droplets className="w-5 h-5" />
                         </div>
                         Digital Fridge
@@ -104,16 +104,16 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
 
                             return (
                                 <AccordionItem value={key} key={key} className="border-b-0 mb-2">
-                                    <AccordionTrigger className="hover:no-underline py-2 px-3 bg-emerald-900/20 rounded-t-lg data-[state=closed]:rounded-lg border border-emerald-500/10">
+                                    <AccordionTrigger className="hover:no-underline py-2 px-3 bg-primary/20/20 rounded-t-lg data-[state=closed]:rounded-lg border border-primary/10">
                                         <div className="flex items-center gap-2 text-sm">
-                                            <Folder className="h-4 w-4 text-emerald-500" />
-                                            <span className="font-medium text-emerald-100/80 capitalize">{title}</span>
-                                            <Badge variant="secondary" className="ml-2 text-[10px] h-5 px-1.5 bg-emerald-900/40 text-emerald-400 border-0">
+                                            <Folder className="h-4 w-4 text-primary" />
+                                            <span className="font-medium text-primary/80/80 capitalize">{title}</span>
+                                            <Badge variant="secondary" className="ml-2 text-[10px] h-5 px-1.5 bg-primary/20/40 text-primary border-0">
                                                 {vials.length}
                                             </Badge>
                                         </div>
                                     </AccordionTrigger>
-                                    <AccordionContent className="pt-2 px-1 pb-2 bg-black/20 rounded-b-lg border-x border-b border-emerald-500/10 space-y-2">
+                                    <AccordionContent className="pt-2 px-1 pb-2 bg-black/20 rounded-b-lg border-x border-b border-primary/10 space-y-2">
                                         {vials.map(vial => {
                                             const pct = vial.vial_size_mg > 0 ? Math.min(100, Math.max(0, (vial.current_quantity_mg / vial.vial_size_mg) * 100)) : 0;
                                             const isLow = pct < 20;
@@ -140,7 +140,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                                                                 {vial.vial_size_mg}mg Vial
                                                                 {vial.reconstituted_at ? (
-                                                                    <span className="text-emerald-400 flex items-center gap-1">
+                                                                    <span className="text-primary flex items-center gap-1">
                                                                         • {vial.water_added_ml}ml Mixed
                                                                     </span>
                                                                 ) : (
@@ -155,7 +155,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
 
                                                     <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden mb-2">
                                                         <div
-                                                            className={`h-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                                            className={`h-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-primary'}`}
                                                             style={{ width: `${pct}%` }}
                                                         />
                                                     </div>
@@ -179,7 +179,7 @@ export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute,
                                                                     : "Not Mixed"}
                                                             </span>
                                                             {vial.concentration_mg_ml && protocols && (
-                                                                <div className="text-[10px] text-emerald-500/80 font-medium">
+                                                                <div className="text-[10px] text-primary/80 font-medium">
                                                                     {(() => {
                                                                         const protocolItem = protocols.flatMap(p => p.protocol_items || []).find(i => i.peptide_id === vial.peptide_id);
                                                                         if (protocolItem) {
@@ -501,7 +501,7 @@ function ReconstituteModal({ vial, triggerText = "Prep", variant = "outline", cl
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" variant={variant} className={className || "h-6 text-[10px] px-2 h-5 border-emerald-500/50 text-emerald-600 hover:bg-emerald-50"}>
+                <Button size="sm" variant={variant} className={className || "h-6 text-[10px] px-2 h-5 border-primary/50 text-primary hover:bg-primary/10"}>
                     <Droplets className="h-3 w-3 mr-1" /> {triggerText}
                 </Button>
             </DialogTrigger>

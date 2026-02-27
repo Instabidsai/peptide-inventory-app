@@ -11,9 +11,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SortableTableHead } from '@/components/ui/table';
+import { useSortableTable } from '@/hooks/use-sortable-table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import {
     DropdownMenu,
@@ -52,7 +54,10 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { EmptyState } from '@/components/ui/empty-state';
+import { AnimatedValue } from '@/components/ui/animated-value';
 import { logger } from '@/lib/logger';
 
 const orderSchema = z.object({
@@ -138,6 +143,22 @@ export default function Orders() {
         o.peptides?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.tracking_number?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const orderSortAccessors = {
+        peptide: (o: Order) => o.peptides?.name?.toLowerCase() ?? '',
+        qty: (o: Order) => o.quantity_ordered ?? 0,
+        cost: (o: Order) => (o.estimated_cost_per_unit ?? 0) * (o.quantity_ordered ?? 0),
+        orderDate: (o: Order) => o.order_date ? new Date(o.order_date).getTime() : 0,
+        expected: (o: Order) => o.expected_arrival_date ? new Date(o.expected_arrival_date).getTime() : 0,
+        supplier: (o: Order) => o.supplier?.toLowerCase() ?? '',
+        status: (o: Order) => o.status ?? '',
+        payment: (o: Order) => o.payment_status ?? '',
+    } as const;
+
+    const { sortedData: sortedOrders, sortState: orderSortState, requestSort: requestOrderSort } = useSortableTable(
+        filteredOrders,
+        orderSortAccessors,
     );
 
     const handleCreate = async (data: OrderFormData) => {
@@ -291,10 +312,33 @@ export default function Orders() {
 
     return (
         <div className="space-y-6">
+            <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="space-y-2"
+            >
+            <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+                <span>/</span>
+                <span className="text-foreground font-medium">Orders</span>
+            </nav>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-                    <p className="text-muted-foreground">Track pending inventory orders</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                        <ClipboardList className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+                            {filteredOrders && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">
+                                    {filteredOrders.length} total
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-muted-foreground text-sm">Track pending inventory orders</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     {filteredOrders && filteredOrders.length > 0 && (
@@ -450,51 +494,58 @@ export default function Orders() {
                 )}
                 </div>
             </div>
+            </motion.div>
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-card border-border/60">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}>
+                <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-amber-500/10">
+                            <div className="p-2.5 rounded-xl bg-amber-500/15">
                                 <Clock className="h-5 w-5 text-amber-500" />
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Pending Orders</p>
-                                <p className="text-2xl font-bold">{pendingOrders.length}</p>
+                                <p className="text-2xl font-bold"><AnimatedValue value={pendingOrders.length} /></p>
                                 <p className="text-xs text-muted-foreground">${pendingValue.toFixed(2)} est. value</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card border-border/60">
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}>
+                <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-500/10">
+                            <div className="p-2.5 rounded-xl bg-green-500/15">
                                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Received</p>
-                                <p className="text-2xl font-bold">{receivedOrders.length}</p>
+                                <p className="text-2xl font-bold"><AnimatedValue value={receivedOrders.length} /></p>
                                 <p className="text-xs text-muted-foreground">of {(filteredOrders || []).length} total orders</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card border-border/60">
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}>
+                <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/10">
+                            <div className="p-2.5 rounded-xl bg-blue-500/15">
                                 <DollarSign className="h-5 w-5 text-blue-500" />
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Paid</p>
-                                <p className="text-2xl font-bold">${totalSpent.toFixed(2)}</p>
+                                <p className="text-2xl font-bold">$<AnimatedValue value={totalSpent} decimals={2} /></p>
                                 <p className="text-xs text-muted-foreground">across all orders</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
+                </motion.div>
             </div>
 
             <Card className="bg-card border-border/60">
@@ -528,36 +579,38 @@ export default function Orders() {
                     {isError ? (
                         <QueryError message="Failed to load orders." onRetry={() => refetch()} />
                     ) : isLoading ? (
-                        <div className="space-y-3">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <Skeleton key={i} className="h-12 w-full" />
-                            ))}
-                        </div>
+                        <TableSkeleton rows={5} columns={5} />
                     ) : filteredOrders?.length === 0 ? (
-                        <div className="text-center py-12">
-                            <ClipboardList className="mx-auto h-12 w-12 mb-4 opacity-30" />
-                            <p className="text-lg font-semibold text-muted-foreground">No orders found</p>
-                            <p className="text-sm text-muted-foreground/70">Create your first order to start tracking</p>
-                        </div>
+                        <EmptyState
+                            icon={ClipboardList}
+                            title="No orders found"
+                            description="Create your first order to start tracking inventory"
+                        />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto" role="region" aria-label="Orders table" tabIndex={0}>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="sticky left-0 z-20 bg-background">Peptide</TableHead>
-                                        <TableHead>Qty</TableHead>
-                                        <TableHead>Est. Cost</TableHead>
-                                        <TableHead>Order Date</TableHead>
-                                        <TableHead>Expected</TableHead>
-                                        <TableHead>Supplier</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Payment</TableHead>
+                                        <SortableTableHead columnKey="peptide" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort} className="sticky left-0 z-20 bg-background">Peptide</SortableTableHead>
+                                        <SortableTableHead columnKey="qty" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Qty</SortableTableHead>
+                                        <SortableTableHead columnKey="cost" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Est. Cost</SortableTableHead>
+                                        <SortableTableHead columnKey="orderDate" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Order Date</SortableTableHead>
+                                        <SortableTableHead columnKey="expected" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Expected</SortableTableHead>
+                                        <SortableTableHead columnKey="supplier" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Supplier</SortableTableHead>
+                                        <SortableTableHead columnKey="status" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Status</SortableTableHead>
+                                        <SortableTableHead columnKey="payment" activeColumn={orderSortState.column} direction={orderSortState.direction} onSort={requestOrderSort}>Payment</SortableTableHead>
                                         {canEdit && <TableHead className="w-[70px]"></TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredOrders?.map((order) => (
-                                        <TableRow key={order.id}>
+                                    {sortedOrders?.map((order, index) => (
+                                        <motion.tr
+                                            key={order.id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }}
+                                            className="border-b transition-colors hover:bg-muted/50"
+                                        >
                                             <TableCell className="font-medium sticky left-0 z-10 bg-background">
                                                 {order.peptides?.name || '-'}
                                             </TableCell>
@@ -635,7 +688,7 @@ export default function Orders() {
                                                     </DropdownMenu>
                                                 </TableCell>
                                             )}
-                                        </TableRow>
+                                        </motion.tr>
                                     ))}
                                 </TableBody>
                             </Table>

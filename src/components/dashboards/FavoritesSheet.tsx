@@ -161,7 +161,7 @@ export function FavoritesSheet({ onSelect }: FavoritesSheetProps) {
                         </Button>
                     </div>
                 </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px] flex flex-col h-full bg-card/95 backdrop-blur-xl">
+                <SheetContent className="w-full sm:w-[400px] md:w-[540px] flex flex-col h-full bg-card/95 backdrop-blur-xl">
                     <SheetHeader>
                         <SheetTitle className="flex items-center gap-2">
                             <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />

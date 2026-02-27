@@ -188,7 +188,7 @@ export function AiDemoChat({
   const showBuildPreview = buildPreview && buildPhaseForPreview >= 0 && !showResult;
 
   return (
-    <div className="relative rounded-xl bg-card/80 backdrop-blur-md shadow-card overflow-hidden" style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--border) / 0.4) 40%, hsl(142 76% 36% / 0.3))" }}>
+    <div className="relative rounded-xl bg-card/80 backdrop-blur-md shadow-card overflow-hidden" style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.3), hsl(var(--border) / 0.4) 40%, hsl(var(--primary) / 0.2))" }}>
       <div className="rounded-[11px] bg-card/95 overflow-hidden">
       {/* Terminal header */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-background/60">
@@ -202,10 +202,10 @@ export function AiDemoChat({
         </span>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
-          <span className="text-[10px] text-emerald-400 font-mono">LIVE</span>
+          <span className="text-[10px] text-primary font-mono">LIVE</span>
         </div>
       </div>
 
@@ -224,7 +224,7 @@ export function AiDemoChat({
                 className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   msg.role === "user"
                     ? "bg-primary/20 text-primary"
-                    : "bg-emerald-500/20 text-emerald-400"
+                    : "bg-primary/20 text-primary"
                 }`}
               >
                 {msg.role === "user" ? (
@@ -237,7 +237,7 @@ export function AiDemoChat({
                 className={`text-sm leading-relaxed pt-1 ${
                   msg.role === "user"
                     ? "text-foreground"
-                    : "text-emerald-300/90"
+                    : "text-primary/90"
                 }`}
               >
                 {msg.text}
@@ -257,7 +257,7 @@ export function AiDemoChat({
                 className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                   messages[currentIndex].role === "user"
                     ? "bg-primary/20 text-primary"
-                    : "bg-emerald-500/20 text-emerald-400"
+                    : "bg-primary/20 text-primary"
                 }`}
               >
                 {messages[currentIndex].role === "user" ? (
@@ -270,7 +270,7 @@ export function AiDemoChat({
                 className={`text-sm leading-relaxed pt-1 ${
                   messages[currentIndex].role === "user"
                     ? "text-foreground"
-                    : "text-emerald-300/90"
+                    : "text-primary/90"
                 }`}
               >
                 {typedText}
@@ -288,7 +288,7 @@ export function AiDemoChat({
               exit={{ opacity: 0 }}
               className="flex gap-2.5"
             >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
                 <Bot className="w-3.5 h-3.5" />
               </div>
               <div className="flex-1 space-y-1.5 pt-1">
@@ -304,10 +304,10 @@ export function AiDemoChat({
                     className="flex items-center gap-2 text-xs"
                   >
                     {i < buildStep ? (
-                      <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <Check className="w-3 h-3 text-primary shrink-0" />
                     ) : i === buildStep ? (
                       <motion.div
-                        className="w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent shrink-0"
+                        className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent shrink-0"
                         animate={{ rotate: 360 }}
                         transition={{
                           duration: 1,
@@ -321,7 +321,7 @@ export function AiDemoChat({
                     <span
                       className={
                         i <= buildStep
-                          ? "text-emerald-300/90"
+                          ? "text-primary/90"
                           : "text-muted-foreground/50"
                       }
                     >
@@ -342,14 +342,14 @@ export function AiDemoChat({
               exit={{ opacity: 0 }}
               className="flex gap-2.5"
             >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
                 <Bot className="w-3.5 h-3.5" />
               </div>
               <div className="flex gap-1 pt-2.5">
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-emerald-400/70"
+                    className="w-1.5 h-1.5 rounded-full bg-primary/70"
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{
                       duration: 1,
@@ -374,15 +374,15 @@ export function AiDemoChat({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="border-t border-emerald-500/30 overflow-hidden bg-gradient-to-b from-emerald-500/[0.03] to-transparent"
+            className="border-t border-primary/30 overflow-hidden bg-gradient-to-b from-primary/[0.03] to-transparent"
           >
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                 </span>
-                <span className="text-[11px] font-mono text-emerald-400 uppercase tracking-wider font-medium">
+                <span className="text-[11px] font-mono text-primary uppercase tracking-wider font-medium">
                   Live Preview — Step {buildPhaseForPreview + 1} of {buildSteps?.length ?? 0}
                 </span>
               </div>
@@ -398,12 +398,12 @@ export function AiDemoChat({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="border-t border-emerald-500/20 overflow-hidden"
+            className="border-t border-primary/20 overflow-hidden"
           >
             <div className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] font-mono text-emerald-400/80 uppercase tracking-wider">Built & Deployed</span>
+                <Check className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[11px] font-mono text-primary/80 uppercase tracking-wider">Built & Deployed</span>
               </div>
               {resultElement}
             </div>

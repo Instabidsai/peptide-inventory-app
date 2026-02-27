@@ -1,5 +1,13 @@
 import "@testing-library/jest-dom";
 
+// Polyfill requestIdleCallback for jsdom (used by CrmLanding deferred render)
+if (typeof globalThis.requestIdleCallback === 'undefined') {
+  (globalThis as any).requestIdleCallback = (cb: (deadline: IdleDeadline) => void) => {
+    return setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 } as IdleDeadline), 0);
+  };
+  (globalThis as any).cancelIdleCallback = (id: number) => clearTimeout(id);
+}
+
 // Polyfill IntersectionObserver for jsdom (used by landing page Nav, recharts, etc.)
 if (typeof globalThis.IntersectionObserver === 'undefined') {
   globalThis.IntersectionObserver = class IntersectionObserver {

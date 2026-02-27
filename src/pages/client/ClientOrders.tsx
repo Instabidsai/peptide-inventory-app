@@ -181,7 +181,7 @@ export default function ClientOrders() {
                                         <div className="mt-2 pt-2 border-t space-y-1">
                                             {order.tracking_number && (
                                                 <div className="flex items-center gap-2 text-xs">
-                                                    <Truck className="h-3 w-3 text-emerald-500" />
+                                                    <Truck className="h-3 w-3 text-primary" />
                                                     <span className="text-muted-foreground">{order.carrier || 'Carrier'}:</span>
                                                     <a
                                                         href={getTrackingUrl(order.carrier, order.tracking_number)}

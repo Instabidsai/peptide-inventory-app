@@ -3,7 +3,8 @@ import { useSalesOrders, useUpdateSalesOrder, useFulfillOrder, useGetShippingRat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Card, CardContent } from '@/components/ui/card';
@@ -411,7 +412,19 @@ export default function FulfillmentCenter() {
     if (isLoading) {
         return (
             <div className="space-y-6">
-                <h1 className="text-3xl font-bold tracking-tight">Fulfillment Center</h1>
+                <div className="space-y-2">
+                    <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+                        <span>/</span>
+                        <span className="text-foreground font-medium">Fulfillment</span>
+                    </nav>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                            <Package className="h-5 w-5 text-primary" />
+                        </div>
+                        <h1 className="text-2xl font-bold tracking-tight">Fulfillment Center</h1>
+                    </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[1, 2, 3].map(i => (
                         <Card key={i}><CardContent className="p-6"><div className="h-20 animate-pulse bg-muted rounded" /></CardContent></Card>
@@ -423,10 +436,26 @@ export default function FulfillmentCenter() {
 
     return (
         <div className="space-y-6">
+            <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="space-y-2"
+            >
+            <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+                <span>/</span>
+                <span className="text-foreground font-medium">Fulfillment</span>
+            </nav>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Fulfillment Center</h1>
-                    <p className="text-muted-foreground">Pick, pack, and ship orders.</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                        <Package className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Fulfillment Center</h1>
+                        <p className="text-muted-foreground text-sm">Pick, pack, and ship orders.</p>
+                    </div>
                 </div>
                 <Select value={fulfillmentFilter} onValueChange={setFulfillmentFilter}>
                     <SelectTrigger className="w-[180px]">
@@ -439,6 +468,7 @@ export default function FulfillmentCenter() {
                     </SelectContent>
                 </Select>
             </div>
+            </motion.div>
 
             <HoursLoggingCard
                 todayHours={todayHours}

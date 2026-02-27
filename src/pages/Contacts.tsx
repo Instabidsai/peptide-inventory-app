@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     useContacts,
     useCreateContact,
@@ -20,14 +20,17 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SortableTableHead } from '@/components/ui/table';
+import { useSortableTable } from '@/hooks/use-sortable-table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { QueryError } from '@/components/ui/query-error';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download, Star } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -117,6 +120,22 @@ export default function Contacts() {
 
     return matchesSearch && matchesRep && matchesSource;
   });
+
+  const contactSortAccessors = {
+    name: (c: Contact) => c.name?.toLowerCase(),
+    type: (c: Contact) => c.type,
+    source: (c: Contact) => c.source?.toLowerCase() ?? '',
+    rep: (c: Contact) => c.assigned_rep?.full_name?.toLowerCase() ?? '',
+    email: (c: Contact) => c.email?.toLowerCase() ?? '',
+    orders: (c: Contact) => c.order_count ?? 0,
+    lastOrder: (c: Contact) => c.last_order_date ? new Date(c.last_order_date).getTime() : 0,
+    company: (c: Contact) => c.company?.toLowerCase() ?? '',
+  } as const;
+
+  const { sortedData: sortedContacts, sortState: contactSortState, requestSort: requestContactSort } = useSortableTable(
+    filteredContacts,
+    contactSortAccessors,
+  );
 
   const handleCreate = async (data: ContactFormData) => {
     // For sales_rep: always customer type, auto-assign to self
@@ -227,18 +246,41 @@ export default function Contacts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-          <p className="text-muted-foreground">Manage customers and partners</p>
-        </div>
-        <div className="flex gap-2">
-          {filteredContacts && filteredContacts.length > 0 && (
-            <Button variant="outline" onClick={exportContactsCSV}>
-              <Download className="mr-2 h-4 w-4" /> Export CSV
-            </Button>
-          )}
-        {canEdit && (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="space-y-2"
+      >
+        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <span>/</span>
+          <span className="text-foreground font-medium">Customers</span>
+        </nav>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+                {filteredContacts && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">
+                    {filteredContacts.length} total
+                  </span>
+                )}
+              </div>
+              <p className="text-muted-foreground text-sm">Manage customers and partners</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {filteredContacts && filteredContacts.length > 0 && (
+              <Button variant="outline" onClick={exportContactsCSV}>
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+            )}
+          {canEdit && (
           <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) form.reset(); }}>
             <DialogTrigger asChild>
               <Button>
@@ -399,6 +441,7 @@ export default function Contacts() {
         )}
         </div>
       </div>
+      </motion.div>
 
       <Card className="bg-card border-border/60">
         <CardHeader>
@@ -468,20 +511,16 @@ export default function Contacts() {
           {isError ? (
             <QueryError message="Failed to load customers." onRetry={() => refetch()} />
           ) : isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
+            <TableSkeleton rows={5} columns={3} />
           ) : filteredContacts?.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="mx-auto h-12 w-12 mb-4 opacity-30" />
-              <p className="text-lg font-semibold text-muted-foreground">No customers found</p>
-              <p className="text-sm text-muted-foreground/70">Add your first customer or partner</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No customers found"
+              description="Add your first customer or partner to get started"
+            />
           ) : isMobile ? (
             <div className="space-y-3">
-              {filteredContacts?.map((contact, index) => (
+              {sortedContacts?.map((contact, index) => (
                 <motion.div
                   key={contact.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -521,23 +560,24 @@ export default function Contacts() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto" role="region" aria-label="Contacts table" tabIndex={0}>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 z-20 bg-background min-w-[150px]">Name</TableHead>
+                  <SortableTableHead columnKey="name" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort} className="sticky left-0 z-20 bg-background min-w-[150px]">Name</SortableTableHead>
                   <TableHead className="sticky left-[150px] z-20 bg-background text-right">Actions</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Assigned Rep</TableHead>
-                  <TableHead>Email</TableHead>
+                  <SortableTableHead columnKey="type" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Type</SortableTableHead>
+                  <SortableTableHead columnKey="source" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Source</SortableTableHead>
+                  <SortableTableHead columnKey="rep" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Assigned Rep</SortableTableHead>
+                  <SortableTableHead columnKey="email" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Email</SortableTableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Orders</TableHead>
-                  <TableHead>Last Order</TableHead>
-                  <TableHead>Company</TableHead>
+                  <SortableTableHead columnKey="orders" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Orders</SortableTableHead>
+                  <SortableTableHead columnKey="lastOrder" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Last Order</SortableTableHead>
+                  <SortableTableHead columnKey="company" activeColumn={contactSortState.column} direction={contactSortState.direction} onSort={requestContactSort}>Company</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredContacts?.map((contact, index) => (
+                {sortedContacts?.map((contact, index) => (
                   <motion.tr
                     key={contact.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -643,6 +683,7 @@ export default function Contacts() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

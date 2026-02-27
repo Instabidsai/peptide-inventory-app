@@ -101,7 +101,7 @@ export function Nav() {
                 localStorage.setItem("selected_plan", "professional");
                 navigate("/get-started");
               }}
-              className="bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-sm"
+              className="bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90 shadow-sm"
             >
               Get Started
               <ArrowRight className="w-3.5 h-3.5 ml-1" />

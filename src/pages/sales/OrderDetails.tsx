@@ -924,7 +924,7 @@ export default function OrderDetails() {
                                     order.shipping_status === 'label_created' ? 'bg-blue-900/20 text-blue-400 border-blue-500/40' :
                                     order.shipping_status === 'printed' ? 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40' :
                                     order.shipping_status === 'in_transit' ? 'bg-amber-900/20 text-amber-400 border-amber-500/40' :
-                                    order.shipping_status === 'delivered' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-500/40' :
+                                    order.shipping_status === 'delivered' ? 'bg-primary/20 text-primary border-primary/40' :
                                     order.shipping_status === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/40' :
                                     ''
                                 }>
@@ -1044,7 +1044,7 @@ export default function OrderDetails() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full border-emerald-500/40 text-emerald-400"
+                                    className="w-full border-primary/40 text-primary"
                                     disabled={updateOrder.isPending}
                                     onClick={() => {
                                         updateOrder.mutate(

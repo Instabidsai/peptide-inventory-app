@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -10,9 +10,11 @@ import {
   Check,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AiDemoChat } from "@/components/crm/AiDemoChat";
-import { LiveBuildPreview, type BuildPreviewVariant } from "@/components/crm/LiveBuildPreview";
+import type { BuildPreviewVariant } from "@/components/crm/LiveBuildPreview";
 import { fadeInUp } from "./constants";
+
+const AiDemoChat = lazy(() => import("@/components/crm/AiDemoChat").then(m => ({ default: m.AiDemoChat })));
+const LiveBuildPreview = lazy(() => import("@/components/crm/LiveBuildPreview").then(m => ({ default: m.LiveBuildPreview })));
 
 export function AiShowcase() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -216,7 +218,7 @@ export function AiShowcase() {
         <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium">Order #4521</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
               Fulfilled
             </span>
           </div>
@@ -242,7 +244,7 @@ export function AiShowcase() {
                 key={s.step}
                 className="flex items-center gap-2 text-[10px]"
               >
-                <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                <Check className="w-3 h-3 text-primary shrink-0" />
                 <span className="text-foreground">{s.step}</span>
                 <span className="text-muted-foreground">— {s.detail}</span>
               </div>
@@ -294,7 +296,7 @@ export function AiShowcase() {
             <span className="text-xs font-medium text-yellow-300">
               Reorder Alert
             </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 ml-auto">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary ml-auto">
               24 SKUs monitored
             </span>
           </div>
@@ -381,13 +383,13 @@ export function AiShowcase() {
             ))}
           </div>
           <div className="flex gap-2 text-[9px]">
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               Form ready
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               List view ready
             </span>
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               In sidebar
             </span>
           </div>
@@ -436,7 +438,7 @@ export function AiShowcase() {
             <span className="text-xs font-medium">
               Compliance Report — {new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })}
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+            <span className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary">
               Passed
             </span>
           </div>
@@ -451,7 +453,7 @@ export function AiShowcase() {
                 className="bg-card/80 rounded p-1.5 border border-border/30"
               >
                 <p
-                  className={`text-sm font-bold ${s.ok ? "text-emerald-400" : "text-yellow-400"}`}
+                  className={`text-sm font-bold ${s.ok ? "text-primary" : "text-yellow-400"}`}
                 >
                   {s.value}
                 </p>
@@ -521,19 +523,25 @@ export function AiShowcase() {
               ))}
             </TabsList>
             <div className="min-h-[520px]">
-              {Object.entries(demos).map(([key, demo]) => (
-                <TabsContent key={key} value={key}>
-                  <div className="max-w-2xl mx-auto">
-                    <AiDemoChat
-                      messages={demo.messages}
-                      resultElement={demo.result}
-                      buildSteps={demo.buildSteps}
-                      buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
-                      onComplete={handleDemoComplete}
-                    />
-                  </div>
-                </TabsContent>
-              ))}
+              {(() => {
+                const demo = demos[activeTab];
+                if (!demo) return null;
+                return (
+                  <TabsContent key={activeTab} value={activeTab} forceMount>
+                    <div className="max-w-2xl mx-auto">
+                      <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
+                        <AiDemoChat
+                          messages={demo.messages}
+                          resultElement={demo.result}
+                          buildSteps={demo.buildSteps}
+                          buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
+                          onComplete={handleDemoComplete}
+                        />
+                      </Suspense>
+                    </div>
+                  </TabsContent>
+                );
+              })()}
             </div>
           </Tabs>
         </motion.div>

@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 function StatusDot({ status }: { status: "pass" | "fail" | "operational" | "degraded" | "outage" }) {
   const color =
     status === "pass" || status === "operational"
-      ? "bg-emerald-500"
+      ? "bg-primary"
       : status === "degraded"
         ? "bg-amber-500"
         : "bg-red-500";
@@ -130,7 +130,7 @@ export default function StatusPage() {
 
   const overallColor =
     summary?.overall === "operational"
-      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+      ? "bg-primary/10 border-primary/30 text-primary"
       : summary?.overall === "degraded"
         ? "bg-amber-50 border-amber-200 text-amber-800"
         : "bg-red-50 border-red-200 text-red-800";
@@ -158,13 +158,13 @@ export default function StatusPage() {
             <div className="bg-white rounded-lg border p-4 mb-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">24-Hour Uptime</span>
-                <span className={`text-lg font-bold ${summary.uptime_pct >= 99 ? "text-emerald-600" : summary.uptime_pct >= 95 ? "text-amber-600" : "text-red-600"}`}>
+                <span className={`text-lg font-bold ${summary.uptime_pct >= 99 ? "text-primary" : summary.uptime_pct >= 95 ? "text-amber-600" : "text-red-600"}`}>
                   {summary.uptime_pct}%
                 </span>
               </div>
               <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${summary.uptime_pct >= 99 ? "bg-emerald-500" : summary.uptime_pct >= 95 ? "bg-amber-500" : "bg-red-500"}`}
+                  className={`h-full rounded-full transition-all ${summary.uptime_pct >= 99 ? "bg-primary" : summary.uptime_pct >= 95 ? "bg-amber-500" : "bg-red-500"}`}
                   style={{ width: `${Math.min(100, summary.uptime_pct)}%` }}
                 />
               </div>
@@ -182,7 +182,7 @@ export default function StatusPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">{c.count} checks</span>
                       <StatusDot status={c.status} />
-                      <span className={`text-xs font-medium ${c.status === "pass" ? "text-emerald-600" : "text-red-600"}`}>
+                      <span className={`text-xs font-medium ${c.status === "pass" ? "text-primary" : "text-red-600"}`}>
                         {c.status === "pass" ? "Operational" : "Issue Detected"}
                       </span>
                     </div>

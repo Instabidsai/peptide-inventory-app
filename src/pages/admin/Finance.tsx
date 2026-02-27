@@ -488,7 +488,7 @@ export default function Finance() {
                                             formatter={(value: number) => [`$${value.toFixed(2)}`, 'Total']}
                                             contentStyle={{ background: 'hsl(222 47% 8%)', border: '1px solid hsl(217 33% 17%)', borderRadius: '8px', color: 'hsl(210 40% 98%)' }}
                                         />
-                                        <Bar dataKey="total" fill="hsl(160 84% 39%)" radius={[4, 4, 0, 0]} barSize={32} />
+                                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={32} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -714,7 +714,7 @@ export default function Finance() {
                             </DialogContent>
                         </Dialog>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -796,7 +796,7 @@ export default function Finance() {
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>

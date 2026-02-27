@@ -286,21 +286,30 @@ export function generateProtocolHtml({ items, clientName, orgName = 'Peptide Adm
                 </div>`;
         }
 
-        // Supplement notes
+        // Supplement notes — product cards with images
         if (item.supplements.length > 0 && inc.supplements) {
+            sections += `<div style="margin:12px 0 4px;"><p style="margin:0;color:#1E40AF;font-size:14px;font-weight:700;">💊 Recommended Supplements</p></div>`;
             for (const supp of item.supplements) {
-                let suppHtml = `<div style="margin:10px 0;padding:10px 14px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:4px;">`;
-                suppHtml += `<p style="margin:0 0 4px;color:#1E40AF;font-size:13px;"><strong>\uD83D\uDC8A Supplement Note:</strong> ${escapeHtml(supp.reason)}</p>`;
-                suppHtml += `<p style="margin:0;color:#1E40AF;font-size:13px;"><strong>Dosage:</strong> ${escapeHtml(supp.dosage)}</p>`;
-                if (supp.productName) {
-                    suppHtml += `<p style="margin:2px 0 0;color:#1E40AF;font-size:13px;"><strong>Recommended Product:</strong> ${escapeHtml(supp.productName)}`;
-                    if (supp.productLink) {
-                        suppHtml += ` (<a href="${escapeHtml(supp.productLink)}" style="color:#2563EB;text-decoration:underline;" target="_blank">Amazon Link</a>)`;
-                    }
-                    suppHtml += `</p>`;
+                const hasImage = !!supp.imageUrl;
+                const hasProduct = !!supp.productName;
+                sections += `<div style="margin:8px 0;padding:12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;display:flex;">`;
+                // Table layout for email client compatibility
+                sections += `<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>`;
+                if (hasImage) {
+                    sections += `<td style="width:70px;vertical-align:top;padding-right:12px;">`;
+                    sections += `<img src="${escapeHtml(supp.imageUrl!)}" alt="${escapeHtml(supp.name)}" width="64" height="64" style="border-radius:6px;object-fit:contain;background:#fff;border:1px solid #E5E7EB;" />`;
+                    sections += `</td>`;
                 }
-                suppHtml += `</div>`;
-                sections += suppHtml;
+                sections += `<td style="vertical-align:top;">`;
+                if (hasProduct) {
+                    sections += `<p style="margin:0 0 3px;color:#1E3A5F;font-size:14px;font-weight:600;">${escapeHtml(supp.productName!)}</p>`;
+                }
+                sections += `<p style="margin:0 0 3px;color:#1E40AF;font-size:12px;">${escapeHtml(supp.reason)}</p>`;
+                sections += `<p style="margin:0 0 3px;color:#1E40AF;font-size:12px;"><strong>Dosage:</strong> ${escapeHtml(supp.dosage)}</p>`;
+                if (supp.productLink) {
+                    sections += `<a href="${escapeHtml(supp.productLink)}" style="display:inline-block;margin-top:4px;padding:5px 14px;background:#2563EB;color:#ffffff;font-size:12px;font-weight:600;text-decoration:none;border-radius:4px;" target="_blank">View on Amazon →</a>`;
+                }
+                sections += `</td></tr></table></div>`;
             }
         }
 

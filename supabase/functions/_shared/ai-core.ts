@@ -846,12 +846,14 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     { data: stockBottles },
     { data: recentContacts },
     { data: recentOrders },
+    { data: onboardingMessages },
   ] = await Promise.all([
     supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", orgId).order("name"),
     supabase.from("lots").select("peptide_id, cost_per_unit, quantity_received").eq("org_id", orgId),
     supabase.from("bottles").select("lot_id, lots!inner(peptide_id, org_id)").eq("status", "in_stock").eq("lots.org_id", orgId),
     supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
     supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("onboarding_messages").select("role, content, created_at").eq("org_id", orgId).order("created_at", { ascending: true }).limit(20),
   ]);
 
   const stockMap: Record<string, number> = {};
@@ -881,10 +883,21 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     return "#" + o.id.slice(0, 8) + " | " + (o.contacts?.name || "?") + " | " + o.status + "/" + o.payment_status + " | $" + Number(o.total_amount).toFixed(2) + " | " + items + " | " + new Date(o.created_at).toLocaleDateString() + " | ID: " + o.id;
   });
 
-  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n");
+  // Build onboarding history summary so admin AI has full continuity
+  let onboardingSection = "";
+  if (onboardingMessages && onboardingMessages.length > 0) {
+    const onboardingLines = onboardingMessages.map((m: any) =>
+      (m.role === "user" ? "MERCHANT" : "SETUP AI") + ": " + (m.content.length > 300 ? m.content.slice(0, 300) + "..." : m.content)
+    );
+    onboardingSection = "\n\nONBOARDING HISTORY (Setup Assistant conversation — this is what the merchant told us during initial setup):\n" + onboardingLines.join("\n");
+  }
+
+  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
 }
 
 // ── GPT-4o tool-calling loop ─────────────────────────────────
+import { loadComposioTools, executeComposioTool, isComposioTool, getComposioSystemPromptSection } from "./composio-tools.ts";
+
 export async function runAILoop(opts: {
   supabase: any;
   orgId: string;
@@ -896,10 +909,28 @@ export async function runAILoop(opts: {
   maxLoops?: number;
 }): Promise<string> {
   const { supabase, orgId, userId, userRole, systemPrompt, dynamicContext, chatHistory, maxLoops = 8 } = opts;
-  const activeTools = (userRole === "admin" || userRole === "super_admin") ? tools : tools.filter(t => STAFF_ALLOWED_TOOLS.has(t.function.name));
+  const baseTools = (userRole === "admin" || userRole === "super_admin") ? tools : tools.filter(t => STAFF_ALLOWED_TOOLS.has(t.function.name));
+
+  // Dynamically load Composio tools based on connected services (admin/super_admin only)
+  let composioConnectionMap = new Map<string, string>();
+  let composioPromptSection = "";
+  let activeTools = [...baseTools];
+
+  if (userRole === "admin" || userRole === "super_admin") {
+    try {
+      const composio = await loadComposioTools(supabase, orgId);
+      if (composio.tools.length > 0) {
+        activeTools = [...baseTools, ...composio.tools];
+        composioConnectionMap = composio.connectionMap;
+        composioPromptSection = getComposioSystemPromptSection(composio.serviceList);
+      }
+    } catch (err) {
+      console.error("[runAILoop] Composio tools load error:", (err as Error).message);
+    }
+  }
 
   const messages: any[] = [
-    { role: "system", content: systemPrompt + dynamicContext },
+    { role: "system", content: systemPrompt + dynamicContext + composioPromptSection },
     ...chatHistory.map((m) => ({ role: m.role, content: m.content })),
   ];
 
@@ -926,7 +957,20 @@ export async function runAILoop(opts: {
       for (const tc of choice.message.tool_calls) {
         const tcArgs = JSON.parse(tc.function.arguments);
         const startMs = Date.now();
-        const result = await executeTool(tc.function.name, tcArgs, supabase, orgId, userId, userRole);
+
+        // Route to Composio executor or local executor
+        let result: string;
+        if (isComposioTool(tc.function.name)) {
+          const connectionId = composioConnectionMap.get(tc.function.name);
+          if (!connectionId) {
+            result = `Error: No active connection found for ${tc.function.name}. Please connect the service in Settings > Integrations first.`;
+          } else {
+            result = await executeComposioTool(tc.function.name, tcArgs, connectionId);
+          }
+        } else {
+          result = await executeTool(tc.function.name, tcArgs, supabase, orgId, userId, userRole);
+        }
+
         const durationMs = Date.now() - startMs;
         const hasError = result.startsWith("Error:") || result.startsWith("Tool error") || result.includes("failed");
         await logToolCall(supabase, userId, tc.function.name, tcArgs, result, hasError ? result : null, durationMs);

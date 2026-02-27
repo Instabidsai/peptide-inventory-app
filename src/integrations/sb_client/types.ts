@@ -121,6 +121,7 @@ export type Database = {
           notes: string | null
           org_id: string
           phone: string | null
+          preferred_contact_method: string | null
           tier: string | null
           type: Database["public"]["Enums"]["contact_type"]
           updated_at: string
@@ -136,6 +137,7 @@ export type Database = {
           notes?: string | null
           org_id: string
           phone?: string | null
+          preferred_contact_method?: string | null
           tier?: string | null
           type?: Database["public"]["Enums"]["contact_type"]
           updated_at?: string
@@ -151,6 +153,7 @@ export type Database = {
           notes?: string | null
           org_id?: string
           phone?: string | null
+          preferred_contact_method?: string | null
           tier?: string | null
           type?: Database["public"]["Enums"]["contact_type"]
           updated_at?: string

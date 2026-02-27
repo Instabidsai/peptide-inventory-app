@@ -308,7 +308,7 @@ export default function Reps() {
                                 <Users className="h-5 w-5" /> Active Partners
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -670,7 +670,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                 variant="outline"
                 size="sm"
                 className={isCopied
-                    ? 'border-emerald-500/30 text-emerald-400 min-w-[140px]'
+                    ? 'border-primary/30 text-primary min-w-[140px]'
                     : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300 min-w-[140px]'
                 }
                 onClick={() => handleCopy(url, copyKey)}

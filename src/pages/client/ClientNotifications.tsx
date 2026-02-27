@@ -67,7 +67,7 @@ export default function ClientNotifications() {
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'success': return <CheckCircle className="h-5 w-5 text-emerald-500" />;
+            case 'success': return <CheckCircle className="h-5 w-5 text-primary" />;
             case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
             case 'error': return <XCircle className="h-5 w-5 text-red-500" />;
             default: return <Info className="h-5 w-5 text-blue-500" />;

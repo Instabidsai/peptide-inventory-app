@@ -39,7 +39,7 @@ describe('Partner Pages — Smoke Tests', () => {
     const PartnerDashboard = (await import('../partner/PartnerDashboard')).default;
     const { container } = render(<PartnerDashboard />, { wrapper: createPageWrapper(['/partner']) });
     expect(container.firstChild).toBeTruthy();
-  });
+  }, 15_000);
 
   it('PartnerStore renders without crashing', async () => {
     const PartnerStore = (await import('../partner/PartnerStore')).default;

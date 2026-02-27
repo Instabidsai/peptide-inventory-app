@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useContact } from '@/hooks/use-contacts';
 import { useProtocols } from '@/hooks/use-protocols';
 import { usePeptides } from '@/hooks/use-peptides';
@@ -6,6 +7,15 @@ import { useMovements } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calculator, FlaskConical, ShoppingCart } from 'lucide-react';
+
+const staggerContainer = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.06 } },
+};
+const staggerItem = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] } },
+};
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
@@ -159,10 +169,17 @@ export default function ContactDetails() {
     if (!contact) return <div className="p-8">Customer not found</div>;
 
     return (
-        <div className="space-y-6">
+        <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+        >
+            <motion.div variants={staggerItem}>
             <ContactDetailsHeader contact={contact} orderStats={orderStats} />
+            </motion.div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <motion.div variants={staggerItem} className="grid gap-6 md:grid-cols-2">
                 <ContactInfoCard contact={contact} contactId={id!}>
                     {dialogsJSX}
                     <Button
@@ -182,8 +199,9 @@ export default function ContactDetails() {
                 </ContactInfoCard>
 
                 <ResourcesCard contactId={id!} />
-            </div>
+            </motion.div>
 
+            <motion.div variants={staggerItem}>
             <Accordion type="single" collapsible defaultValue="financial" className="w-full space-y-4">
                 <AccordionItem value="financial" className="border border-border/60 rounded-lg bg-card px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
@@ -216,9 +234,11 @@ export default function ContactDetails() {
 
                 <NotesSection contactId={id!} />
             </Accordion>
+            </motion.div>
 
             <Separator className="my-6" />
 
+            <motion.div variants={staggerItem}>
             <DigitalFridgeSection
                 contactId={id!}
                 contactName={contact?.name}
@@ -229,6 +249,7 @@ export default function ContactDetails() {
             <ClientPortalCard contact={contact} />
 
             <FeedbackSection assignedProtocols={assignedProtocols} />
+            </motion.div>
 
             {/* Order Picker Dialog */}
             <Dialog open={orderPickerOpen} onOpenChange={setOrderPickerOpen}>
@@ -333,6 +354,6 @@ export default function ContactDetails() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </motion.div>
     );
 }

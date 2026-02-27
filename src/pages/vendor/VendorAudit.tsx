@@ -99,7 +99,7 @@ export default function VendorAudit() {
                 </CardHeader>
                 <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                         <Select value={orgFilter || 'all'} onValueChange={v => setOrgFilter(v === 'all' ? undefined : v)}>
                             <SelectTrigger className="text-xs h-8">
                                 <SelectValue placeholder="All Tenants" />

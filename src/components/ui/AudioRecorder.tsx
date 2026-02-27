@@ -97,7 +97,7 @@ export function AudioRecorder({ onRecordingComplete, isSubmitting }: AudioRecord
                 <Button variant="ghost" size="icon" aria-label="Delete recording" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full" onClick={handleDelete}>
                     <Trash2 className="h-4 w-4" />
                 </Button>
-                <Button size="icon" aria-label="Confirm recording" className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 rounded-full" onClick={handleConfirm} disabled={isSubmitting}>
+                <Button size="icon" aria-label="Confirm recording" className="h-8 w-8 bg-primary hover:bg-primary/90 rounded-full" onClick={handleConfirm} disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 </Button>
             </div>

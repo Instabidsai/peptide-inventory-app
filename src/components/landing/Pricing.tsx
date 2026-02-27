@@ -50,10 +50,13 @@ export function Pricing() {
           transition={{ type: "spring", stiffness: 100, damping: 20 }}
           className="max-w-lg mx-auto"
         >
-          <div className="relative rounded-xl border border-primary bg-primary/5 shadow-card-hover p-8 flex flex-col">
+          <div className="relative rounded-xl border border-primary bg-primary/5 shadow-card-hover p-8 flex flex-col overflow-hidden">
+            {/* Subtle glow effect */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-[60px] pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
             {/* Badge */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="bg-gradient-to-r from-primary to-emerald-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full flex items-center gap-1.5">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+              <span className="bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white text-xs font-semibold px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg shadow-primary/25">
                 <Zap className="w-3 h-3" />
                 All-In-One
               </span>
@@ -65,7 +68,7 @@ export function Pricing() {
                 <span className="text-5xl font-bold text-foreground">$799</span>
                 <span className="text-muted-foreground text-lg">/mo</span>
               </div>
-              <p className="text-xs text-emerald-400 font-medium mt-2 flex items-center justify-center gap-1">
+              <p className="text-xs text-primary font-medium mt-2 flex items-center justify-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" />
                 7-day free trial included
               </p>
@@ -94,7 +97,7 @@ export function Pricing() {
             <ul className="space-y-2.5 mb-8">
               {FEATURES.map((feature, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <span className="text-muted-foreground">{feature}</span>
                 </li>
               ))}
@@ -103,14 +106,14 @@ export function Pricing() {
             <Button
               size="lg"
               onClick={handleGetStarted}
-              className="w-full font-semibold bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover text-base py-3 h-auto"
+              className="w-full font-semibold bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover text-base py-3 h-auto"
             >
               Start 7-Day Free Trial
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
 
             <p className="mt-4 text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+              <Shield className="w-3.5 h-3.5 text-primary" />
               30-day money-back guarantee. Cancel anytime.
             </p>
           </div>

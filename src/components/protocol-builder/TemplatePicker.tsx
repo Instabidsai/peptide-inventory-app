@@ -13,7 +13,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const CATEGORY_COLORS: Record<string, string> = {
     healing: 'border-rose-500/30 hover:border-rose-500/60 hover:bg-rose-500/5',
-    gh_stack: 'border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/5',
+    gh_stack: 'border-primary/30 hover:border-primary/60 hover:bg-primary/5',
     weight_loss: 'border-orange-500/30 hover:border-orange-500/60 hover:bg-orange-500/5',
     cognitive: 'border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5',
     sleep: 'border-indigo-500/30 hover:border-indigo-500/60 hover:bg-indigo-500/5',
@@ -23,7 +23,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ICON_COLORS: Record<string, string> = {
     healing: 'text-rose-500',
-    gh_stack: 'text-emerald-500',
+    gh_stack: 'text-primary',
     weight_loss: 'text-orange-500',
     cognitive: 'text-violet-500',
     sleep: 'text-indigo-500',

@@ -16,7 +16,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Check, Syringe, ChevronDown, C
 import { vialDailyUsage } from '@/lib/supply-calculations';
 
 const DOT_COLORS = [
-    'bg-emerald-400', 'bg-blue-400', 'bg-amber-400', 'bg-violet-400',
+    'bg-primary', 'bg-blue-400', 'bg-amber-400', 'bg-violet-400',
     'bg-rose-400', 'bg-cyan-400', 'bg-orange-400', 'bg-pink-400',
 ];
 
@@ -253,7 +253,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                     className={cn(
                         "px-5 py-4 rounded-2xl transition-all",
                         dose.isTaken
-                            ? 'bg-emerald-500/10 border-2 border-emerald-500/30'
+                            ? 'bg-primary/10 border-2 border-primary/30'
                             : 'bg-muted/20 border-2 border-border/20',
                         isEditing && 'border-primary/50 bg-primary/5 rounded-b-none',
                     )}
@@ -311,7 +311,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                         )}
                         {/* Take / Done / Missed */}
                         {dose.isTaken ? (
-                            <div className="flex items-center gap-1.5 text-emerald-400 shrink-0">
+                            <div className="flex items-center gap-1.5 text-primary shrink-0">
                                 <Check className="h-5 w-5" />
                                 <span className="text-sm font-bold">Done</span>
                             </div>
@@ -320,7 +320,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLogDose({ itemId: dose.protocolItemId || undefined, inventoryItemId: dose.vialId, status: 'taken', takenAt: format(day, "yyyy-MM-dd'T'12:00:00") }); }}
                                 disabled={isLogging}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-primary/20 text-primary hover:bg-primary/30 active:scale-95 transition-all disabled:opacity-50 shrink-0"
                             >
                                 <Syringe className="h-4 w-4" />
                                 {isLogging ? '...' : 'Take'}
@@ -443,8 +443,8 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                             </p>
                         </div>
                         {todayAllDone && (
-                            <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                <Check className="h-7 w-7 text-emerald-400" />
+                            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                                <Check className="h-7 w-7 text-primary" />
                             </div>
                         )}
                     </div>
@@ -580,7 +580,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                                                             key={i}
                                                             className={cn(
                                                                 "h-1 w-1 rounded-full",
-                                                                dose.isTaken ? 'bg-emerald-400' : isPast ? 'bg-red-400/50' : DOT_COLORS[dose.colorIdx],
+                                                                dose.isTaken ? 'bg-primary' : isPast ? 'bg-red-400/50' : DOT_COLORS[dose.colorIdx],
                                                             )}
                                                         />
                                                     ))}
@@ -588,7 +588,7 @@ export function ProtocolCalendar({ inventory, protocolLogs = [], onLogDose, isLo
                                             )}
 
                                             {allTaken && (
-                                                <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary flex items-center justify-center">
                                                     <Check className="h-2 w-2 text-white" />
                                                 </div>
                                             )}

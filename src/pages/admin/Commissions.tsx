@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
-import { DollarSign, Users, TrendingUp, Clock, CheckCircle, Wallet, CreditCard } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Clock, CheckCircle, Wallet, CreditCard, Coins } from 'lucide-react';
 import { format } from 'date-fns';
 import { useFinancialMetrics } from '@/hooks/use-financials';
+import { motion } from 'framer-motion';
 
 interface CommissionRow {
     id: string;
@@ -144,12 +145,27 @@ export default function Commissions() {
     if (isError) return <QueryError message="Failed to load commissions." onRetry={refetch} />;
 
     return (
-        <div className="space-y-6">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+        >
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Commission Center</h1>
-                <p className="text-muted-foreground">Full breakdown of every partner commission — paid, pending, and applied.</p>
-            </div>
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="flex items-center gap-3"
+            >
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Coins className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Commission Center</h1>
+                    <p className="text-sm text-muted-foreground">Full breakdown of every partner commission — paid, pending, and applied.</p>
+                </div>
+            </motion.div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -218,9 +234,9 @@ export default function Commissions() {
             </div>
 
             {/* Avg Rate Card */}
-            <Card className="border-l-4 border-l-emerald-500">
+            <Card className="border-l-4 border-l-primary">
                 <CardContent className="flex items-center gap-4 py-4">
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                    <TrendingUp className="h-5 w-5 text-primary" />
                     <div>
                         <p className="text-sm font-semibold">Average Commission Rate</p>
                         <p className="text-2xl font-bold">{avgRate.toFixed(1)}%</p>
@@ -360,6 +376,6 @@ export default function Commissions() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
+        </motion.div>
     );
 }

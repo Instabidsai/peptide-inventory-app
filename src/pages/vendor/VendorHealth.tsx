@@ -26,7 +26,7 @@ export default function VendorHealth() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard label="Active" value={active.length} icon={CheckCircle2} subtitle="Orders in last 7 days" />
                 <StatCard label="Low Activity" value={warning.length} icon={AlertTriangle} subtitle="No orders in 7 days" />
                 <StatCard label="Inactive" value={inactive.length} icon={XCircle} subtitle="No orders in 30 days" />

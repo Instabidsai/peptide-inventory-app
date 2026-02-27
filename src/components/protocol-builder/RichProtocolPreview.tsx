@@ -75,7 +75,7 @@ export function RichProtocolPreview({
 
                 {/* HTML Preview */}
                 <div
-                    className="rounded-lg border bg-white text-black overflow-auto max-h-[75vh]"
+                    className="rounded-lg border bg-white text-black overflow-auto max-h-[75dvh]"
                     style={{ fontSize }}
                 >
                     <div

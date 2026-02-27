@@ -246,7 +246,7 @@ export default function ClientRegimen() {
             <div className="h-full flex items-center justify-center p-8">
                 <div className="relative h-10 w-10">
                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-primary/20 border-b-primary animate-spin" style={{ animationDirection: 'reverse' }} />
                 </div>
             </div>
         );
@@ -271,7 +271,7 @@ export default function ClientRegimen() {
             <div className="h-full flex items-center justify-center p-8">
                 <div className="relative h-10 w-10">
                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-primary/20 border-b-primary animate-spin" style={{ animationDirection: 'reverse' }} />
                 </div>
             </div>
         );
@@ -294,7 +294,7 @@ export default function ClientRegimen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary">
                         My Health Dashboard
                     </h1>
                     <p className="text-muted-foreground mt-1 text-sm">
@@ -364,7 +364,7 @@ export default function ClientRegimen() {
             })()}
 
             {/* Bento Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:h-[calc(100vh-200px)] md:min-h-[600px]">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:h-[calc(100dvh-200px)] md:min-h-[600px]">
 
                 {/* Column 1: Daily Protocol (3 cols) */}
                 <div className="md:col-span-3 h-full">

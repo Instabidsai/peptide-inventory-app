@@ -719,10 +719,10 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
       .limit(100);
     if (!orders?.length) return 0;
     const { data: commissions } = await supabase
-      .from("commission_transactions")
-      .select("sales_order_id")
-      .in("sales_order_id", orders.map((o) => o.id));
-    const commOrderIds = new Set(commissions?.map((c) => c.sales_order_id) ?? []);
+      .from("commissions")
+      .select("sale_id")
+      .in("sale_id", orders.map((o) => o.id));
+    const commOrderIds = new Set(commissions?.map((c) => c.sale_id) ?? []);
     return orders.filter((o) => !commOrderIds.has(o.id)).length;
   }, 0, "fail");
 
@@ -741,9 +741,9 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
   await bizCheck("biz:unapplied_commissions", async () => {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await supabase
-      .from("commission_transactions")
+      .from("commissions")
       .select("*", { count: "exact", head: true })
-      .eq("applied", false)
+      .eq("status", "pending")
       .lt("created_at", oneDayAgo);
     return count ?? 0;
   }, 5, "warn");
@@ -833,14 +833,14 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
   // ═══════════════════════════════════════════════════════════
   {
     const CRITICAL_SCHEMA: Record<string, string[]> = {
-      organizations: ["id", "name", "slug", "owner_id"],
+      organizations: ["id", "name", "created_at", "updated_at"],
       profiles: ["id", "full_name", "email", "org_id", "role", "store_credit"],
       peptides: ["id", "name", "org_id", "active"],
       bottles: ["id", "peptide_id", "org_id", "status", "lot_id"],
       sales_orders: ["id", "org_id", "status", "payment_status", "total_amount"],
       sales_order_items: ["id", "sales_order_id", "peptide_id", "quantity", "unit_price"],
       contacts: ["id", "org_id", "full_name", "email"],
-      commission_transactions: ["id", "org_id", "sales_order_id", "amount", "applied"],
+      commissions: ["id", "sale_id", "partner_id", "amount", "status"],
       lots: ["id", "peptide_id", "org_id", "quantity", "cost_per_unit"],
       bug_reports: ["id", "description", "status", "page_url"],
       incidents: ["id", "title", "severity", "status", "source"],
@@ -915,6 +915,30 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
         threshold_critical: 3,
         status: schemaDriftCount >= 3 ? "critical" : schemaDriftCount >= 1 ? "warning" : "ok",
       });
+    }
+
+    // Clean up stale schema_drift bug reports for tables no longer in CRITICAL_SCHEMA
+    const trackedTables = Object.keys(CRITICAL_SCHEMA);
+    const { data: staleDriftReports } = await supabase
+      .from("bug_reports")
+      .select("id, console_errors")
+      .eq("status", "open")
+      .eq("page_url", "health-probe/schema-check")
+      .like("description", "%schema_drift%");
+    if (staleDriftReports) {
+      for (const report of staleDriftReports) {
+        try {
+          const parsed = typeof report.console_errors === "string"
+            ? JSON.parse(report.console_errors)
+            : report.console_errors;
+          if (parsed?.table && !trackedTables.includes(parsed.table)) {
+            await supabase
+              .from("bug_reports")
+              .update({ status: "resolved" })
+              .eq("id", report.id);
+          }
+        } catch { /* skip unparseable */ }
+      }
     }
   }
 

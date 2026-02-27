@@ -45,7 +45,7 @@ const ORDER_STATUS_MAP: Record<
   },
   shipped: {
     label: "Shipped",
-    className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    className: "bg-primary/10 text-primary border-primary/20",
     icon: Truck,
   },
   delivered: {
@@ -75,7 +75,7 @@ const ORDER_STATUS_MAP: Record<
   },
   received: {
     label: "Received",
-    className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    className: "bg-primary/10 text-primary border-primary/20",
     icon: CheckCircle2,
   },
 };

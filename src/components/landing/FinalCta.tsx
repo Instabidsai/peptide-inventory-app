@@ -54,11 +54,11 @@ export function FinalCta() {
         <motion.div
           {...fadeInUp}
           className="relative rounded-2xl overflow-hidden"
-          style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--border) / 0.3) 40%, hsl(142 76% 36% / 0.5))" }}
+          style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--border) / 0.3) 40%, hsl(var(--gradient-to) / 0.5))" }}
         >
         <div className="rounded-[15px] bg-gradient-to-br from-primary/10 via-card to-card p-8 sm:p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-[60px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/10 rounded-full blur-[60px] pointer-events-none" />
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
             <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
             <span className="text-xs font-medium text-yellow-300">
@@ -78,7 +78,7 @@ export function FinalCta() {
               animate={{ opacity: 1, scale: 1 }}
               className="mt-8 max-w-md mx-auto relative text-center space-y-3"
             >
-              <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
               <h3 className="text-xl font-semibold text-foreground">Application Received</h3>
               <p className="text-sm text-muted-foreground">
                 We'll review your application and reach out to <span className="text-foreground font-medium">{email}</span> within 24 hours to get you set up.
@@ -123,8 +123,8 @@ export function FinalCta() {
                 onClick={() => setBusinessStatus("new")}
                 className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
                   businessStatus === "new"
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-emerald-500/40"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-primary/40"
                 }`}
               >
                 <Rocket className="w-4 h-4 inline mr-1.5 -mt-0.5" />

@@ -32,7 +32,7 @@ export function ProtocolBundles({
     return (
         <div>
             <div className="flex items-center gap-3 mb-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-gradient-brand flex items-center justify-center">
                     <Layers className="h-4 w-4 text-white" />
                 </div>
                 <div>
@@ -113,10 +113,10 @@ export function ProtocolBundles({
                                                     return (
                                                         <>
                                                             {bundleHasDiscount && (
-                                                                <div className="mb-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25 inline-block">
-                                                                    <span className="text-sm font-extrabold text-emerald-400">{bundleDiscountPct}% off</span>
+                                                                <div className="mb-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25 inline-block">
+                                                                    <span className="text-sm font-extrabold text-primary">{bundleDiscountPct}% off</span>
                                                                     {bundleDiscountLabel && (
-                                                                        <span className="text-xs font-semibold text-emerald-400/70 ml-1.5">· {bundleDiscountLabel}</span>
+                                                                        <span className="text-xs font-semibold text-primary/70 ml-1.5">· {bundleDiscountLabel}</span>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -132,7 +132,7 @@ export function ProtocolBundles({
                                                 })()}
                                             </div>
                                             {allInCart ? (
-                                                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20">
+                                                <div className="flex items-center gap-2 text-primary text-xs font-bold bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
                                                     <Check className="h-4 w-4" />
                                                     In Cart
                                                 </div>

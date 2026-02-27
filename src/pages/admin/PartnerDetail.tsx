@@ -98,6 +98,7 @@ function ReferralActivityCard({ repId }: { repId: string }) {
                 </div>
 
                 {stats.customers.length > 0 && (
+                    <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -116,6 +117,7 @@ function ReferralActivityCard({ repId }: { repId: string }) {
                             ))}
                         </TableBody>
                     </Table>
+                    </div>
                 )}
 
                 {stats.customers.length === 0 && (
@@ -363,7 +365,7 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
     const statusColor = (s: string) => {
         if (s === 'fulfilled' || s === 'delivered') return 'bg-green-500/10 text-green-500 border-green-500/20';
         if (s === 'cancelled') return 'bg-red-500/10 text-red-500 border-red-500/20';
-        if (s === 'shipped') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+        if (s === 'shipped') return 'bg-primary/10 text-primary border-primary/20';
         return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
     };
 
@@ -396,7 +398,7 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
                     <CardTitle>Sales History</CardTitle>
                     <CardDescription>{orderCount} order{orderCount !== 1 ? 's' : ''} placed through this partner</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -625,7 +627,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'paid': return { label: 'Paid', className: 'bg-emerald-900/20 text-emerald-400 border-emerald-500/40' };
+            case 'paid': return { label: 'Paid', className: 'bg-primary/20 text-primary border-primary/40' };
             case 'available': return { label: 'Applied to Balance', className: 'bg-blue-900/20 text-blue-400 border-blue-500/40' };
             case 'void': return { label: 'Void', className: 'bg-red-900/20 text-red-400 border-red-500/40' };
             default: return { label: status, className: '' };
@@ -683,7 +685,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     <CardTitle>Pending Payouts</CardTitle>
                     <CardDescription>Commissions ready to be paid out.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -1029,7 +1031,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                                                 </Button>
                                             )}
                                             {client.type === 'partner' && client.linked_user_id && (
-                                                <Badge variant="outline" className="text-emerald-500 border-emerald-500">
+                                                <Badge variant="outline" className="text-primary border-primary">
                                                     ✓ Partner
                                                 </Badge>
                                             )}

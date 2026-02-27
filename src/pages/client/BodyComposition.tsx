@@ -158,7 +158,7 @@ export default function BodyComposition() {
         <div className="flex justify-center p-8">
             <div className="relative h-10 w-10">
                 <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                <div className="absolute inset-1.5 rounded-full border-2 border-primary/20 border-b-primary animate-spin" style={{ animationDirection: 'reverse' }} />
             </div>
         </div>
     );
@@ -168,7 +168,7 @@ export default function BodyComposition() {
     return (
         <div className="container mx-auto p-4 max-w-2xl space-y-6 pb-20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">Body Composition</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary">Body Composition</h1>
                 <Button onClick={() => setIsLogging(!isLogging)} variant={isLogging ? "secondary" : "default"}>
                     {isLogging ? "Cancel" : <><Plus className="mr-2 h-4 w-4" /> Log New</>}
                 </Button>
@@ -251,7 +251,7 @@ export default function BodyComposition() {
                     </GlassCard>
                     <GlassCard>
                         <CardContent className="pt-6 text-center">
-                            <div className="text-2xl font-bold text-emerald-400">{latestLog.muscle_mass ?? '—'}</div>
+                            <div className="text-2xl font-bold text-primary">{latestLog.muscle_mass ?? '—'}</div>
                             <div className="text-xs text-muted-foreground uppercase">Muscle</div>
                         </CardContent>
                     </GlassCard>

@@ -204,7 +204,7 @@ export function AssignInventoryForm({
                             htmlFor="type-sale"
                             className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer"
                         >
-                            <DollarSign className="mb-2 h-4 w-4 text-emerald-600" />
+                            <DollarSign className="mb-2 h-4 w-4 text-primary" />
                             <span className="text-xs">Sale</span>
                         </Label>
                     </div>
@@ -312,7 +312,7 @@ export function AssignInventoryForm({
                                     <div className="flex justify-between font-medium">
                                         <span>MSRP Total: ${totalMSRP > 0 ? totalMSRP.toFixed(2) : 'N/A'}</span>
                                         <span className={cn(
-                                            parseFloat(price) < costPlusFees ? "text-destructive" : "text-emerald-600"
+                                            parseFloat(price) < costPlusFees ? "text-destructive" : "text-primary"
                                         )}>
                                             ${(parseFloat(price) / selectedBottles.length || 0).toFixed(2)} / bottle
                                         </span>

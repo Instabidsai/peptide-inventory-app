@@ -183,7 +183,7 @@ function ScrapedPreviewStep({
         <div className="space-y-4">
             <div>
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-emerald-500" /> We Found Your Brand
+                    <Sparkles className="h-5 w-5 text-primary" /> We Found Your Brand
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                     Review what we extracted from{' '}
@@ -274,14 +274,14 @@ function ScrapedPreviewStep({
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
                                     {p.price != null && (
-                                        <span className="text-sm text-emerald-600 font-medium">
+                                        <span className="text-sm text-primary font-medium">
                                             ${p.price.toFixed(2)}
                                         </span>
                                     )}
                                     <span
                                         className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                                             p.confidence >= 0.8
-                                                ? 'bg-emerald-500/10 text-emerald-500'
+                                                ? 'bg-primary/10 text-primary'
                                                 : p.confidence >= 0.5
                                                 ? 'bg-yellow-500/10 text-yellow-600'
                                                 : 'bg-muted text-muted-foreground'
@@ -342,12 +342,12 @@ function ChoosePathStep({ onSelect }: { onSelect: (path: OnboardingPath) => void
                     </CardContent>
                 </Card>
                 <Card
-                    className="cursor-pointer hover:border-emerald-500/50 hover:shadow-lg transition-all group"
+                    className="cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all group"
                     onClick={() => onSelect('new')}
                 >
                     <CardContent className="pt-6 pb-5 text-center space-y-3">
-                        <div className="mx-auto w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                            <Rocket className="h-6 w-6 text-emerald-500" />
+                        <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                            <Rocket className="h-6 w-6 text-primary" />
                         </div>
                         <CardTitle className="text-lg">Start a Business</CardTitle>
                         <CardDescription>
@@ -411,7 +411,7 @@ function SubdomainStep({ value, onChange, onNext, onBack }: StepProps & { value:
                     <span className="text-sm text-muted-foreground whitespace-nowrap">.thepeptideai.com</span>
                 </div>
                 {value.length >= 3 && (
-                    <p className={`text-xs ${check?.available ? 'text-emerald-600' : 'text-destructive'}`}>
+                    <p className={`text-xs ${check?.available ? 'text-primary' : 'text-destructive'}`}>
                         {checking ? 'Checking...' : check?.available ? 'Available!' : check?.reason}
                     </p>
                 )}
@@ -447,11 +447,11 @@ function ConfirmLaunchStep({ onNext, onBack, submitting }: StepProps & { submitt
                         </div>
                     </div>
                     <div className="border-t border-border/50 pt-3 space-y-1.5">
-                        <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                        <p className="text-xs text-primary font-medium flex items-center gap-1.5">
                             <Check className="h-3.5 w-3.5" /> 7-day free trial — no payment required today
                         </p>
                         <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> Peptide supply chain included</span>
+                            <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Peptide supply chain included</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> AI-powered inventory</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Client portal & store</span>
                             <span className="flex items-center gap-1"><Check className="h-3 w-3 text-primary" /> Fulfillment & shipping</span>
@@ -479,8 +479,8 @@ function SuccessStep() {
     const navigate = useNavigate();
     return (
         <div className="space-y-6 text-center py-4">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                <PartyPopper className="h-8 w-8 text-emerald-500" />
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <PartyPopper className="h-8 w-8 text-primary" />
             </div>
             <div>
                 <h2 className="text-2xl font-bold">You're Live!</h2>
@@ -635,7 +635,7 @@ export default function MerchantOnboarding() {
         <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
             </div>
 
             <Card className="w-full max-w-xl bg-card/70 backdrop-blur-xl border-border/50 shadow-2xl shadow-black/20 relative z-10">

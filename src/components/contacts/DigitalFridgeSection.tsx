@@ -357,7 +357,7 @@ function AdminClientPreview({ contactId, protocols, onLogDose }: {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg border bg-card p-3 text-center">
                     <div className="flex items-center justify-center gap-1.5 text-orange-500 mb-1">
                         <Flame className="h-4 w-4" />
@@ -366,7 +366,7 @@ function AdminClientPreview({ contactId, protocols, onLogDose }: {
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Day Streak</p>
                 </div>
                 <div className="rounded-lg border bg-card p-3 text-center">
-                    <div className="flex items-center justify-center gap-1.5 text-emerald-500 mb-1">
+                    <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
                         <Target className="h-4 w-4" />
                         <span className="text-lg font-bold">{adherenceRate}%</span>
                     </div>

@@ -197,6 +197,10 @@ export function installClickTracker() {
     }
 
     // ── Dead click detection ──
+    // Clicking an input/textarea/select to focus is normal — not a dead click
+    const tagLower = interactive.tagName.toLowerCase();
+    if (tagLower === 'input' || tagLower === 'textarea' || tagLower === 'select') return;
+
     // Snapshot current counters
     const fetchBaseline = fetchesSinceClick;
     const mutationBaseline = domMutationsSinceClick;

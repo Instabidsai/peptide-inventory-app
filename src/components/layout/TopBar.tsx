@@ -61,7 +61,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-11 w-11 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 duration-300">
+          <Button variant="ghost" className="relative h-11 w-11 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/50 hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] hover:scale-105 duration-300">
             <Avatar className="h-11 w-11 border-2 border-primary/20 transition-colors">
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {initials}

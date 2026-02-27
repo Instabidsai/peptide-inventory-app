@@ -27,6 +27,8 @@ export default function TenantConfigEditor({ orgId, config }: { orgId: string; c
             support_email: config?.support_email || '',
             app_url: config?.app_url || '',
             primary_color: config?.primary_color || '#7c3aed',
+            secondary_color: config?.secondary_color || '',
+            font_family: config?.font_family || '',
             ship_from_name: config?.ship_from_name || '',
             ship_from_city: config?.ship_from_city || '',
             ship_from_state: config?.ship_from_state || '',
@@ -83,6 +85,15 @@ export default function TenantConfigEditor({ orgId, config }: { orgId: string; c
                                     <span className="font-mono text-xs">{config.primary_color}</span>
                                 </div>
                             </Row>
+                            {config.secondary_color && (
+                                <Row label="Secondary Color">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 rounded border" style={{ backgroundColor: config.secondary_color }} />
+                                        <span className="font-mono text-xs">{config.secondary_color}</span>
+                                    </div>
+                                </Row>
+                            )}
+                            {config.font_family && <Row label="Font" value={config.font_family} />}
                             <Row label="Ships From" value={[config.ship_from_city, config.ship_from_state].filter(Boolean).join(', ') || '—'} />
                             <Row label="Zelle" value={config.zelle_email || '—'} />
                             <Row label="Venmo" value={config.venmo_handle || '—'} />
@@ -138,6 +149,24 @@ export default function TenantConfigEditor({ orgId, config }: { orgId: string; c
                             />
                         </div>
                     </div>
+                    <div>
+                        <Label className="text-xs">Secondary Color</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                            <input
+                                type="color"
+                                value={(form.secondary_color as string) || '#3b82f6'}
+                                onChange={e => set('secondary_color', e.target.value)}
+                                className="h-8 w-8 rounded cursor-pointer border"
+                            />
+                            <Input
+                                value={(form.secondary_color as string) || ''}
+                                onChange={e => set('secondary_color', e.target.value)}
+                                className="h-8 text-xs font-mono flex-1"
+                                placeholder="Auto if empty"
+                            />
+                        </div>
+                    </div>
+                    <Field label="Font Family" value={(form.font_family as string) || ''} onChange={v => set('font_family', v)} />
                     <Field label="Session Timeout (min)" value={String(form.session_timeout_minutes)} onChange={v => set('session_timeout_minutes', parseInt(v) || 60)} type="number" />
                     <Field label="Ship From City" value={form.ship_from_city as string} onChange={v => set('ship_from_city', v)} />
                     <Field label="Ship From State" value={form.ship_from_state as string} onChange={v => set('ship_from_state', v)} />

@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminAI, type AdminMessage } from '@/hooks/use-admin-ai';
 import { usePartnerAI, type PartnerMessage } from '@/hooks/use-partner-ai';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -12,7 +12,8 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { Bot, Send, Loader2, User, Trash2 } from 'lucide-react';
+import { Bot, Send, Loader2, User, Trash2, Copy, Check, MessageCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type Message = AdminMessage | PartnerMessage;
 
@@ -56,40 +57,21 @@ const PARTNER_QUICK_ACTIONS = [
   'Product catalog',
 ];
 
-// --- Welcome messages per role tier ---
-const ADMIN_WELCOME: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content: "Hey! I'm your admin assistant. I can create contacts, build orders, check inventory & pricing, manage commissions, track finances, and more.\n\nTry a quick action from the sidebar, or just tell me what you need.",
-  created_at: new Date().toISOString(),
-};
-
-const STAFF_WELCOME: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content: "Hey! I'm your operations assistant. I have full access to orders, contacts, inventory, and reporting.\n\nI can also **submit suggestions** and **report issues** directly to the admin — they'll show up in the Automations queue for review.\n\nTry a quick action or just tell me what you need.",
-  created_at: new Date().toISOString(),
-};
-
-const SENIOR_PARTNER_WELCOME: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content: "Hey! I'm your partner assistant. As a senior partner, I can help you with:\n\n- **Product info** — peptides, protocols, dosing\n- **Your commissions** — check earnings and status\n- **Your clients** — view and manage your contacts\n- **Stock levels** — what's available to sell\n- **Suggestions** — submit feature ideas or report issues to admin\n\nTry a quick action or ask me anything.",
-  created_at: new Date().toISOString(),
-};
-
-const PARTNER_WELCOME: Message = {
-  id: 'welcome',
-  role: 'assistant',
-  content: "Hey! I'm your partner assistant. I can help you with:\n\n- **Product info** — peptides, protocols, dosing\n- **Your commissions** — check earnings and status\n- **Stock levels** — what's available to sell\n- **Your orders** — view order history\n\nAsk me anything!",
-  created_at: new Date().toISOString(),
-};
-
 export default function AIAssistant() {
   const { profile, userRole } = useAuth();
+  const { toast } = useToast();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Typewriter state
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const [typedLength, setTypedLength] = useState(0);
+  const prevMessageCountRef = useRef(0);
+  const wasLoadingRef = useRef(false);
+
+  // Copy state
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const role = userRole?.role || profile?.role;
   const isAdmin = role === 'admin' || role === 'super_admin';
@@ -103,7 +85,7 @@ export default function AIAssistant() {
   const ai = isAdminOrStaff ? adminAI : partnerAI;
   const { messages, sendMessage, clearChat, isLoading, isLoadingHistory } = ai;
 
-  // Select quick actions + welcome by tier
+  // Select quick actions by tier
   const quickActions = isAdmin
     ? ADMIN_QUICK_ACTIONS
     : isStaff
@@ -111,16 +93,6 @@ export default function AIAssistant() {
       : isSeniorPartner
         ? SENIOR_PARTNER_QUICK_ACTIONS
         : PARTNER_QUICK_ACTIONS;
-
-  const welcomeMessage = isAdmin
-    ? ADMIN_WELCOME
-    : isStaff
-      ? STAFF_WELCOME
-      : isSeniorPartner
-        ? SENIOR_PARTNER_WELCOME
-        : PARTNER_WELCOME;
-
-  const displayMessages = messages.length > 0 ? messages : [welcomeMessage];
 
   // Labels
   const assistantLabel = isAdmin
@@ -137,47 +109,114 @@ export default function AIAssistant() {
         ? 'Stock, commissions, clients, suggestions'
         : 'Stock, commissions, orders';
 
-  // Accent colors: admin/staff = purple, partner = green
-  const accentBg = isAdminOrStaff ? 'bg-primary' : 'bg-emerald-600';
-  const accentBgLight = isAdminOrStaff ? 'bg-primary/10' : 'bg-emerald-600/10';
-  const accentText = isAdminOrStaff ? 'text-primary' : 'text-emerald-500';
-  const accentHover = isAdminOrStaff ? 'hover:bg-primary/80' : 'hover:bg-emerald-700';
+  // Auto-scroll on new content
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }, [messages, isLoading, typedLength]);
+
+  // Detect new AI messages and start typewriter
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading && messages.length > prevMessageCountRef.current) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.role === 'assistant' && lastMsg.id !== 'welcome') {
+        setTypingMessageId(lastMsg.id);
+        setTypedLength(0);
+      }
+    }
+    wasLoadingRef.current = isLoading;
+    prevMessageCountRef.current = messages.length;
+  }, [isLoading, messages]);
+
+  // Typewriter character-by-character animation
+  useEffect(() => {
+    if (!typingMessageId) return;
+    const msg = messages.find(m => m.id === typingMessageId);
+    if (!msg) { setTypingMessageId(null); return; }
+
+    if (typedLength >= msg.content.length) {
+      setTypingMessageId(null);
+      return;
+    }
+
+    const charsPerTick = msg.content.length > 300 ? 4 : msg.content.length > 150 ? 3 : 2;
+    const timer = setTimeout(() => {
+      setTypedLength(prev => Math.min(prev + charsPerTick, msg.content.length));
+    }, 18);
+
+    return () => clearTimeout(timer);
+  }, [typingMessageId, typedLength, messages]);
+
+  // Auto-resize textarea to fit content (max ~4 lines)
+  const adjustTextareaHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
+    adjustTextareaHeight();
+  }, [input, adjustTextareaHeight]);
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
     sendMessage(input);
     setInput('');
-    requestAnimationFrame(() => inputRef.current?.focus());
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const handleQuickAction = (action: string) => {
     if (isLoading) return;
     sendMessage(action);
-    requestAnimationFrame(() => inputRef.current?.focus());
+    requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
+  const handleCopy = async (content: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast({ variant: 'destructive', title: 'Copy failed' });
+    }
+  };
+
+  const skipTypewriter = () => {
+    if (typingMessageId) {
+      const msg = messages.find(m => m.id === typingMessageId);
+      if (msg) setTypedLength(msg.content.length);
+    }
+  };
+
+  // Typewriter helpers
+  const getDisplayContent = (msg: Message) => {
+    if (msg.id === typingMessageId) return msg.content.slice(0, typedLength);
+    return msg.content;
+  };
+  const isTypewriting = (msg: Message) => msg.id === typingMessageId;
+
   return (
-    <div className="flex h-[calc(100vh-5rem)] gap-4">
+    <div className="flex h-[calc(100dvh-5rem-2rem)] md:h-[calc(100dvh-5rem-3rem)] lg:h-[calc(100dvh-5rem-4rem)] gap-4">
       {/* Left sidebar — quick actions */}
       <div className="hidden lg:flex flex-col w-56 shrink-0">
         <div className="flex items-center gap-2 mb-4">
-          <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center", accentBgLight)}>
-            <Bot className={cn("h-4 w-4", accentText)} />
+          <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Bot className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-sm">
-              {assistantLabel}
-            </h2>
-            <p className="text-[10px] text-muted-foreground">
-              {assistantSub}
-            </p>
+            <h2 className="font-bold text-sm">{assistantLabel}</h2>
+            <p className="text-[10px] text-muted-foreground">{assistantSub}</p>
           </div>
         </div>
 
@@ -222,104 +261,221 @@ export default function AIAssistant() {
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col bg-card border border-border/60 rounded-2xl overflow-hidden min-w-0">
-        {/* Mobile header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 lg:hidden">
-          <div className="flex items-center gap-2">
-            <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center", accentBgLight)}>
-              <Bot className={cn("h-3.5 w-3.5", accentText)} />
-            </div>
-            <span className="font-bold text-sm">
-              {assistantLabel}
-            </span>
+      <div className="flex-1 flex flex-col bg-card/95 backdrop-blur-xl border border-primary/20 rounded-2xl shadow-[0_0_30px_hsl(var(--primary)/0.06)] overflow-hidden min-w-0">
+        {/* Terminal-style header */}
+        <div className="px-4 py-2.5 border-b border-border/40 bg-background/60 flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Clear chat history">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all messages.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={clearChat}>Clear</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <span className="text-xs text-muted-foreground ml-1 font-mono">{assistantLabel}</span>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              <span className="text-[10px] text-primary font-mono">LIVE</span>
+            </div>
+            {/* Mobile clear button */}
+            <div className="lg:hidden">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-foreground" aria-label="Clear chat history">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all messages.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearChat}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
         </div>
 
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 md:px-6 py-4">
           {isLoadingHistory ? (
             <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
             </div>
           ) : (
-            <div className="space-y-4 max-w-3xl mx-auto">
-              {displayMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex w-full gap-3",
-                    msg.role === 'user' ? "justify-end" : "justify-start",
-                    msg.id.startsWith('opt-') && "opacity-70"
-                  )}
+            <div className="space-y-3 max-w-3xl mx-auto">
+              {/* Animated starter section when no messages */}
+              {messages.length === 0 && !isLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-8 space-y-5"
                 >
-                  {msg.role === 'assistant' && (
-                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-1", accentBgLight)}>
-                      <Bot className={cn("h-4 w-4", accentText)} />
-                    </div>
-                  )}
-                  <div
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center"
+                  >
+                    <MessageCircle className="h-7 w-7 text-primary" />
+                  </motion.div>
+                  <div className="text-center space-y-1">
+                    <motion.p
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                      className="font-semibold text-sm"
+                    >
+                      Hey! I'm your {assistantLabel.toLowerCase()}
+                    </motion.p>
+                    <motion.p
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 }}
+                      className="text-xs text-muted-foreground/60"
+                    >
+                      {assistantSub}
+                    </motion.p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                    {quickActions.slice(0, 4).map((q, i) => (
+                      <motion.div
+                        key={q}
+                        initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 400, damping: 25 }}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full text-xs h-8 px-3 border-border/50 bg-muted/30 hover:bg-muted/60 hover:border-primary/30 transition-colors"
+                          onClick={() => handleQuickAction(q)}
+                        >
+                          {q}
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              <AnimatePresence mode="popLayout">
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                     className={cn(
-                      "p-3.5 rounded-2xl max-w-[85%] text-sm leading-relaxed",
-                      msg.role === 'user'
-                        ? cn(accentBg, "text-white rounded-tr-sm", accentHover)
-                        : "bg-white text-gray-900 border border-gray-200 rounded-tl-sm shadow-sm"
+                      "flex w-full gap-2.5 group/msg",
+                      msg.role === 'user' ? "justify-end" : "justify-start",
+                      msg.id.startsWith('opt-') && "opacity-70"
                     )}
                   >
-                    {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900 prose-strong:text-gray-900">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    {msg.role === 'assistant' && (
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/15">
+                        <Bot className="w-4 h-4 text-primary" />
                       </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
                     )}
-                    <div className={cn(
-                      "text-[10px] mt-1.5 opacity-50",
-                      msg.role === 'user' ? "text-white" : "text-gray-500"
-                    )}>
-                      {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  {msg.role === 'user' && (
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-1">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
 
+                    <div
+                      className={cn(
+                        "p-3.5 rounded-2xl max-w-[85%] text-sm leading-relaxed",
+                        msg.role === 'user'
+                          ? "bg-primary text-primary-foreground rounded-tr-sm"
+                          : "bg-muted/50 border border-border/50 rounded-tl-sm",
+                        isTypewriting(msg) && "cursor-pointer"
+                      )}
+                      onClick={isTypewriting(msg) ? skipTypewriter : undefined}
+                      title={isTypewriting(msg) ? "Click to skip animation" : undefined}
+                    >
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
+                          <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
+                          {isTypewriting(msg) && (
+                            <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      )}
+                      {!isTypewriting(msg) && (
+                        <div className={cn(
+                          "flex items-center gap-2 mt-1.5",
+                          msg.role === 'user' ? "justify-end" : "justify-between"
+                        )}>
+                          <span className={cn(
+                            "text-[10px] opacity-50",
+                            msg.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
+                          )}>
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {msg.role === 'assistant' && msg.id !== 'welcome' && (
+                            <button
+                              onClick={() => handleCopy(msg.content, msg.id)}
+                              className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted"
+                              aria-label="Copy response"
+                            >
+                              {copiedId === msg.id ? (
+                                <Check className="h-3 w-3 text-primary" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-muted-foreground/50" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {msg.role === 'user' && (
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* Enhanced thinking dots with scale animation */}
               {isLoading && (
-                <div className="flex justify-start gap-3">
-                  <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", accentBgLight)}>
-                    <Bot className={cn("h-4 w-4", accentText)} />
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                  className="flex gap-2.5"
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/15">
+                    <Bot className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="bg-white border border-gray-200 shadow-sm p-3.5 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
+                  <div className="bg-muted/50 border border-border/50 p-3.5 rounded-2xl rounded-tl-sm flex items-center gap-2">
                     <div className="flex gap-1">
-                      <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse", isAdminOrStaff ? "bg-primary/60" : "bg-emerald-500/60")} />
-                      <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse [animation-delay:150ms]", isAdminOrStaff ? "bg-primary/60" : "bg-emerald-500/60")} />
-                      <div className={cn("h-1.5 w-1.5 rounded-full animate-pulse [animation-delay:300ms]", isAdminOrStaff ? "bg-primary/60" : "bg-emerald-500/60")} />
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-primary/70"
+                          animate={{
+                            opacity: [0.3, 1, 0.3],
+                            scale: [0.85, 1.2, 0.85],
+                          }}
+                          transition={{
+                            duration: 1.2,
+                            repeat: Infinity,
+                            delay: i * 0.15,
+                            ease: 'easeInOut',
+                          }}
+                        />
+                      ))}
                     </div>
                     <span className="text-muted-foreground/50 text-xs">Working on it...</span>
                   </div>
-                </div>
+                </motion.div>
               )}
               <div ref={scrollRef} />
             </div>
@@ -340,17 +496,19 @@ export default function AIAssistant() {
           ))}
         </div>
 
-        {/* Input */}
-        <form onSubmit={handleSend} className="p-3 md:p-4 border-t border-border/50 bg-card flex gap-2 shrink-0">
-          <Input
-            ref={inputRef}
+        {/* Input — auto-expanding textarea */}
+        <form onSubmit={handleSend} className="p-3 md:p-4 border-t border-border/40 bg-background/60 flex items-end gap-2 shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}>
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={isAdminOrStaff
               ? "Create orders, add contacts, check stock, run reports..."
               : "Ask about protocols, check stock, view commissions..."
             }
-            className="flex-1 h-11 rounded-xl text-sm"
+            rows={1}
+            className="flex-1 min-h-[44px] max-h-[120px] resize-none rounded-xl bg-muted/30 border border-border/50 text-sm placeholder:text-muted-foreground/40 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading}
             autoFocus
           />
@@ -358,7 +516,7 @@ export default function AIAssistant() {
             type="submit"
             size="icon"
             disabled={isLoading || !input.trim()}
-            className={cn("h-11 w-11 rounded-xl shrink-0", accentBg, accentHover)}
+            className="h-11 w-11 rounded-xl shrink-0"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             <span className="sr-only">Send</span>

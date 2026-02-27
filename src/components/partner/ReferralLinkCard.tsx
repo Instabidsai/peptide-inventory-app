@@ -48,10 +48,10 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole }: ReferralL
                     <p className="text-sm font-semibold">Your Referral {canRecruit ? 'Links' : 'Link'}</p>
                 </div>
                 <div className="flex items-center gap-2 pl-2">
-                    <span className="text-xs font-medium text-emerald-400 w-20 shrink-0">Customer:</span>
+                    <span className="text-xs font-medium text-primary w-20 shrink-0">Customer:</span>
                     <p className="flex-1 text-xs text-muted-foreground truncate">{customerUrl}</p>
                     <Button variant="outline" size="sm"
-                        className={copiedType === 'cust' ? 'border-emerald-500/30 text-emerald-400' : 'border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300'}
+                        className={copiedType === 'cust' ? 'border-primary/30 text-primary' : 'border-primary/30 hover:bg-primary/10 hover:text-primary/80'}
                         onClick={() => handleCopy(customerUrl, 'cust')}>
                         {copiedType === 'cust' ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
                     </Button>
@@ -61,7 +61,7 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole }: ReferralL
                         <span className="text-xs font-medium text-violet-400 w-20 shrink-0">Partner:</span>
                         <p className="flex-1 text-xs text-violet-300/70 truncate">{partnerUrl}</p>
                         <Button variant="outline" size="sm"
-                            className={copiedType === 'partner' ? 'border-emerald-500/30 text-emerald-400' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}
+                            className={copiedType === 'partner' ? 'border-primary/30 text-primary' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}
                             onClick={() => handleCopy(partnerUrl, 'partner')}>
                             {copiedType === 'partner' ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
                         </Button>

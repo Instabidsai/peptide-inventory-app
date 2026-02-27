@@ -47,8 +47,8 @@ function getPasswordStrength(password: string): { score: number; label: string; 
   if (score <= 1) return { score: 20, label: 'Weak', color: 'bg-red-500' };
   if (score <= 2) return { score: 40, label: 'Fair', color: 'bg-orange-500' };
   if (score <= 3) return { score: 60, label: 'Good', color: 'bg-yellow-500' };
-  if (score <= 4) return { score: 80, label: 'Strong', color: 'bg-emerald-500' };
-  return { score: 100, label: 'Very Strong', color: 'bg-emerald-400' };
+  if (score <= 4) return { score: 80, label: 'Strong', color: 'bg-primary' };
+  return { score: 100, label: 'Very Strong', color: 'bg-primary' };
 }
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -201,7 +201,7 @@ export default function GetStarted() {
       {/* Background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
       </div>
 
       <motion.div
@@ -218,7 +218,7 @@ export default function GetStarted() {
               transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 15 }}
               className="flex justify-center mb-4"
             >
-              <div className="p-3 bg-gradient-to-br from-primary/20 to-emerald-500/10 rounded-xl ring-1 ring-primary/20">
+              <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl ring-1 ring-primary/20">
                 <FlaskConical className="h-8 w-8 text-primary" />
               </div>
             </motion.div>
@@ -333,7 +333,7 @@ export default function GetStarted() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90" disabled={isLoading}>
+                      <Button type="submit" className="w-full bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90" disabled={isLoading}>
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Sign In
                       </Button>
@@ -425,7 +425,7 @@ export default function GetStarted() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90" disabled={isLoading}>
+                      <Button type="submit" className="w-full bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90" disabled={isLoading}>
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Start Free Trial
                       </Button>

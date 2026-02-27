@@ -524,7 +524,7 @@ export default function AdminResources() {
             </Dialog>
 
             <Dialog open={isResourceDialogOpen} onOpenChange={(open) => { if (!open) resetResourceForm(); setIsResourceDialogOpen(open); }}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingResource ? 'Edit Resource' : 'Create Resource'}</DialogTitle>
                         <DialogDescription>

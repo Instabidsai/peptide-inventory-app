@@ -16,6 +16,7 @@ export interface SupplementNote {
     reason: string;
     productLink?: string;
     productName?: string;
+    imageUrl?: string;
 }
 
 export interface DosingTier {
@@ -74,6 +75,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
         dosageSchedule: 'Weeks 1\u20132: 0.5 mg weekly\nWeeks 3\u20134: 1 mg weekly\nWeeks 5\u20136: 1.5 mg weekly\nWeeks 7\u20138: 2 mg weekly\nWeeks 9\u201310: 2.5\u20134 mg weekly',
+        supplementNotes: [
+            { name: 'Electrolytes', dosage: 'daily', reason: 'Prevents dehydration from reduced food/fluid intake and GI effects common with GLP-1 triple agonists.', productName: 'LMNT Electrolyte Drink Mix', productLink: 'https://www.amazon.com/s?k=LMNT+Electrolyte+Drink+Mix' },
+            { name: 'Vitamin B12', dosage: '1000 mcg sublingual daily', reason: 'GLP-1 class drugs may reduce B12 absorption over time.', productName: 'Jarrow Methyl B-12 1000mcg', productLink: 'https://www.amazon.com/s?k=Jarrow+Methyl+B12+1000mcg+sublingual' },
+            { name: 'Psyllium Husk Fiber', dosage: '5 g daily', reason: 'Supports healthy digestion and prevents constipation common with reduced food intake.', productName: 'Organic India Psyllium Husk', productLink: 'https://www.amazon.com/s?k=Organic+India+Psyllium+Husk+whole' },
+        ],
         dosingTiers: [
             {
                 id: 'gentle',
@@ -126,6 +132,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: '3x weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'CoQ10 (Ubiquinol)', dosage: '200 mg daily', reason: 'Supports mitochondrial electron transport chain alongside MOTS-C metabolic activation.', productName: 'Jarrow QH-Absorb Ubiquinol 200mg', productLink: 'https://www.amazon.com/s?k=Jarrow+QH-Absorb+Ubiquinol+200mg' },
+            { name: 'Alpha Lipoic Acid', dosage: '600 mg daily', reason: 'Enhances insulin sensitivity and mitochondrial energy production synergistically with MOTS-C.', productName: 'Nutricost Alpha Lipoic Acid 600mg', productLink: 'https://www.amazon.com/s?k=Nutricost+Alpha+Lipoic+Acid+600mg' },
+            { name: 'PQQ', dosage: '20 mg daily', reason: 'Promotes mitochondrial biogenesis — creates new mitochondria to complement MOTS-C repair of existing ones.', productName: 'Life Extension PQQ 20mg', productLink: 'https://www.amazon.com/s?k=Life+Extension+PQQ+20mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -265,6 +276,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'twice weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'Vitamin C', dosage: '1\u20132 g daily', reason: 'Essential cofactor for collagen synthesis — supports tissue repair driven by TB-500.', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+sustained+release' },
+            { name: 'Collagen Peptides', dosage: '10\u201320 g daily', reason: 'Provides raw materials for connective tissue repair alongside TB-500 signaling.', productName: 'Sports Research Collagen Peptides', productLink: 'https://www.amazon.com/s?k=Sports+Research+Collagen+Peptides+unflavored' },
+            { name: 'Omega-3 Fish Oil', dosage: '2\u20133 g daily', reason: 'Anti-inflammatory support that complements TB-500 tissue healing.', productName: 'Sports Research Alaskan Omega-3', productLink: 'https://www.amazon.com/s?k=Sports+Research+Triple+Strength+Omega-3' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -311,6 +327,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'daily',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'L-Glutamine', dosage: '5 g daily', reason: 'Primary fuel source for gut lining cells — synergizes with BPC-157 gut healing.', productName: 'NOW L-Glutamine Powder 1lb', productLink: 'https://www.amazon.com/s?k=NOW+L-Glutamine+Powder+1+lb' },
+            { name: 'Zinc Carnosine', dosage: '75 mg twice daily', reason: 'Clinically proven to heal gut lining and reduce gastric inflammation alongside BPC-157.', productName: 'Doctor\'s Best PepZin GI Zinc-L-Carnosine', productLink: 'https://www.amazon.com/s?k=Doctors+Best+PepZin+GI+Zinc+Carnosine' },
+            { name: 'Vitamin C', dosage: '1\u20132 g daily', reason: 'Essential for collagen formation and tissue repair driven by BPC-157 angiogenesis.', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+sustained+release' },
+        ],
         dosingTiers: [
             {
                 id: 'maintenance',
@@ -355,6 +376,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'twice daily',
         defaultTiming: 'AM',
         administrationRoute: 'intranasal',
+        supplementNotes: [
+            { name: 'Omega-3 Fish Oil', dosage: '2\u20133 g daily', reason: 'DHA is critical for neuronal membrane fluidity and supports neurogenesis driven by Semax.', productName: 'Sports Research Alaskan Omega-3', productLink: 'https://www.amazon.com/s?k=Sports+Research+Triple+Strength+Omega-3' },
+            { name: 'Lion\'s Mane Mushroom', dosage: '500\u20131000 mg daily', reason: 'Stimulates NGF (nerve growth factor) production — complementary nootropic pathway to Semax BDNF effects.', productName: 'Real Mushrooms Lion\'s Mane Extract', productLink: 'https://www.amazon.com/s?k=Real+Mushrooms+Lions+Mane+Extract+capsules' },
+            { name: 'Alpha-GPC', dosage: '300 mg daily', reason: 'Provides choline for acetylcholine synthesis — supports cognitive enhancement alongside Semax.', productName: 'NOW Alpha-GPC 300mg', productLink: 'https://www.amazon.com/s?k=NOW+Alpha+GPC+300mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -403,6 +429,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         stackGroup: 'Evening GH Stack',
         stackLabel: 'Evening Stack Part 2 — Inject AFTER Ipamorelin',
         warningText: 'NEVER mix Tesamorelin and Ipamorelin in the same syringe. They bind to different receptors — simultaneous injection creates biological noise and risks receptor desensitization. Must be administered as two separate injections spaced 15-20 minutes apart. Empty stomach is NON-NEGOTIABLE — food (especially carbs) completely blunts GH release.',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release during sleep and enhances the GH pulse from Tesamorelin.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -437,6 +467,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         stackGroup: 'Evening GH Stack',
         stackLabel: 'Evening Stack Part 1 — Inject FIRST',
         warningText: 'When stacking with Tesamorelin: Inject Ipamorelin FIRST (the "starter pistol"), then wait 15-20 minutes before injecting Tesamorelin. Must be on a completely empty stomach — elevated blood glucose/insulin suppresses growth hormone secretion.',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Enhances GH release during sleep — take with evening Ipamorelin dose.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for growth hormone production and IGF-1 conversion.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -481,6 +515,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'twice daily',
         defaultTiming: 'AM',
         administrationRoute: 'intranasal',
+        supplementNotes: [
+            { name: 'Magnesium L-Threonate', dosage: '2000 mg daily (144 mg elemental Mg)', reason: 'The only form of magnesium clinically shown to cross the blood-brain barrier — enhances calming and cognitive effects of Selank.', productName: 'Life Extension Neuro-Mag Magnesium L-Threonate', productLink: 'https://www.amazon.com/s?k=Life+Extension+Neuro-Mag+Magnesium+L-Threonate' },
+            { name: 'Omega-3 Fish Oil', dosage: '2\u20133 g daily', reason: 'DHA supports neuronal membrane health and enhances GABA receptor sensitivity for anxiolytic synergy.', productName: 'Sports Research Alaskan Omega-3', productLink: 'https://www.amazon.com/s?k=Sports+Research+Triple+Strength+Omega-3' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -529,6 +567,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'Before bed',
         administrationRoute: 'subcutaneous',
         cyclePattern: '5 days ON, 2 days OFF (e.g., Mon\u2013Fri On, Sat\u2013Sun Off) to prevent tolerance.',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Activates GABA receptors for calming — enhances deep sleep alongside DSIP delta-wave promotion.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'L-Theanine', dosage: '200 mg before bed', reason: 'Promotes alpha-wave relaxation without sedation — complements DSIP sleep architecture support.', productName: 'NOW L-Theanine 200mg', productLink: 'https://www.amazon.com/s?k=NOW+L-Theanine+200mg+Veg+Capsules' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -573,6 +615,12 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'Electrolytes', dosage: 'daily', reason: 'Prevents dehydration from reduced food/fluid intake and GI side effects.', productName: 'LMNT Electrolyte Drink Mix', productLink: 'https://www.amazon.com/s?k=LMNT+Electrolyte+Drink+Mix' },
+            { name: 'Vitamin B12', dosage: '1000 mcg sublingual daily', reason: 'GLP-1 drugs reduce B12 absorption — sublingual bypasses GI tract.', productName: 'Jarrow Methyl B-12 1000mcg', productLink: 'https://www.amazon.com/s?k=Jarrow+Methyl+B12+1000mcg+sublingual' },
+            { name: 'Psyllium Husk Fiber', dosage: '5 g daily', reason: 'Prevents constipation from reduced food intake and slowed gastric emptying.', productName: 'Organic India Psyllium Husk', productLink: 'https://www.amazon.com/s?k=Organic+India+Psyllium+Husk+whole' },
+            { name: 'Creatine Monohydrate', dosage: '5 g daily', reason: 'Preserves lean muscle mass during caloric deficit — DEXA studies show tirzepatide spares muscle better when combined with creatine + resistance training.', productName: 'BulkSupplements Creatine Monohydrate', productLink: 'https://www.amazon.com/s?k=BulkSupplements+Creatine+Monohydrate+powder' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -625,6 +673,12 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'Electrolytes', dosage: 'daily', reason: 'Prevents dehydration from reduced food/fluid intake and GI side effects common with GLP-1 agonists.', productName: 'LMNT Electrolyte Drink Mix', productLink: 'https://www.amazon.com/s?k=LMNT+Electrolyte+Drink+Mix' },
+            { name: 'Vitamin B12', dosage: '1000 mcg sublingual daily', reason: 'Semaglutide can reduce B12 absorption over time — sublingual form bypasses the GI tract.', productName: 'Jarrow Methyl B-12 1000mcg', productLink: 'https://www.amazon.com/s?k=Jarrow+Methyl+B12+1000mcg+sublingual' },
+            { name: 'Creatine Monohydrate', dosage: '5 g daily', reason: 'Preserves lean muscle mass during caloric deficit — semaglutide weight loss includes muscle tissue without resistance training + creatine.', productName: 'BulkSupplements Creatine Monohydrate', productLink: 'https://www.amazon.com/s?k=BulkSupplements+Creatine+Monohydrate+powder' },
+            { name: 'Psyllium Husk Fiber', dosage: '5 g daily', reason: 'Supports digestion and prevents constipation from slowed gastric emptying.', productName: 'Organic India Psyllium Husk', productLink: 'https://www.amazon.com/s?k=Organic+India+Psyllium+Husk+whole' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -679,6 +733,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         administrationRoute: 'subcutaneous',
         stackGroup: 'Evening GH Stack',
         stackLabel: 'Evening Stack Part 1 (Alt)',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release during sleep — take with evening CJC-1295 dose.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for GH production and IGF-1 signaling from CJC-1295.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -727,6 +785,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'PM',
         administrationRoute: 'subcutaneous',
         warningText: 'Maximum 1 dose per 24 hours. Maximum 8 doses per month. Can cause temporary skin darkening. Not for use with uncontrolled hypertension.',
+        supplementNotes: [
+            { name: 'Ginger Extract', dosage: '500\u20131000 mg, 30 min before dose', reason: 'Reduces nausea — the most common side effect of PT-141.', productName: 'NOW Ginger Root Extract 250mg', productLink: 'https://www.amazon.com/s?k=NOW+Ginger+Root+Extract+250mg' },
+            { name: 'L-Citrulline', dosage: '3\u20136 g daily', reason: 'Supports nitric oxide production and blood flow — complementary mechanism to PT-141 CNS arousal pathway.', productName: 'Nutricost L-Citrulline 3g', productLink: 'https://www.amazon.com/s?k=Nutricost+L-Citrulline+powder' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -759,6 +821,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
         cyclePattern: '10 days ON, 6 months OFF.',
+        supplementNotes: [
+            { name: 'Vitamin D3 + K2', dosage: '5000 IU D3 + 100 mcg K2 daily', reason: 'Supports immune function and cellular health alongside Epithalon telomere protection.', productName: 'Sports Research Vitamin D3+K2', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
+            { name: 'Omega-3 Fish Oil', dosage: '2\u20133 g daily', reason: 'Omega-3s are independently associated with longer telomere length — complementary to Epithalon.', productName: 'Sports Research Alaskan Omega-3', productLink: 'https://www.amazon.com/s?k=Sports+Research+Triple+Strength+Omega-3' },
+        ],
         dosingTiers: [
             {
                 id: 'standard',
@@ -805,6 +871,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'weekly',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Critical immune modulator — supports T-cell differentiation driven by TA-1.', productName: 'Sports Research Vitamin D3+K2', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
+            { name: 'Vitamin C', dosage: '1\u20132 g daily', reason: 'Supports immune cell function and NK cell activity enhanced by Thymosin Alpha-1.', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+sustained+release' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential for thymic function and T-cell maturation — the same pathway TA-1 activates.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+        ],
         dosingTiers: [
             {
                 id: 'bachmeyer',
@@ -860,6 +931,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultFrequency: 'daily',
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
+        supplementNotes: [
+            { name: 'L-Glutamine', dosage: '5 g daily', reason: 'Primary fuel for intestinal epithelial cells — synergizes with KPV gut healing.', productName: 'NOW L-Glutamine Powder 1lb', productLink: 'https://www.amazon.com/s?k=NOW+L-Glutamine+Powder+1+lb' },
+            { name: 'Probiotics', dosage: '50+ billion CFU daily', reason: 'Restores healthy gut flora while KPV reduces inflammation and heals the lining.', productName: 'Visbiome Probiotics 112.5 Billion', productLink: 'https://www.amazon.com/s?k=Visbiome+Probiotics+high+potency' },
+            { name: 'Zinc Carnosine', dosage: '75 mg twice daily', reason: 'Clinically proven to strengthen gut mucosal barrier — complementary to KPV anti-inflammatory action.', productName: 'Doctor\'s Best PepZin GI Zinc-L-Carnosine', productLink: 'https://www.amazon.com/s?k=Doctors+Best+PepZin+GI+Zinc+Carnosine' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -905,6 +981,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         defaultTiming: 'AM',
         administrationRoute: 'subcutaneous',
         warningText: 'Hexarelin is the MOST prone to desensitization among GHRPs. Strict cycling is non-negotiable. Can elevate cortisol and prolactin. Must be taken fasted.',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg before bed', reason: 'Supports GH release and sleep quality — essential cofactor for GH signaling.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Critical cofactor for GH production and IGF-1 signaling.', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -953,8 +1033,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '12 weeks on, 4 weeks off. Some practitioners use ongoing with periodic breaks.',
         category: 'gh_stack',
         supplementNotes: [
-            { name: 'Magnesium Glycinate', dosage: '400 mg', reason: 'Supports GH release and sleep quality' },
-            { name: 'Zinc', dosage: '30 mg', reason: 'Critical cofactor for GH production' },
+            { name: 'Magnesium Glycinate', dosage: '400 mg', reason: 'Supports GH release and sleep quality', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Zinc', dosage: '30 mg', reason: 'Critical cofactor for GH production', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
         ],
         dosingTiers: [
             {
@@ -1004,8 +1084,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '12 weeks on, 4 weeks off. Can be used longer-term as it does not affect GH or IGF-1.',
         category: 'weight_loss',
         supplementNotes: [
-            { name: 'L-Carnitine', dosage: '500-1000 mg', reason: 'Enhances fat transport into mitochondria for burning' },
-            { name: 'CLA', dosage: '3 g', reason: 'Conjugated linoleic acid supports body composition changes' },
+            { name: 'L-Carnitine', dosage: '500-1000 mg', reason: 'Enhances fat transport into mitochondria for burning', productName: 'NOW Acetyl-L-Carnitine 500mg', productLink: 'https://www.amazon.com/s?k=NOW+Acetyl+L+Carnitine+500mg' },
+            { name: 'CLA', dosage: '3 g', reason: 'Conjugated linoleic acid supports body composition changes', productName: 'NOW CLA 800mg Softgels', productLink: 'https://www.amazon.com/s?k=NOW+CLA+800mg+softgels' },
         ],
         dosingTiers: [
             {
@@ -1055,8 +1135,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '8-12 weeks on, 4 weeks off. Monitor energy levels and adjust.',
         category: 'weight_loss',
         supplementNotes: [
-            { name: 'B-Complex', dosage: '1 cap daily', reason: 'Supports methylation pathways affected by NNMT inhibition' },
-            { name: 'CoQ10', dosage: '200 mg', reason: 'Supports mitochondrial energy production alongside increased NAD+' },
+            { name: 'B-Complex', dosage: '1 cap daily', reason: 'Supports methylation pathways affected by NNMT inhibition', productName: 'Thorne Basic B Complex', productLink: 'https://www.amazon.com/s?k=Thorne+Basic+B+Complex' },
+            { name: 'CoQ10', dosage: '200 mg', reason: 'Supports mitochondrial energy production alongside increased NAD+', productName: 'Jarrow QH-Absorb 200mg', productLink: 'https://www.amazon.com/s?k=Jarrow+QH+Absorb+200mg+CoQ10+Ubiquinol' },
         ],
         dosingTiers: [
             {
@@ -1106,8 +1186,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '4-8 weeks on, 4 weeks off. Reassess and repeat as needed.',
         category: 'anti_aging',
         supplementNotes: [
-            { name: 'CoQ10', dosage: '200 mg daily', reason: 'Synergistic mitochondrial support alongside SS-31' },
-            { name: 'PQQ', dosage: '20 mg daily', reason: 'Promotes mitochondrial biogenesis to complement SS-31 repair' },
+            { name: 'CoQ10', dosage: '200 mg daily', reason: 'Synergistic mitochondrial support alongside SS-31', productName: 'Jarrow QH-Absorb 200mg', productLink: 'https://www.amazon.com/s?k=Jarrow+QH+Absorb+200mg+CoQ10+Ubiquinol' },
+            { name: 'PQQ', dosage: '20 mg daily', reason: 'Promotes mitochondrial biogenesis to complement SS-31 repair', productName: 'Life Extension PQQ 20mg', productLink: 'https://www.amazon.com/s?k=Life+Extension+PQQ+20mg' },
         ],
         dosingTiers: [
             {
@@ -1158,8 +1238,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         category: 'weight_loss',
         dosageSchedule: 'Week 1-4: 0.25 mg weekly | Week 5-8: 0.5 mg weekly | Week 9-12: 1.0 mg weekly | Week 13-16: 1.7 mg weekly | Week 17+: 2.4 mg weekly (max)',
         supplementNotes: [
-            { name: 'Electrolytes', dosage: 'daily', reason: 'Prevents dehydration from reduced food/fluid intake and GI effects' },
-            { name: 'B12', dosage: '1000 mcg weekly', reason: 'GLP-1 class drugs may reduce B12 absorption' },
+            { name: 'Electrolytes', dosage: 'daily', reason: 'Prevents dehydration from reduced food/fluid intake and GI effects', productName: 'LMNT Electrolyte Drink Mix', productLink: 'https://www.amazon.com/s?k=LMNT+electrolyte+drink+mix' },
+            { name: 'B12', dosage: '1000 mcg weekly', reason: 'GLP-1 class drugs may reduce B12 absorption', productName: 'Jarrow Methyl B-12 1000mcg', productLink: 'https://www.amazon.com/s?k=Jarrow+Methyl+B12+1000mcg' },
         ],
         dosingTiers: [
             {
@@ -1212,9 +1292,9 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '4-6 weeks on, 2-4 weeks off. Monitor immune response and symptom flares.',
         category: 'healing',
         supplementNotes: [
-            { name: 'Activated Charcoal', dosage: '500 mg 2 hrs away from other supps', reason: 'Binder to absorb released biofilm toxins during Herxheimer reactions' },
-            { name: 'NAC', dosage: '600 mg 2x daily', reason: 'Glutathione precursor — supports liver detox during biofilm disruption' },
-            { name: 'Vitamin C', dosage: '1-2 g daily', reason: 'Immune support during active antimicrobial protocol' },
+            { name: 'Activated Charcoal', dosage: '500 mg 2 hrs away from other supps', reason: 'Binder to absorb released biofilm toxins during Herxheimer reactions', productName: "Nature's Way Activated Charcoal 560mg", productLink: 'https://www.amazon.com/s?k=Natures+Way+Activated+Charcoal+560mg' },
+            { name: 'NAC', dosage: '600 mg 2x daily', reason: 'Glutathione precursor — supports liver detox during biofilm disruption', productName: 'NOW NAC 600mg', productLink: 'https://www.amazon.com/s?k=NOW+NAC+600mg' },
+            { name: 'Vitamin C', dosage: '1-2 g daily', reason: 'Immune support during active antimicrobial protocol', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+Sustained+Release' },
         ],
         dosingTiers: [
             {
@@ -1264,9 +1344,9 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: 'Ongoing maintenance at 1-3x/week. During acute detox or illness, can use daily for 1-2 weeks.',
         category: 'anti_aging',
         supplementNotes: [
-            { name: 'NAC', dosage: '600 mg 2x daily', reason: 'Glutathione precursor — helps body replenish its own glutathione between injections' },
-            { name: 'Vitamin C', dosage: '1-2 g daily', reason: 'Recycles oxidized glutathione back to active form' },
-            { name: 'Alpha Lipoic Acid', dosage: '300-600 mg daily', reason: 'Regenerates both glutathione and vitamin C — synergistic antioxidant network' },
+            { name: 'NAC', dosage: '600 mg 2x daily', reason: 'Glutathione precursor — helps body replenish its own glutathione between injections', productName: 'NOW NAC 600mg', productLink: 'https://www.amazon.com/s?k=NOW+NAC+600mg' },
+            { name: 'Vitamin C', dosage: '1-2 g daily', reason: 'Recycles oxidized glutathione back to active form', productName: 'NOW Vitamin C-1000 Sustained Release', productLink: 'https://www.amazon.com/s?k=NOW+Vitamin+C+1000+Sustained+Release' },
+            { name: 'Alpha Lipoic Acid', dosage: '300-600 mg daily', reason: 'Regenerates both glutathione and vitamin C — synergistic antioxidant network', productName: 'Nutricost Alpha Lipoic Acid 600mg', productLink: 'https://www.amazon.com/s?k=Nutricost+Alpha+Lipoic+Acid+600mg' },
         ],
         dosingTiers: [
             {
@@ -1315,6 +1395,10 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         warningText: 'BIPHASIC EFFECT: Low doses (10-25 IU) promote bonding and connection. Doses above 30 IU can cause drowsiness, lethargy, and emotional blunting — the opposite of the desired effect. Less is more. Do NOT exceed 30 IU. Time injection 15-20 minutes before desired social or intimate interaction.',
         cyclePattern: 'As-needed use, not daily. 2-3x per week maximum. No cycling required.',
         category: 'sexual_health',
+        supplementNotes: [
+            { name: 'Magnesium Glycinate', dosage: '400 mg daily', reason: 'Supports nervous system relaxation and enhances Oxytocin\'s calming effects.', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg+tablets' },
+            { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Vitamin D receptor expression is linked to oxytocin receptor density.', productName: 'Sports Research Vitamin D3+K2', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
+        ],
         dosingTiers: [
             {
                 id: 'conservative',
@@ -1363,9 +1447,9 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '8-12 weeks on, 4 weeks off. Get bloodwork before and after each cycle.',
         category: 'sexual_health',
         supplementNotes: [
-            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for testosterone synthesis stimulated by Kisspeptin' },
-            { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Supports HPG axis function and testosterone production' },
-            { name: 'Magnesium', dosage: '400 mg daily', reason: 'Supports hormone production and sleep quality' },
+            { name: 'Zinc', dosage: '30 mg daily', reason: 'Essential cofactor for testosterone synthesis stimulated by Kisspeptin', productName: 'Thorne Zinc Picolinate 30mg', productLink: 'https://www.amazon.com/s?k=Thorne+Zinc+Picolinate+30mg' },
+            { name: 'Vitamin D3', dosage: '5000 IU daily', reason: 'Supports HPG axis function and testosterone production', productName: 'Sports Research Vitamin D3+K2 5000 IU', productLink: 'https://www.amazon.com/s?k=Sports+Research+Vitamin+D3+K2+5000+IU' },
+            { name: 'Magnesium', dosage: '400 mg daily', reason: 'Supports hormone production and sleep quality', productName: 'NOW Magnesium Glycinate 200mg', productLink: 'https://www.amazon.com/s?k=NOW+Magnesium+Glycinate+200mg' },
         ],
         dosingTiers: [
             {
@@ -1415,7 +1499,7 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: 'Loading: daily for 2-3 weeks until desired tan. Maintenance: 1-2x per week to sustain.',
         category: 'sexual_health',
         supplementNotes: [
-            { name: 'Ginger', dosage: '500-1000 mg', reason: 'Take 30 min before injection to reduce nausea' },
+            { name: 'Ginger', dosage: '500-1000 mg', reason: 'Take 30 min before injection to reduce nausea', productName: 'NOW Ginger Root Extract 250mg', productLink: 'https://www.amazon.com/s?k=NOW+Ginger+Root+Extract+250mg' },
         ],
         dosingTiers: [
             {
@@ -1465,8 +1549,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '30-90 days continuous. Retest inflammatory markers (TGF-beta, C4a, VEGF) after 30 days.',
         category: 'healing',
         supplementNotes: [
-            { name: 'Cholestyramine/Welchol', dosage: 'per Shoemaker protocol', reason: 'Binder for biotoxin removal — should be completed before VIP' },
-            { name: 'Omega-3', dosage: '2-3 g daily', reason: 'Anti-inflammatory support alongside VIP for CIRS recovery' },
+            { name: 'Cholestyramine/Welchol', dosage: 'per Shoemaker protocol', reason: 'Binder for biotoxin removal — should be completed before VIP (prescription required)' },
+            { name: 'Omega-3', dosage: '2-3 g daily', reason: 'Anti-inflammatory support alongside VIP for CIRS recovery', productName: 'Sports Research Alaskan Fish Oil 1250mg', productLink: 'https://www.amazon.com/s?k=Sports+Research+Alaskan+Fish+Oil+1250mg' },
         ],
         dosingTiers: [
             {
@@ -1505,6 +1589,11 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         warningText: 'FIXED 28-DAY PROTOCOL — this peptide is run as exactly one 28-day cycle. Do not extend beyond 28 days per cycle. This is an expensive cycle due to the amount of peptide consumed. Benefits continue to develop after the cycle ends as nerve repair progresses. Can repeat cycle after 4-8 week break if needed.',
         cyclePattern: 'Exactly 28 days on, then 4-8 weeks off. Effects continue after cycle ends. Repeat if needed.',
         category: 'healing',
+        supplementNotes: [
+            { name: 'Vitamin B12 (Methylcobalamin)', dosage: '1000\u20135000 mcg sublingual daily', reason: 'Essential for nerve myelin sheath repair — the same pathways ARA-290 targets.', productName: 'Jarrow Methyl B-12 5000mcg', productLink: 'https://www.amazon.com/s?k=Jarrow+Methyl+B12+5000mcg+sublingual' },
+            { name: 'Alpha Lipoic Acid', dosage: '600 mg daily', reason: 'Clinically proven for diabetic neuropathy — synergistic nerve repair alongside ARA-290.', productName: 'Nutricost Alpha Lipoic Acid 600mg', productLink: 'https://www.amazon.com/s?k=Nutricost+Alpha+Lipoic+Acid+600mg' },
+            { name: 'Acetyl-L-Carnitine (ALCAR)', dosage: '500\u20131000 mg daily', reason: 'Supports peripheral nerve regeneration and mitochondrial function in nerve cells.', productName: 'NOW Acetyl-L-Carnitine 500mg', productLink: 'https://www.amazon.com/s?k=NOW+Acetyl+L+Carnitine+500mg' },
+        ],
         dosingTiers: [
             {
                 id: 'standard',
@@ -1533,8 +1622,8 @@ export const PROTOCOL_KNOWLEDGE: Record<string, PeptideKnowledge> = {
         cyclePattern: '2-3 weeks on (EOD dosing), then OFF for 3-4 months. Repeat 2-3x per year.',
         category: 'anti_aging',
         supplementNotes: [
-            { name: 'Quercetin', dosage: '500 mg daily during cycle', reason: 'Natural senolytic that synergizes with FOXO4-DRI for enhanced senescent cell clearance' },
-            { name: 'Fisetin', dosage: '100-500 mg daily during cycle', reason: 'Additional senolytic support — amplifies the cleanup effect' },
+            { name: 'Quercetin', dosage: '500 mg daily during cycle', reason: 'Natural senolytic that synergizes with FOXO4-DRI for enhanced senescent cell clearance', productName: 'NOW Quercetin with Bromelain 500mg', productLink: 'https://www.amazon.com/s?k=NOW+Quercetin+Bromelain+500mg' },
+            { name: 'Fisetin', dosage: '100-500 mg daily during cycle', reason: 'Additional senolytic support — amplifies the cleanup effect', productName: "Doctor's Best Fisetin 100mg", productLink: 'https://www.amazon.com/s?k=Doctors+Best+Fisetin+100mg' },
         ],
         dosingTiers: [
             {
@@ -1801,7 +1890,7 @@ export const RECONSTITUTION_VIDEO_URL = 'https://www.youtube.com/watch?v=ZX7tQxK
 export type PeptideCategory = PeptideKnowledge['category'];
 
 export const CATEGORY_META: Record<string, { label: string; color: string; dot: string }> = {
-    healing: { label: 'Healing', color: 'border-l-emerald-500', dot: 'bg-emerald-500' },
+    healing: { label: 'Healing', color: 'border-l-primary', dot: 'bg-primary' },
     gh_stack: { label: 'GH Stack', color: 'border-l-purple-500', dot: 'bg-purple-500' },
     weight_loss: { label: 'Weight Loss', color: 'border-l-amber-500', dot: 'bg-amber-500' },
     cognitive: { label: 'Cognitive', color: 'border-l-blue-500', dot: 'bg-blue-500' },

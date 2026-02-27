@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { cn } from '@/lib/utils';
 
 export const RING_COLORS = [
-    '#34d399', // emerald-400
+    '#34d399', // primary (default emerald)
     '#60a5fa', // blue-400
     '#a78bfa', // violet-400
     '#fbbf24', // amber-400

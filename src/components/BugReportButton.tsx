@@ -13,7 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthOptional } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/sb_client/client";
 
 export function BugReportButton() {
@@ -21,7 +21,9 @@ export function BugReportButton() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const auth = useAuthOptional();
+  const user = auth?.user ?? null;
+  const profile = auth?.profile ?? null;
 
   const handleSubmit = async () => {
     if (!description.trim()) return;

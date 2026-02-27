@@ -149,6 +149,7 @@ function OrderDetailDialog({ orderId, merchantName, onClose }: { orderId: string
                 ) : !items?.length ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No line items found.</p>
                 ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -178,6 +179,7 @@ function OrderDetailDialog({ orderId, merchantName, onClose }: { orderId: string
                             </TableRow>
                         </TableFooter>
                     </Table>
+                    </div>
                 )}
             </DialogContent>
         </Dialog>
@@ -312,6 +314,7 @@ export default function VendorSupplyOrders() {
                             </p>
                         </div>
                     ) : (
+                        <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -360,6 +363,7 @@ export default function VendorSupplyOrders() {
                                 </TableRow>
                             </TableFooter>
                         </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

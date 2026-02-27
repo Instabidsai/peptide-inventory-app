@@ -67,7 +67,7 @@ export default function ClientMessages() {
             case 'approved':
                 return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Approved</Badge>;
             case 'fulfilled':
-                return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Fulfilled</Badge>;
+                return <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30"><CheckCircle2 className="w-3 h-3 mr-1" /> Fulfilled</Badge>;
             case 'rejected':
                 return <Badge variant="destructive" className="bg-red-500/10 text-red-600 border-red-200"><XCircle className="w-3 h-3 mr-1" /> Rejected</Badge>;
             default:
@@ -214,8 +214,8 @@ export default function ClientMessages() {
                                     </div>
                                 )}
                                 {req.admin_notes && (
-                                    <div className="mt-3 pl-3 border-l-2 border-emerald-500/20">
-                                        <p className="text-xs font-medium text-emerald-600 mb-1">Response:</p>
+                                    <div className="mt-3 pl-3 border-l-2 border-primary/20">
+                                        <p className="text-xs font-medium text-primary mb-1">Response:</p>
                                         <p className="text-sm">{req.admin_notes}</p>
                                     </div>
                                 )}

@@ -31,33 +31,6 @@ export default function CheckoutSuccess() {
     const trackedPaid = useRef(false);
     const trackedTimeout = useRef(false);
 
-    // Track success page view
-    useEffect(() => { trackSuccessPageView(orderId); }, []);
-
-    // Track payment confirmed
-    useEffect(() => {
-        if (isPaid && !trackedPaid.current) {
-            trackedPaid.current = true;
-            trackPaymentConfirmed(orderId!, Number(order?.total_amount || 0));
-        }
-    }, [isPaid]);
-
-    // Track polling timeout
-    useEffect(() => {
-        if (pollingTimedOut && !isPaid && !trackedTimeout.current) {
-            trackedTimeout.current = true;
-            trackPaymentTimeout(orderId!);
-        }
-    }, [pollingTimedOut, isPaid]);
-
-    const copyOrderId = () => {
-        if (orderId) {
-            navigator.clipboard.writeText(orderId);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
     // Poll order status to confirm payment via webhook (max 2 minutes)
     const { data: order, isLoading, refetch } = useQuery({
         queryKey: ['checkout_order', orderId],
@@ -95,6 +68,33 @@ export default function CheckoutSuccess() {
 
     const isPaid = order?.payment_status === 'paid' || order?.psifi_status === 'complete';
     const isPending = !isPaid && order?.psifi_status !== 'failed';
+
+    // Track success page view
+    useEffect(() => { trackSuccessPageView(orderId); }, []);
+
+    // Track payment confirmed
+    useEffect(() => {
+        if (isPaid && !trackedPaid.current) {
+            trackedPaid.current = true;
+            trackPaymentConfirmed(orderId!, Number(order?.total_amount || 0));
+        }
+    }, [isPaid]);
+
+    // Track polling timeout
+    useEffect(() => {
+        if (pollingTimedOut && !isPaid && !trackedTimeout.current) {
+            trackedTimeout.current = true;
+            trackPaymentTimeout(orderId!);
+        }
+    }, [pollingTimedOut, isPaid]);
+
+    const copyOrderId = () => {
+        if (orderId) {
+            navigator.clipboard.writeText(orderId);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     // Trigger confetti on paid
     useEffect(() => {

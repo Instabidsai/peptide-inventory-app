@@ -46,20 +46,20 @@ function WeekStripBase({ inventory }: WeekStripProps) {
                             <div key={day} className="flex flex-col items-center gap-1">
                                 <span className={cn(
                                     "text-[10px] font-semibold uppercase tracking-widest",
-                                    isToday ? "text-emerald-400" : "text-muted-foreground/60"
+                                    isToday ? "text-primary" : "text-muted-foreground/60"
                                 )}>
                                     {day.slice(0, 2)}
                                 </span>
                                 <div className={cn(
                                     "relative h-10 w-10 rounded-2xl flex flex-col items-center justify-center transition-all duration-300",
-                                    isToday && count > 0 && "bg-emerald-500/20 shadow-[0_0_20px_hsl(160_84%_39%/0.15)]",
+                                    isToday && count > 0 && "bg-primary/20 shadow-[0_0_20px_hsl(var(--primary)/0.15)]",
                                     isToday && count === 0 && "bg-primary/10 ring-2 ring-primary/30",
                                     !isToday && count > 0 && "bg-white/[0.04]",
                                     !isToday && count === 0 && "bg-transparent",
                                 )}>
                                     <span className={cn(
                                         "text-sm font-semibold leading-none",
-                                        isToday ? "text-emerald-400" : isPast ? "text-muted-foreground/40" : "text-foreground/80"
+                                        isToday ? "text-primary" : isPast ? "text-muted-foreground/40" : "text-foreground/80"
                                     )}>
                                         {dateNum}
                                     </span>
@@ -70,7 +70,7 @@ function WeekStripBase({ inventory }: WeekStripProps) {
                                                     key={j}
                                                     className={cn(
                                                         "h-1 w-1 rounded-full",
-                                                        isToday ? "bg-emerald-400" : isPast ? "bg-muted-foreground/30" : "bg-emerald-500/50"
+                                                        isToday ? "bg-primary" : isPast ? "bg-muted-foreground/30" : "bg-primary/50"
                                                     )}
                                                 />
                                             ))}

@@ -38,6 +38,8 @@ import { z } from 'zod';
 import { Plus, Package, Search, Calendar, MoreHorizontal, Pencil, Trash2, DollarSign, AlertTriangle, Download } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { AnimatedValue } from '@/components/ui/animated-value';
 
 const lotSchema = z.object({
   peptide_id: z.string().min(1, 'Peptide is required'),
@@ -196,11 +198,26 @@ export default function Lots() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Lots</h1>
-          <p className="text-muted-foreground">Manage inventory batches</p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Package className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Lots</h1>
+            <p className="text-sm text-muted-foreground">Manage inventory batches</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {filteredLots && filteredLots.length > 0 && (
@@ -379,60 +396,81 @@ export default function Lots() {
           </Dialog>
         )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Summary Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08, ease: [0.23, 1, 0.32, 1] }}>
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Lots</p>
-                <p className="text-2xl font-bold">{lots?.length || 0}</p>
+                <p className="text-2xl font-bold"><AnimatedValue value={lots?.length || 0} /></p>
               </div>
-              <Package className="h-8 w-8 text-muted-foreground/30" />
+              <div className="p-2.5 rounded-xl bg-blue-500/15">
+                <Package className="h-5 w-5 text-blue-500" />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">{totalBottles} bottles total</p>
           </CardContent>
         </Card>
-        <Card>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16, ease: [0.23, 1, 0.32, 1] }}>
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Inventory Value</p>
-                <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
+                <p className="text-2xl font-bold"><AnimatedValue value={totalValue} prefix="$" decimals={2} /></p>
               </div>
-              <DollarSign className="h-8 w-8 text-muted-foreground/30" />
+              <div className="p-2.5 rounded-xl bg-green-500/15">
+                <DollarSign className="h-5 w-5 text-green-500" />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">Total cost at purchase</p>
           </CardContent>
         </Card>
-        <Card>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.24, ease: [0.23, 1, 0.32, 1] }}>
+        <Card className={`bg-gradient-to-br ${expiringSoon > 0 ? 'from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'from-muted/50 to-muted/30 border-border/60'} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
-                <p className={`text-2xl font-bold ${expiringSoon > 0 ? 'text-amber-500' : ''}`}>{expiringSoon}</p>
+                <p className={`text-2xl font-bold ${expiringSoon > 0 ? 'text-amber-500' : ''}`}><AnimatedValue value={expiringSoon} /></p>
               </div>
-              <AlertTriangle className={`h-8 w-8 ${expiringSoon > 0 ? 'text-amber-500/50' : 'text-muted-foreground/30'}`} />
+              <div className={`p-2.5 rounded-xl ${expiringSoon > 0 ? 'bg-amber-500/15' : 'bg-muted'}`}>
+                <AlertTriangle className={`h-5 w-5 ${expiringSoon > 0 ? 'text-amber-500' : 'text-muted-foreground/50'}`} />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">Within 90 days</p>
           </CardContent>
         </Card>
-        <Card>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.32, ease: [0.23, 1, 0.32, 1] }}>
+        <Card className={`bg-gradient-to-br ${unpaidLots > 0 ? 'from-red-500/10 to-red-500/5 border-red-500/20' : 'from-muted/50 to-muted/30 border-border/60'} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Unpaid</p>
-                <p className={`text-2xl font-bold ${unpaidLots > 0 ? 'text-red-500' : ''}`}>{unpaidLots}</p>
+                <p className={`text-2xl font-bold ${unpaidLots > 0 ? 'text-red-500' : ''}`}><AnimatedValue value={unpaidLots} /></p>
               </div>
-              <DollarSign className={`h-8 w-8 ${unpaidLots > 0 ? 'text-red-500/50' : 'text-muted-foreground/30'}`} />
+              <div className={`p-2.5 rounded-xl ${unpaidLots > 0 ? 'bg-red-500/15' : 'bg-muted'}`}>
+                <DollarSign className={`h-5 w-5 ${unpaidLots > 0 ? 'text-red-500' : 'text-muted-foreground/50'}`} />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-1">Lots not fully paid</p>
           </CardContent>
         </Card>
+        </motion.div>
       </div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.35, ease: [0.23, 1, 0.32, 1] }}
+      >
       <Card className="bg-card border-border/60">
         <CardHeader>
           <div className="flex items-center gap-4">
@@ -502,7 +540,7 @@ export default function Lots() {
                     </TableCell>
                     <TableCell>
                       {lot.payment_status === 'paid' ? (
-                        <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">Paid</Badge>
+                        <Badge variant="outline" className="text-primary border-primary/30">Paid</Badge>
                       ) : lot.payment_status === 'partial' ? (
                         <Badge variant="outline" className="text-amber-500 border-amber-500/30">Partial</Badge>
                       ) : (
@@ -568,6 +606,7 @@ export default function Lots() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Edit Lot Dialog */}
       <Dialog open={!!editingLot} onOpenChange={(open) => !open && setEditingLot(null)}>
@@ -686,6 +725,6 @@ export default function Lots() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }

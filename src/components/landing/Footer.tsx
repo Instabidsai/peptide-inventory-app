@@ -77,7 +77,7 @@ export function Footer() {
             { icon: BadgeCheck, label: "Row-Level Data Isolation" },
           ].map((badge) => (
             <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <badge.icon className="w-3.5 h-3.5 text-emerald-400/70" />
+              <badge.icon className="w-3.5 h-3.5 text-primary/70" />
               {badge.label}
             </div>
           ))}

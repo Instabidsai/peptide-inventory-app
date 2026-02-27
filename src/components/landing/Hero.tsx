@@ -1,11 +1,14 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, ChevronRight, Lock } from "lucide-react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AiDemoChat } from "@/components/crm/AiDemoChat";
-import { LiveBuildPreview } from "@/components/crm/LiveBuildPreview";
 import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
+
+const AiDemoChat = lazy(() => import("@/components/crm/AiDemoChat").then(m => ({ default: m.AiDemoChat })));
+const LiveBuildPreview = lazy(() => import("@/components/crm/LiveBuildPreview").then(m => ({ default: m.LiveBuildPreview })));
+
+const ROTATING_WORDS = ["Inventory", "Orders", "Fulfillment", "Commissions", "Client Health", "Compliance"];
 
 export function Hero() {
   const navigate = useNavigate();
@@ -13,6 +16,14 @@ export function Hero() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const [wordIdx, setWordIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIdx((prev) => (prev + 1) % ROTATING_WORDS.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
 
   const heroMessages = [
     {
@@ -47,7 +58,7 @@ export function Hero() {
         <span className="text-xs font-medium text-foreground">
           BPC-157 Command Dashboard
         </span>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
           Live
         </span>
       </div>
@@ -103,7 +114,7 @@ export function Hero() {
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-10 left-10 w-72 h-72 bg-emerald-500/8 rounded-full blur-[100px] pointer-events-none"
+        className="absolute bottom-10 left-10 w-72 h-72 bg-primary/[0.08] rounded-full blur-[100px] pointer-events-none"
         style={{ y: orbY2 }}
         animate={{ x: [0, -20, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
@@ -123,14 +134,28 @@ export function Hero() {
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
               Your AI-Powered{" "}
-              <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] bg-clip-text text-transparent">
                 Peptide Command Center
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg leading-relaxed">
               One AI that{" "}
-              <strong className="text-foreground">runs your entire business</strong> —
-              inventory, orders, fulfillment, client health, commissions — and{" "}
+              <strong className="text-foreground">runs your entire business</strong> —{" "}
+              <span className="inline-block w-[130px] text-left align-bottom">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={ROTATING_WORDS[wordIdx]}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="inline-block text-primary font-semibold"
+                  >
+                    {ROTATING_WORDS[wordIdx]}
+                  </motion.span>
+                </AnimatePresence>
+              </span>{" "}
+              and more — and{" "}
               <strong className="text-foreground">builds new features on demand</strong>.
               Dashboards, automations, entire modules — in minutes, not months.
             </p>
@@ -141,7 +166,7 @@ export function Hero() {
                   localStorage.setItem("selected_plan", "professional");
                   navigate("/get-started");
                 }}
-                className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
+                className="shadow-btn hover:shadow-btn-hover bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
                 style={shimmerStyle}
               >
                 Start Free Trial
@@ -161,6 +186,20 @@ export function Hero() {
               <Lock className="w-3 h-3" />
               Built for peptide businesses. $799/mo — 7-day free trial.
             </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/80 border border-border/40">
+                <FlaskConical className="w-3 h-3 text-primary" />
+                100+ features built
+              </span>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/80 border border-border/40">
+                <TrendingUp className="w-3 h-3 text-primary" />
+                20+ peptide workflows
+              </span>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/80 border border-border/40">
+                <Shield className="w-3 h-3 text-primary" />
+                100% data isolation
+              </span>
+            </div>
           </motion.div>
 
           {/* Right — animated chat */}
@@ -170,19 +209,21 @@ export function Hero() {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <AiDemoChat
-              messages={heroMessages}
-              resultElement={dashboardPreview}
-              loop
-              typingSpeed={22}
-              buildSteps={[
-                "Analyzing inventory schema...",
-                "Designing dashboard layout...",
-                "Connecting live data feeds...",
-                "Deploying to your CRM...",
-              ]}
-              buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
-            />
+            <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
+              <AiDemoChat
+                messages={heroMessages}
+                resultElement={dashboardPreview}
+                loop
+                typingSpeed={22}
+                buildSteps={[
+                  "Analyzing inventory schema...",
+                  "Designing dashboard layout...",
+                  "Connecting live data feeds...",
+                  "Deploying to your CRM...",
+                ]}
+                buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
+              />
+            </Suspense>
           </motion.div>
         </div>
       </div>

@@ -10,6 +10,9 @@ export interface TenantConfig {
     app_url: string;
     logo_url: string;
     primary_color: string;
+    secondary_color: string;
+    font_family: string;
+    favicon_url: string;
     zelle_email: string;
     venmo_handle: string;
     cashapp_handle: string;
@@ -44,6 +47,9 @@ const DEFAULTS: TenantConfig = {
     app_url: window.location.origin,
     logo_url: '',
     primary_color: '#7c3aed',
+    secondary_color: '',
+    font_family: '',
+    favicon_url: '',
     zelle_email: '',
     venmo_handle: '',
     cashapp_handle: '',
@@ -98,7 +104,7 @@ export function useTenantConfig(): TenantConfigResult {
 
         supabase
             .from('tenant_config')
-            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes, wholesale_tier_id, supplier_org_id, subdomain, onboarding_path, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email')
+            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, secondary_color, font_family, favicon_url, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes, wholesale_tier_id, supplier_org_id, subdomain, onboarding_path, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email')
             .eq('org_id', orgId)
             .maybeSingle()
             .then(({ data, error }) => {

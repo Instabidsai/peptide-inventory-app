@@ -30,9 +30,11 @@ import {
     Reply,
     CheckCircle2,
     Loader2,
+    MessageSquareHeart,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryError } from "@/components/ui/query-error";
+import { motion } from 'framer-motion';
 
 export default function AdminFeedback() {
     const { toast } = useToast();
@@ -115,20 +117,40 @@ export default function AdminFeedback() {
     const needsAttention = feedbacks?.filter((f) => !f.admin_response && (f.rating <= 3 || (f.comment?.length ?? 0) > 10)).length || 0;
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Client Feedback</h1>
-                    <p className="text-muted-foreground">Monitor and respond to client logs.</p>
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+        >
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="flex justify-between items-center"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <MessageSquareHeart className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Client Feedback</h1>
+                        <p className="text-sm text-muted-foreground">Monitor and respond to client logs.</p>
+                    </div>
                 </div>
                 {needsAttention > 0 && (
                     <Badge variant="destructive" className="h-8 px-3 text-sm">
                         {needsAttention} Needs Response
                     </Badge>
                 )}
-            </div>
+            </motion.div>
 
-            <Card>
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
+            >
+            <Card className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -229,6 +251,7 @@ export default function AdminFeedback() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }

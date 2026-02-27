@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Wrench, Thermometer, AlertTriangle } from "lucide-react";
+import { Wrench, Thermometer, AlertTriangle, Check } from "lucide-react";
 import { fadeInUp } from "./constants";
 
 export function PainPoints() {
@@ -47,18 +47,23 @@ export function PainPoints() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-card rounded-lg border border-border/60 p-6 shadow-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.02] hover:border-destructive/30"
+              className="bg-card rounded-xl border border-border/60 p-6 shadow-card transition-all duration-300 hover:shadow-card-hover hover:border-destructive/30 group relative overflow-hidden"
             >
-              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center mb-4">
-                <c.icon className="w-5 h-5 text-destructive" />
+              {/* Subtle hover gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-destructive/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative">
+                <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center mb-4 group-hover:bg-destructive/15 transition-colors">
+                  <c.icon className="w-5 h-5 text-destructive" />
+                </div>
+                <h3 className="font-semibold text-foreground mb-2">{c.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  {c.desc}
+                </p>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-1.5 rounded-full border border-primary/20">
+                  <Check className="w-3 h-3" />
+                  {c.stat}
+                </span>
               </div>
-              <h3 className="font-semibold text-foreground mb-2">{c.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                {c.desc}
-              </p>
-              <span className="inline-block text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                {c.stat}
-              </span>
             </motion.div>
           ))}
         </div>

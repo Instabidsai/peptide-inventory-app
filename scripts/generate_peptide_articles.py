@@ -138,6 +138,492 @@ CONDITION_KEYWORDS: dict[str, list[str]] = {
 }
 
 # ---------------------------------------------------------------------------
+# Protocol enrichment data (from protocol-knowledge.ts)
+# Dosing tiers, stacking info, supplements, warnings, cycle patterns
+# ---------------------------------------------------------------------------
+
+PROTOCOL_ENRICHMENT: dict[str, dict] = {
+    "Retatrutide": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Gentle Start", "dose": "0.5 mg weekly", "notes": "Extra-cautious for GI-sensitive. Stay 2-4 weeks before escalating."},
+            {"label": "Standard Titration", "dose": "1 mg weekly (escalate to 4 mg)", "notes": "Phase 2 trial schedule. Sweet spot at 4 mg — 17.5% weight loss with fewer side effects than 8 mg."},
+            {"label": "Aggressive", "dose": "1 mg weekly → 12 mg", "notes": "Maximum studied. GI side effects nearly double skipping steps. 68% adverse at 8 mg."},
+            {"label": "Maintenance", "dose": "4 mg weekly", "notes": "Post-titration. Adjust 2-8 mg based on response."},
+        ],
+        "schedule": "Weeks 1-2: 0.5 mg | Weeks 3-4: 1 mg | Weeks 5-6: 1.5 mg | Weeks 7-8: 2 mg | Weeks 9-10: 2.5-4 mg",
+        "route": "subcutaneous",
+    },
+    "MOTS-C": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Conservative", "dose": "2.5 mg twice weekly (5 mg/week)", "notes": "Starting dose for metabolic support."},
+            {"label": "Standard", "dose": "5 mg 3x weekly (10-15 mg/week)", "notes": "Dr. Bachmeyer recommends 2.5-5 mg EOD or combined with NAD+ every second day."},
+            {"label": "Aggressive", "dose": "5 mg every other day", "notes": "Short-term metabolic reset. 4-6 week duration."},
+        ],
+        "route": "subcutaneous",
+    },
+    "GHK-Cu": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Conservative (Anti-Aging)", "dose": "1 mg 3x weekly", "notes": "Lower dose for skin health. Cycle 8-12 weeks on, 4 off."},
+            {"label": "Standard", "dose": "2 mg daily", "notes": "Dr. Bachmeyer recommends 2-3 mg daily. 5 days on, 2 days off."},
+            {"label": "Aggressive (Wound Healing)", "dose": "2 mg daily", "notes": "Cap at 2 mg per injection. Contains copper — caution with sensitivity."},
+        ],
+        "warning": "Known to cause stinging/burning at injection site. Consider diluting further or warm compress after injection.",
+        "supplements": [{"name": "Zinc", "dose": "15-30 mg daily", "reason": "Balance copper levels"}],
+        "route": "subcutaneous",
+    },
+    "NAD+": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Conservative", "dose": "50 mg twice weekly", "notes": "Start for 2-4 weeks. Dr. Bachmeyer notes oral NAD+ is ineffective — subcutaneous only."},
+            {"label": "Standard", "dose": "100 mg 3x weekly", "notes": "Most common. Administer before workouts or during stress. Can stack with CoQ10 and alpha-lipoic acid."},
+            {"label": "Loading Phase", "dose": "200 mg daily for 7-10 days", "notes": "Saturates depleted reserves. Then drop to standard. Above 200 mg requires medical supervision."},
+        ],
+        "supplements": [{"name": "TMG (Trimethylglycine)", "dose": "500 mg daily", "reason": "Restore methyl groups depleted by NAD+ therapy"}],
+        "route": "subcutaneous",
+    },
+    "TB500": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Conservative", "dose": "2 mg twice weekly", "notes": "4 mg/week loading for 4-6 weeks, then 2 mg every 1-2 weeks maintenance."},
+            {"label": "Standard Loading", "dose": "2.5 mg twice weekly", "notes": "Dr. Bachmeyer recommends 2.5-5 mg twice weekly for 6 weeks. At least 5 mg/week."},
+            {"label": "Aggressive Loading", "dose": "5 mg twice weekly", "notes": "10 mg/week. TB-500 works by saturating tissue — loading phase is key."},
+        ],
+        "cycle": "6 weeks loading, then maintenance. 6 weeks off between full loading cycles.",
+        "route": "subcutaneous",
+    },
+    "BPC-157": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Conservative (Maintenance)", "dose": "250 mcg daily", "notes": "Minimum effective dose per Dr. Bachmeyer. Good for gut healing or general recovery."},
+            {"label": "Standard", "dose": "500 mcg daily", "notes": "Most common clinical protocol. Can split into 250 mcg AM + 250 mcg PM."},
+            {"label": "Aggressive (Acute Injury)", "dose": "500 mcg twice daily", "notes": "1000 mcg total/day. For acute injuries. Inject near injury site for local effects."},
+        ],
+        "cycle": "4-8 weeks on, 2-4 weeks off. Some practitioners use continuously for gut healing.",
+        "warning": "Oral BPC-157 capsules are available for gut-specific healing but less effective systemically than injection.",
+        "route": "subcutaneous (or oral for gut)",
+    },
+    "Semax": {
+        "category": "cognitive",
+        "tiers": [
+            {"label": "Conservative", "dose": "200 mcg daily (intranasal)", "notes": "1 spray per nostril, morning. Start here for 1-2 weeks."},
+            {"label": "Standard", "dose": "600 mcg daily (intranasal)", "notes": "3 sprays per nostril, 2x daily. Dr. Bachmeyer's recommended protocol."},
+            {"label": "NA-Semax (Enhanced)", "dose": "300-600 mcg daily", "notes": "Acetylated form with longer half-life and stronger BDNF boost."},
+        ],
+        "route": "intranasal",
+    },
+    "Tesamorelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Conservative", "dose": "1 mg daily", "notes": "Lower starting dose. Best injected before bed, empty stomach."},
+            {"label": "Standard", "dose": "2 mg daily", "notes": "FDA-approved dose. Evening injection on empty stomach. Wait 15-20 min after Ipamorelin."},
+        ],
+        "warning": "NEVER mix in same syringe as Ipamorelin. Empty stomach NON-NEGOTIABLE — carbs/insulin blunt GH release.",
+        "stack_label": "Evening Stack Part 2 — Inject AFTER Ipamorelin",
+        "route": "subcutaneous",
+    },
+    "Ipamorelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Conservative", "dose": "100 mcg daily", "notes": "Starting dose before bed. Primes pituitary for GH release."},
+            {"label": "Standard", "dose": "200 mcg daily", "notes": "Most common dose. Evening on empty stomach. Acts as 'starter pistol' for GH."},
+            {"label": "Split Dose", "dose": "100 mcg 2-3x daily", "notes": "Split dosing for multiple GH pulses. Each dose fasted."},
+        ],
+        "stack_label": "Evening Stack Part 1 — Inject FIRST, wait 15-20 min",
+        "route": "subcutaneous",
+    },
+    "Selank": {
+        "category": "cognitive",
+        "tiers": [
+            {"label": "Conservative", "dose": "250 mcg daily (intranasal)", "notes": "1-2 sprays per nostril, morning. Anti-anxiety without sedation."},
+            {"label": "Standard", "dose": "500 mcg daily (intranasal)", "notes": "2-3 sprays per nostril. Can split AM/PM for sustained effect."},
+        ],
+        "route": "intranasal",
+    },
+    "DSIP": {
+        "category": "sleep",
+        "tiers": [
+            {"label": "Conservative", "dose": "100 mcg before bed", "notes": "Starting dose. Does not force sleep — promotes natural sleep architecture."},
+            {"label": "Standard", "dose": "250 mcg before bed", "notes": "Most common. 5 days on, 2 days off. Effects often improve over first 2 weeks."},
+        ],
+        "cycle": "5 days on, 2 days off. 4-8 week cycles.",
+        "route": "subcutaneous",
+    },
+    "Tirzepatide": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Starting", "dose": "2.5 mg weekly for 4 weeks", "notes": "Mandatory starting dose per FDA label."},
+            {"label": "Standard", "dose": "5-10 mg weekly", "notes": "Titrate up every 4 weeks. 10 mg is common maintenance."},
+            {"label": "Maximum", "dose": "15 mg weekly", "notes": "Highest FDA-approved dose. GI side effects increase significantly."},
+        ],
+        "schedule": "2.5 mg → 5 mg → 7.5 mg → 10 mg → 12.5 mg → 15 mg (every 4 weeks)",
+        "route": "subcutaneous",
+    },
+    "Semaglutide": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Starting", "dose": "0.25 mg weekly for 4 weeks", "notes": "Mandatory starting dose."},
+            {"label": "Standard", "dose": "1 mg weekly", "notes": "Common maintenance for diabetes. Titrate every 4 weeks."},
+            {"label": "Weight Loss Max", "dose": "2.4 mg weekly", "notes": "FDA weight loss dose (Wegovy). Full titration takes 16+ weeks."},
+        ],
+        "route": "subcutaneous",
+    },
+    "CJC-1295 (no DAC)": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Standard", "dose": "100 mcg daily before bed", "notes": "Stimulates pulsatile GH release. Pair with Ipamorelin for synergy."},
+        ],
+        "route": "subcutaneous",
+    },
+    "CJC-1295 / Ipamorelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Standard Combo", "dose": "CJC-1295 100 mcg + Ipamorelin 200 mcg daily", "notes": "Evening before bed, empty stomach. Synergistic GH release."},
+        ],
+        "route": "subcutaneous",
+    },
+    "PT-141": {
+        "category": "sexual_health",
+        "tiers": [
+            {"label": "Conservative", "dose": "0.5 mg as needed", "notes": "Test dose 3-4 hours before activity. Assess nausea tolerance."},
+            {"label": "Standard", "dose": "1.5 mg as needed", "notes": "Common effective dose. Take 45-60 min before. Effects last 24-72 hours."},
+            {"label": "Maximum", "dose": "2 mg per dose", "notes": "Do not exceed. Wait 72 hours between doses. Max 8 doses/month."},
+        ],
+        "warning": "Nausea is the primary side effect — take on empty stomach. Can darken moles (melanocortin effect). Do NOT combine with alcohol.",
+        "route": "subcutaneous",
+    },
+    "Epithalon": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Standard (Khavinson)", "dose": "5-10 mg daily for 10-20 days", "notes": "Original Russian protocol. 10 days on, 6 months off. Activates telomerase."},
+        ],
+        "cycle": "10 days ON, 6 months OFF. Short intense bursts — not continuous.",
+        "route": "subcutaneous",
+    },
+    "Thymosin Alpha 1": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Conservative", "dose": "1.5 mg twice weekly", "notes": "Immune maintenance. 3 mg total per week."},
+            {"label": "Standard", "dose": "1.5 mg daily", "notes": "Active immune support protocol. 4-8 week cycles."},
+        ],
+        "cycle": "4-8 weeks on, 2-4 weeks off.",
+        "route": "subcutaneous",
+    },
+    "KPV": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Conservative", "dose": "200 mcg daily", "notes": "Starting anti-inflammatory dose. Can use oral capsules for gut-specific."},
+            {"label": "Standard", "dose": "500 mcg daily", "notes": "Standard for gut inflammation and immune modulation."},
+        ],
+        "route": "subcutaneous or oral",
+    },
+    "Hexarelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Conservative", "dose": "100 mcg daily fasted", "notes": "Tolerance assessment week."},
+            {"label": "Standard", "dose": "100 mcg 2-3x daily", "notes": "200-300 mcg total. Fasted administration essential."},
+        ],
+        "warning": "MOST prone to desensitization among GHRPs. Strict cycling non-negotiable. Can elevate cortisol and prolactin.",
+        "cycle": "8-12 weeks on, 4-6 weeks off. MANDATORY break.",
+        "route": "subcutaneous",
+    },
+    "Sermorelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Conservative", "dose": "200 mcg daily before bed", "notes": "Empty stomach. Good starting dose."},
+            {"label": "Standard", "dose": "300 mcg daily before bed", "notes": "Most common clinical dose for anti-aging and body composition."},
+            {"label": "High/Stack", "dose": "500 mcg daily before bed", "notes": "Often stacked with Ipamorelin 200-300 mcg for synergistic GH pulse."},
+        ],
+        "supplements": [
+            {"name": "Magnesium Glycinate", "dose": "400 mg", "reason": "Supports GH release and sleep"},
+            {"name": "Zinc", "dose": "30 mg", "reason": "Critical cofactor for GH production"},
+        ],
+        "cycle": "12 weeks on, 4 weeks off.",
+        "route": "subcutaneous",
+    },
+    "AOD-9604": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Conservative", "dose": "250 mcg daily fasted", "notes": "Start here for 2 weeks."},
+            {"label": "Standard", "dose": "300 mcg daily AM fasted", "notes": "Inject near abdominal fat. No effect on GH/IGF-1."},
+            {"label": "High", "dose": "500 mcg daily fasted", "notes": "Can split 250 AM + 250 PM."},
+        ],
+        "supplements": [
+            {"name": "L-Carnitine", "dose": "500-1000 mg", "reason": "Enhances fat transport for burning"},
+        ],
+        "cycle": "12 weeks on, 4 weeks off.",
+        "route": "subcutaneous",
+    },
+    "5-Amino-1MQ": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Conservative", "dose": "50 mg oral daily", "notes": "Starting dose for 1-2 weeks."},
+            {"label": "Standard", "dose": "100 mg oral daily", "notes": "Empty stomach. Most common research dose."},
+            {"label": "High", "dose": "150 mg oral twice daily (300 mg)", "notes": "AM and early afternoon."},
+        ],
+        "warning": "Oral capsule — no injection. Relatively new; long-term human safety data limited.",
+        "route": "oral",
+    },
+    "SS-31": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Conservative", "dose": "2 mg daily", "notes": "Starting dose for first week."},
+            {"label": "Standard", "dose": "4 mg daily", "notes": "Standard. Effects cumulative — noticeable at week 2-3."},
+            {"label": "High", "dose": "8 mg daily", "notes": "For advanced mitochondrial dysfunction or cardiac support."},
+        ],
+        "supplements": [
+            {"name": "CoQ10", "dose": "200 mg", "reason": "Synergistic mitochondrial support"},
+            {"name": "PQQ", "dose": "20 mg", "reason": "Promotes mitochondrial biogenesis"},
+        ],
+        "cycle": "4-8 weeks on, 4 weeks off.",
+        "route": "subcutaneous",
+    },
+    "Cagriniltide": {
+        "category": "weight_loss",
+        "tiers": [
+            {"label": "Starting", "dose": "0.25 mg weekly", "notes": "Mandatory starting dose for 4 weeks. Do not skip."},
+            {"label": "Standard", "dose": "1.0 mg weekly", "notes": "Mid-range after successful titration."},
+            {"label": "Max", "dose": "2.4 mg weekly", "notes": "Only after full titration over 16+ weeks."},
+        ],
+        "warning": "HIGH NAUSEA RISK. Must be used alongside GLP-1 agonist (Tirzepatide or Semaglutide). Titrate slowly every 4 weeks.",
+        "supplements": [
+            {"name": "Electrolytes", "dose": "daily", "reason": "Prevent dehydration from reduced intake"},
+            {"name": "B12", "dose": "1000 mcg weekly", "reason": "GLP-1 drugs may reduce B12 absorption"},
+        ],
+        "route": "subcutaneous",
+    },
+    "LL-37": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Low & Slow", "dose": "100 mcg every other day", "notes": "Gauge Herxheimer response first."},
+            {"label": "Standard", "dose": "100 mcg daily", "notes": "Standard antimicrobial/immune dose."},
+            {"label": "High", "dose": "250 mcg daily", "notes": "For severe chronic biofilm infections (Lyme, CIRS/mold)."},
+        ],
+        "warning": "HERXHEIMER REACTION: As biofilms break down, released toxins cause temporary symptom flare. This means it is WORKING. Start low.",
+        "supplements": [
+            {"name": "Activated Charcoal", "dose": "500 mg (2 hrs away from supps)", "reason": "Absorb released biofilm toxins"},
+            {"name": "NAC", "dose": "600 mg 2x daily", "reason": "Glutathione precursor for liver detox"},
+            {"name": "Vitamin C", "dose": "1-2 g daily", "reason": "Immune support during antimicrobial protocol"},
+        ],
+        "cycle": "4-6 weeks on, 2-4 weeks off.",
+        "route": "subcutaneous",
+    },
+    "Glutathione": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Maintenance", "dose": "200 mg IM 1-2x/week", "notes": "General wellness antioxidant."},
+            {"label": "Standard", "dose": "200 mg IM 3x/week", "notes": "Active detox, liver health, skin brightening."},
+            {"label": "Acute", "dose": "300 mg IM daily for 1-2 weeks", "notes": "Post-illness, heavy metal detox, environmental toxins."},
+        ],
+        "warning": "IM injection preferred over Sub-Q. Sulfur smell is normal. Rotate sites. Mild detox symptoms possible.",
+        "supplements": [
+            {"name": "NAC", "dose": "600 mg 2x daily", "reason": "Helps body replenish its own glutathione"},
+            {"name": "Vitamin C", "dose": "1-2 g daily", "reason": "Recycles oxidized glutathione"},
+            {"name": "Alpha Lipoic Acid", "dose": "300-600 mg", "reason": "Regenerates both glutathione and vitamin C"},
+        ],
+        "route": "intramuscular",
+    },
+    "Oxytocin": {
+        "category": "sexual_health",
+        "tiers": [
+            {"label": "Low / Social", "dose": "10 IU as needed", "notes": "15-20 min before event. For social anxiety and mood."},
+            {"label": "Standard", "dose": "15 IU as needed", "notes": "Sweet spot. Enhances bonding, empathy, connection."},
+            {"label": "High", "dose": "25 IU as needed", "notes": "DO NOT exceed 30 IU — higher causes drowsiness and blunting."},
+        ],
+        "warning": "BIPHASIC: Low doses promote bonding. Above 30 IU causes drowsiness/emotional blunting — opposite effect. Less is more.",
+        "route": "subcutaneous",
+    },
+    "Kisspeptin": {
+        "category": "sexual_health",
+        "tiers": [
+            {"label": "Conservative", "dose": "200 mcg EOD", "notes": "Assess individual response."},
+            {"label": "Standard", "dose": "300 mcg daily", "notes": "Most common for hormone optimization and libido."},
+            {"label": "High", "dose": "500 mcg daily (MAX)", "notes": "DO NOT exceed — GnRH desensitization risk above this."},
+        ],
+        "warning": "Above 500 mcg DESENSITIZES GnRH receptors, suppressing hormones instead of elevating. Monitor with bloodwork.",
+        "supplements": [
+            {"name": "Zinc", "dose": "30 mg", "reason": "Cofactor for testosterone synthesis"},
+            {"name": "Vitamin D3", "dose": "5000 IU", "reason": "Supports HPG axis"},
+            {"name": "Magnesium", "dose": "400 mg", "reason": "Supports hormone production"},
+        ],
+        "cycle": "8-12 weeks on, 4 weeks off. Bloodwork before and after.",
+        "route": "subcutaneous",
+    },
+    "Melanotan 2": {
+        "category": "sexual_health",
+        "tiers": [
+            {"label": "Low Start", "dose": "100 mcg daily before bed", "notes": "Test tolerance 3-5 days."},
+            {"label": "Standard Loading", "dose": "250 mcg daily before bed", "notes": "Take ginger 30 min before for nausea. Results in 1-2 weeks."},
+            {"label": "Maintenance", "dose": "250 mcg 1-2x/week", "notes": "Sustains tan after loading."},
+        ],
+        "warning": "TAKE BEFORE BED (sleep through nausea). Will darken existing moles. PRIAPISM RISK in males at high doses.",
+        "supplements": [{"name": "Ginger", "dose": "500-1000 mg 30 min before", "reason": "Reduce nausea"}],
+        "route": "subcutaneous",
+    },
+    "VIP": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Conservative", "dose": "50 mcg nasal 2x daily", "notes": "Starting protocol. Monitor blood pressure."},
+            {"label": "Standard (Shoemaker)", "dose": "50 mcg nasal 4x daily", "notes": "Standard CIRS protocol. Every 4-6 hours."},
+        ],
+        "warning": "MUST clear MARCoNS nasal colonization BEFORE starting. VIP with active MARCoNS worsens illness. Nasal culture first.",
+        "cycle": "30-90 days continuous. Retest TGF-beta, C4a, VEGF after 30 days.",
+        "route": "nasal spray",
+    },
+    "ARA-290": {
+        "category": "healing",
+        "tiers": [
+            {"label": "Standard (28-Day)", "dose": "4 mg daily for exactly 28 days", "notes": "Only established protocol. Nerve repair benefits continue after cycle ends."},
+        ],
+        "warning": "FIXED 28-DAY PROTOCOL. Do not extend. Expensive cycle. Benefits develop after cycle. Can repeat after 4-8 weeks.",
+        "cycle": "Exactly 28 days on, then 4-8 weeks off.",
+        "route": "subcutaneous",
+    },
+    "FOXO4": {
+        "category": "anti_aging",
+        "tiers": [
+            {"label": "Conservative", "dose": "3 mg EOD for 2 weeks", "notes": "Lower starting dose for first-timers."},
+            {"label": "Standard", "dose": "5 mg EOD for 2-3 weeks", "notes": "Most common senolytic protocol."},
+            {"label": "High", "dose": "10 mg EOD for 2-3 weeks", "notes": "Aggressive clearance. Stronger side effects."},
+        ],
+        "warning": "EXPECT worse before better — fatigue, achiness, flu-like symptoms during cycle are signs of senescent cell clearance.",
+        "supplements": [
+            {"name": "Quercetin", "dose": "500 mg daily during cycle", "reason": "Natural senolytic — synergizes with FOXO4-DRI"},
+            {"name": "Fisetin", "dose": "100-500 mg daily during cycle", "reason": "Additional senolytic support"},
+        ],
+        "cycle": "2-3 weeks on (EOD), then 3-4 months off. Repeat 2-3x per year.",
+        "route": "subcutaneous",
+    },
+    "Methylene Blue": {
+        "category": "cognitive",
+        "tiers": [
+            {"label": "Microdose", "dose": "0.5-1 mg/kg oral", "notes": "Cognitive enhancement dose. Turns urine blue-green (normal)."},
+            {"label": "Standard", "dose": "1-2 mg/kg oral", "notes": "Mitochondrial support. Take with food."},
+        ],
+        "warning": "NOT a peptide — a synthetic compound. Turns urine/tears blue. Do NOT combine with SSRIs (serotonin syndrome risk).",
+        "route": "oral",
+    },
+    "Tesamorelin / Ipamorelin": {
+        "category": "gh_stack",
+        "tiers": [
+            {"label": "Evening GH Protocol", "dose": "Step 1: Ipamorelin 200 mcg → wait 15-20 min → Step 2: Tesamorelin 2 mg", "notes": "Empty stomach. Never mix in same syringe. Ipamorelin primes pituitary, Tesamorelin triggers GH blast."},
+        ],
+        "warning": "CRITICAL SEQUENCING: Ipamorelin FIRST (starter pistol), wait 15-20 min, THEN Tesamorelin (the blast). Never combine in same syringe. Empty stomach non-negotiable.",
+        "route": "subcutaneous",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Named protocol stacks (from PROTOCOL_TEMPLATES in protocol-knowledge.ts)
+# Maps stack name -> description + peptide list
+# ---------------------------------------------------------------------------
+
+NAMED_STACKS: list[dict[str, str | list[str]]] = [
+    {"name": "Healing Stack", "desc": "TB-500 + BPC-157 for tissue repair and recovery", "peptides": ["TB500", "BPC-157"]},
+    {"name": "Healing Stack (Injury)", "desc": "TB-500 + BPC-157 aggressive loading for acute injuries", "peptides": ["TB500", "BPC-157"]},
+    {"name": "GH Stack (Evening)", "desc": "Ipamorelin + 2x Tesamorelin for growth hormone optimization", "peptides": ["Ipamorelin", "Tesamorelin", "Tesamorelin / Ipamorelin"]},
+    {"name": "Weight Loss", "desc": "Retatrutide + MOTS-C for metabolic enhancement", "peptides": ["Retatrutide", "MOTS-C"]},
+    {"name": "Weight Loss (Gentle)", "desc": "Retatrutide gentle start + MOTS-C conservative for GI-sensitive clients", "peptides": ["Retatrutide", "MOTS-C"]},
+    {"name": "Cognitive", "desc": "Semax + Selank for focus and anxiety reduction", "peptides": ["Semax", "Selank"]},
+    {"name": "Sleep & Recovery", "desc": "DSIP + NAD+ for restorative sleep and cellular repair", "peptides": ["DSIP", "NAD+"]},
+    {"name": "Anti-Aging", "desc": "GHK-Cu + NAD+ + MOTS-C for longevity and skin health", "peptides": ["GHK-Cu", "NAD+", "MOTS-C"]},
+    {"name": "GLOW", "desc": "GHK-Cu + BPC-157 + TB-500 for skin rejuvenation, collagen synthesis, and tissue repair", "peptides": ["GHK-Cu", "BPC-157", "TB500"]},
+    {"name": "KLOW", "desc": "GLOW stack + KPV for enhanced anti-inflammatory support and immune modulation", "peptides": ["GHK-Cu", "BPC-157", "TB500", "KPV"]},
+    {"name": "Gut Healing", "desc": "BPC-157 + KPV for gut lining repair and inflammation", "peptides": ["BPC-157", "KPV"]},
+    {"name": "Immune Boost", "desc": "Thymosin Alpha-1 + NAD+ for immune function and cellular energy", "peptides": ["Thymosin Alpha 1", "NAD+"]},
+    {"name": "Longevity", "desc": "Epithalon + NAD+ + GHK-Cu for telomere support, cellular repair, and skin health", "peptides": ["Epithalon", "NAD+", "GHK-Cu"]},
+    {"name": "Full Protocol", "desc": "Complete 11-peptide protocol: weight loss, healing, GH, cognitive, and sleep", "peptides": ["Retatrutide", "MOTS-C", "GHK-Cu", "NAD+", "TB500", "BPC-157", "Semax", "Tesamorelin", "Ipamorelin", "Selank", "DSIP"]},
+]
+
+# Co-occurrence data from real client protocols (top pairings)
+CO_OCCURRENCE: dict[str, list[str]] = {
+    "BPC-157": ["NAD+", "MOTS-C", "TB500", "GHK-Cu", "Selank", "Semax", "KPV"],
+    "NAD+":    ["BPC-157", "MOTS-C", "GHK-Cu", "Selank", "Semax", "TB500"],
+    "MOTS-C":  ["NAD+", "BPC-157", "GHK-Cu", "Selank", "Semax", "TB500"],
+    "GHK-Cu":  ["NAD+", "BPC-157", "MOTS-C", "Selank", "Semax", "TB500"],
+    "TB500":   ["BPC-157", "NAD+", "MOTS-C", "GHK-Cu", "Selank", "Semax"],
+    "Selank":  ["Semax", "NAD+", "BPC-157", "MOTS-C", "GHK-Cu"],
+    "Semax":   ["Selank", "NAD+", "BPC-157", "MOTS-C", "GHK-Cu"],
+    "Tesamorelin": ["Ipamorelin", "DSIP"],
+    "Ipamorelin":  ["Tesamorelin", "DSIP"],
+    "DSIP":    ["NAD+", "Selank", "Tesamorelin", "Ipamorelin"],
+    "Retatrutide": ["MOTS-C"],
+    "KPV":     ["BPC-157", "GHK-Cu", "TB500"],
+}
+
+# GH Stack sequencing rules
+GH_STACK_SEQUENCING = """GH Stack Critical Sequencing:
+Step 1 (Minute Zero): Inject Ipamorelin first — it primes the pituitary for maximum GH release.
+Step 2 (Wait 15-20 Minutes): Allow Ipamorelin to fully prime receptors.
+Step 3 (The Blast): Inject Tesamorelin — triggers a massive, natural GH pulse from the primed pituitary.
+WARNING: NEVER mix in the same syringe. Empty stomach NON-NEGOTIABLE."""
+
+
+def build_protocol_context(peptide_name: str) -> str:
+    """Build a rich protocol context string for a peptide from enrichment data."""
+    parts: list[str] = []
+
+    # 1. Dosing tiers
+    enrichment = PROTOCOL_ENRICHMENT.get(peptide_name, {})
+    if enrichment:
+        tiers = enrichment.get("tiers", [])
+        if tiers:
+            parts.append("=== DOSING PROTOCOLS ===")
+            parts.append(f"Administration: {enrichment.get('route', 'subcutaneous')}")
+            for t in tiers:
+                parts.append(f"• {t['label']}: {t['dose']}")
+                if t.get("notes"):
+                    parts.append(f"  → {t['notes']}")
+            if enrichment.get("schedule"):
+                parts.append(f"Titration Schedule: {enrichment['schedule']}")
+
+        # Cycle pattern
+        if enrichment.get("cycle"):
+            parts.append(f"\nCycle Pattern: {enrichment['cycle']}")
+
+        # Warnings
+        if enrichment.get("warning"):
+            parts.append(f"\n⚠️ WARNING: {enrichment['warning']}")
+
+        # Stack label
+        if enrichment.get("stack_label"):
+            parts.append(f"\nStack Role: {enrichment['stack_label']}")
+
+        # Supplement notes
+        supps = enrichment.get("supplements", [])
+        if supps:
+            parts.append("\n=== RECOMMENDED SUPPLEMENTS ===")
+            for s in supps:
+                parts.append(f"• {s['name']} ({s['dose']}): {s['reason']}")
+
+    # 2. Named stacks this peptide belongs to
+    my_stacks = []
+    for stack in NAMED_STACKS:
+        if peptide_name in stack["peptides"]:
+            other_peptides = [p for p in stack["peptides"] if p != peptide_name]
+            my_stacks.append(f"• {stack['name']}: {stack['desc']} (paired with: {', '.join(other_peptides)})")
+
+    if my_stacks:
+        parts.append("\n=== NAMED PROTOCOL STACKS ===")
+        parts.append(f"{peptide_name} is included in these pre-built protocol stacks:")
+        parts.extend(my_stacks)
+
+    # 3. GH Stack sequencing (for Tesamorelin/Ipamorelin)
+    if peptide_name in ("Tesamorelin", "Ipamorelin", "Tesamorelin / Ipamorelin"):
+        parts.append(f"\n=== GH STACK SEQUENCING ===\n{GH_STACK_SEQUENCING}")
+
+    # 4. Co-occurrence (real client protocol data)
+    co = CO_OCCURRENCE.get(peptide_name, [])
+    if co:
+        parts.append(f"\n=== COMMONLY STACKED WITH (from real client protocols) ===")
+        parts.append(f"{peptide_name} is most frequently used alongside: {', '.join(co)}")
+
+    return "\n".join(parts) if parts else ""
+
+
+# ---------------------------------------------------------------------------
 # Article generation prompts
 # ---------------------------------------------------------------------------
 SYNTHESIS_PROMPT = """You are a peptide research writer for an educational health platform.

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { usePartnerDownline, useCommissions, useCommissionStats, useDownlineClients, useAllOrgReps } from '@/hooks/use-partner';
 import { useCreateContact } from '@/hooks/use-contacts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,9 +10,18 @@ import { supabase } from '@/integrations/sb_client/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { DollarSign, ShoppingBag, Percent, UserPlus } from 'lucide-react';
+import { DollarSign, ShoppingBag, Percent, UserPlus, Handshake } from 'lucide-react';
 import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const staggerContainer = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.07 } },
+};
+const staggerItem = {
+    hidden: { opacity: 0, y: 14 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.23, 1, 0.32, 1] } },
+};
 
 import { logger } from '@/lib/logger';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
@@ -188,22 +198,38 @@ export default function PartnerDashboard() {
 
     if (downlineLoading && commissionsLoading) {
         return (
-            <div className="space-y-6">
-                <Skeleton className="h-10 w-48" />
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-6"
+            >
+                <Skeleton className="h-10 w-48 rounded-xl" />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+                    {[1, 2, 3, 4].map(i => (
+                        <Skeleton key={i} className="h-28 w-full rounded-xl" style={{ animationDelay: `${i * 100}ms` }} />
+                    ))}
                 </div>
-                <Skeleton className="h-64 w-full" />
-            </div>
+                <Skeleton className="h-64 w-full rounded-xl" />
+            </motion.div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+        >
             {/* Header */}
-            <div className="flex flex-col gap-2">
+            <motion.div variants={staggerItem} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Handshake className="h-5 w-5 text-primary" />
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight">Partner Portal</h1>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setActiveSheet('add-person')}>
                             <UserPlus className="mr-2 h-4 w-4" />
@@ -236,15 +262,18 @@ export default function PartnerDashboard() {
                         } · {commRate.toFixed(1)}% commission
                     </Badge>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Referral Links */}
+            <motion.div variants={staggerItem}>
             <SectionErrorBoundary section="Referral Links">
             <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} />
             <TeamReferralLinks downline={downline || []} />
             </SectionErrorBoundary>
+            </motion.div>
 
             {/* Stats Overview */}
+            <motion.div variants={staggerItem}>
             <SectionErrorBoundary section="Stats Overview">
             <StatsCards
                 stats={stats}
@@ -256,16 +285,20 @@ export default function PartnerDashboard() {
                 onOpenSheet={setActiveSheet}
             />
             </SectionErrorBoundary>
+            </motion.div>
 
             {/* Apply Commission Banner */}
+            <motion.div variants={staggerItem}>
             <ApplyCommissionBanner
                 availableAmount={stats.available + creditBalance}
                 totalOwed={totalOwed}
                 isPending={applyCommissions.isPending}
                 onApply={() => applyCommissions.mutate()}
             />
+            </motion.div>
 
             {/* Commission History + Network Hierarchy */}
+            <motion.div variants={staggerItem}>
             <SectionErrorBoundary section="Commissions & Network">
             <div className="grid gap-4 md:grid-cols-2">
                 <CommissionHistoryCard
@@ -284,11 +317,14 @@ export default function PartnerDashboard() {
                 />
             </div>
             </SectionErrorBoundary>
+            </motion.div>
 
             {/* Downline Activity */}
+            <motion.div variants={staggerItem}>
             <SectionErrorBoundary section="Downline Activity">
             <DownlineActivity downline={downline || []} />
             </SectionErrorBoundary>
+            </motion.div>
 
             {/* Detail Sheets */}
             <BalanceSheet
@@ -341,6 +377,6 @@ export default function PartnerDashboard() {
                 isPending={createContact.isPending}
                 onSubmit={handleAddPerson}
             />
-        </div>
+        </motion.div>
     );
 }

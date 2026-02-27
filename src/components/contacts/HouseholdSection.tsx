@@ -109,7 +109,7 @@ export function HouseholdSection({ contactId }: HouseholdSectionProps) {
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     {member.is_linked ? (
-                                        <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">
+                                        <Badge variant="outline" className="text-xs text-primary border-primary/30">
                                             <CheckCircle2 className="h-3 w-3 mr-1" /> Linked
                                         </Badge>
                                     ) : member.email ? (

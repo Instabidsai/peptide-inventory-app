@@ -24,7 +24,7 @@ export function PaymentIntegration() {
     <section className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
-          <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2 block">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
             Integrated Payments
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
@@ -34,9 +34,9 @@ export function PaymentIntegration() {
             Real credit card processing powered by PsiFi — merchant account setup and integration
             pre-configured with every plan. Your rates, your revenue. Plus Zelle, CashApp, and Venmo built right in.
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <CreditCard className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-400">
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <CreditCard className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">
               Merchant account setup included — no separate integration fees
             </span>
           </div>
@@ -55,15 +55,15 @@ export function PaymentIntegration() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-card hover:border-emerald-500/30 transition-colors"
+                className="flex items-start gap-4 p-4 rounded-xl border border-border/60 bg-card hover:border-primary/30 transition-colors"
               >
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <m.icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-semibold text-foreground">{m.name}</h4>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                       {m.badge}
                     </span>
                   </div>
@@ -79,7 +79,7 @@ export function PaymentIntegration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-emerald-500/5 p-8"
+            className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/5 p-8"
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-11 h-11 rounded-lg bg-primary/15 flex items-center justify-center">
@@ -93,7 +93,7 @@ export function PaymentIntegration() {
             <div className="space-y-3">
               {automations.map((feat) => (
                 <div key={feat} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <Check className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                  <Check className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                   {feat}
                 </div>
               ))}
@@ -119,7 +119,7 @@ export function PaymentIntegration() {
         {/* Partner CTA */}
         <motion.div
           {...fadeInUp}
-          className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-emerald-500/10 border border-emerald-500/20"
+          className="mt-12 text-center p-8 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20"
         >
           <h3 className="text-xl font-bold text-foreground mb-2">
             Distribution Partners
@@ -131,7 +131,7 @@ export function PaymentIntegration() {
           </p>
           <Button
             onClick={() => scrollTo("final-cta")}
-            className="bg-gradient-to-r from-emerald-500 to-primary text-white border-0 hover:opacity-90"
+            className="bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90"
           >
             Become a Distribution Partner
             <ArrowRight className="w-4 h-4 ml-2" />

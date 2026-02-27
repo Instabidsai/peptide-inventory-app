@@ -39,7 +39,7 @@ export default function CompletedTab({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                     >
-                        <Card className={order.shipping_status === 'delivered' ? 'border-green-500/30 opacity-75' : 'border-emerald-500/30'}>
+                        <Card className={order.shipping_status === 'delivered' ? 'border-green-500/30 opacity-75' : 'border-primary/30'}>
                             <CardContent className="p-4">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">

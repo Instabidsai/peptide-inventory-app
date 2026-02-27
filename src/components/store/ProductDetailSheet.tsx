@@ -48,7 +48,7 @@ export function ProductDetailSheet({
 }: ProductDetailSheetProps) {
     return (
         <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/[0.1]">
+            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-white/[0.1]">
                 {selectedPeptide && (() => {
                     const price = getClientPrice(selectedPeptide);
                     const retail = Number(selectedPeptide.retail_price || 0);
@@ -60,11 +60,11 @@ export function ProductDetailSheet({
 
                     return (
                         <>
-                            <div className="h-1 rounded-full mx-auto w-12 bg-gradient-to-r from-primary to-emerald-400 opacity-60 mb-5 -mt-1" />
+                            <div className="h-1 rounded-full mx-auto w-12 bg-gradient-brand-r opacity-60 mb-5 -mt-1" />
                             <SheetHeader className="pb-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-[0.15em]">Research Grade</span>
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                    <span className="text-[10px] text-primary/80 font-semibold uppercase tracking-[0.15em]">Research Grade</span>
                                     {dk?.administrationRoute && (
                                         <>
                                             <span className="text-white/10">|</span>
@@ -115,10 +115,10 @@ export function ProductDetailSheet({
                                         const isCustomerDetail = !isPartner;
                                         const detailLabel = isCustomerDetail ? 'Friends & Family' : pricingMode === 'cost_plus' ? 'Preferred Pricing' : null;
                                         return (
-                                            <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25 inline-flex items-center">
-                                                <span className="text-lg font-extrabold text-emerald-400">{detailPct}% off</span>
+                                            <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25 inline-flex items-center">
+                                                <span className="text-lg font-extrabold text-primary">{detailPct}% off</span>
                                                 {detailLabel && (
-                                                    <span className="text-sm font-semibold text-emerald-400/70 ml-2">· {detailLabel}</span>
+                                                    <span className="text-sm font-semibold text-primary/70 ml-2">· {detailLabel}</span>
                                                 )}
                                             </div>
                                         );
@@ -150,7 +150,7 @@ export function ProductDetailSheet({
                                 ) : (
                                     <Button
                                         size="lg"
-                                        className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
+                                        className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-brand-r hover:opacity-90 border-0"
                                         onClick={() => addToCart(selectedPeptide)}
                                     >
                                         <Plus className="h-5 w-5 mr-2" />
@@ -234,14 +234,14 @@ export function ProductDetailSheet({
                                 {dk?.supplementNotes && dk.supplementNotes.length > 0 && (
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <Pill className="h-3.5 w-3.5 text-emerald-400/60" />
+                                            <Pill className="h-3.5 w-3.5 text-primary/60" />
                                             <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Recommended Supplements</p>
                                         </div>
                                         <div className="space-y-2">
                                             {dk.supplementNotes.map((supp, idx) => (
                                                 <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-start gap-3">
-                                                    <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                                                        <Pill className="h-3.5 w-3.5 text-emerald-400/60" />
+                                                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                        <Pill className="h-3.5 w-3.5 text-primary/60" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-xs font-bold text-foreground/80">{supp.name}</p>
@@ -305,7 +305,7 @@ export function ProductDetailSheet({
                                 {/* Storage & Handling */}
                                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <Shield className="h-3.5 w-3.5 text-emerald-400/60" />
+                                        <Shield className="h-3.5 w-3.5 text-primary/60" />
                                         <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em]">Storage & Handling</p>
                                     </div>
                                     <p className="text-xs text-muted-foreground/50 leading-relaxed">

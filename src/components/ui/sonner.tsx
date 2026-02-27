@@ -14,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           description: "group-[.toast]:text-muted-foreground",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:rounded-lg group-[.toast]:font-semibold",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:rounded-lg",
-          success: "group-[.toaster]:!border-emerald-500/30 group-[.toaster]:!shadow-[0_8px_30px_rgba(16,185,129,0.12)]",
+          success: "group-[.toaster]:!border-primary/30 group-[.toaster]:!shadow-[0_8px_30px_hsl(var(--primary)/0.12)]",
           error: "group-[.toaster]:!border-red-500/30 group-[.toaster]:!shadow-[0_8px_30px_rgba(239,68,68,0.12)]",
           warning: "group-[.toaster]:!border-amber-500/30 group-[.toaster]:!shadow-[0_8px_30px_rgba(245,158,11,0.12)]",
           info: "group-[.toaster]:!border-blue-500/30 group-[.toaster]:!shadow-[0_8px_30px_rgba(59,130,246,0.12)]",

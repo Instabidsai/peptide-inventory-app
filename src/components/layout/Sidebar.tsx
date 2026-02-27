@@ -1,38 +1,20 @@
+import { useState } from 'react';
 import { NavLink, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import {
-  LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, BookOpen,
-  ClipboardList,
-  ShoppingBag,
-  PackageCheck,
-  Briefcase,
-  DollarSign,
-  PieChart,
-  Network,
-  Wand2,
-  Leaf,
-  Zap,
-  Bot,
-  ToggleRight,
-  Activity,
-  ShieldCheck,
-  Building2,
-  BarChart3,
-  CreditCard,
-  LifeBuoy,
-  Rocket,
-  ScrollText,
-  Shield,
-  Plug,
+  LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, ChevronDown, BookOpen,
+  ClipboardList, ShoppingBag, PackageCheck, Briefcase, DollarSign, PieChart, Network, Wand2, Leaf, Zap, Bot, ToggleRight, Activity, ShieldCheck,
+  Building2, BarChart3, CreditCard, LifeBuoy, Rocket, ScrollText, Shield, Plug, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { SIDEBAR_FEATURE_MAP } from '@/lib/feature-registry';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { BugReportButton } from '@/components/BugReportButton';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SidebarProps {
   open: boolean;
@@ -62,6 +44,7 @@ const navigation = [
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Customizations', href: '/customizations', icon: Wand2, roles: ['admin'] },
   { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
+  { name: 'Integrations', href: '/integrations', icon: Plug, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
   { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },
@@ -84,6 +67,16 @@ const vendorNavigation = [
   { name: 'Settings', href: '/vendor/settings', icon: Settings },
 ];
 
+const NAV_GROUPS = [
+  { label: 'Overview', names: ['Dashboard', 'AI Assistant'] },
+  { label: 'Inventory', names: ['Peptides', 'Lots', 'Bottles', 'Supplements', 'Movements'] },
+  { label: 'Sales', names: ['Orders', 'Sales Orders', 'Fulfillment'] },
+  { label: 'People', names: ['Customers', 'Partners', 'Commissions'] },
+  { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Requests', 'Feedback'] },
+  { label: 'Partner', names: ['Partner Portal', 'Partner Store', 'My Orders'] },
+  { label: 'Admin', names: ['Financials', 'Automations', 'Customizations', 'Features', 'Integrations', 'Settings'] },
+];
+
 export function Sidebar({ open, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,6 +92,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const effectiveRole = previewRole || (
     (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep' : userRole?.role
   );
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   // Fetch verified profile data for balance
   const { data: balanceData } = useQuery({
@@ -121,8 +126,68 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       return count || 0;
     },
     enabled: effectiveRole === 'admin' || effectiveRole === 'staff' || effectiveRole === 'super_admin',
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 60000,
   });
+
+  // Pre-filter navigation items by role and feature flags
+  const visibleNavItems = navigation.filter(item => {
+    const featureKey = SIDEBAR_FEATURE_MAP[item.name];
+    if (featureKey && !isEnabled(featureKey)) return false;
+
+    const roleForNav = effectiveRole === 'super_admin' ? 'admin' : effectiveRole;
+
+    if (item.roles && !item.roles.includes(organization?.role || roleForNav || '')) {
+      if (!roleForNav) return false;
+      if (!item.roles.includes(roleForNav)) return false;
+    }
+
+    if (effectiveRole === 'sales_rep') {
+      const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Orders'];
+      const tier = authProfile?.partner_tier || 'standard';
+      if (tier !== 'senior') hiddenForRep.push('Peptides');
+      if (hiddenForRep.includes(item.name)) return false;
+    }
+
+    return true;
+  });
+
+  // Further filter by search query
+  const filteredNavItems = searchQuery
+    ? visibleNavItems.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : visibleNavItems;
+
+  // Render a single nav item (shared between grouped and flat search views)
+  const renderNavItem = (item: typeof navigation[number]) => (
+    <NavLink
+      key={item.name}
+      to={item.href}
+      onClick={onClose}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
+          isActive
+            ? 'bg-gradient-to-r from-primary/15 to-primary/5 text-primary shadow-[0_2px_10px_rgba(0,0,0,0.1)] ring-1 ring-primary/20 scale-[1.02]'
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+          )}
+          <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
+          <span className="flex-1">{item.name}</span>
+          {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-500/30 px-1">
+              {pendingRequestCount}
+            </span>
+          )}
+          {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
+        </>
+      )}
+    </NavLink>
+  );
 
   return (
     <aside
@@ -136,8 +201,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
         <div className="flex items-center gap-3 relative z-10">
           <div className="relative group">
-            <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-emerald-400/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 mix-blend-screen" />
-            <div className="relative p-1.5 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] flex items-center justify-center overflow-hidden">
+            <div className="absolute -inset-2 bg-gradient-to-tr from-primary/40 to-primary/20 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition duration-500 mix-blend-screen" />
+            <div className="relative p-1.5 bg-gradient-to-br from-card to-background rounded-xl ring-1 ring-primary/30 shadow-[0_4px_20px_hsl(var(--primary)/0.15)] flex items-center justify-center overflow-hidden">
               <img src={logo_url || "/logo.png"} alt={brand_name || "Logo"} className="h-7 w-7 object-contain group-hover:scale-110 transition-transform duration-500" />
             </div>
           </div>
@@ -149,7 +214,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             {/* Sales Rep Wallet */}
             {effectiveRole === 'sales_rep' && (
-              <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-400 ring-1 ring-emerald-500/20 shadow-glow-success">
+              <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full text-[10px] font-bold text-primary ring-1 ring-primary/20 shadow-glow-success">
                 <DollarSign className="h-3 w-3" />
                 <span>${Number(balanceData?.credit_balance || 0).toFixed(2)}</span>
               </div>
@@ -200,73 +265,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-3 py-4">
         {isVendorRoute && userRole?.role === 'super_admin' ? (
           /* Vendor / SaaS Admin navigation */
-          vendorNavigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              end={item.href === '/vendor'}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group relative',
-                  isActive
-                    ? 'bg-gradient-to-r from-primary/15 to-primary/5 text-primary shadow-[0_2px_10px_rgba(0,0,0,0.1)] ring-1 ring-primary/20 scale-[1.02]'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
-                  )}
-                  <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
-                  <span className="flex-1">{item.name}</span>
-                  {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
-                </>
-              )}
-            </NavLink>
-          ))
-        ) : (
-          /* Company navigation */
-          <>
-            {navigation.filter(item => {
-              // Feature flag check — hide items whose feature is disabled
-              const featureKey = SIDEBAR_FEATURE_MAP[item.name];
-              if (featureKey && !isEnabled(featureKey)) return false;
-
-              // super_admin inherits admin access for sidebar visibility
-              const roleForNav = effectiveRole === 'super_admin' ? 'admin' : effectiveRole;
-
-              // Standard Role Check
-              if (item.roles && !item.roles.includes(organization?.role || roleForNav || '')) {
-                // Allow if allowedRoles matches
-                if (!roleForNav) return false;
-                if (!item.roles.includes(roleForNav)) return false;
-              }
-
-              // Special: Sales Rep Restriction
-              if (effectiveRole === 'sales_rep') {
-                const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Orders'];
-
-                // Only Senior partners can see Peptides
-                // Default to 'standard' if undefined
-                const tier = authProfile?.partner_tier || 'standard';
-                if (tier !== 'senior') {
-                  hiddenForRep.push('Peptides');
-                }
-
-                if (hiddenForRep.includes(item.name)) return false;
-              }
-
-              return true;
-            }).map((item) => (
+          <div className="space-y-1">
+            {vendorNavigation.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.href}
+                end={item.href === '/vendor'}
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
@@ -284,46 +291,91 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     )}
                     <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
                     <span className="flex-1">{item.name}</span>
-                    {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
-                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-500/30 px-1">
-                        {pendingRequestCount}
-                      </span>
-                    )}
                     {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
                   </>
                 )}
               </NavLink>
             ))}
+          </div>
+        ) : (
+          /* Company navigation — grouped with search */
+          <>
+            {/* Search */}
+            <div className="pb-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <input
+                  type="text"
+                  placeholder="Search nav..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-8 pl-8 pr-3 text-xs bg-sidebar-accent/50 border border-sidebar-border/30 rounded-lg text-sidebar-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors"
+                />
+              </div>
+            </div>
 
-            {/* Partner Portal Switcher */}
-            {(userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') && (
-              <div className="mt-2 px-3">
-                <NavLink
-                  to="/partner"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
-                >
-                  <div className="p-1 bg-emerald-100 dark:bg-emerald-900 rounded-md group-hover:bg-emerald-200">
-                    <Briefcase className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <span>Partner Portal</span>
-                </NavLink>
+            {searchQuery ? (
+              /* Flat search results */
+              <div className="space-y-0.5">
+                {filteredNavItems.length > 0 ? (
+                  filteredNavItems.map(renderNavItem)
+                ) : (
+                  <p className="px-3 py-6 text-xs text-muted-foreground/50 text-center">No results</p>
+                )}
+              </div>
+            ) : (
+              /* Grouped sections */
+              <div className="space-y-0.5">
+                {NAV_GROUPS.map(group => {
+                  const groupItems = filteredNavItems.filter(item => group.names.includes(item.name));
+                  if (groupItems.length === 0) return null;
+                  const isCollapsed = collapsedGroups.has(group.label);
+
+                  return (
+                    <div key={group.label}>
+                      <button
+                        onClick={() => toggleGroup(group.label)}
+                        className="flex items-center w-full px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
+                      >
+                        <span className="flex-1 text-left">{group.label}</span>
+                        <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', isCollapsed && '-rotate-90')} />
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {!isCollapsed && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-0.5 pb-1">
+                              {groupItems.map(renderNavItem)}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {/* Family Portal Switcher */}
-            {effectiveRole !== 'fulfillment' && <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
-              <NavLink
-                to="/dashboard?preview_role=customer"
-                onClick={onClose}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
-              >
-                <div className="p-1 bg-primary/10 rounded-md group-hover:bg-primary/20">
-                  <Users className="h-4 w-4 text-primary" />
-                </div>
-                <span>Family Portal</span>
-              </NavLink>
-            </div>}
+            {effectiveRole !== 'fulfillment' && (
+              <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
+                <NavLink
+                  to="/dashboard?preview_role=customer"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
+                >
+                  <div className="p-1 bg-primary/10 rounded-md group-hover:bg-primary/20">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                  <span>Family Portal</span>
+                </NavLink>
+              </div>
+            )}
           </>
         )}
       </nav>

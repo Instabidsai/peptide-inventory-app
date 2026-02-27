@@ -43,7 +43,7 @@ export function ProductGrid({
         <div>
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/80 to-emerald-600 flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-premium flex items-center justify-center">
                         <Package className="h-4 w-4 text-white" />
                     </div>
                     <h2 className="text-lg font-bold tracking-tight">Our Collection</h2>
@@ -125,27 +125,27 @@ export function ProductGrid({
                                 whileTap={{ scale: 0.97 }}
                             >
                             <GlassCard
-                                className="group cursor-pointer hover:bg-white/[0.09] hover:border-emerald-500/20 hover:shadow-[0_8px_40px_-8px_rgba(16,185,129,0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
+                                className="group cursor-pointer hover:bg-white/[0.09] hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
                                 onClick={() => onSelectPeptide(peptide)}
                             >
                                 {/* Top accent bar */}
-                                <div className="h-[2px] bg-gradient-to-r from-emerald-500/40 via-primary/60 to-cyan-500/40 opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="h-[2px] bg-gradient-brand-r opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
                                 {/* Shimmer overlay on hover */}
                                 <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-cyan-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
                                 <CardContent className="p-5 relative space-y-3">
                                     {/* Header row: icon + name + badge */}
                                     <div className="flex items-start gap-3.5">
                                         <div className="relative shrink-0">
-                                            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-emerald-400 blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                                            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/10 border border-white/[0.08] flex items-center justify-center group-hover:border-primary/20 transition-colors">
+                                            <div className="absolute inset-0 rounded-xl bg-gradient-brand blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                                            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-white/[0.08] flex items-center justify-center group-hover:border-primary/20 transition-colors">
                                                 <Dna className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors" />
                                             </div>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-[15px] tracking-tight truncate group-hover:text-white transition-colors duration-200">{peptide.name}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
-                                                <span className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
+                                                <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)]" />
+                                                <span className="text-[10px] text-primary/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
                                                 {knowledge?.administrationRoute && (
                                                     <>
                                                         <span className="text-white/10">|</span>
@@ -182,12 +182,12 @@ export function ProductGrid({
                                     <div className="flex items-end justify-between pt-2 border-t border-white/[0.05]">
                                         <div>
                                             {hasDiscount && (
-                                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25">
-                                                    <span className="text-sm font-extrabold text-emerald-400">
+                                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25">
+                                                    <span className="text-sm font-extrabold text-primary">
                                                         {discountPct}% off
                                                     </span>
                                                     {discountLabel && (
-                                                        <span className="text-xs font-semibold text-emerald-400/70 ml-1.5">
+                                                        <span className="text-xs font-semibold text-primary/70 ml-1.5">
                                                             · {discountLabel}
                                                         </span>
                                                     )}

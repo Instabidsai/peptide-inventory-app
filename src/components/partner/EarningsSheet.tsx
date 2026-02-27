@@ -26,7 +26,7 @@ export function EarningsSheet({ open, onClose, stats, commissions }: EarningsShe
                         <p className="text-xs text-muted-foreground">Total Earned</p>
                         <p className="text-4xl font-bold text-primary">${stats.total.toFixed(2)}</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="p-3 rounded-lg border text-center">
                             <p className="text-xs text-muted-foreground">Pending</p>
                             <p className="text-lg font-bold text-amber-500">${stats.pending.toFixed(2)}</p>

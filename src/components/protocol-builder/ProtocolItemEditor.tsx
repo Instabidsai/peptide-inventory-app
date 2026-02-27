@@ -211,12 +211,12 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
 
                 {/* Calc display — PROMINENT */}
                 {ml !== null && units !== null ? (
-                    <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border-2 border-emerald-500/25">
+                    <div className="mt-3 p-3 rounded-lg bg-primary/10 border-2 border-primary/25">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <Syringe className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                <Syringe className="h-5 w-5 text-primary dark:text-primary" />
                                 <div>
-                                    <div className="text-lg font-bold font-mono text-emerald-700 dark:text-emerald-300">
+                                    <div className="text-lg font-bold font-mono text-primary dark:text-primary">
                                         {formatMl(ml)} mL
                                     </div>
                                     <div className="text-xs text-muted-foreground">
@@ -386,26 +386,31 @@ export function ProtocolItemEditor({ item, index, onUpdate, onRemove, onSelectTi
                                     <Label className="text-xs text-muted-foreground flex items-center gap-1">
                                         <Pill className="h-3 w-3" /> Recommended Supplements
                                     </Label>
-                                    <div className="space-y-1.5 mt-1">
+                                    <div className="space-y-2 mt-1">
                                         {item.supplements.map((supp, sIdx) => (
-                                            <div key={sIdx} className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs">
-                                                <span className="font-medium">{supp.name}</span>
-                                                <span className="text-muted-foreground"> — {supp.dosage}</span>
-                                                {supp.productName && (
-                                                    <span className="block text-muted-foreground mt-0.5">
-                                                        Product: {supp.productName}
-                                                        {supp.productLink && (
-                                                            <a
-                                                                href={supp.productLink}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="ml-1 text-blue-500 underline"
-                                                            >
-                                                                (Amazon)
-                                                            </a>
-                                                        )}
-                                                    </span>
+                                            <div key={sIdx} className="flex gap-2.5 p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs">
+                                                {supp.imageUrl && (
+                                                    <img
+                                                        src={supp.imageUrl}
+                                                        alt={supp.name}
+                                                        className="w-12 h-12 rounded object-contain bg-white border border-border flex-shrink-0"
+                                                    />
                                                 )}
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-medium">{supp.productName || supp.name}</span>
+                                                    <span className="text-muted-foreground"> — {supp.dosage}</span>
+                                                    <p className="text-muted-foreground mt-0.5 leading-tight">{supp.reason}</p>
+                                                    {supp.productLink && (
+                                                        <a
+                                                            href={supp.productLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-block mt-1 text-blue-500 hover:text-blue-600 underline font-medium"
+                                                        >
+                                                            View on Amazon →
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

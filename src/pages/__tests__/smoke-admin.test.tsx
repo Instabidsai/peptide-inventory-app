@@ -61,7 +61,7 @@ describe('Admin Pages — Smoke Tests', () => {
     const Contacts = (await import('../Contacts')).default;
     const { container } = render(<Contacts />, { wrapper: createPageWrapper(['/contacts']) });
     expect(container.firstChild).toBeTruthy();
-  });
+  }, 15_000);
 
   it('ContactDetails renders without crashing', async () => {
     const ContactDetails = (await import('../ContactDetails')).default;

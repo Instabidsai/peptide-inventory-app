@@ -8,7 +8,8 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SortableTableHead } from '@/components/ui/table';
+import { useSortableTable } from '@/hooks/use-sortable-table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -178,7 +179,7 @@ function MovementDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Movement Details</DialogTitle>
           <DialogDescription>
@@ -218,7 +219,7 @@ function MovementDetailsDialog({
             {isLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : (
-              <div className="border border-border/60 rounded-lg overflow-hidden">
+              <div className="border border-border/60 rounded-lg overflow-hidden overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -492,6 +493,24 @@ export default function Movements() {
     return filtered;
   }, [movements, filterType, dateRange, searchQuery]);
 
+  const movementSortAccessors = {
+    date: (m: Movement) => new Date(m.movement_date).getTime(),
+    type: (m: Movement) => m.type,
+    payment: (m: Movement) => m.payment_status,
+    cost: (m: Movement) => m.movement_items?.reduce((s, i) => s + (i.bottles?.lots?.cost_per_unit || 0), 0) ?? 0,
+    paid: (m: Movement) => m.amount_paid ?? 0,
+    owed: (m: Movement) => {
+      const sub = m.movement_items?.reduce((s, i) => s + (Number(i.price_at_sale) || 0), 0) || 0;
+      return Math.max(0, sub - (Number(m.discount_amount) || 0) - (Number(m.amount_paid) || 0));
+    },
+    contact: (m: Movement) => m.contacts?.name?.toLowerCase() ?? '',
+  } as const;
+
+  const { sortedData: sortedMovements, sortState: movementSortState, requestSort: requestMovementSort } = useSortableTable(
+    filteredMovements,
+    movementSortAccessors,
+  );
+
   const updateFilter = (val: string) => {
     if (val === 'all') {
       searchParams.delete('type');
@@ -677,7 +696,7 @@ export default function Movements() {
             </div>
           ) : isMobile ? (
             <div className="space-y-3">
-              {filteredMovements.map((movement, index) => {
+              {sortedMovements.map((movement, index) => {
                 const moveCost = movement.movement_items?.reduce((itemSum, item) => {
                   return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                 }, 0) || 0;
@@ -738,22 +757,23 @@ export default function Movements() {
               })}
             </div>
           ) : (
+            <div className="overflow-x-auto" role="region" aria-label="Movements table" tabIndex={0}>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
+                  <SortableTableHead columnKey="date" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Date</SortableTableHead>
+                  <SortableTableHead columnKey="type" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Type</SortableTableHead>
                   <TableHead>Items</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Cost</TableHead>
-                  <TableHead>Amount Paid</TableHead>
-                  <TableHead>Owed</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <SortableTableHead columnKey="payment" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Payment</SortableTableHead>
+                  <SortableTableHead columnKey="cost" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Cost</SortableTableHead>
+                  <SortableTableHead columnKey="paid" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Amount Paid</SortableTableHead>
+                  <SortableTableHead columnKey="owed" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Owed</SortableTableHead>
+                  <SortableTableHead columnKey="contact" activeColumn={movementSortState.column} direction={movementSortState.direction} onSort={requestMovementSort}>Contact</SortableTableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMovements.map((movement, index) => {
+                {sortedMovements.map((movement, index) => {
                   const moveCost = movement.movement_items?.reduce((itemSum, item) => {
                     return itemSum + (item.bottles?.lots?.cost_per_unit || 0);
                   }, 0) || 0;
@@ -840,6 +860,7 @@ export default function Movements() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

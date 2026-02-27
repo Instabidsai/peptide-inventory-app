@@ -84,7 +84,7 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
             <DialogTrigger asChild>
                 <Button><Plus className="h-4 w-4 mr-2" /> New Tenant</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Provision New Tenant</DialogTitle>
                 </DialogHeader>

@@ -29,12 +29,34 @@ interface ConnectRequest {
 
 // Map service names to Composio app IDs
 const SERVICE_TO_APP: Record<string, string> = {
+    // Payments & Commerce
     stripe: 'stripe',
-    gmail: 'gmail',
-    sheets: 'googlesheets',
     shopify: 'shopify',
+    square: 'square',
+    // Communication
+    gmail: 'gmail',
+    slack: 'slack',
+    discord: 'discord',
+    zoom: 'zoom',
+    // Productivity & Docs
+    sheets: 'googlesheets',
     drive: 'googledrive',
     notion: 'notion',
+    airtable: 'airtable',
+    // CRM & Marketing
+    hubspot: 'hubspot',
+    mailchimp: 'mailchimp',
+    // Scheduling
+    calendly: 'calendly',
+    // Accounting
+    quickbooks: 'quickbooks',
+    xero: 'xero',
+    // Project Management
+    trello: 'trello',
+    asana: 'asana',
+    // Customer Support
+    zendesk: 'zendesk',
+    intercom: 'intercom',
 };
 
 Deno.serve(withErrorReporting("composio-connect", async (req) => {

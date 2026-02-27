@@ -488,7 +488,7 @@ function ClientDashboardContent() {
                         <Sparkles className="h-4 w-4 text-primary" />
                         Peptide AI Assistant
                     </h3>
-                    <div className="h-[400px]">
+                    <div className="h-[min(400px,calc(100dvh-14rem))] overflow-hidden">
                         <AIChatInterface />
                     </div>
                 </motion.div>
@@ -505,8 +505,8 @@ function ClientDashboardContent() {
         <div className="space-y-6 pb-20">
             {/* Header / Greeting Hero */}
             <GlassCard className="border-white/[0.04] overflow-hidden relative">
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/[0.08] rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-l-xl" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/[0.08] rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute inset-y-0 left-0 w-1 bg-gradient-brand rounded-l-xl" />
                 <CardContent className="pt-5 pb-4 pl-5">
                     <motion.div
                         className="flex flex-col gap-1"
@@ -530,7 +530,7 @@ function ClientDashboardContent() {
                             )}
                             {hasDosesToday && (
                                 <span className="text-xs font-medium text-muted-foreground/50">
-                                    <span className="text-emerald-400 font-semibold">{gamified.todayDoses.filter(d => d.isTaken).length}/{gamified.todayDoses.length}</span> doses today
+                                    <span className="text-primary font-semibold">{gamified.todayDoses.filter(d => d.isTaken).length}/{gamified.todayDoses.length}</span> doses today
                                 </span>
                             )}
                             {gamified.streak > 0 && (
@@ -630,10 +630,10 @@ function ClientDashboardContent() {
                     {latestWeight && (
                         <button
                             onClick={() => navigate('/body-composition')}
-                            className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15 hover:bg-emerald-500/[0.1] transition-colors text-left"
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-primary/[0.06] border border-primary/15 hover:bg-primary/[0.1] transition-colors text-left"
                         >
-                            <div className="p-1.5 rounded-lg bg-emerald-500/10 shrink-0">
-                                <Scale className="h-3.5 w-3.5 text-emerald-400" />
+                            <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+                                <Scale className="h-3.5 w-3.5 text-primary" />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{latestWeight.weight} lbs</p>
@@ -700,16 +700,16 @@ function ClientDashboardContent() {
                     {/* ─── Rest Day / No Schedule Message ─── */}
                     {!hasDosesToday && hasScheduledVials && (
                         <GlassCard className="border-white/[0.04] overflow-hidden relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.03] to-transparent pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
                             <CardContent className="py-8">
                                 <div className="flex flex-col items-center gap-3 text-center">
                                     <motion.div
-                                        className="p-4 rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/10"
+                                        className="p-4 rounded-2xl bg-primary/10 ring-1 ring-primary/10"
                                         initial={{ scale: 0.8, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                                     >
-                                        <Calendar className="h-6 w-6 text-emerald-400" />
+                                        <Calendar className="h-6 w-6 text-primary" />
                                     </motion.div>
                                     <div className="space-y-1">
                                         <p className="font-bold text-base tracking-tight">Rest & Recover</p>
@@ -750,15 +750,15 @@ function ClientDashboardContent() {
                                     </div>
                                     <Progress
                                         value={pct}
-                                        className="flex-1 h-3 rounded-full [&>div]:bg-gradient-to-r [&>div]:from-emerald-600 [&>div]:to-emerald-400 [&>div]:rounded-full"
+                                        className="flex-1 h-3 rounded-full [&>div]:rounded-full"
                                     />
-                                    <span className="text-sm font-semibold text-emerald-400 shrink-0">
+                                    <span className="text-sm font-semibold text-primary shrink-0">
                                         {doneDoses}/{totalDoses}
                                     </span>
                                 </div>
                                 {isHousehold && (
                                     <div className="flex items-center justify-between text-[11px] text-muted-foreground/40 pl-[52px]">
-                                        <span>You: <span className="font-semibold text-emerald-400/70">{personalDone}/{personalDoses.length}</span></span>
+                                        <span>You: <span className="font-semibold text-primary/70">{personalDone}/{personalDoses.length}</span></span>
                                         <span>Family total: {doneDoses}/{totalDoses}</span>
                                     </div>
                                 )}
@@ -845,8 +845,8 @@ function ClientDashboardContent() {
                                         <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Day Streak</div>
                                     </div>
                                     <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 flex flex-col items-center gap-1.5">
-                                        <Target className="h-4 w-4 text-emerald-400" />
-                                        <div className="text-2xl font-bold tracking-tight text-emerald-400">{gamified.adherenceRate}%</div>
+                                        <Target className="h-4 w-4 text-primary" />
+                                        <div className="text-2xl font-bold tracking-tight text-primary">{gamified.adherenceRate}%</div>
                                         <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Consistency</div>
                                     </div>
                                 </div>
@@ -882,7 +882,7 @@ function ClientDashboardContent() {
                     </motion.button>
                 </TabsContent>
 
-                <TabsContent value="ai-coach" className="min-h-[400px] md:min-h-[600px]">
+                <TabsContent value="ai-coach" className="h-[calc(100dvh-14rem)] md:h-[600px]">
                     <AIChatInterface />
                 </TabsContent>
             </Tabs>

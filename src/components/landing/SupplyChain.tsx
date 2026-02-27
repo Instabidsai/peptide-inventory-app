@@ -75,7 +75,7 @@ export function SupplyChain() {
           {...fadeInUp}
           className="mt-10 max-w-3xl mx-auto"
         >
-          <div className="rounded-xl border border-primary/15 bg-gradient-to-r from-primary/5 via-emerald-500/5 to-primary/5 p-6">
+          <div className="rounded-xl border border-primary/15 bg-gradient-to-r from-primary/5 via-primary/5 to-primary/5 p-6">
             <p className="text-xs text-muted-foreground text-center mb-4 font-medium uppercase tracking-wider">How It Works for Your Clients</p>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               {[
@@ -105,8 +105,8 @@ export function SupplyChain() {
               { label: "Wholesale Supply", icon: FlaskConical },
             ].map((stream) => (
               <div key={stream.label} className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                  <stream.icon className="w-4 h-4 text-emerald-400" />
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <stream.icon className="w-4 h-4 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">{stream.label}</span>
               </div>

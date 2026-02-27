@@ -38,7 +38,9 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { QueryError } from '@/components/ui/query-error';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -96,10 +98,8 @@ export default function OrderList() {
     const refetch = isRep ? myRefetch : allRefetch;
 
     if (isLoading) return (
-        <div className="space-y-3 p-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-            ))}
+        <div className="p-4">
+            <TableSkeleton rows={5} columns={6} />
         </div>
     );
 
@@ -172,7 +172,7 @@ export default function OrderList() {
             case 'label_created': return 'bg-blue-500/15 text-blue-500 border-blue-500/30';
             case 'printed': return 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40';
             case 'in_transit': return 'bg-amber-500/15 text-amber-500 border-amber-500/30';
-            case 'delivered': return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30';
+            case 'delivered': return 'bg-primary/15 text-primary border-primary/30';
             case 'error': return 'bg-red-500/15 text-red-500 border-red-500/30';
             default: return 'bg-muted text-muted-foreground border-border';
         }
@@ -263,10 +263,12 @@ export default function OrderList() {
 
             {/* Mobile Card View */}
             {isMobile && orders && orders.length === 0 && (
-                <div className="md:hidden text-center py-12 text-muted-foreground">
-                    <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                    <p className="font-medium">No orders found</p>
-                    <p className="text-sm mt-1">{filterStatus !== 'all' || filterPayment !== 'all' ? 'Try adjusting your filters.' : 'Create your first sales order to get started.'}</p>
+                <div className="md:hidden">
+                    <EmptyState
+                        icon={ClipboardList}
+                        title="No orders found"
+                        description={filterStatus !== 'all' || filterPayment !== 'all' ? 'Try adjusting your filters.' : 'Create your first sales order to get started.'}
+                    />
                 </div>
             )}
             {isMobile && orders && orders.length > 0 && (
@@ -333,7 +335,7 @@ export default function OrderList() {
                 <CardHeader className="p-0">
                     {/* Optional Header Content */}
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -474,16 +476,14 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={isRep ? 9 : 11} className="h-32 text-center">
-                                        <div>
-                                            <Truck className="mx-auto h-10 w-10 mb-3 opacity-30" />
-                                            <p className="text-lg font-semibold text-muted-foreground">No orders found</p>
-                                            <p className="text-sm mt-1 text-muted-foreground/70">
-                                                {filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all' || searchQuery
-                                                    ? 'Try adjusting your filters or search'
-                                                    : 'Create your first sales order to get started'}
-                                            </p>
-                                        </div>
+                                    <TableCell colSpan={isRep ? 9 : 11}>
+                                        <EmptyState
+                                            icon={Truck}
+                                            title="No orders found"
+                                            description={filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all' || searchQuery
+                                                ? 'Try adjusting your filters or search'
+                                                : 'Create your first sales order to get started'}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             )}

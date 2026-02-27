@@ -50,8 +50,8 @@ function DoseCard({ dose, onLogDose, isLogging }: {
             className={cn(
                 "flex items-center gap-3 p-4 rounded-2xl border transition-colors duration-300",
                 dose.isTaken
-                    ? "bg-emerald-500/[0.06] border-emerald-500/15"
-                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] hover:border-primary/15 hover:shadow-[0_0_20px_rgba(16,185,129,0.06)]"
+                    ? "bg-primary/[0.06] border-primary/15"
+                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] hover:border-primary/15 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
             )}
         >
             {/* Color dot */}
@@ -74,7 +74,7 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                     {dose.units > 0 && (
                         <span className={cn(
                             "text-xl font-bold tracking-tight",
-                            dose.isTaken ? "text-emerald-400/50" : "text-emerald-400"
+                            dose.isTaken ? "text-primary/50" : "text-primary"
                         )}>
                             {dose.units} <span className="text-sm font-semibold">units</span>
                         </span>
@@ -95,11 +95,11 @@ function DoseCard({ dose, onLogDose, isLogging }: {
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                     >
-                        <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                            <Check className="h-5 w-5 text-emerald-400" />
+                        <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                            <Check className="h-5 w-5 text-primary" />
                         </div>
                         {dose.takenAt && (
-                            <span className="text-[10px] text-emerald-400/60 font-medium">
+                            <span className="text-[10px] text-primary/60 font-medium">
                                 {format(new Date(dose.takenAt), 'h:mm a')}
                             </span>
                         )}
@@ -158,7 +158,7 @@ function TimeWindowSection({ window: timeWindow, doses, currentWindow, onLogDose
                     {config.label}
                 </span>
                 {isNow && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
                         Now
                     </span>
                 )}
@@ -174,8 +174,8 @@ function TimeWindowSection({ window: timeWindow, doses, currentWindow, onLogDose
                     animate={{ opacity: 1, scale: 1 }}
                     className={cn("flex items-center gap-2.5 p-3 rounded-2xl", config.bg, config.border, "border")}
                 >
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                    <span className="text-sm font-medium text-emerald-400">All done!</span>
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium text-primary">All done!</span>
                 </motion.div>
             ) : (
                 <motion.div

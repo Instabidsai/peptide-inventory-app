@@ -123,8 +123,8 @@ function HouseholdSection() {
                             <div className="space-y-2.5 pl-1">
                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/40">How it works</p>
                                 <div className="flex items-start gap-2.5">
-                                    <div className="p-1 rounded-md bg-emerald-500/10 mt-0.5">
-                                        <Refrigerator className="h-3 w-3 text-emerald-400" />
+                                    <div className="p-1 rounded-md bg-primary/10 mt-0.5">
+                                        <Refrigerator className="h-3 w-3 text-primary" />
                                     </div>
                                     <p className="text-xs text-muted-foreground/70">Everyone shares one fridge — vials are tracked together so you know what's left</p>
                                 </div>

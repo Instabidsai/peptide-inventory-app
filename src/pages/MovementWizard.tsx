@@ -326,7 +326,7 @@ export default function MovementWizard() {
               </div>
             )}
 
-            <div className="border border-border/60 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="border border-border/60 rounded-lg overflow-hidden max-h-[400px] overflow-y-auto overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -384,7 +384,7 @@ export default function MovementWizard() {
                 Set All: Retail
               </Button>
             </div>
-            <div className="border border-border/60 rounded-lg overflow-hidden">
+            <div className="border border-border/60 rounded-lg overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

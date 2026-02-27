@@ -200,7 +200,7 @@ export default function ClientResources() {
                 <div className="relative h-10 w-10">
                     <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
                     <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
-                    <div className="absolute inset-1.5 rounded-full border-2 border-transparent border-t-emerald-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-transparent border-t-primary animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
                 </div>
             </div>
         );
@@ -211,14 +211,14 @@ export default function ClientResources() {
             {viewMode === 'library' && (
                 <>
                     {/* ===== HEADER ===== */}
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30">
-                                <Atom className="h-6 w-6 text-emerald-400" />
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
+                                <Atom className="h-6 w-6 text-primary" />
                             </div>
                             <h1 className="text-xl font-bold">Research Library</h1>
                         </div>
-                        <div className="relative flex-1 max-w-md">
+                        <div className="relative w-full sm:flex-1 sm:max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                             <Input
                                 aria-label="Search resources"
@@ -235,22 +235,22 @@ export default function ClientResources() {
                         <div
                             className="relative rounded-2xl overflow-hidden cursor-pointer group"
                             style={{
-                                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 78, 59, 0.2) 100%)',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                boxShadow: '0 0 40px rgba(16, 185, 129, 0.1)'
+                                background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.2) 100%)',
+                                border: '1px solid hsl(var(--primary) / 0.3)',
+                                boxShadow: '0 0 40px hsl(var(--primary) / 0.1)'
                             }}
                             onClick={() => setSelectedResource(featuredResource)}
                         >
                             <div className="grid md:grid-cols-2 gap-0">
                                 <div className="p-6 md:p-8 flex flex-col justify-center">
-                                    <p className="text-emerald-400 text-sm font-medium mb-2">Featured Research</p>
+                                    <p className="text-primary text-sm font-medium mb-2">Featured Research</p>
                                     <h2 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
                                         {featuredResource.title}
                                     </h2>
                                     <p className="text-muted-foreground/70 text-sm mb-5 line-clamp-2">
                                         {featuredResource.description || "Tap to view this resource."}
                                     </p>
-                                    <button className="w-fit px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-full text-sm transition-colors">
+                                    <button className="w-fit px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-medium rounded-full text-sm transition-colors">
                                         Watch Now
                                     </button>
                                 </div>
@@ -273,7 +273,7 @@ export default function ClientResources() {
                             <h2 className="text-lg font-semibold">Browse by Topic</h2>
                             <button
                                 onClick={() => setShowAllThemes(!showAllThemes)}
-                                className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
                             >
                                 {showAllThemes ? "Show Less" : "View All"} <ChevronRight className={`h-4 w-4 transition-transform ${showAllThemes ? 'rotate-90' : ''}`} />
                             </button>
@@ -290,7 +290,7 @@ export default function ClientResources() {
                                     >
                                         {/* Glow Effect */}
                                         <div
-                                            className="absolute inset-0 bg-emerald-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+                                            className="absolute inset-0 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
                                         />
 
                                         {/* Border Container (Gradient) */}
@@ -298,7 +298,7 @@ export default function ClientResources() {
                                             className="absolute inset-0 p-[1px] transition-all"
                                             style={{
                                                 clipPath: 'polygon(0 0, 40% 0, 45% 24px, 100% 24px, 100% 100%, 0 100%)',
-                                                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(6, 78, 59, 0.1) 100%)'
+                                                background: 'linear-gradient(135deg, hsl(var(--primary) / 0.4) 0%, hsl(var(--primary) / 0.1) 100%)'
                                             }}
                                         >
                                             {/* Inner Content (Dark Background) */}
@@ -313,7 +313,7 @@ export default function ClientResources() {
                                                 {/* Circuit Pattern Overlay */}
                                                 <div className="absolute inset-0 opacity-10"
                                                     style={{
-                                                        backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.5) 1px, transparent 1px)',
+                                                        backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.5) 1px, transparent 1px)',
                                                         backgroundSize: '20px 20px'
                                                     }}
                                                 />
@@ -322,16 +322,16 @@ export default function ClientResources() {
                                                     <div className="flex items-center gap-4">
                                                         {/* Icon */}
                                                         {/* Using specific icons for known themes or generic flask */}
-                                                        {theme.name.includes("BPC") ? <div className="text-emerald-400"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div> :
-                                                            theme.name.includes("TB-500") ? <div className="text-emerald-400"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div> :
-                                                                theme.name.includes("GHK") ? <div className="text-emerald-400"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 9.5V5.25a.75.75 0 0 1 .75-.75H9.5"></path><path d="M19.5 14.5v4.25a.75.75 0 0 1-.75.75H14.5"></path><path d="M9.5 9.5 4.5 14.5"></path><path d="M14.5 9.5 19.5 4.5"></path><path d="M16 8a4 4 0 1 0 0 8 4 4 0 1 0 0-8Z"></path></svg></div> :
-                                                                    <div className="text-emerald-400"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31"></path><path d="M14 9.3V1.99"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg></div>}
+                                                        {theme.name.includes("BPC") ? <div className="text-primary"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div> :
+                                                            theme.name.includes("TB-500") ? <div className="text-primary"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></div> :
+                                                                theme.name.includes("GHK") ? <div className="text-primary"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 9.5V5.25a.75.75 0 0 1 .75-.75H9.5"></path><path d="M19.5 14.5v4.25a.75.75 0 0 1-.75.75H14.5"></path><path d="M9.5 9.5 4.5 14.5"></path><path d="M14.5 9.5 19.5 4.5"></path><path d="M16 8a4 4 0 1 0 0 8 4 4 0 1 0 0-8Z"></path></svg></div> :
+                                                                    <div className="text-primary"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31"></path><path d="M14 9.3V1.99"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg></div>}
 
                                                         <div className="flex-1 min-w-0 z-10">
                                                             <h3 className="text-xl font-bold text-white mb-2 leading-none">
                                                                 {theme.name}
                                                             </h3>
-                                                            <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-emerald-500 text-white shadow shadow-emerald-500/20">
+                                                            <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-primary text-white shadow shadow-primary/20">
                                                                 {count} Resources
                                                             </span>
                                                             <p className="text-[10px] text-muted-foreground/70 mt-2 line-clamp-2 leading-tight max-w-[90%]">
@@ -354,7 +354,7 @@ export default function ClientResources() {
                             <h2 className="text-lg font-semibold">Popular Resources</h2>
                             <button
                                 onClick={() => setShowAllPopular(!showAllPopular)}
-                                className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
                             >
                                 {showAllPopular ? "Show Less" : "View All"} <ChevronRight className={`h-4 w-4 transition-transform ${showAllPopular ? 'rotate-90' : ''}`} />
                             </button>
@@ -385,7 +385,7 @@ export default function ClientResources() {
                                                     {resource.title}
                                                 </h4>
                                                 <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground/50">
-                                                    <span className="text-emerald-400">Author/Source</span>
+                                                    <span className="text-primary">Author/Source</span>
                                                     <span className="flex items-center gap-1">
                                                         <Eye className="h-3 w-3" /> {resource.view_count || 0}
                                                     </span>
@@ -405,17 +405,17 @@ export default function ClientResources() {
                         <div className="rounded-xl p-4" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-emerald-400" />
+                                    <Clock className="h-4 w-4 text-primary" />
                                     <h3 className="font-semibold">Latest Uploads</h3>
                                 </div>
                                 {/* Clean Tabs without background container */}
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 overflow-x-auto">
                                     {(['videos', 'articles', 'pdfs', 'guides'] as const).map(tab => (
                                         <button
                                             key={tab}
                                             onClick={() => handleTabChange(tab)}
                                             className={`px-3 py-1 text-xs rounded-full capitalize transition-all ${activeTab === tab
-                                                ? 'bg-emerald-500 text-white font-medium shadow-lg shadow-emerald-500/20'
+                                                ? 'bg-primary text-white font-medium shadow-lg shadow-primary/20'
                                                 : 'text-muted-foreground/70 hover:text-white bg-card/30'
                                                 }`}
                                         >
@@ -433,14 +433,14 @@ export default function ClientResources() {
                                             onClick={() => setSelectedResource(resource)}
                                             className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-card/50 transition-colors text-left group"
                                         >
-                                            <div className="p-1.5 rounded-lg bg-emerald-500/20">
-                                                <Play className="h-3 w-3 text-emerald-400" />
+                                            <div className="p-1.5 rounded-lg bg-primary/20">
+                                                <Play className="h-3 w-3 text-primary" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-white truncate">{resource.title}</p>
                                                 <p className="text-[11px] text-muted-foreground/50">Uploaded {formatDate(resource.created_at)}</p>
                                             </div>
-                                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-emerald-400 transition-colors" />
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                                         </button>
                                     ))}
                                 {getLatestByType(activeTab === 'articles' ? 'article' : activeTab === 'pdfs' ? 'pdf' : activeTab === 'videos' ? 'video' : 'guide').length === 0 && (
@@ -459,11 +459,11 @@ export default function ClientResources() {
 
                         {/* Join Discussion + Active Topics */}
                         <div className="space-y-4">
-                            <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 78, 59, 0.2) 100%)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                            <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.2) 100%)', border: '1px solid hsl(var(--primary) / 0.3)' }}>
                                 <h3 className="font-semibold mb-3">Join Discussion</h3>
                                 <button
                                     onClick={() => navigate('/community')}
-                                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-white font-medium rounded-full text-sm transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
+                                    className="w-full py-2.5 bg-gradient-brand-r hover:opacity-90 text-white font-medium rounded-full text-sm transition-all shadow-lg shadow-primary/25 flex items-center justify-center gap-2"
                                 >
                                     <Users className="h-4 w-4" />
                                     Join Community Forum
@@ -472,7 +472,7 @@ export default function ClientResources() {
 
                             <div className="rounded-xl p-4" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <MessageSquare className="h-4 w-4 text-emerald-400" />
+                                    <MessageSquare className="h-4 w-4 text-primary" />
                                     <h3 className="font-semibold">Active Topics</h3>
                                 </div>
                                 <div className="space-y-1">
@@ -483,8 +483,8 @@ export default function ClientResources() {
                                                 onClick={() => navigate('/community')}
                                                 className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-card/50 transition-colors text-left group"
                                             >
-                                                <div className="p-1.5 rounded-lg bg-emerald-500/20">
-                                                    <MessageSquare className="h-3 w-3 text-emerald-400" />
+                                                <div className="p-1.5 rounded-lg bg-primary/20">
+                                                    <MessageSquare className="h-3 w-3 text-primary" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-white truncate">{topic.title}</p>
@@ -492,7 +492,7 @@ export default function ClientResources() {
                                                         {topic.message_count} replies • {formatTimeAgo(topic.last_activity_at)}
                                                     </p>
                                                 </div>
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-emerald-400 transition-colors" />
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
                                             </button>
                                         ))
                                     ) : (
@@ -515,7 +515,7 @@ export default function ClientResources() {
                             </button>
                             <div className="flex items-center gap-3">
                                 <h1 className="text-xl font-bold">{selectedTheme.name} Resources</h1>
-                                <span className="px-3 py-1 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary/20 text-primary border border-primary/30">
                                     {topicResources.length} Resources
                                 </span>
                             </div>
@@ -529,13 +529,13 @@ export default function ClientResources() {
                     </div>
 
                     {/* Topic Tabs */}
-                    <div className="flex gap-1 bg-card/50 rounded-lg p-1 w-fit">
+                    <div className="flex gap-1 bg-card/50 rounded-lg p-1 w-fit overflow-x-auto max-w-full">
                         {(['overview', 'research', 'videos', 'guides', 'discussion'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setTopicTab(tab)}
                                 className={`px-4 py-2 text-sm rounded-lg capitalize transition-all ${topicTab === tab
-                                    ? 'bg-emerald-500 text-white font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.2)]'
+                                    ? 'bg-primary text-white font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.2)]'
                                     : 'text-muted-foreground/70 hover:text-white'
                                     }`}
                             >
@@ -552,10 +552,10 @@ export default function ClientResources() {
                             <div className="space-y-6">
                                 {/* Article writeup — front and center */}
                                 {article ? (
-                                    <div className="rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(6, 78, 59, 0.08) 100%)', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
-                                        <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-emerald-500/10">
-                                            <div className="p-2.5 rounded-xl bg-emerald-500/20 shrink-0">
-                                                <Atom className="h-5 w-5 text-emerald-400" />
+                                    <div className="rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.04) 0%, hsl(var(--primary) / 0.08) 100%)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
+                                        <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-primary/10">
+                                            <div className="p-2.5 rounded-xl bg-primary/20 shrink-0">
+                                                <Atom className="h-5 w-5 text-primary" />
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">{selectedTheme.name}</h3>
@@ -564,16 +564,16 @@ export default function ClientResources() {
                                         </div>
                                         <div className="px-6 py-5">
                                             <div
-                                                className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-emerald-300 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-gray-300 prose-p:leading-relaxed prose-li:text-gray-300 prose-strong:text-white prose-ul:my-2 prose-li:my-0.5"
+                                                className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-primary prose-headings:font-semibold prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-gray-300 prose-p:leading-relaxed prose-li:text-gray-300 prose-strong:text-white prose-ul:my-2 prose-li:my-0.5"
                                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content!) }}
                                             />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="rounded-xl p-5" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 78, 59, 0.15) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                    <div className="rounded-xl p-5" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--primary) / 0.15) 100%)', border: '1px solid hsl(var(--primary) / 0.2)' }}>
                                         <div className="flex items-start gap-4">
-                                            <div className="p-3 rounded-xl bg-emerald-500/20 shrink-0">
-                                                <Atom className="h-6 w-6 text-emerald-400" />
+                                            <div className="p-3 rounded-xl bg-primary/20 shrink-0">
+                                                <Atom className="h-6 w-6 text-primary" />
                                             </div>
                                             <div className="space-y-2">
                                                 <h3 className="text-lg font-bold text-white">{selectedTheme.name}</h3>
@@ -589,7 +589,7 @@ export default function ClientResources() {
                                 {videos.length > 0 && (
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <Video className="h-4 w-4 text-emerald-400" />
+                                            <Video className="h-4 w-4 text-primary" />
                                             <h4 className="text-sm font-semibold text-white">Related Videos</h4>
                                             <span className="text-xs text-muted-foreground/50">({videos.length})</span>
                                         </div>
@@ -626,14 +626,14 @@ export default function ClientResources() {
                         );
                     })() : topicTab === 'discussion' ? (
                         <div className="rounded-xl p-6 text-center space-y-4" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(75, 85, 99, 0.3)' }}>
-                            <Users className="h-10 w-10 text-emerald-400 mx-auto" />
+                            <Users className="h-10 w-10 text-primary mx-auto" />
                             <h3 className="text-lg font-semibold">Join the {selectedTheme.name} Discussion</h3>
                             <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
                                 Connect with others and ask questions about {selectedTheme.name}.
                             </p>
                             <button
                                 onClick={() => navigate('/community')}
-                                className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-white font-medium rounded-full text-sm transition-all shadow-lg shadow-emerald-500/25 inline-flex items-center gap-2"
+                                className="px-6 py-2.5 bg-gradient-brand-r hover:opacity-90 text-white font-medium rounded-full text-sm transition-all shadow-lg shadow-primary/25 inline-flex items-center gap-2"
                             >
                                 <Users className="h-4 w-4" /> Open Community Forum
                             </button>
@@ -696,7 +696,7 @@ export default function ClientResources() {
 
             {/* ===== RESOURCE DETAIL DIALOG ===== */}
             <Dialog open={!!selectedResource} onOpenChange={(open) => !open && setSelectedResource(null)}>
-                <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
+                <DialogContent className="max-w-4xl h-[80dvh] flex flex-col p-0 gap-0">
                     {selectedResource && <ResourceDetailView resource={selectedResource} userId={user?.id} />}
                 </DialogContent>
             </Dialog>

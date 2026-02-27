@@ -144,9 +144,9 @@ function UnmixedCard({ vial, actions, knowledge }: { vial: ClientInventoryItem; 
                 )}
 
                 {concentration > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15">
-                        <Syringe className="h-3.5 w-3.5 text-emerald-400" />
-                        <span className="text-sm font-medium text-emerald-400">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/[0.08] border border-primary/15">
+                        <Syringe className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-sm font-medium text-primary">
                             {concentration.toFixed(2)} mg/ml
                         </span>
                     </div>
@@ -296,7 +296,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                                     className={cn(
                                         "flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-center transition-all duration-200 border",
                                         selectedTierId === tier.id
-                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
+                                            ? "bg-primary/15 border-primary/30 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
                                             : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06] hover:text-foreground/80"
                                     )}
                                 >
@@ -347,9 +347,9 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50 font-medium">mg</span>
                 </div>
                 {units > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15">
-                        <Syringe className="h-3.5 w-3.5 text-emerald-400" />
-                        <span className="text-sm font-medium text-emerald-400">{units} units</span>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/[0.08] border border-primary/15">
+                        <Syringe className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-sm font-medium text-primary">{units} units</span>
                     </div>
                 )}
             </div>
@@ -368,7 +368,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                             className={cn(
                                 "px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-200 border",
                                 frequency === opt.value
-                                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
+                                    ? "bg-primary/15 border-primary/30 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
                                     : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/70 hover:bg-white/[0.06] hover:text-foreground/80"
                             )}
                         >
@@ -438,7 +438,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                                 className={cn(
                                     "h-10 rounded-xl text-[11px] font-semibold transition-all duration-200 border",
                                     selectedDays.includes(day)
-                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                        ? "bg-primary/15 border-primary/30 text-primary"
                                         : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06]"
                                 )}
                             >
@@ -467,7 +467,7 @@ function NeedsScheduleCard({ vial, actions, knowledge }: { vial: ClientInventory
                                         className={cn(
                                             "flex flex-col items-center gap-1.5 py-3 rounded-xl text-[11px] font-medium transition-all duration-200 border",
                                             timeOfDay === opt.value
-                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_hsl(160_84%_39%/0.1)]"
+                                                ? "bg-primary/15 border-primary/30 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]"
                                                 : "bg-white/[0.03] border-white/[0.06] text-muted-foreground/60 hover:bg-white/[0.06]"
                                         )}
                                     >
@@ -551,7 +551,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
             isLow
                 ? "border-amber-500/20 from-amber-500/[0.06] to-transparent"
                 : isDueToday
-                    ? "border-emerald-500/20 from-emerald-500/[0.06] to-transparent shadow-[0_0_25px_hsl(160_84%_39%/0.08)]"
+                    ? "border-primary/20 from-primary/[0.06] to-transparent shadow-[0_0_25px_hsl(var(--primary)/0.08)]"
                     : "border-white/[0.04] from-white/[0.02] to-transparent"
         )}>
             {/* Header */}
@@ -560,7 +560,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                     <div className="flex items-center gap-2">
                         <p className="font-semibold text-[15px] tracking-tight">{vial.peptide?.name || 'Unknown'}</p>
                         {matchedTier && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-primary">
                                 {matchedTier.label}
                             </span>
                         )}
@@ -579,9 +579,9 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                     </div>
                 </div>
                 {isDueToday && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 shrink-0">
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[11px] font-medium text-emerald-400">Due</span>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 shrink-0">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[11px] font-medium text-primary">Due</span>
                     </div>
                 )}
             </div>
@@ -622,7 +622,7 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                     className={cn(
                         "h-2.5 rounded-full",
                         isLow ? '[&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-amber-400 [&>div]:rounded-full'
-                            : '[&>div]:bg-gradient-to-r [&>div]:from-emerald-600 [&>div]:to-emerald-400 [&>div]:rounded-full'
+                            : '[&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-primary [&>div]:rounded-full'
                     )}
                 />
             </div>
@@ -641,11 +641,11 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
 
             {/* Dose info */}
             {isDueToday && doseMg > 0 && (
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15">
-                    <Syringe className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/[0.08] border border-primary/15">
+                    <Syringe className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1">
-                        <span className="text-sm font-semibold text-emerald-400">{units} units</span>
-                        <span className="text-xs text-emerald-400/60 ml-1.5">({doseMg}mg)</span>
+                        <span className="text-sm font-semibold text-primary">{units} units</span>
+                        <span className="text-xs text-primary/60 ml-1.5">({doseMg}mg)</span>
                     </div>
                 </div>
             )}
@@ -799,7 +799,7 @@ function StorageRow({ vial, actions }: { vial: ClientInventoryItem; actions: Ret
                     <span>{vial.vial_size_mg}mg</span>
                     <span className="text-muted-foreground/20">·</span>
                     {isMixed ? (
-                        <span className="text-emerald-400/70">{Number(vial.concentration_mg_ml).toFixed(2)} mg/ml</span>
+                        <span className="text-primary/70">{Number(vial.concentration_mg_ml).toFixed(2)} mg/ml</span>
                     ) : (
                         <span className="text-amber-400/70">Unmixed</span>
                     )}
@@ -810,7 +810,7 @@ function StorageRow({ vial, actions }: { vial: ClientInventoryItem; actions: Ret
             <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-xl text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 shrink-0"
+                className="h-9 rounded-xl text-xs border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 shrink-0"
                 disabled={actions.toggleFridge.isPending}
                 onClick={() => actions.toggleFridge.mutate({ vialId: vial.id, inFridge: true })}
             >
@@ -860,7 +860,7 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
             <GlassCard className="border-white/[0.04] overflow-hidden">
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 shadow-[0_0_15px_hsl(160_84%_39%/0.1)]">
+                        <div className="p-2 rounded-xl bg-primary/15 text-primary shadow-[0_0_15px_hsl(var(--primary)/0.1)]">
                             <Droplets className="w-4 h-4" />
                         </div>
                         <span className="tracking-tight">My Fridge</span>
@@ -939,8 +939,8 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
                                     <div className="space-y-2.5">
                                         {(unmixed.length > 0 || needsSchedule.length > 0) && <div className="h-px bg-white/[0.04]" />}
                                         <div className="flex items-center gap-2 px-1">
-                                            <Droplets className="h-3.5 w-3.5 text-emerald-400" />
-                                            <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">In Your Fridge</span>
+                                            <Droplets className="h-3.5 w-3.5 text-primary" />
+                                            <span className="text-xs font-semibold text-primary uppercase tracking-wider">In Your Fridge</span>
                                             <span className="text-[10px] text-muted-foreground/40 bg-white/[0.04] px-2 py-0.5 rounded-full">{active.length}</span>
                                         </div>
                                         {active.map(renderVial)}

@@ -62,6 +62,7 @@ const PartnerStore = lazyRetry(() => import("./pages/partner/PartnerStore"));
 const PartnerOrders = lazyRetry(() => import("./pages/partner/PartnerOrders"));
 const AIAssistant = lazyRetry(() => import("./pages/AIAssistant"));
 const FeatureManagement = lazyRetry(() => import("./pages/admin/FeatureManagement"));
+const Integrations = lazyRetry(() => import("./pages/Integrations"));
 const SystemHealth = lazyRetry(() => import("./pages/admin/SystemHealth"));
 
 // Vendor (super-admin)
@@ -267,6 +268,7 @@ const App = () => (
                                 <Route path="/movements/new" element={<MovementWizard />} />
                                 <Route path="/ai" element={<AIAssistant />} />
                                 <Route path="/setup-assistant" element={<RoleBasedRedirect allowedRoles={['admin']}><SetupAssistant /></RoleBasedRedirect>} />
+                                <Route path="/integrations" element={<Integrations />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/customizations" element={<Customizations />} />
                                 <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />

@@ -53,35 +53,39 @@ export function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-card rounded-xl border border-border/60 p-6 shadow-card flex flex-col transition-all duration-300 hover:shadow-card-hover hover:border-primary/20"
+              className="relative rounded-xl p-px transition-all duration-300 group"
+              style={{ background: "linear-gradient(135deg, hsl(var(--border) / 0.6), hsl(var(--border) / 0.3))" }}
             >
-              <div className="flex gap-0.5 mb-3">
-                {Array.from({ length: t.stars }).map((_, si) => (
-                  <Star
-                    key={si}
-                    className="w-4 h-4 fill-yellow-400 text-yellow-400"
-                  />
-                ))}
-              </div>
-              <Quote className="w-6 h-6 text-primary/30 mb-2" />
-              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-                {t.quote}
-              </p>
-              <div className="mt-4 pt-4 border-t border-border/30 flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  i === 0 ? "bg-primary/20 text-primary" :
-                  i === 1 ? "bg-emerald-500/20 text-emerald-400" :
-                  "bg-blue-500/20 text-blue-400"
-                }`}>
-                  {t.name.split(" ").map(n => n[0]).join("")}
+              {/* Gradient border glow on hover */}
+              <div
+                className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--border) / 0.3) 40%, hsl(var(--primary) / 0.3))" }}
+              />
+              <div className="relative bg-card rounded-[11px] p-6 h-full flex flex-col shadow-card group-hover:shadow-card-hover transition-shadow">
+                <div className="flex gap-0.5 mb-3">
+                  {Array.from({ length: t.stars }).map((_, si) => (
+                    <Star
+                      key={si}
+                      className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                    />
+                  ))}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {t.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {t.title}, {t.company}
-                  </p>
+                <Quote className="w-6 h-6 text-primary/30 mb-2" />
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                  {t.quote}
+                </p>
+                <div className="mt-4 pt-4 border-t border-border/30 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-primary/20 to-primary/10 text-primary ring-1 ring-primary/20">
+                    {t.name.split(" ").map(n => n[0]).join("")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {t.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {t.title}, {t.company}
+                    </p>
+                  </div>
                 </div>
               </div>
             </motion.div>

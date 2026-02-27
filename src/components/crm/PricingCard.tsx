@@ -68,7 +68,7 @@ function PricingCardBase({
           <span className="text-muted-foreground text-sm">/mo</span>
         </div>
         {billingPeriod === "yearly" && savings > 0 && (
-          <p className="text-xs text-emerald-400 mt-1">
+          <p className="text-xs text-primary mt-1">
             Save {savings}% with annual billing
           </p>
         )}
@@ -77,7 +77,7 @@ function PricingCardBase({
             ${(price / 100).toLocaleString()}/year billed annually
           </p>
         )}
-        <p className="text-xs text-emerald-400 font-medium mt-1.5">
+        <p className="text-xs text-primary font-medium mt-1.5">
           7-day free trial included
         </p>
       </div>
@@ -114,7 +114,7 @@ function PricingCardBase({
       <ul className="space-y-2.5 mb-6 flex-1">
         {features.map((feature, i) => (
           <li key={i} className="flex items-start gap-2 text-sm">
-            <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
             <span className="text-muted-foreground">{feature}</span>
           </li>
         ))}
@@ -125,7 +125,7 @@ function PricingCardBase({
         className={cn(
           "w-full font-semibold",
           popular
-            ? "bg-gradient-to-r from-primary to-emerald-500 text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover"
+            ? "bg-gradient-to-r from-primary to-primary/80 text-white border-0 hover:opacity-90 shadow-btn hover:shadow-btn-hover"
             : "bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary"
         )}
       >

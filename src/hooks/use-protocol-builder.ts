@@ -78,6 +78,18 @@ export function useProtocolBuilder() {
     const { admin_brand_name } = useTenantConfig();
     const orgName = organization?.name || admin_brand_name;
 
+    // Supplement catalog (for product images)
+    const { data: supplementCatalog } = useQuery({
+        queryKey: ['supplement-catalog'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('supplements')
+                .select('name, image_url, purchase_link');
+            return data || [];
+        },
+        staleTime: 1000 * 60 * 30, // cache 30 min
+    });
+
     // ── Enrichment: peptide → EnrichedProtocolItem ─────────────
 
     const enrichPeptide = useCallback((peptide: Peptide, preferredTierId?: string): EnrichedProtocolItem => {
@@ -125,7 +137,22 @@ export function useProtocolBuilder() {
             dosageSchedule: tier?.dosageSchedule ?? knowledge?.dosageSchedule ?? null,
             category: knowledge?.category ?? undefined,
             notes: '',
-            supplements: knowledge?.supplementNotes ?? [],
+            supplements: (knowledge?.supplementNotes ?? []).map(supp => {
+                // Merge product image from supplement catalog DB using word-based matching
+                const match = supplementCatalog?.find(s => {
+                    const db = s.name.toLowerCase().replace(/-/g, '');
+                    if (supp.productName) {
+                        const words = supp.productName.toLowerCase().replace(/-/g, '').split(/[\s()+]+/).filter(w => w.length > 2);
+                        if (words.filter(w => db.includes(w)).length >= 2) return true;
+                    }
+                    const nameWords = supp.name.toLowerCase().replace(/-/g, '').split(/[\s()+]+/).filter(w => w.length > 2);
+                    return nameWords.length > 0 && nameWords.filter(w => db.includes(w)).length >= Math.min(2, nameWords.length);
+                });
+                return {
+                    ...supp,
+                    imageUrl: supp.imageUrl || match?.image_url || undefined,
+                };
+            }),
             selectedTierId: tier?.id ?? null,
             availableTiers: tiers,
             includeSections: {
@@ -138,7 +165,7 @@ export function useProtocolBuilder() {
                 dosageSchedule: true,
             },
         };
-    }, []);
+    }, [supplementCatalog]);
 
     // ── Actions ────────────────────────────────────────────────
 

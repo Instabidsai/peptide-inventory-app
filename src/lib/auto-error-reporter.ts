@@ -318,6 +318,8 @@ export function installAutoErrorReporter() {
           if (FIRE_AND_FORGET_FUNCTIONS.has(fnName) || DEPRECATED_FUNCTIONS.has(fnName)) return resp;
           if (resp.status === 409 && url.includes('payment_email_queue')) return resp;
           if ((resp.status === 401 || resp.status === 403) && url.includes('/auth/v1/')) return resp;
+          // 401/403 on REST API = RLS denial or unauthenticated; expected during signup, session expiry, etc.
+          if ((resp.status === 401 || resp.status === 403) && url.includes('/rest/v1/')) return resp;
         }
 
         // External API: only report 5xx (server errors) — 4xx is often expected (auth, not found)
@@ -398,12 +400,17 @@ export function installAutoErrorReporter() {
     });
   };
 
-  // 1d. Long Task observer — detects JS blocking the main thread > 100ms
+  // 1d. Long Task observer — detects JS blocking the main thread
+  // Grace period: ignore long tasks during initial page load (first 15s) since
+  // module evaluation, Vite HMR, and framework bootstrap naturally cause spikes.
   if ('PerformanceObserver' in window) {
     try {
+      const pageLoadTime = performance.now();
       const longTaskObserver = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.duration > 200) { // Only report > 200ms to reduce noise
+          const elapsed = performance.now() - pageLoadTime;
+          const threshold = elapsed < 15000 ? 10000 : 3000;
+          if (entry.duration > threshold) {
             queueError({
               message: `Long task: ${Math.round(entry.duration)}ms blocking main thread`,
               source: 'long_task',

@@ -539,7 +539,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
 
     const statusBadge = (t: Transaction) => {
         if (t.payment_status === "paid")
-            return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">Paid</Badge>;
+            return <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0">Paid</Badge>;
         if (t.payment_status === "partial")
             return <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">Partial</Badge>;
         if (t.payment_status === "commission_offset")
@@ -595,7 +595,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
     return (
         <Card className={cn(
             "border",
-            hasOutstanding ? "border-amber-200 bg-amber-50/20" : "border-emerald-200 bg-emerald-50/20",
+            hasOutstanding ? "border-amber-200 bg-amber-50/20" : "border-primary/30 bg-primary/10/20",
         )}>
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -608,7 +608,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                             <AlertCircle className="h-3 w-3 mr-1" /> Balance Due
                         </Badge>
                     ) : (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
                             <CheckCircle2 className="h-3 w-3 mr-1" /> All Paid
                         </Badge>
                     )}
@@ -634,13 +634,13 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                         icon={<CreditCard className="h-3.5 w-3.5" />}
                         label="Total Paid"
                         value={fmt(totalPaid)}
-                        className="text-emerald-700"
+                        className="text-primary"
                     />
                     <StatBox
                         icon={<AlertCircle className="h-3.5 w-3.5" />}
                         label="Outstanding"
                         value={fmt(totalOutstanding)}
-                        className={hasOutstanding ? "text-amber-700" : "text-emerald-700"}
+                        className={hasOutstanding ? "text-amber-700" : "text-primary"}
                     />
                 </div>
 
@@ -671,7 +671,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                 label="Available"
                                 value={fmt(commAvailable)}
                                 sub={commPending > 0 ? `${fmt(commPending)} pending` : undefined}
-                                className="text-emerald-700"
+                                className="text-primary"
                             />
                             <StatBox
                                 icon={<CheckCircle2 className="h-3.5 w-3.5" />}
@@ -725,7 +725,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                                 <span className="font-medium">{fmt(c.amount)}</span>
                                                 <Badge className={cn(
                                                     "text-[9px] px-1 py-0",
-                                                    c.status === "available" ? "bg-emerald-100 text-emerald-600" :
+                                                    c.status === "available" ? "bg-primary/15 text-primary" :
                                                     c.status === "pending" ? "bg-amber-100 text-amber-600" :
                                                     "bg-gray-100 text-gray-500",
                                                 )}>
@@ -823,7 +823,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                         {/* Balance */}
                                         <div className={cn(
                                             "hidden sm:block text-right text-xs font-semibold",
-                                            t.balance > 0 ? "text-amber-700" : "text-emerald-600",
+                                            t.balance > 0 ? "text-amber-700" : "text-primary",
                                         )}>
                                             {t.balance > 0 ? fmt(t.balance) : "—"}
                                         </div>
@@ -885,7 +885,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                                                         <span>{fmt(t.total)}</span>
                                                     </div>
                                                     {t.amount_paid > 0 && (
-                                                        <div className="flex justify-between text-xs text-emerald-600">
+                                                        <div className="flex justify-between text-xs text-primary">
                                                             <span>Paid{t.payment_date ? ` on ${format(new Date(t.payment_date), "MMM d")}` : ""}{t.payment_method ? ` via ${methodLabel(t.payment_method)}` : ""}</span>
                                                             <span>-{fmt(t.amount_paid)}</span>
                                                         </div>

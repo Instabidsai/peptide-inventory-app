@@ -44,7 +44,7 @@ export function TeamReferralLinks({ downline }: TeamReferralLinksProps) {
                             <div className="flex items-center gap-2">
                                 <p className="flex-1 text-[11px] text-muted-foreground truncate">{custUrl}</p>
                                 <Button variant="outline" size="sm"
-                                    className={copiedKey === `${p.id}-c` ? 'border-emerald-500/30 text-emerald-400' : 'border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300'}
+                                    className={copiedKey === `${p.id}-c` ? 'border-primary/30 text-primary' : 'border-primary/30 hover:bg-primary/10 hover:text-primary/80'}
                                     onClick={() => handleCopy(custUrl, `${p.id}-c`)}>
                                     {copiedKey === `${p.id}-c` ? <><Check className="h-3 w-3 mr-1" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
                                 </Button>

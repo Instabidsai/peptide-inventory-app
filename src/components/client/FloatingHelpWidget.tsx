@@ -27,7 +27,7 @@ export function FloatingHelpWidget() {
             {state === 'closed' && (
                 <button
                     onClick={() => setState('menu')}
-                    className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+                    className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-50 h-14 w-14 rounded-full bg-gradient-premium text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
                     aria-label="Get help"
                 >
                     <Sparkles className="h-6 w-6" />
@@ -58,10 +58,10 @@ export function FloatingHelpWidget() {
                         {/* Ask AI option */}
                         <button
                             onClick={() => setState('ai-chat')}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-400/[0.15] hover:border-emerald-400/[0.3] hover:bg-emerald-500/[0.12] transition-all text-left group"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/[0.08] border border-primary/[0.15] hover:border-primary/[0.3] hover:bg-primary/[0.12] transition-all text-left group"
                         >
-                            <div className="h-9 w-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/25 transition-colors">
-                                <Sparkles className="h-4 w-4 text-emerald-400" />
+                            <div className="h-9 w-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 group-hover:bg-primary/25 transition-colors">
+                                <Sparkles className="h-4 w-4 text-primary" />
                             </div>
                             <div>
                                 <p className="text-sm font-medium">Ask Peptide AI</p>
@@ -91,7 +91,7 @@ export function FloatingHelpWidget() {
 
             {/* AI Chat Panel */}
             {state === 'ai-chat' && (
-                <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card/95 backdrop-blur-xl border border-border/60 shadow-overlay flex flex-col overflow-hidden">
+                <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[420px] h-[100dvh] sm:h-[600px] sm:bottom-4 sm:right-4 sm:rounded-2xl bg-card/95 backdrop-blur-xl border border-border/60 shadow-overlay flex flex-col overflow-hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                     {/* Close button overlay — 44px touch target */}
                     <button
                         onClick={close}

@@ -104,8 +104,8 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                     </Card>
                     <Card>
                         <CardContent className="pt-4 pb-3 px-4 flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-emerald-500/10">
-                                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                            <div className="p-2 rounded-lg bg-primary/10">
+                                <TrendingUp className="h-4 w-4 text-primary" />
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground">Avg Margin</p>
@@ -156,7 +156,7 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                                             <span className="ml-2 text-xs text-muted-foreground">{row.sku}</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right tabular-nums font-medium text-emerald-600">
+                                    <TableCell className="text-right tabular-nums font-medium text-primary">
                                         {fmt(row.yourPrice)}
                                     </TableCell>
                                     <TableCell className="text-right tabular-nums">{fmt(row.retailPrice)}</TableCell>
@@ -164,7 +164,7 @@ export default function MarginCalculator({ previewTier, compact }: MarginCalcula
                                     <TableCell className="text-right tabular-nums">
                                         <Badge
                                             variant={row.marginPct >= 40 ? 'default' : 'secondary'}
-                                            className={row.marginPct >= 40 ? 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30' : ''}
+                                            className={row.marginPct >= 40 ? 'bg-primary/20 text-primary border-primary/30' : ''}
                                         >
                                             {row.marginPct}%
                                         </Badge>

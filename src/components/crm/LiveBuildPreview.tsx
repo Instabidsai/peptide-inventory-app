@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Check, Bell, FileText } from "lucide-react";
+import { Check, Bell, FileText, Users, DollarSign, ClipboardList } from "lucide-react";
 
 // ─── Counting number that animates from 0 to target ─────────────────
 function CountUp({ target, duration = 800, prefix = "", suffix = "" }: {
@@ -40,7 +40,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 function ScanLine() {
   return (
     <motion.div
-      className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent"
+      className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent"
       initial={{ top: 0 }}
       animate={{ top: "100%" }}
       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -64,7 +64,7 @@ function BuildContainer({ children, phase, glow = false }: {
       {/* Animated border */}
       <div className={`absolute inset-0 rounded-lg transition-all duration-700 ${
         phase >= 3
-          ? "ring-1 ring-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+          ? "ring-1 ring-primary/40 shadow-[0_0_15px_hsl(var(--primary)/0.1)]"
           : phase >= 1
             ? "ring-1 ring-border/40"
             : "ring-1 ring-border/20"
@@ -116,7 +116,7 @@ function DashboardPreview({ phase }: { phase: number }) {
                   <motion.span
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary"
                   >
                     Live
                   </motion.span>
@@ -341,7 +341,7 @@ function OrderPreview({ phase }: { phase: number }) {
               <span className="text-xs font-medium">Order #4521</span>
               {phase >= 3 && (
                 <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Fulfilled</motion.span>
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">Fulfilled</motion.span>
               )}
             </>
           ) : <Skeleton className="h-3 w-24" />}
@@ -363,11 +363,11 @@ function OrderPreview({ phase }: { phase: number }) {
               >
                 {isActive ? (
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400 }}>
-                    <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <Check className="w-3 h-3 text-primary shrink-0" />
                   </motion.div>
                 ) : (
                   <motion.div
-                    className="w-3 h-3 rounded-full border-2 border-muted-foreground/30 border-t-emerald-400 shrink-0"
+                    className="w-3 h-3 rounded-full border-2 border-muted-foreground/30 border-t-primary shrink-0"
                     animate={i === phase - 1 + 1 ? { rotate: 360 } : {}}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   />
@@ -397,7 +397,7 @@ function AutomationPreview({ phase }: { phase: number }) {
               <span className="text-xs font-medium text-yellow-300">Reorder Alert</span>
               {phase >= 3 && (
                 <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 ml-auto">
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary ml-auto">
                   24 SKUs monitored
                 </motion.span>
               )}
@@ -479,7 +479,7 @@ function ModulePreview({ phase }: { phase: number }) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
-              className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400"
+              className="px-1.5 py-0.5 rounded bg-primary/10 text-primary"
             >
               {badge}
             </motion.span>
@@ -509,7 +509,7 @@ function ReportPreview({ phase }: { phase: number }) {
               <span className="text-xs font-medium">Compliance Report — Feb 2026</span>
               {phase >= 3 && (
                 <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                  className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Passed</motion.span>
+                  className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary">Passed</motion.span>
               )}
             </>
           ) : <Skeleton className="h-3 w-44" />}
@@ -529,7 +529,7 @@ function ReportPreview({ phase }: { phase: number }) {
             >
               {phase >= 2 ? (
                 <>
-                  <p className={`text-sm font-bold ${s.ok ? "text-emerald-400" : "text-yellow-400"}`}>
+                  <p className={`text-sm font-bold ${s.ok ? "text-primary" : "text-yellow-400"}`}>
                     <CountUp target={s.value} />
                   </p>
                   <p className="text-[9px] text-muted-foreground">{s.label}</p>
@@ -549,6 +549,212 @@ function ReportPreview({ phase }: { phase: number }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// VARIANT: Client Portal
+// ═══════════════════════════════════════════════════════════════════════
+function ClientPortalPreview({ phase }: { phase: number }) {
+  const sections = [
+    { label: "Active Protocols", count: 3, icon: "💊" },
+    { label: "Order History", count: 12, icon: "📦" },
+    { label: "Next Dose", detail: "BPC-157 — Tomorrow 8 AM", icon: "⏰" },
+  ];
+
+  return (
+    <BuildContainer phase={phase}>
+      {phase >= 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between mb-2">
+          {phase >= 1 ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">Client Portal</span>
+              </div>
+              {phase >= 3 && (
+                <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">Active</motion.span>
+              )}
+            </>
+          ) : <Skeleton className="h-3 w-28" />}
+        </motion.div>
+      )}
+
+      {phase >= 1 && (
+        <div className="space-y-1.5">
+          {sections.map((s, i) => (
+            <motion.div
+              key={s.label}
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={staggerItem}
+              className="flex items-center gap-2.5 p-2 rounded-lg bg-card/60 border border-border/20"
+            >
+              <span className="text-sm">{s.icon}</span>
+              {phase >= 2 ? (
+                <div className="flex-1 flex items-center justify-between">
+                  <span className="text-[10px] text-foreground">{s.label}</span>
+                  <span className="text-[10px] text-primary font-medium">
+                    {s.count !== undefined ? <CountUp target={s.count} /> : s.detail}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex-1 flex justify-between">
+                  <Skeleton className="h-2.5 w-20" />
+                  <Skeleton className="h-2.5 w-8" />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {phase >= 3 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="mt-2 flex gap-2 text-[9px]">
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">Request Refill</span>
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">View Schedule</span>
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">Message</span>
+        </motion.div>
+      )}
+    </BuildContainer>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// VARIANT: Commission Tracker
+// ═══════════════════════════════════════════════════════════════════════
+function CommissionPreview({ phase }: { phase: number }) {
+  const reps = [
+    { name: "Sarah M.", sales: 34200, commission: 3420, rank: 1 },
+    { name: "Mike R.", sales: 28900, commission: 2890, rank: 2 },
+    { name: "Lisa K.", sales: 22100, commission: 2210, rank: 3 },
+  ];
+
+  return (
+    <BuildContainer phase={phase}>
+      {phase >= 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between mb-2">
+          {phase >= 1 ? (
+            <>
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">Commission Tracker — Q1</span>
+              </div>
+              {phase >= 3 && (
+                <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary">$8,520 total</motion.span>
+              )}
+            </>
+          ) : <Skeleton className="h-3 w-40" />}
+        </motion.div>
+      )}
+
+      {phase >= 1 && (
+        <div className="space-y-1.5">
+          {reps.map((rep, i) => (
+            <motion.div
+              key={rep.name}
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={staggerItem}
+              className="flex items-center gap-2 text-[10px] p-1.5 rounded bg-card/60"
+            >
+              {phase >= 2 ? (
+                <>
+                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                    rep.rank === 1 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-muted text-muted-foreground'
+                  }`}>{rep.rank}</span>
+                  <span className="text-foreground flex-1">{rep.name}</span>
+                  <span className="text-muted-foreground">${rep.sales.toLocaleString()}</span>
+                  <span className="text-primary font-medium">${rep.commission.toLocaleString()}</span>
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-3 w-16 flex-1" />
+                  <Skeleton className="h-3 w-12" />
+                </>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </BuildContainer>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// VARIANT: Custom Form Builder
+// ═══════════════════════════════════════════════════════════════════════
+function FormPreview({ phase }: { phase: number }) {
+  const fields = [
+    { label: "Client Name", type: "text", required: true },
+    { label: "Peptide", type: "select", required: true },
+    { label: "Dosage (mg)", type: "number", required: true },
+    { label: "Injection Site", type: "select", required: false },
+    { label: "Notes", type: "textarea", required: false },
+  ];
+
+  return (
+    <BuildContainer phase={phase}>
+      {phase >= 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between mb-2">
+          {phase >= 1 ? (
+            <>
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">Protocol Intake Form</span>
+              </div>
+              {phase >= 3 && (
+                <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">Ready</motion.span>
+              )}
+            </>
+          ) : <Skeleton className="h-3 w-32" />}
+        </motion.div>
+      )}
+
+      {phase >= 1 && (
+        <div className="space-y-1">
+          {fields.map((field, i) => (
+            <motion.div
+              key={field.label}
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={staggerItem}
+              className="flex items-center gap-2 text-[10px]"
+            >
+              {phase >= 2 ? (
+                <>
+                  <div className={`flex-1 px-2 py-1 rounded border transition-colors duration-300 ${
+                    phase >= 3 ? 'border-border/40 bg-background/60' : 'border-border/20 bg-transparent'
+                  }`}>
+                    <span className="text-muted-foreground">{field.label}</span>
+                  </div>
+                  <span className="text-muted-foreground/50 w-12 text-right">{field.type}</span>
+                  {field.required && <span className="text-primary text-[8px]">*</span>}
+                </>
+              ) : (
+                <Skeleton className="h-5 w-full" />
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {phase >= 3 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="mt-2 flex items-center justify-between">
+          <span className="text-[9px] text-muted-foreground">5 fields · 3 required</span>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-primary/20 text-primary">Preview Form</span>
+        </motion.div>
+      )}
+    </BuildContainer>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // MAIN EXPORT — variant selector
 // ═══════════════════════════════════════════════════════════════════════
 export type BuildPreviewVariant =
@@ -558,7 +764,10 @@ export type BuildPreviewVariant =
   | "order"
   | "automation"
   | "module"
-  | "report";
+  | "report"
+  | "client-portal"
+  | "commission"
+  | "form";
 
 interface LiveBuildPreviewProps {
   phase: number;
@@ -574,6 +783,9 @@ export function LiveBuildPreview({ phase, variant }: LiveBuildPreviewProps) {
     case "automation": return <AutomationPreview phase={phase} />;
     case "module": return <ModulePreview phase={phase} />;
     case "report": return <ReportPreview phase={phase} />;
+    case "client-portal": return <ClientPortalPreview phase={phase} />;
+    case "commission": return <CommissionPreview phase={phase} />;
+    case "form": return <FormPreview phase={phase} />;
     default: return null;
   }
 }

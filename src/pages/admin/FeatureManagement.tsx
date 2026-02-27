@@ -217,7 +217,7 @@ export default function FeatureManagement() {
                       )}
                     >
                       {visible ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <Check className="h-3.5 w-3.5 text-primary shrink-0" />
                       ) : (
                         <X className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
                       )}

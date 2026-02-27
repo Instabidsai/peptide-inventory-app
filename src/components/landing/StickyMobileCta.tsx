@@ -25,7 +25,7 @@ export function StickyMobileCta() {
           className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-md border-t border-border/40 px-4 py-3"
         >
           <Button
-            className="w-full shadow-btn bg-gradient-to-r from-primary to-emerald-500 text-white border-0"
+            className="w-full shadow-btn bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0"
             onClick={() => {
               localStorage.setItem("selected_plan", "professional");
               navigate("/get-started");

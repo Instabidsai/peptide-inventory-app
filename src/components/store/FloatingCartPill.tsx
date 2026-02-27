@@ -22,7 +22,7 @@ export function FloatingCartPill({ itemCount, cartTotal, visible, onScrollToCart
                     className="fixed bottom-20 left-4 right-4 z-30 max-w-lg mx-auto"
                 >
                     <Button
-                        className="w-full h-14 rounded-2xl shadow-2xl shadow-primary/30 text-base font-bold bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
+                        className="w-full h-14 rounded-2xl shadow-2xl shadow-primary/30 text-base font-bold bg-gradient-brand-r hover:opacity-90 border-0"
                         size="lg"
                         onClick={onScrollToCart}
                     >

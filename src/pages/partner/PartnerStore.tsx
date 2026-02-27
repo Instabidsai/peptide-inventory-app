@@ -679,7 +679,7 @@ export default function PartnerStore() {
                     </Card>
 
                     {/* Savings summary card */}
-                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 shadow-card">
+                    <Card className="bg-gradient-to-br from-green-500/10 to-primary/5 border-green-500/20 shadow-card">
                         <CardContent className="pt-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Tag className="h-4 w-4 text-green-500" />

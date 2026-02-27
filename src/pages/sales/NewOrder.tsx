@@ -395,7 +395,7 @@ export default function NewOrder() {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] lg:flex-row gap-6">
+        <div className="flex flex-col h-[calc(100dvh-4rem)] lg:flex-row gap-6">
             {isPreviewMode && (
                 <div className="absolute top-16 left-0 right-0 z-50 px-6 pointer-events-none">
                     <Alert className="bg-amber-500/15 border-amber-500/30 text-amber-400 pointer-events-auto shadow-md max-w-2xl mx-auto">

@@ -78,10 +78,10 @@ export function CartSummary({
             >
             <GlassCard className="border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden">
                 {/* Gradient accent at top */}
-                <div className="h-[2px] bg-gradient-to-r from-primary via-emerald-300 to-cyan-400" />
+                <div className="h-[2px] bg-gradient-brand-r" />
                 <CardHeader className="pb-2 pt-5">
                     <CardTitle className="flex items-center gap-3 text-lg">
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center shadow-lg shadow-primary/20">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-brand flex items-center justify-center shadow-lg shadow-primary/20">
                             <ShoppingCart className="h-4 w-4 text-white" />
                         </div>
                         Your Order
@@ -256,11 +256,11 @@ export function CartSummary({
                     ) : (
                         /* Order placed confirmation (non-card) */
                         <div className="text-center space-y-3 py-4">
-                            <div className="h-12 w-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
-                                <Check className="h-6 w-6 text-emerald-400" />
+                            <div className="h-12 w-12 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
+                                <Check className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                                <p className="font-semibold text-emerald-400">Order Placed!</p>
+                                <p className="font-semibold text-primary">Order Placed!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
                                     {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}

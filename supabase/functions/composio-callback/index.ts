@@ -68,7 +68,7 @@ Deno.serve(withErrorReporting("composio-callback", async (req) => {
         // Redirect back to app's settings page
         // The app uses HashRouter, so we redirect to the base URL with a hash route
         const appUrl = Deno.env.get('APP_URL') || sbUrl.replace('.supabase.co', '.vercel.app');
-        const redirectTo = `${appUrl}/#/settings?tab=integrations&connected=${service}`;
+        const redirectTo = `${appUrl}/#/integrations?connected=${service}`;
 
         return new Response(null, {
             status: 302,
@@ -81,7 +81,7 @@ Deno.serve(withErrorReporting("composio-callback", async (req) => {
         const appUrl = Deno.env.get('APP_URL') || '';
         return new Response(null, {
             status: 302,
-            headers: { 'Location': `${appUrl}/#/settings?tab=integrations&error=${encodeURIComponent(error.message)}` },
+            headers: { 'Location': `${appUrl}/#/integrations?error=${encodeURIComponent(error.message)}` },
         });
     }
 }));

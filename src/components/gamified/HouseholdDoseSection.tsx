@@ -5,7 +5,7 @@ import { DueNowCards, type DueNowDose } from './DueNowCards';
 
 const MEMBER_COLORS = [
     'text-primary',
-    'text-emerald-400',
+    'text-primary',
     'text-violet-400',
     'text-amber-400',
     'text-rose-400',

@@ -36,10 +36,12 @@ import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryError } from '@/components/ui/query-error';
+import { AnimatedValue } from '@/components/ui/animated-value';
 import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
+import { SetupChecklist } from '@/components/admin/SetupChecklist';
 
 const staggerContainer = {
     hidden: {},
@@ -278,7 +280,7 @@ export default function AdminDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 >
-                    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-emerald-500/5">
+                    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/5">
                         <CardContent className="pt-6 pb-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-3 flex-1">
@@ -307,6 +309,9 @@ export default function AdminDashboard() {
                     </Card>
                 </motion.div>
             )}
+
+            {/* Setup Checklist */}
+            <SetupChecklist />
 
             {/* Header */}
             <motion.div
@@ -390,19 +395,19 @@ export default function AdminDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
                 >
-                    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-primary/5">
+                    <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5">
                         <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-emerald-500/15">
-                                        <UserPlus className="h-5 w-5 text-emerald-400" />
+                                    <div className="p-2 rounded-lg bg-primary/15">
+                                        <UserPlus className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
                                         <CardTitle className="text-base">CRM Signups</CardTitle>
                                         <CardDescription>
                                             {leadSubmissions?.length ?? 0} total application{(leadSubmissions?.length ?? 0) !== 1 ? 's' : ''}
                                             {newLeadsToday > 0 && (
-                                                <span className="ml-2 text-emerald-400 font-medium">
+                                                <span className="ml-2 text-primary font-medium">
                                                     +{newLeadsToday} today
                                                 </span>
                                             )}
@@ -421,7 +426,7 @@ export default function AdminDashboard() {
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
                                                 {lead.business_status === 'new' ? (
-                                                    <Rocket className="h-3.5 w-3.5 text-emerald-400" />
+                                                    <Rocket className="h-3.5 w-3.5 text-primary" />
                                                 ) : lead.business_status === 'existing' ? (
                                                     <Building2 className="h-3.5 w-3.5 text-primary" />
                                                 ) : (
@@ -510,14 +515,18 @@ export default function AdminDashboard() {
             <SectionErrorBoundary section="Financial Overview">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/lots">
-                    <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Inventory Asset Value</CardTitle>
-                            <DollarSign className="h-5 w-5 text-primary" />
+                            <div className="p-2 rounded-lg bg-primary/15 group-hover:bg-primary/25 transition-colors">
+                                <DollarSign className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(financials?.inventoryValue ?? 0).toFixed(2)}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedValue value={financials?.inventoryValue ?? 0} prefix="$" decimals={2} />
+                                </div>
                             )}
                             <p className="text-xs text-muted-foreground">Current value of in-stock items</p>
                         </CardContent>
@@ -525,14 +534,18 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=sale">
-                    <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:border-green-500/40 hover:shadow-lg hover:shadow-green-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Sales Revenue</CardTitle>
-                            <TrendingUp className="h-5 w-5 text-green-500" />
+                            <div className="p-2 rounded-lg bg-green-500/15 group-hover:bg-green-500/25 transition-colors">
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(financials?.salesRevenue ?? 0).toFixed(2)}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedValue value={financials?.salesRevenue ?? 0} prefix="$" decimals={2} />
+                                </div>
                             )}
                             <p className="text-xs text-muted-foreground">Total collected from sales</p>
                         </CardContent>
@@ -540,20 +553,23 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 {/* Card 3: Overhead / Total Investment */}
-                <motion.div variants={staggerItem}><Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/10 transition-all duration-300 cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="group bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-semibold">
                             {isOps ? 'Operational Overhead' : 'Total Investment'}
                         </CardTitle>
-                        <PieChart className={`h-5 w-5 ${isOps ? 'text-orange-500' : 'text-red-500'}`} />
+                        <div className={`p-2 rounded-lg ${isOps ? 'bg-orange-500/15 group-hover:bg-orange-500/25' : 'bg-red-500/15 group-hover:bg-red-500/25'} transition-colors`}>
+                            <PieChart className={`h-4 w-4 ${isOps ? 'text-orange-500' : 'text-red-500'}`} />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
                             <div className="text-2xl font-bold">
-                                ${isOps
-                                    ? (financials?.overhead ?? 0).toFixed(2)
-                                    : totalExpensesWithLiability.toFixed(2)
-                                }
+                                <AnimatedValue
+                                    value={isOps ? (financials?.overhead ?? 0) : totalExpensesWithLiability}
+                                    prefix="$"
+                                    decimals={2}
+                                />
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
@@ -563,22 +579,25 @@ export default function AdminDashboard() {
                 </Card></motion.div>
 
                 {/* Card 4: Operating Profit / Net Position */}
-                <motion.div variants={staggerItem}><Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 cursor-pointer">
+                <motion.div variants={staggerItem}><Card className="group bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-semibold">
                             {isOps ? 'Operating Profit' : 'Net Position'}
                         </CardTitle>
-                        <DollarSign className="h-5 w-5 text-blue-500" />
+                        <div className="p-2 rounded-lg bg-blue-500/15 group-hover:bg-blue-500/25 transition-colors">
+                            <DollarSign className="h-4 w-4 text-blue-500" />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
                             <div className={`text-2xl font-bold ${(isOps ? (financials?.operatingProfit ?? 0) : netPosition) >= 0
                                 ? 'text-green-600' : 'text-red-500'
                                 }`}>
-                                ${isOps
-                                    ? (financials?.operatingProfit ?? 0).toFixed(2)
-                                    : netPosition.toFixed(2)
-                                }
+                                <AnimatedValue
+                                    value={Math.abs(isOps ? (financials?.operatingProfit ?? 0) : netPosition)}
+                                    prefix={(isOps ? (financials?.operatingProfit ?? 0) : netPosition) < 0 ? '-$' : '$'}
+                                    decimals={2}
+                                />
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
@@ -593,14 +612,18 @@ export default function AdminDashboard() {
             <SectionErrorBoundary section="Orders & Commissions">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={staggerItem}><Link to="/orders?status=pending">
-                    <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Pending Orders</CardTitle>
-                            <ClipboardList className="h-5 w-5 text-amber-500" />
+                            <div className="p-2 rounded-lg bg-amber-500/15 group-hover:bg-amber-500/25 transition-colors">
+                                <ClipboardList className="h-4 w-4 text-amber-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {pendingCountLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">{pendingOrdersCount || 0}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedValue value={pendingOrdersCount || 0} />
+                                </div>
                             )}
                             <p className="text-xs text-muted-foreground">Orders awaiting delivery</p>
                         </CardContent>
@@ -608,14 +631,18 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/orders?status=pending">
-                    <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">On Order Value</CardTitle>
-                            <DollarSign className="h-5 w-5 text-amber-500" />
+                            <div className="p-2 rounded-lg bg-amber-500/15 group-hover:bg-amber-500/25 transition-colors">
+                                <DollarSign className="h-4 w-4 text-amber-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {pendingValueLoading ? <Skeleton className="h-8 w-20" /> : (
-                                <div className="text-2xl font-bold">${(pendingFinancials?.totalValue ?? 0).toFixed(2)}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedValue value={pendingFinancials?.totalValue ?? 0} prefix="$" decimals={2} />
+                                </div>
                             )}
                             <p className="text-xs text-muted-foreground">Est. cost of pending orders</p>
                         </CardContent>
@@ -623,30 +650,32 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/admin/commissions">
-                    <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Commissions</CardTitle>
-                            <Users className="h-5 w-5 text-purple-500" />
+                            <div className="p-2 rounded-lg bg-purple-500/15 group-hover:bg-purple-500/25 transition-colors">
+                                <Users className="h-4 w-4 text-purple-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {financialsLoading ? <Skeleton className="h-8 w-20" /> : (
                                 <>
                                     <div className="text-2xl font-bold">
-                                        ${(financials?.commissionsTotal ?? 0).toFixed(2)}
+                                        <AnimatedValue value={financials?.commissionsTotal ?? 0} prefix="$" decimals={2} />
                                     </div>
-                                    <div className="flex gap-2 mt-1">
+                                    <div className="flex flex-wrap gap-2 mt-1">
                                         {(financials?.commissionsOwed ?? 0) > 0 && (
-                                            <span className="text-xs text-amber-500">
+                                            <span className="text-xs text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
                                                 ${(financials?.commissionsOwed ?? 0).toFixed(2)} owed
                                             </span>
                                         )}
                                         {(financials?.commissionsPaid ?? 0) > 0 && (
-                                            <span className="text-xs text-green-500">
+                                            <span className="text-xs text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">
                                                 ${(financials?.commissionsPaid ?? 0).toFixed(2)} paid
                                             </span>
                                         )}
                                         {(financials?.commissionsApplied ?? 0) > 0 && (
-                                            <span className="text-xs text-blue-500">
+                                            <span className="text-xs text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded">
                                                 ${(financials?.commissionsApplied ?? 0).toFixed(2)} applied
                                             </span>
                                         )}
@@ -658,13 +687,17 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/sales?source=woocommerce">
-                    <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300 cursor-pointer">
+                    <Card className="group bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">WooCommerce</CardTitle>
-                            <ShoppingCart className="h-5 w-5 text-purple-500" />
+                            <div className="p-2 rounded-lg bg-purple-500/15 group-hover:bg-purple-500/25 transition-colors">
+                                <ShoppingCart className="h-4 w-4 text-purple-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{wooOrderCount.data || 0}</div>
+                            <div className="text-2xl font-bold">
+                                <AnimatedValue value={wooOrderCount.data || 0} />
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 {lastWooOrder?.created_at
                                     ? `Last sync: ${format(new Date(lastWooOrder.created_at), 'MMM d, h:mm a')}`
@@ -732,17 +765,21 @@ export default function AdminDashboard() {
             <SectionErrorBoundary section="Inventory & Activity">
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
                 <motion.div variants={staggerItem}><Link to="/bottles?status=in_stock">
-                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
+                    <Card className="group bg-card border-border/60 hover:bg-accent/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">In Stock</CardTitle>
-                            <Package className="h-4 w-4 text-primary" />
+                            <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                <Package className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{stats?.in_stock || 0}</div>
+                                    <div className="text-2xl font-bold">
+                                        <AnimatedValue value={stats?.in_stock || 0} />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                         bottles available
                                     </p>
@@ -753,17 +790,21 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/peptides">
-                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
+                    <Card className="group bg-card border-border/60 hover:bg-accent/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Peptides</CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-warning" />
+                            <div className="p-2 rounded-lg bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors">
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{peptides?.length || 0}</div>
+                                    <div className="text-2xl font-bold">
+                                        <AnimatedValue value={peptides?.length || 0} />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                         products tracked
                                     </p>
@@ -777,17 +818,21 @@ export default function AdminDashboard() {
             {/* Movement Stats (Sold / Giveaway / Internal) */}
             <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
                 <motion.div variants={staggerItem}><Link to="/movements?type=sale">
-                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
+                    <Card className="group bg-card border-border/60 hover:bg-accent/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Total Sold</CardTitle>
-                            <ShoppingCart className="h-4 w-4 text-primary" />
+                            <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                <ShoppingCart className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{stats?.sold || 0}</div>
+                                    <div className="text-2xl font-bold">
+                                        <AnimatedValue value={stats?.sold || 0} />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                         bottles sold
                                     </p>
@@ -798,17 +843,21 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=giveaway">
-                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
+                    <Card className="group bg-card border-border/60 hover:bg-accent/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Given Away</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-primary" />
+                            <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                <TrendingUp className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{stats?.given_away || 0}</div>
+                                    <div className="text-2xl font-bold">
+                                        <AnimatedValue value={stats?.given_away || 0} />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                         promotional / at-cost
                                     </p>
@@ -819,17 +868,21 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 <motion.div variants={staggerItem}><Link to="/movements?type=internal_use">
-                    <Card className="bg-card border-border/60 hover:bg-accent/30 hover:shadow-card transition-all cursor-pointer">
+                    <Card className="group bg-card border-border/60 hover:bg-accent/30 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-semibold">Internal Use</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-blue-500" />
+                            <div className="p-2 rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                                <TrendingUp className="h-4 w-4 text-blue-500" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {statsLoading ? (
                                 <Skeleton className="h-8 w-20" />
                             ) : (
                                 <>
-                                    <div className="text-2xl font-bold">{stats?.internal_use || 0}</div>
+                                    <div className="text-2xl font-bold">
+                                        <AnimatedValue value={stats?.internal_use || 0} />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                         personal / family
                                     </p>

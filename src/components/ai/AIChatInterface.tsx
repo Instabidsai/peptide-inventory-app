@@ -164,7 +164,7 @@ export const AIChatInterface = () => {
 
     return (
         <>
-            <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto rounded-xl bg-card/95 backdrop-blur-xl border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.08)] overflow-hidden">
+            <div className="flex flex-col h-[min(600px,calc(100dvh-10rem))] w-full max-w-4xl mx-auto rounded-xl bg-card/95 backdrop-blur-xl border border-primary/20 shadow-[0_0_30px_hsl(var(--primary)/0.08)] overflow-hidden">
                 {/* Terminal-style header matching landing page */}
                 <div className="px-4 py-2.5 border-b border-border/40 bg-background/60 flex items-center gap-2">
                     <div className="flex gap-1.5">
@@ -176,10 +176,10 @@ export const AIChatInterface = () => {
                     <div className="ml-auto flex items-center gap-2">
                         <div className="flex items-center gap-1.5">
                             <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                             </span>
-                            <span className="text-[10px] text-emerald-400 font-mono">LIVE</span>
+                            <span className="text-[10px] text-primary font-mono">LIVE</span>
                         </div>
                         <Button
                             variant="ghost"
@@ -226,9 +226,9 @@ export const AIChatInterface = () => {
                                         initial={{ scale: 0.8, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                                        className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center"
+                                        className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center"
                                     >
-                                        <MessageCircle className="h-7 w-7 text-emerald-400" />
+                                        <MessageCircle className="h-7 w-7 text-primary" />
                                     </motion.div>
                                     <div className="text-center space-y-1">
                                         <motion.p
@@ -259,7 +259,7 @@ export const AIChatInterface = () => {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-colors"
+                                                    className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-primary/30 transition-colors"
                                                     onClick={() => { sendMessage(q); }}
                                                 >
                                                     {q}
@@ -284,7 +284,7 @@ export const AIChatInterface = () => {
                                         )}
                                     >
                                         {msg.role === 'assistant' && (
-                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
                                                 <Bot className="w-3.5 h-3.5" />
                                             </div>
                                         )}
@@ -301,10 +301,10 @@ export const AIChatInterface = () => {
                                             title={isTypewriting(msg) ? "Click to skip animation" : undefined}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-emerald-300 prose-code:text-emerald-200 prose-code:bg-emerald-950/40 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-emerald-950/30 prose-pre:border prose-pre:border-emerald-500/10 prose-pre:rounded-lg text-emerald-300/90">
+                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-primary/[0.06] prose-pre:border prose-pre:border-primary/10 prose-pre:rounded-lg text-primary/90">
                                                     <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
                                                     {isTypewriting(msg) && (
-                                                        <span className="inline-block w-0.5 h-4 bg-emerald-400 ml-0.5 animate-pulse align-middle" />
+                                                        <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
                                                     )}
                                                 </div>
                                             ) : (
@@ -328,7 +328,7 @@ export const AIChatInterface = () => {
                                                             aria-label="Copy response"
                                                         >
                                                             {copiedId === msg.id ? (
-                                                                <Check className="h-3 w-3 text-emerald-400" />
+                                                                <Check className="h-3 w-3 text-primary" />
                                                             ) : (
                                                                 <Copy className="h-3 w-3 text-muted-foreground/50" />
                                                             )}
@@ -355,7 +355,7 @@ export const AIChatInterface = () => {
                                     transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                                     className="flex gap-2.5"
                                 >
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 text-emerald-400">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
                                         <Bot className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="bg-white/[0.04] border border-white/[0.06] p-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
@@ -363,7 +363,7 @@ export const AIChatInterface = () => {
                                             {[0, 1, 2].map((i) => (
                                                 <motion.div
                                                     key={i}
-                                                    className="w-1.5 h-1.5 rounded-full bg-emerald-400/70"
+                                                    className="w-1.5 h-1.5 rounded-full bg-primary/70"
                                                     animate={{
                                                         opacity: [0.3, 1, 0.3],
                                                         scale: [0.85, 1.2, 0.85],
@@ -377,7 +377,7 @@ export const AIChatInterface = () => {
                                                 />
                                             ))}
                                         </div>
-                                        <span className="text-emerald-300/50 text-xs">Researching...</span>
+                                        <span className="text-primary/50 text-xs">Researching...</span>
                                     </div>
                                 </motion.div>
                             )}
@@ -387,7 +387,7 @@ export const AIChatInterface = () => {
                 </ScrollArea>
 
                 {/* Input Area — auto-expanding textarea with Enter-to-send */}
-                <form onSubmit={handleSend} className="p-3 border-t border-border/40 bg-background/60 flex items-end gap-2">
+                <form onSubmit={handleSend} className="p-3 border-t border-border/40 bg-background/60 flex items-end gap-2 shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}>
                     <input
                         ref={fileInputRef}
                         type="file"

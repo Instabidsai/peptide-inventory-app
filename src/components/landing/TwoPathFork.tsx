@@ -25,9 +25,9 @@ export function TwoPathFork() {
       desc: "Get started fast. Pre-loaded catalog, branded storefront, wholesale pricing, AI assistant, and optional white-label fulfillment — all included.",
       cta: "Launch My Business",
       path: "new" as const,
-      gradient: "from-emerald-500/10 to-emerald-500/5",
-      border: "border-emerald-500/30 hover:border-emerald-500/50",
-      iconBg: "bg-emerald-500/15 text-emerald-400",
+      gradient: "from-primary/10 to-primary/5",
+      border: "border-primary/30 hover:border-primary/50",
+      iconBg: "bg-primary/15 text-primary",
     },
   ];
 

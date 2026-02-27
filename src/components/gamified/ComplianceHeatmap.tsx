@@ -17,10 +17,10 @@ function getCellColor(completed: number, total: number): string {
     if (total === 0) return 'bg-white/[0.04]';
     const pct = (completed / total) * 100;
     if (pct === 0) return 'bg-white/[0.04]';
-    if (pct < 33) return 'bg-emerald-500/20';
-    if (pct < 66) return 'bg-emerald-500/40';
-    if (pct < 100) return 'bg-emerald-500/60';
-    return 'bg-emerald-400';
+    if (pct < 33) return 'bg-primary/20';
+    if (pct < 66) return 'bg-primary/40';
+    if (pct < 100) return 'bg-primary/60';
+    return 'bg-primary';
 }
 
 export function ComplianceHeatmap({ data }: ComplianceHeatmapProps) {
@@ -128,10 +128,10 @@ export function ComplianceHeatmap({ data }: ComplianceHeatmapProps) {
                     <div className="flex items-center justify-end gap-1.5 mt-2.5">
                         <span className="text-[9px] text-muted-foreground/30">Less</span>
                         <div className="h-[9px] w-[9px] rounded-[2px] bg-white/[0.04]" />
-                        <div className="h-[9px] w-[9px] rounded-[2px] bg-emerald-500/20" />
-                        <div className="h-[9px] w-[9px] rounded-[2px] bg-emerald-500/40" />
-                        <div className="h-[9px] w-[9px] rounded-[2px] bg-emerald-500/60" />
-                        <div className="h-[9px] w-[9px] rounded-[2px] bg-emerald-400" />
+                        <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/20" />
+                        <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/40" />
+                        <div className="h-[9px] w-[9px] rounded-[2px] bg-primary/60" />
+                        <div className="h-[9px] w-[9px] rounded-[2px] bg-primary" />
                         <span className="text-[9px] text-muted-foreground/30">More</span>
                     </div>
                 </div>

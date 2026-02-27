@@ -31,7 +31,7 @@ export function StartABusinessSteps() {
     <section className="py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeInUp} className="text-center mb-12">
-          <span className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2 block">
+          <span className="text-xs font-medium text-primary uppercase tracking-wider mb-2 block">
             Start a Business
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
@@ -54,10 +54,10 @@ export function StartABusinessSteps() {
               className="text-center"
             >
               <div className="relative mx-auto mb-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto">
-                  <s.icon className="w-6 h-6 text-emerald-400" />
+                <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto">
+                  <s.icon className="w-6 h-6 text-primary" />
                 </div>
-                <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
                   {i + 1}
                 </span>
               </div>
@@ -76,7 +76,7 @@ export function StartABusinessSteps() {
               sessionStorage.setItem("onboarding_path", "new");
               scrollTo("final-cta");
             }}
-            className="bg-gradient-to-r from-emerald-500 to-primary text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
+            className="bg-gradient-to-r from-primary to-[hsl(var(--gradient-to))] text-white border-0 hover:opacity-90 text-base px-8 py-3 h-auto"
           >
             Start My Business
             <ArrowRight className="w-4 h-4 ml-2" />

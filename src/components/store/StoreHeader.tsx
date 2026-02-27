@@ -28,13 +28,13 @@ function StoreHeaderBase({ priceMultiplier, searchQuery, onSearchChange }: Store
                 <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] backdrop-blur-sm"
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-primary/20 bg-primary/[0.06] backdrop-blur-sm"
                 >
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-premium flex items-center justify-center shrink-0">
                         <Percent className="h-4 w-4 text-white" />
                     </div>
-                    <p className="text-xs text-emerald-300 leading-relaxed">
-                        You're getting <strong className="text-emerald-200">{Math.round((1 - priceMultiplier) * 100)}% off</strong> retail on all products.
+                    <p className="text-xs text-primary/80 leading-relaxed">
+                        You're getting <strong className="text-primary">{Math.round((1 - priceMultiplier) * 100)}% off</strong> retail on all products.
                     </p>
                 </motion.div>
             )}

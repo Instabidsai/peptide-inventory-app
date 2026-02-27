@@ -1265,10 +1265,10 @@ async function repairBusinessLogicViolations(
               .limit(20);
             if (!orders?.length) break;
             const { data: comms } = await supabase
-              .from("commission_transactions")
-              .select("sales_order_id")
-              .in("sales_order_id", orders.map((o) => o.id));
-            const commSet = new Set(comms?.map((c) => c.sales_order_id) ?? []);
+              .from("commissions")
+              .select("sale_id")
+              .in("sale_id", orders.map((o) => o.id));
+            const commSet = new Set(comms?.map((c) => c.sale_id) ?? []);
             const missing = orders.filter((o) => !commSet.has(o.id));
             for (const order of missing.slice(0, 5)) {
               await supabase.rpc("process_sale_commission", { p_order_id: order.id }).catch(() => {});

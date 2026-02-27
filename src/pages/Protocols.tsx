@@ -11,8 +11,18 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { QueryError } from '@/components/ui/query-error';
-import { Loader2, Plus, Trash2, Pencil } from 'lucide-react';
+import { Loader2, Plus, Trash2, Pencil, FlaskConical } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { motion } from 'framer-motion';
+
+const staggerContainer = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.06 } },
+};
+const staggerItem = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] } },
+};
 
 export default function Protocols() {
     const { protocols, isLoading, isError, refetch, createProtocol, updateProtocol, deleteProtocol, updateProtocolItem } = useProtocols();
@@ -152,11 +162,21 @@ export default function Protocols() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Protocol Templates</h1>
-                    <p className="text-muted-foreground">Create reusable treatment plans you can assign to clients.</p>
+        <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+        >
+            <motion.div variants={staggerItem} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <FlaskConical className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Protocol Templates</h1>
+                        <p className="text-sm text-muted-foreground">Create reusable treatment plans you can assign to clients.</p>
+                    </div>
                 </div>
                 <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
@@ -298,8 +318,9 @@ export default function Protocols() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </motion.div>
 
+            <motion.div variants={staggerItem}>
             {isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">Loading protocols...</div>
             ) : isError ? (
@@ -393,6 +414,7 @@ export default function Protocols() {
                     })}
                 </div>
             )}
+            </motion.div>
 
             {/* Delete Protocol Confirmation */}
             <AlertDialog open={!!protocolToDelete} onOpenChange={(open) => { if (!open) setProtocolToDelete(null); }}>
@@ -407,6 +429,6 @@ export default function Protocols() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </motion.div>
     );
 }

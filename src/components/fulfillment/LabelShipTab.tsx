@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     Package, Truck, CheckCircle, Printer,
     MapPin, AlertCircle, ExternalLink, Copy,
-    AlertTriangle, RefreshCw, Undo2, ArrowRight, Store,
+    AlertTriangle, Undo2, ArrowRight, Store, Ship,
 } from 'lucide-react';
 import { getTrackingUrl } from '@/lib/tracking';
 import type { LabelShipTabProps } from './types';
@@ -82,7 +82,7 @@ export default function LabelShipTab({
                                             </Badge>
                                         ) : (
                                             <>
-                                                <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                                                <Badge variant="outline" className="bg-primary/15 text-primary border-primary/30">
                                                     <CheckCircle className="h-3 w-3 mr-1" /> Fulfilled
                                                 </Badge>
                                                 {order.shipping_status && order.shipping_status !== 'error' && (
@@ -157,95 +157,21 @@ export default function LabelShipTab({
                                     </div>
                                 )}
 
-                                {/* -- 3-Step Label Flow -- */}
-
-                                {/* STEP 1: Get Rates (no label yet, no rates fetched) */}
-                                {!order.tracking_number && !orderRates[order.id]?.length && (
+                                {/* Ship via Pirate Ship */}
+                                {!order.tracking_number && (
                                     <Button
-                                        className={`w-full ${hasError ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                                         size="lg"
-                                        disabled={busy || !order.shipping_address}
-                                        onClick={() => onGetRates(order.id)}
+                                        onClick={() => window.open('https://ship.pirateship.com/', '_blank')}
                                     >
-                                        {busy ? (
-                                            <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Fetching Rates...</>
-                                        ) : hasError ? (
-                                            <><RefreshCw className="mr-2 h-4 w-4" /> Retry — Get New Rates</>
-                                        ) : (
-                                            <><Truck className="mr-2 h-4 w-4" /> Get Shipping Rates</>
-                                        )}
+                                        <Ship className="mr-2 h-5 w-5" /> Create Label on Pirate Ship
+                                        <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-60" />
                                     </Button>
                                 )}
 
-                                {/* STEP 2: Rate Selection + Buy */}
-                                {!order.tracking_number && orderRates[order.id]?.length > 0 && (
-                                    <div className="space-y-3">
-                                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                                            <Truck className="h-4 w-4" /> Select Shipping Rate
-                                        </h4>
-                                        <div className="grid gap-2">
-                                            {orderRates[order.id].map((rate) => {
-                                                const isSelected = selectedRates[order.id] === rate.object_id;
-                                                return (
-                                                    <div
-                                                        key={rate.object_id}
-                                                        onClick={() => onSelectRate(order.id, rate.object_id)}
-                                                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer border transition-all ${
-                                                            isSelected
-                                                                ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/30'
-                                                                : 'border-muted hover:border-blue-500/40 bg-muted/30'
-                                                        }`}
-                                                    >
-                                                        <div>
-                                                            <p className="font-medium text-sm">
-                                                                {rate.provider} {rate.servicelevel_name}
-                                                            </p>
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {rate.estimated_days
-                                                                    ? `${rate.estimated_days} day${rate.estimated_days > 1 ? 's' : ''}`
-                                                                    : rate.duration_terms || 'Delivery time varies'}
-                                                            </p>
-                                                        </div>
-                                                        <p className={`text-lg font-bold ${isSelected ? 'text-blue-400' : ''}`}>
-                                                            ${parseFloat(rate.amount).toFixed(2)}
-                                                        </p>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {/* Buy Label button */}
-                                        {selectedRates[order.id] && (
-                                            <Button
-                                                className="w-full bg-green-600 hover:bg-green-700"
-                                                size="lg"
-                                                disabled={busy}
-                                                onClick={() => onBuyLabel(order.id)}
-                                            >
-                                                {busy ? 'Purchasing Label...' : (
-                                                    <>Buy Label — ${parseFloat(
-                                                        orderRates[order.id].find(r => r.object_id === selectedRates[order.id])?.amount || '0'
-                                                    ).toFixed(2)}</>
-                                                )}
-                                            </Button>
-                                        )}
-
-                                        {/* Cancel link */}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="w-full text-xs text-muted-foreground"
-                                            onClick={() => onCancelRates(order.id)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {/* STEP 3: Post-Purchase Actions (label exists) */}
+                                {/* Post-ship actions */}
                                 {order.tracking_number && (
                                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                                        {/* Print Label */}
                                         {order.label_url && (
                                             <Button
                                                 className="flex-1 bg-indigo-600 hover:bg-indigo-700"
@@ -256,19 +182,7 @@ export default function LabelShipTab({
                                             </Button>
                                         )}
 
-                                        {/* Confirm Printed */}
-                                        {order.shipping_status === 'label_created' && (
-                                            <Button
-                                                variant="outline"
-                                                disabled={busy}
-                                                onClick={() => onMarkPrinted(order.id)}
-                                            >
-                                                <CheckCircle className="mr-2 h-4 w-4" /> Confirm Printed
-                                            </Button>
-                                        )}
-
-                                        {/* Mark Shipped */}
-                                        {(order.shipping_status === 'label_created' || order.shipping_status === 'printed') && (
+                                        {(order.shipping_status === 'label_created' || order.shipping_status === 'printed' || !order.shipping_status) && (
                                             <Button
                                                 className="flex-1 bg-amber-600 hover:bg-amber-700"
                                                 size="lg"

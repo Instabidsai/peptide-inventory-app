@@ -50,18 +50,30 @@ export function usePartnerAI() {
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
       if (import.meta.env.DEV) {
-        await supabase.auth.refreshSession();
-        const { data: { session } } = await supabase.auth.getSession();
+        const makeRequest = async (token: string) => {
+          const res = await fetch('/functions/v1/partner-ai-chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ message }),
+          });
+          return res;
+        };
+
+        let session = (await supabase.auth.getSession()).data.session;
         if (!session) throw new Error('Not authenticated');
-        const res = await fetch('/functions/v1/partner-ai-chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ message }),
-        });
+        let res = await makeRequest(session.access_token);
+
+        // Retry once with refreshed token on auth failure
+        if (res.status === 401) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (!refreshData.session) throw new Error('Session expired — please sign in again');
+          res = await makeRequest(refreshData.session.access_token);
+        }
+
         if (!res.ok) {
           const body = await res.json().catch(() => ({ error: res.statusText }));
           throw new Error(body.error || `Edge function error (${res.status})`);
@@ -72,7 +84,10 @@ export function usePartnerAI() {
       if (error) throw new Error(error.message);
       return data!;
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (/\b(401|403|unauthorized|expired|sign in)\b/i.test((error as Error)?.message || '')) return false;
+      return failureCount < 2;
+    },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onSuccess: () => {
       setOptimisticMessages([]);

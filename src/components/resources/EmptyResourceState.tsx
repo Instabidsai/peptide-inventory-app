@@ -45,11 +45,11 @@ export function EmptyResourceState({ searchTerm }: { searchTerm?: string }) {
             <div className="grid md:grid-cols-2 gap-4">
                 <Card className="bg-muted/20 border-border/40 hover:border-border/80 transition-colors group cursor-pointer">
                     <CardContent className="p-6 flex items-start gap-4">
-                        <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-500">
+                        <div className="p-3 rounded-lg bg-primary/10 text-primary">
                             <BookOpen className="h-6 w-6" />
                         </div>
                         <div>
-                            <h4 className="font-semibold text-foreground group-hover:text-emerald-400 transition-colors">General Safety Guide</h4>
+                            <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">General Safety Guide</h4>
                             <p className="text-sm text-muted-foreground mt-1">
                                 Standard protocols for reconstitution, storage, and handling of lyophilized peptides.
                             </p>

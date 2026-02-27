@@ -166,7 +166,7 @@ export default function CommunityForum() {
             <div className="h-full flex items-center justify-center">
                 <div className="relative h-10 w-10">
                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                    <div className="absolute inset-1.5 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin direction-reverse" style={{ animationDirection: 'reverse' }} />
+                    <div className="absolute inset-1.5 rounded-full border-2 border-primary/20 border-b-primary animate-spin direction-reverse" style={{ animationDirection: 'reverse' }} />
                 </div>
             </div>
         );
@@ -325,7 +325,7 @@ export default function CommunityForum() {
                             <div className="flex justify-center py-4">
                                 <div className="relative h-8 w-8">
                                     <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                                    <div className="absolute inset-1 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                                    <div className="absolute inset-1 rounded-full border-2 border-primary/20 border-b-primary animate-spin" style={{ animationDirection: 'reverse' }} />
                                 </div>
                             </div>
                         ) : messages?.length === 0 ? (

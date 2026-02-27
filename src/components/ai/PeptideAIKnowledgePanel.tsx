@@ -19,7 +19,7 @@ interface PeptideAIKnowledgePanelProps {
 
 const CATEGORY_CONFIG: Record<string, { icon: typeof Brain; label: string; color: string }> = {
     research: { icon: Beaker, label: 'Research', color: 'text-blue-400' },
-    protocol_note: { icon: Pill, label: 'Protocol Notes', color: 'text-emerald-400' },
+    protocol_note: { icon: Pill, label: 'Protocol Notes', color: 'text-primary' },
     lab_interpretation: { icon: Activity, label: 'Lab Interpretations', color: 'text-amber-400' },
     side_effect: { icon: AlertCircle, label: 'Side Effects', color: 'text-orange-400' },
     interaction: { icon: Zap, label: 'Interactions', color: 'text-red-400' },
@@ -28,7 +28,7 @@ const CATEGORY_CONFIG: Record<string, { icon: typeof Brain; label: string; color
 
 const PROFILE_SECTIONS: { key: string; label: string; icon: typeof Heart; color: string; emptyText: string }[] = [
     { key: 'conditions', label: 'Conditions', icon: Stethoscope, color: 'text-red-400', emptyText: 'No conditions recorded' },
-    { key: 'goals', label: 'Goals', icon: Target, color: 'text-emerald-400', emptyText: 'No goals set' },
+    { key: 'goals', label: 'Goals', icon: Target, color: 'text-primary', emptyText: 'No goals set' },
     { key: 'medications', label: 'Medications', icon: Pill, color: 'text-blue-400', emptyText: 'No medications' },
     { key: 'allergies', label: 'Allergies', icon: Shield, color: 'text-orange-400', emptyText: 'No allergies' },
     { key: 'supplements', label: 'Supplements', icon: FlaskConical, color: 'text-purple-400', emptyText: 'No supplements' },
@@ -104,7 +104,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-2">
-                        <Brain className="h-4 w-4 text-emerald-400" />
+                        <Brain className="h-4 w-4 text-primary" />
                         <div>
                             <h2 className="font-semibold text-sm">AI Knowledge Base</h2>
                             <p className="text-[10px] text-muted-foreground/50">
@@ -117,7 +117,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                     </Button>
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-52px)]">
+                <ScrollArea className="h-[calc(100dvh-52px)]">
                     <div className="p-4 space-y-3">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12">
@@ -137,7 +137,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                 Health Profile
                                             </h3>
                                             {hasProfile && (
-                                                <span className="text-[9px] font-medium text-emerald-400/70 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                                                <span className="text-[9px] font-medium text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full">
                                                     ACTIVE
                                                 </span>
                                             )}
@@ -184,7 +184,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                                 key === 'allergies'
                                                                                     ? "bg-orange-500/10 border-orange-500/20 text-orange-300"
                                                                                     : key === 'goals'
-                                                                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                                                                                        ? "bg-primary/10 border-primary/20 text-primary"
                                                                                         : "bg-white/[0.04] border-white/[0.06]"
                                                                             )}
                                                                         >
@@ -299,7 +299,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                                                 )}
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     {doc.status === 'completed' ? (
-                                                                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                                                        <CheckCircle2 className="h-3 w-3 text-primary" />
                                                                     ) : doc.status === 'failed' ? (
                                                                         <AlertCircle className="h-3 w-3 text-red-400" />
                                                                     ) : (
@@ -327,7 +327,7 @@ export function PeptideAIKnowledgePanel({ open, onClose }: PeptideAIKnowledgePan
                                         className="flex items-center justify-between w-full py-2"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Syringe className="h-3.5 w-3.5 text-emerald-400" />
+                                            <Syringe className="h-3.5 w-3.5 text-primary" />
                                             <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
                                                 Learned Insights ({insights.length})
                                             </h3>

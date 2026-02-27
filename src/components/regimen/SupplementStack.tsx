@@ -22,10 +22,10 @@ export function SupplementStack({ items }: SupplementStackProps) {
     if (!items || items.length === 0) return null;
 
     return (
-        <Card className="border-emerald-500/20 bg-emerald-950/5">
+        <Card className="border-primary/20 bg-primary/5/5">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <Pill className="h-5 w-5 text-emerald-500" />
+                    <Pill className="h-5 w-5 text-primary" />
                     Daily Supplement Stack
                 </CardTitle>
                 <CardDescription>Supporting nutrients for your protocol.</CardDescription>
@@ -48,7 +48,7 @@ export function SupplementStack({ items }: SupplementStackProps) {
                             {/* Details */}
                             <div className="flex flex-col flex-1 min-w-0">
                                 <h4 className="font-semibold text-base truncate pr-6">{item.name}</h4>
-                                <div className="text-sm text-emerald-600 font-medium mt-0.5">{item.dosage}</div>
+                                <div className="text-sm text-primary font-medium mt-0.5">{item.dosage}</div>
                                 <div className="text-xs text-muted-foreground mt-0.5">{item.frequency}</div>
 
                                 {item.purchase_link && (

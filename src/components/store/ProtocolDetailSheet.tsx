@@ -28,7 +28,7 @@ export function ProtocolDetailSheet({
 }: ProtocolDetailSheetProps) {
     return (
         <Sheet open={!!selectedProtocol} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/[0.1]">
+            <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-white/[0.1]">
                 {selectedProtocol && (() => {
                     const { template, matched } = selectedProtocol;
                     const Icon = ICON_MAP[template.icon] || Package;
@@ -91,7 +91,7 @@ export function ProtocolDetailSheet({
                                                             return itemHasDiscount ? (
                                                                 <div className="flex items-center justify-end gap-1.5 mt-0.5">
                                                                     <span className="text-[11px] text-muted-foreground/40 line-through">${itemRetail.toFixed(2)}</span>
-                                                                    <span className="text-[11px] font-bold text-emerald-400">{itemPct}% off</span>
+                                                                    <span className="text-[11px] font-bold text-primary">{itemPct}% off</span>
                                                                 </div>
                                                             ) : null;
                                                         })()}
@@ -140,10 +140,10 @@ export function ProtocolDetailSheet({
                                             <>
                                                 {sheetHasDiscount && (
                                                     <div className="flex justify-center">
-                                                        <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/25">
-                                                            <span className="text-base font-extrabold text-emerald-400">{sheetPct}% off</span>
+                                                        <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25">
+                                                            <span className="text-base font-extrabold text-primary">{sheetPct}% off</span>
                                                             {sheetLabel && (
-                                                                <span className="text-sm font-semibold text-emerald-400/70 ml-2">· {sheetLabel}</span>
+                                                                <span className="text-sm font-semibold text-primary/70 ml-2">· {sheetLabel}</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -162,14 +162,14 @@ export function ProtocolDetailSheet({
                                     })()}
 
                                     {allInCart ? (
-                                        <div className="flex items-center justify-center gap-2.5 py-4 text-emerald-400 font-semibold bg-emerald-500/[0.08] rounded-2xl border border-emerald-500/20">
+                                        <div className="flex items-center justify-center gap-2.5 py-4 text-primary font-semibold bg-primary/[0.08] rounded-2xl border border-primary/20">
                                             <Check className="h-5 w-5" />
                                             All items in cart
                                         </div>
                                     ) : (
                                         <Button
                                             size="lg"
-                                            className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 border-0"
+                                            className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 bg-gradient-brand-r hover:opacity-90 border-0"
                                             onClick={() => {
                                                 matched.forEach(p => addToCart(p));
                                             }}

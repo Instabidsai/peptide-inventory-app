@@ -56,7 +56,7 @@ export default function SetupAssistant() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] max-w-3xl mx-auto">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 pb-4 border-b mb-2">
         <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -102,11 +102,11 @@ export default function SetupAssistant() {
                       <span className="text-muted-foreground">Thinking...</span>
                     </div>
                   ) : (
-                    <ReactMarkdown
-                      className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2"
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2">
+                      <ReactMarkdown>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
 

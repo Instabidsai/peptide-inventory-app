@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
@@ -11,14 +12,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SortableTableHead } from '@/components/ui/table';
+import { useSortableTable } from '@/hooks/use-sortable-table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
 import {
@@ -129,6 +133,20 @@ export default function Peptides() {
     return matchesSearch && matchesStatus;
   });
 
+  const peptideSortAccessors = {
+    name: (p: Peptide) => p.name?.toLowerCase(),
+    sku: (p: Peptide) => p.sku?.toLowerCase(),
+    stock: (p: Peptide) => p.stock_count ?? 0,
+    cost: (p: Peptide) => p.avg_cost ?? 0,
+    msrp: (p: Peptide) => p.retail_price ?? 0,
+    status: (p: Peptide) => (p.active ? 'active' : 'inactive'),
+  } as const;
+
+  const { sortedData: sortedPeptides, sortState: peptideSortState, requestSort: requestPeptideSort } = useSortableTable(
+    filteredPeptides,
+    peptideSortAccessors,
+  );
+
   const handleCreate = async (data: PeptideFormData) => {
     try {
       await createPeptide.mutateAsync({ name: data.name, description: data.description, sku: data.sku, retail_price: data.retail_price });
@@ -196,10 +214,33 @@ export default function Peptides() {
 
   return (
     <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="space-y-2"
+      >
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Link to="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <span>/</span>
+        <span className="text-foreground font-medium">Peptides</span>
+      </nav>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Peptides</h1>
-          <p className="text-muted-foreground">Manage your product catalog</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+            <FlaskConical className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Peptides</h1>
+              {filteredPeptides && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">
+                  {filteredPeptides.length} products
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground text-sm">Manage your product catalog</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {canEdit && isWholesaleView && <SupplierOrderDialog />}
@@ -290,6 +331,7 @@ export default function Peptides() {
         )}
         </div>
       </div>
+      </motion.div>
 
       {showWholesaleTab && (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'catalog' | 'wholesale')}>
@@ -350,20 +392,16 @@ export default function Peptides() {
           {isError ? (
             <QueryError message="Failed to load peptides." onRetry={() => refetch()} />
           ) : isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
+            <TableSkeleton rows={5} columns={4} />
           ) : filteredPeptides?.length === 0 ? (
-            <div className="text-center py-12">
-              <FlaskConical className="mx-auto h-12 w-12 mb-4 opacity-30" />
-              <p className="text-lg font-semibold text-muted-foreground">No peptides found</p>
-              <p className="text-sm text-muted-foreground/70">Get started by adding your first peptide</p>
-            </div>
+            <EmptyState
+              icon={FlaskConical}
+              title="No peptides found"
+              description="Get started by adding your first peptide to the catalog"
+            />
           ) : isMobile ? (
             <div className="space-y-3">
-              {filteredPeptides?.map((peptide, index) => (
+              {sortedPeptides?.map((peptide, index) => (
                 <motion.div
                   key={peptide.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -445,29 +483,26 @@ export default function Peptides() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto" role="region" aria-label="Peptides table" tabIndex={0}>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>In Stock</TableHead>
+                  <SortableTableHead columnKey="name" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Name</SortableTableHead>
+                  <SortableTableHead columnKey="sku" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>SKU</SortableTableHead>
+                  <SortableTableHead columnKey="stock" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>In Stock</SortableTableHead>
                   {!isWholesaleView && <TableHead>On Order</TableHead>}
                   {!isWholesaleView && <TableHead>Next Delivery</TableHead>}
-                  {isWholesaleView ? (
-                    <TableHead>Your Cost</TableHead>
-                  ) : isPartner ? (
-                    <TableHead>Cost</TableHead>
-                  ) : (
-                    <TableHead>Avg Cost</TableHead>
-                  )}
-                  <TableHead>MSRP</TableHead>
+                  <SortableTableHead columnKey="cost" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>
+                    {isWholesaleView ? 'Your Cost' : isPartner ? 'Cost' : 'Avg Cost'}
+                  </SortableTableHead>
+                  <SortableTableHead columnKey="msrp" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>MSRP</SortableTableHead>
                   {isWholesaleView && <TableHead>Margin</TableHead>}
-                  {!isWholesaleView && <TableHead>Status</TableHead>}
+                  {!isWholesaleView && <SortableTableHead columnKey="status" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Status</SortableTableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPeptides?.map((peptide, index) => (
+                {sortedPeptides?.map((peptide, index) => (
                   <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-1.5">
@@ -632,6 +667,7 @@ export default function Peptides() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

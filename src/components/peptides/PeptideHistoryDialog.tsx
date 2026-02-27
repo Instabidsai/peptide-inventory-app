@@ -122,12 +122,12 @@ export function PeptideHistoryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[80dvh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex justify-between items-center pr-8">
                         <span>History: {peptideName}</span>
                         <div className="flex gap-4 text-sm font-normal">
-                            <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/10">
+                            <Badge variant="outline" className="text-primary border-primary/20 bg-primary/10">
                                 +{totalReceived} Added
                             </Badge>
                             <Badge variant="outline" className="text-blue-500 border-blue-500/20 bg-blue-500/10">
@@ -169,7 +169,7 @@ export function PeptideHistoryDialog({
                                             </TableCell>
                                             <TableCell>
                                                 {item.type === 'restock' ? (
-                                                    <Badge variant="outline" className="text-emerald-500 hover:text-emerald-600 border-emerald-500/30">
+                                                    <Badge variant="outline" className="text-primary hover:text-primary border-primary/30">
                                                         <ArrowDownLeft className="mr-1 h-3 w-3" /> Received
                                                     </Badge>
                                                 ) : (
@@ -192,7 +192,7 @@ export function PeptideHistoryDialog({
                                                 {item.type === 'restock' && (
                                                     <div className="mt-1">
                                                         {item.paymentStatus === 'paid' ? (
-                                                            <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-emerald-500/20 text-emerald-500">Paid</Badge>
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-primary/20 text-primary">Paid</Badge>
                                                         ) : item.paymentStatus === 'partial' ? (
                                                             <Badge variant="outline" className="text-[10px] h-5 px-1 py-0 border-amber-500/20 text-amber-500">Partial</Badge>
                                                         ) : (

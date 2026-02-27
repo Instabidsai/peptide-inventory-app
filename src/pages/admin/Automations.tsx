@@ -102,12 +102,12 @@ export default function Automations() {
             {/* Module Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {/* Payment Scanner — Active */}
-                <Card className="border-l-4 border-l-emerald-500">
+                <Card className="border-l-4 border-l-primary">
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 bg-emerald-500/10 rounded-lg">
-                                    <Mail className="h-5 w-5 text-emerald-500" />
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <Mail className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
                                     <CardTitle className="text-base">Payment Scanner</CardTitle>
@@ -306,7 +306,7 @@ function PendingReviewSection() {
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
                     Pending Review
                 </CardTitle>
             </CardHeader>
@@ -377,7 +377,7 @@ function PendingReviewSection() {
                     </CardTitle>
                     <CardDescription>Payments detected from email that need your confirmation.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -407,7 +407,7 @@ function PendingReviewSection() {
                                         </TableCell>
                                         <TableCell>
                                             {item.contacts?.name ? (
-                                                <span className="text-emerald-500">{item.contacts.name}</span>
+                                                <span className="text-primary">{item.contacts.name}</span>
                                             ) : item.ai_contact?.name ? (
                                                 <div className="flex items-center gap-1.5">
                                                     <Sparkles className="h-3.5 w-3.5 text-blue-400" />
@@ -448,7 +448,7 @@ function PendingReviewSection() {
                                                     <Button
                                                         size="sm"
                                                         variant="default"
-                                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                                        className="bg-primary hover:bg-primary/90"
                                                         onClick={() => handleApprove(item)}
                                                         disabled={approvePayment.isPending}
                                                     >
@@ -661,7 +661,7 @@ function HistoryTable({ statusFilter }: { statusFilter: string }) {
     );
 
     return (
-        <CardContent>
+        <CardContent className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -794,7 +794,7 @@ function PartnerSuggestionsTable() {
 
     return (
         <>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -149,7 +149,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
         <div className="p-4 flex justify-center">
             <div className="relative h-8 w-8">
                 <div className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                <div className="absolute inset-1 rounded-full border-2 border-emerald-400/20 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse' }} />
+                <div className="absolute inset-1 rounded-full border-2 border-primary/20 border-b-primary animate-spin" style={{ animationDirection: 'reverse' }} />
             </div>
         </div>
     );
@@ -184,7 +184,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
                         return (
                             <div key={reply.id} className={cn("flex gap-3", isMe ? "flex-row-reverse" : "flex-row")}>
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback className={cn(isFromAdmin ? "bg-blue-500/15 text-blue-400" : "bg-emerald-500/15 text-emerald-400")}>
+                                    <AvatarFallback className={cn(isFromAdmin ? "bg-blue-500/15 text-blue-400" : "bg-primary/15 text-primary")}>
                                         {reply.sender?.full_name?.[0] || <User className="h-4 w-4" />}
                                     </AvatarFallback>
                                 </Avatar>

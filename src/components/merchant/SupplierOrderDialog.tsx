@@ -167,7 +167,7 @@ export default function SupplierOrderDialog() {
                     <ShoppingCart className="h-4 w-4 mr-2" /> Wholesale Order Form
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <ShoppingCart className="h-5 w-5" />

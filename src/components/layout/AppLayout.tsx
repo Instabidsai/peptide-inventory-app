@@ -8,6 +8,7 @@ import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { RouteProgress } from '@/components/ui/route-progress';
 // Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
 import { motion } from 'framer-motion';
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users, X, Eye } from 'lucide-react';
@@ -31,6 +32,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
+      <RouteProgress />
       <div className="fixed inset-0 pointer-events-none noise-overlay z-0 opacity-[0.015]" />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
         Skip to main content
@@ -89,7 +91,7 @@ export function AppLayout() {
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (
         <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-card/80 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.2)] z-40 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-          <nav className="flex justify-around items-center h-16">
+          <nav aria-label="Partner navigation" className="flex justify-around items-center h-16">
             {partnerNav.map((item) => {
               const isActive = location.pathname === item.path;
               return (

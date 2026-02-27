@@ -33,13 +33,13 @@ export function HowItWorks() {
             Three steps from idea to live feature.
           </p>
         </motion.div>
-        <div className="grid sm:grid-cols-3 gap-8 relative">
+        <div className="grid sm:grid-cols-3 gap-6 relative">
           {/* Connector line (desktop only) — animated gradient */}
-          <div className="hidden sm:block absolute top-12 left-[16.5%] right-[16.5%] h-px overflow-hidden">
+          <div className="hidden sm:block absolute top-16 left-[16.5%] right-[16.5%] h-px overflow-hidden z-0">
             <div
               className="h-full w-full"
               style={{
-                background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), hsl(142 76% 36% / 0.5), hsl(var(--primary) / 0.5), transparent)",
+                background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), hsl(var(--primary) / 0.4), hsl(var(--primary) / 0.5), transparent)",
                 backgroundSize: "200% 100%",
                 animation: "gradient-slide 3s ease-in-out infinite",
               }}
@@ -53,15 +53,19 @@ export function HowItWorks() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="text-center relative"
+              className="text-center relative bg-card rounded-xl border border-border/40 p-8 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group"
             >
-              <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto mb-4 relative z-10">
-                <s.icon className="w-6 h-6 text-primary" />
+              <div className="relative mx-auto mb-5 w-16 h-16">
+                {/* Floating number badge */}
+                <div className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--gradient-to))] flex items-center justify-center z-10 shadow-md shadow-primary/25">
+                  <span className="text-white text-xs font-bold">{i + 1}</span>
+                </div>
+                {/* Icon container */}
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/15 group-hover:border-primary/30 transition-colors">
+                  <s.icon className="w-7 h-7 text-primary" />
+                </div>
               </div>
-              <span className="text-xs font-medium text-primary mb-2 block">
-                Step {i + 1}
-              </span>
-              <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
+              <h3 className="font-semibold text-lg text-foreground mb-2">{s.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
                 {s.desc}
               </p>

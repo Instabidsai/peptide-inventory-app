@@ -87,7 +87,11 @@ export function useAdminAI() {
       if (error) throw new Error(error.message);
       return data!;
     },
-    retry: 2,
+    retry: (failureCount, error) => {
+      // Don't retry auth errors — the in-mutation refresh already handled it
+      if (/\b(401|403|unauthorized|expired|sign in)\b/i.test((error as Error)?.message || '')) return false;
+      return failureCount < 2;
+    },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onSuccess: () => {
       setOptimisticMessages([]);
