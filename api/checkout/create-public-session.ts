@@ -8,11 +8,11 @@ const PSIFI_API_BASE = 'https://api.psifi.app/api/v2';
  * Auth is implicit: order UUIDs are 128-bit unguessable tokens.
  * This is the same pattern Stripe/Square/PayPal use for invoice links.
  *
- * PsiFi API (from GET /api/v2/payment-methods):
- *   - payment_method: 'banxa' = fiat card on-ramp (credit/debit/apple/google pay)
- *   - pricing_strategy: 'TOTAL_ONLY' = locked amount (no wallet funding)
- *   - Products need pricing_context: 'contextual' for TOTAL_ONLY
- *   - Valid schema enum: banxa, onramper, helio, simplex
+ * PsiFi API requirements (discovered Feb 2026):
+ *   - items[].productId is REQUIRED — must reference a registered product
+ *   - items[].name and items[].price are REQUIRED alongside productId
+ *   - All prices are in DOLLARS (PsiFi converts to cents internally)
+ *   - payment_method field must be omitted (defaults to banxa/card)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -98,9 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
             body: JSON.stringify({
                 name: productName,
+                price: chargeTotal,
                 currency: 'USD',
                 type: 'service',
-                pricing_context: 'contextual',
             }),
         });
 
@@ -112,32 +112,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const product = await productRes.json();
 
-        // Build checkout session — banxa = fiat card on-ramp, TOTAL_ONLY = locked amount
-        const contactEmail = (order.contacts as any)?.email || '';
+        // Build checkout session
         const siteBase = process.env.PUBLIC_SITE_URL || '';
         const successUrl = `${siteBase}/#/pay/${orderId}/success`;
+        const cancelUrl = `${siteBase}/#/pay/${orderId}`;
         const timestamp = Date.now();
 
         const psifiPayload = {
             mode: 'payment',
-            payment_method: 'banxa',
-            pricing_strategy: 'TOTAL_ONLY',
             total_amount: chargeTotal,
             external_id: `${orderId}-pl-${timestamp}`,
-            redirect_url: successUrl,
-            customer_email: contactEmail || undefined,
-            customer_name: (order.contacts as any)?.name || undefined,
-            products: [{
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+            items: [{
                 productId: product.id,
+                name: productName,
                 quantity: 1,
+                price: chargeTotal,
             }],
             metadata: {
                 order_id: orderId,
                 order_subtotal: orderTotal,
                 card_fee: cardFee,
                 card_fee_rate: '3%',
-                client_name: (order.contacts as any)?.name || 'Customer',
-                client_email: contactEmail || '',
+                client_name: order.contacts?.name || 'Customer',
+                client_email: order.contacts?.email || '',
                 source: 'payment_link',
             },
         };

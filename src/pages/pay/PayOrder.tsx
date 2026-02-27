@@ -1,25 +1,17 @@
 import { useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check, ChevronDown } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 
 export default function PayOrder() {
     const { orderId } = useParams<{ orderId: string }>();
-    const queryClient = useQueryClient();
-
+    const [paying, setPaying] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [showManual, setShowManual] = useState(false);
-
-    // Card checkout state
-    const [payingCard, setPayingCard] = useState(false);
-    const [waitingForPayment, setWaitingForPayment] = useState(false);
-    const [checkoutError, setCheckoutError] = useState<string | null>(null);
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const { data: order, isLoading, error } = useQuery({
         queryKey: ['public_pay_order', orderId],
@@ -65,81 +57,30 @@ export default function PayOrder() {
     const cardFee = Math.round(total * CARD_FEE_RATE * 100) / 100;
     const cardTotal = Math.round((total + cardFee) * 100) / 100;
 
-    // Cleanup polling on unmount
-    useEffect(() => {
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
-    }, []);
-
-    // Stop polling when payment detected
-    useEffect(() => {
-        if (isPaid && pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-        }
-    }, [isPaid]);
-
-    // Poll for payment completion while checkout is active
-    const startPolling = useCallback(() => {
-        if (pollRef.current) clearInterval(pollRef.current);
-        pollRef.current = setInterval(async () => {
-            try {
-                const { data } = await supabase
-                    .from('sales_orders')
-                    .select('payment_status')
-                    .eq('id', orderId!)
-                    .maybeSingle();
-                if (data?.payment_status === 'paid') {
-                    clearInterval(pollRef.current!);
-                    pollRef.current = null;
-                    queryClient.invalidateQueries({ queryKey: ['public_pay_order', orderId] });
-                }
-            } catch {
-                // Silently retry on next interval
-            }
-        }, 3000);
-    }, [orderId, queryClient]);
-
-    // Open PayGate365 checkout → goes directly to Stripe card form (no provider selection)
-    const handlePayWithCard = useCallback(async () => {
-        if (!orderId || payingCard) return;
-        setPayingCard(true);
-        setCheckoutError(null);
-
-        // Open tab SYNCHRONOUSLY on click (before any async work) so mobile browsers don't block it
-        const payWindow = window.open('about:blank', '_blank');
-
+    const handlePayWithCard = async () => {
+        if (!orderId) return;
+        setPaying(true);
         try {
-            const response = await fetch('/api/checkout/create-paygate-session', {
+            const response = await fetch('/api/checkout/create-public-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ orderId }),
             });
+
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
-                throw new Error(err.error || `Failed to start checkout (${response.status})`);
+                throw new Error(err.psifi_error || err.error || `Payment failed (${response.status})`);
             }
+
             const { checkout_url } = await response.json();
             if (!checkout_url) throw new Error('No checkout URL received');
 
-            if (payWindow && !payWindow.closed) {
-                // Navigate the pre-opened tab to the checkout URL
-                payWindow.location.href = checkout_url;
-            } else {
-                // Popup was blocked — redirect in same tab as fallback
-                window.location.href = checkout_url;
-            }
-            setWaitingForPayment(true);
-            startPolling();
+            window.location.href = checkout_url;
         } catch (err: any) {
-            // Close the blank tab if it opened
-            if (payWindow && !payWindow.closed) payWindow.close();
-            setCheckoutError(err.message || 'Failed to start payment');
-        } finally {
-            setPayingCard(false);
+            alert(err.message || 'Payment failed. Please try again.');
+            setPaying(false);
         }
-    }, [orderId, payingCard, startPolling]);
+    };
 
     const copyOrderId = () => {
         if (orderId) {
@@ -246,21 +187,11 @@ export default function PayOrder() {
 
                         <Separator />
 
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Subtotal</span>
-                                <span>${total.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Processing fee (3%)</span>
-                                <span>${cardFee.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-1">
-                                <span className="font-semibold">Total</span>
-                                <span className="text-2xl font-bold text-primary">
-                                    ${cardTotal.toFixed(2)}
-                                </span>
-                            </div>
+                        <div className="flex justify-between items-center">
+                            <span className="font-semibold">Total Due</span>
+                            <span className="text-2xl font-bold text-primary">
+                                ${total.toFixed(2)}
+                            </span>
                         </div>
 
                         {/* Order ID */}
@@ -278,108 +209,83 @@ export default function PayOrder() {
                     </CardContent>
                 </Card>
 
-                {/* Card Payment — one click to Stripe form */}
+                {/* Payment Options */}
                 <Card>
                     <CardContent className="pt-6 space-y-4">
-                        {waitingForPayment ? (
-                            <div className="text-center py-6 space-y-4">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                                <div className="space-y-1">
-                                    <p className="font-semibold">Waiting for payment...</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Complete your card payment in the tab that just opened.
-                                        This page will update automatically.
-                                    </p>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handlePayWithCard}
-                                >
-                                    Reopen payment page
-                                </Button>
-                            </div>
-                        ) : (
-                            <>
-                                <Button
-                                    className="w-full h-14 text-lg"
-                                    onClick={handlePayWithCard}
-                                    disabled={payingCard}
-                                >
-                                    {payingCard ? (
-                                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                                    ) : (
-                                        <CreditCard className="h-5 w-5 mr-2" />
-                                    )}
-                                    {payingCard ? 'Opening...' : `Pay $${cardTotal.toFixed(2)} with Card`}
-                                </Button>
+                        <h2 className="font-semibold">Payment Options</h2>
 
-                                {checkoutError && (
-                                    <p className="text-sm text-center text-destructive">{checkoutError}</p>
+                        {/* Card Payment */}
+                        <div className="space-y-2">
+                            <Button
+                                className="w-full"
+                                size="lg"
+                                onClick={handlePayWithCard}
+                                disabled={paying}
+                            >
+                                {paying ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Redirecting to payment...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Pay ${cardTotal.toFixed(2)} with Card
+                                    </>
                                 )}
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Includes 3% processing fee (${cardFee.toFixed(2)})
+                            </p>
+                        </div>
 
-                                <p className="text-xs text-center text-muted-foreground">
-                                    Visa, Mastercard, Apple Pay, Google Pay accepted.
-                                    Opens secure payment form.
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Separator className="w-full" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-card px-2 text-muted-foreground">or pay manually</span>
+                            </div>
+                        </div>
+
+                        {/* Manual Payment Methods */}
+                        <div className="space-y-3 text-sm">
+                            <div className="p-3 rounded-lg border space-y-1">
+                                <p className="font-medium">Zelle</p>
+                                <p className="text-muted-foreground">
+                                    Send payment via Zelle, then notify your sales rep to confirm.
                                 </p>
-                            </>
-                        )}
+                            </div>
+                            <div className="p-3 rounded-lg border space-y-1">
+                                <p className="font-medium">Cash App</p>
+                                <p className="text-muted-foreground">
+                                    Send payment via Cash App, then notify your sales rep to confirm.
+                                </p>
+                            </div>
+                            <div className="p-3 rounded-lg border space-y-1">
+                                <p className="font-medium">Venmo</p>
+                                <p className="text-muted-foreground">
+                                    Send payment via Venmo, then notify your sales rep to confirm.
+                                </p>
+                            </div>
+                            <div className="p-3 rounded-lg border space-y-1">
+                                <p className="font-medium">Wire Transfer</p>
+                                <p className="text-muted-foreground">
+                                    Contact your sales rep for wire transfer details.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-center text-muted-foreground pt-2">
+                            For manual payments, your rep will confirm receipt and update the order.
+                            Reference Order #{order.id.slice(0, 8)} in your payment.
+                        </p>
                     </CardContent>
                 </Card>
 
-                {/* Alternative payment options — collapsed */}
-                <div className="space-y-3">
-                    <button
-                        onClick={() => setShowManual(!showManual)}
-                        className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-                    >
-                        <ChevronDown className={`h-4 w-4 transition-transform ${showManual ? 'rotate-180' : ''}`} />
-                        {showManual ? 'Hide' : 'Other payment methods'}
-                    </button>
-
-                    {showManual && (
-                        <Card>
-                            <CardContent className="pt-6 space-y-4">
-                                {/* Manual Payment Methods */}
-                                <div className="space-y-3 text-sm">
-                                    <div className="p-3 rounded-lg border space-y-1">
-                                        <p className="font-medium">Zelle</p>
-                                        <p className="text-muted-foreground">
-                                            Send payment via Zelle, then notify your sales rep to confirm.
-                                        </p>
-                                    </div>
-                                    <div className="p-3 rounded-lg border space-y-1">
-                                        <p className="font-medium">Cash App</p>
-                                        <p className="text-muted-foreground">
-                                            Send payment via Cash App, then notify your sales rep to confirm.
-                                        </p>
-                                    </div>
-                                    <div className="p-3 rounded-lg border space-y-1">
-                                        <p className="font-medium">Venmo</p>
-                                        <p className="text-muted-foreground">
-                                            Send payment via Venmo, then notify your sales rep to confirm.
-                                        </p>
-                                    </div>
-                                    <div className="p-3 rounded-lg border space-y-1">
-                                        <p className="font-medium">Wire Transfer</p>
-                                        <p className="text-muted-foreground">
-                                            Contact your sales rep for wire transfer details.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <p className="text-xs text-center text-muted-foreground pt-2">
-                                    For manual payments, your rep will confirm receipt and update the order.
-                                    Reference Order #{order.id.slice(0, 8)} in your payment.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-
                 {/* Footer */}
                 <p className="text-xs text-center text-muted-foreground">
-                    Secure payment processing
+                    Secure checkout powered by PsiFi
                 </p>
             </div>
         </div>
