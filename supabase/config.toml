@@ -1,7 +1,6 @@
 # Supabase project configuration
 # Project ID is set via supabase link, not here.
 
-[functions]
 # CRITICAL: verify_jwt MUST be false for all functions.
 #
 # WHY: Supabase's gateway checks JWTs BEFORE your function code runs.
@@ -19,4 +18,81 @@
 #   Cron/scheduled        → authenticateCron() with CRON_SECRET
 #   Webhooks              → HMAC signature validation
 #   Health checks         → handleHealthCheck() bypass
+
+[functions.sentinel-worker]
+verify_jwt = false
+
+[functions.health-probe]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.admin-ai-chat]
+verify_jwt = false
+
+[functions.ai-builder]
+verify_jwt = false
+
+[functions.analyze-food]
+verify_jwt = false
+
+[functions.chat-with-ai]
+verify_jwt = false
+
+[functions.check-low-supply]
+verify_jwt = false
+
+[functions.check-payment-emails]
+verify_jwt = false
+
+[functions.composio-callback]
+verify_jwt = false
+
+[functions.composio-connect]
+verify_jwt = false
+
+[functions.create-supplier-order]
+verify_jwt = false
+
+[functions.deploy-webhook]
+verify_jwt = false
+
+[functions.exchange-token]
+verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.notify-commission]
+verify_jwt = false
+
+[functions.partner-ai-chat]
+verify_jwt = false
+
+[functions.process-health-document]
+verify_jwt = false
+
+[functions.promote-contact]
+verify_jwt = false
+
+[functions.provision-tenant]
+verify_jwt = false
+
+[functions.run-automations]
+verify_jwt = false
+
+[functions.scrape-brand]
+verify_jwt = false
+
+[functions.self-signup]
+verify_jwt = false
+
+[functions.sms-webhook]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
+
+[functions.textbelt-webhook]
 verify_jwt = false

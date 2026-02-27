@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { withErrorReporting } from "../_shared/error-reporter.ts";
 import { authenticateCron, authenticateRequest, AuthError, createServiceClient } from "../_shared/auth.ts";
+import { validateSql, executeMgmtQuery, getTableColumns, getFunctionSource, findColumnInOtherTables, tableExists } from "../_shared/schema-healer.ts";
 
 /**
  * sentinel-worker v4 — The AI Self-Healing Brain (Enhanced)
@@ -33,6 +34,9 @@ const AI_DIAGNOSIS_BATCH = 5;
 const DEPLOY_CORRELATION_WINDOW_MIN = 30;
 const ESCALATION_COOLDOWN_MIN = 60;  // Don't spam emails — 1 per hour per incident
 const ANOMALY_THRESHOLD_MULTIPLIER = 2.5; // Flag if latency > 2.5x baseline
+const MAX_SCHEMA_FIXES_PER_RUN = 3;
+const SCHEMA_FIX_COOLDOWN_HOURS = 24;
+const AI_FIX_MAX_TOKENS = 800;
 
 // ── Feature key → error category mapping for circuit breakers ──
 const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
@@ -112,6 +116,7 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     escalations_sent: 0,
     rollbacks_attempted: 0,
     anomalies_detected: 0,
+    schema_fixes_applied: 0,
   };
   const runErrors: string[] = [];
 
@@ -254,6 +259,9 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
             await disableFeature(supabase, bug, pattern);
             stats.fixes_applied++;
             break;
+          case "schema_heal":
+            // Handled by Phase 13 — skip in Phase 5
+            break;
           default:
             break;
         }
@@ -321,6 +329,14 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // from the last 10 minutes and attempts automatic fixes.
     // ═══════════════════════════════════════════════════════════
     await repairBusinessLogicViolations(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 13: Autonomous Schema Healer
+    // Detects "column X does not exist" / "relation X does not exist" errors
+    // diagnosed by AI as auto-fixable, generates safe DDL, executes via
+    // Supabase Management API, verifies, and auto-learns patterns.
+    // ═══════════════════════════════════════════════════════════
+    await healSchemaErrors(supabase, stats, runErrors);
 
     await finishRun(supabase, runId, stats, runErrors, "completed");
 
@@ -1376,8 +1392,342 @@ async function finishRun(
       ai_diagnoses: stats.ai_diagnoses,
       fixes_applied: stats.fixes_applied,
       circuit_breakers_tripped: stats.circuit_breakers_tripped,
+      schema_fixes_applied: stats.schema_fixes_applied || 0,
       errors: errors.length > 0 ? errors : null,
       status,
     })
     .eq("id", runId);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 13: Autonomous Schema Healer
+// ═══════════════════════════════════════════════════════════════
+
+type SchemaErrorClass = "missing_column" | "missing_relation" | "broken_function" | "unknown";
+
+function classifySchemaError(errorText: string): { type: SchemaErrorClass; table?: string; column?: string; relation?: string } {
+  // "column expenses.org_id does not exist" or "column \"org_id\" of relation \"expenses\" does not exist"
+  const colMatch = errorText.match(/column\s+(?:"?(\w+)"?\.)?["]?(\w+)["]?\s+(?:of\s+relation\s+["]?(\w+)["]?\s+)?does\s+not\s+exist/i);
+  if (colMatch) {
+    const table = colMatch[3] || colMatch[1];
+    const column = colMatch[2];
+    return { type: "missing_column", table, column };
+  }
+
+  // "relation \"discussion_replies\" does not exist"
+  const relMatch = errorText.match(/relation\s+["]?(\w+)["]?\s+does\s+not\s+exist/i);
+  if (relMatch) {
+    return { type: "missing_relation", relation: relMatch[1] };
+  }
+
+  // PG error codes
+  if (errorText.includes("42703")) return { type: "missing_column" };
+  if (errorText.includes("42P01")) return { type: "missing_relation" };
+
+  return { type: "unknown" };
+}
+
+async function healSchemaErrors(
+  supabase: ReturnType<typeof createClient>,
+  stats: Record<string, number>,
+  runErrors: string[],
+): Promise<void> {
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) return;
+
+  try {
+    // Collect bugs that AI says are auto-fixable AND match schema error patterns
+    const schemaPatterns = [/does not exist/i, /42703/, /42P01/];
+
+    // Check ALL recent bugs (not just diagnosed batch) — pull from bug_reports with diagnosis containing "AUTO-FIX POSSIBLE? Yes"
+    const { data: fixableBugs } = await supabase
+      .from("bug_reports")
+      .select("id, description, console_errors, page_url, org_id, sentinel_diagnosis")
+      .not("sentinel_diagnosis", "is", null)
+      .ilike("sentinel_diagnosis", "%AUTO-FIX POSSIBLE?%Yes%")
+      .is("sentinel_schema_healed", null)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (!fixableBugs || fixableBugs.length === 0) return;
+
+    // Filter to schema-related errors only
+    const schemaBugs = fixableBugs.filter((bug) => {
+      const errorText = buildErrorText(bug as BugReport);
+      return schemaPatterns.some((p) => p.test(errorText));
+    });
+
+    if (schemaBugs.length === 0) return;
+
+    let fixesThisRun = 0;
+
+    for (const bug of schemaBugs) {
+      if (fixesThisRun >= MAX_SCHEMA_FIXES_PER_RUN) break;
+
+      const errorText = buildErrorText(bug as BugReport);
+      const fingerprint = errorText.replace(/\s+/g, " ").trim().slice(0, 200);
+
+      // Check cooldown: same fingerprint in last 24h?
+      const cooldownCutoff = new Date(Date.now() - SCHEMA_FIX_COOLDOWN_HOURS * 3600_000).toISOString();
+      const { data: recentFixes } = await supabase
+        .from("schema_heal_log")
+        .select("id, execution_result")
+        .eq("error_fingerprint", fingerprint)
+        .gte("created_at", cooldownCutoff)
+        .limit(5);
+
+      if (recentFixes && recentFixes.length > 0) {
+        // Skip if already attempted — check for consecutive failures
+        const failures = recentFixes.filter((f) => f.execution_result === "failed");
+        if (failures.length >= 2) {
+          // Too many failures for this fingerprint — escalate and skip
+          runErrors.push(`Phase13: Skipping fingerprint (2+ failures): ${fingerprint.slice(0, 80)}`);
+          await supabase.from("bug_reports").update({ sentinel_schema_healed: "escalated" }).eq("id", bug.id);
+          continue;
+        }
+        if (recentFixes.some((f) => f.execution_result === "success")) {
+          // Already fixed successfully
+          await supabase.from("bug_reports").update({ sentinel_schema_healed: "already_fixed" }).eq("id", bug.id);
+          continue;
+        }
+      }
+
+      // Classify the error
+      const classification = classifySchemaError(errorText);
+      if (classification.type === "unknown") {
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "unclassified" }).eq("id", bug.id);
+        continue;
+      }
+
+      // Introspect schema for context
+      let schemaContext = "";
+      let preState: Record<string, unknown> | null = null;
+
+      if (classification.type === "missing_column" && classification.table) {
+        const columns = await getTableColumns(classification.table);
+        schemaContext += `Table "${classification.table}" columns: ${columns.map((c) => `${c.column_name} ${c.udt_name}`).join(", ")}\n`;
+
+        if (classification.column) {
+          const otherTables = await findColumnInOtherTables(classification.column);
+          if (otherTables.length > 0) {
+            schemaContext += `Column "${classification.column}" found in: ${otherTables.map((t) => `${t.table_name} (${t.udt_name})`).join(", ")}\n`;
+          }
+        }
+      } else if (classification.type === "missing_relation" && classification.relation) {
+        const exists = await tableExists(classification.relation);
+        schemaContext += `Table "${classification.relation}" exists: ${exists}\n`;
+
+        // Check if it's referenced in a function
+        const errorHasFunction = errorText.match(/function\s+(\w+)/i);
+        if (errorHasFunction) {
+          const funcSource = await getFunctionSource(errorHasFunction[1]);
+          if (funcSource) {
+            schemaContext += `Function source:\n${funcSource.slice(0, 1500)}\n`;
+            preState = { function_name: errorHasFunction[1], source: funcSource };
+          }
+        }
+      } else if (classification.type === "broken_function") {
+        const funcMatch = errorText.match(/function\s+(\w+)/i);
+        if (funcMatch) {
+          const funcSource = await getFunctionSource(funcMatch[1]);
+          if (funcSource) {
+            schemaContext += `Function source:\n${funcSource.slice(0, 1500)}\n`;
+            preState = { function_name: funcMatch[1], source: funcSource };
+          }
+        }
+      }
+
+      // AI-generate the fix
+      const fix = await aiGenerateFix(openaiKey, errorText, classification.type, schemaContext);
+      if (!fix) {
+        runErrors.push(`Phase13: AI fix generation failed for bug ${bug.id}`);
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "ai_failed" }).eq("id", bug.id);
+        continue;
+      }
+
+      // Validate SQL safety
+      const validation = validateSql(fix.sql);
+      if (!validation.safe) {
+        await supabase.from("schema_heal_log").insert({
+          bug_id: bug.id,
+          error_fingerprint: fingerprint,
+          error_message: errorText.slice(0, 1000),
+          generated_sql: fix.sql,
+          explanation: fix.explanation,
+          risk_level: fix.risk,
+          pre_state: preState,
+          execution_result: "blocked",
+          execution_error: `Safety validation failed: ${validation.reason}`,
+        });
+        runErrors.push(`Phase13: SQL blocked for bug ${bug.id}: ${validation.reason}`);
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "blocked" }).eq("id", bug.id);
+        continue;
+      }
+
+      // High risk → skip and escalate
+      if (fix.risk === "high") {
+        await supabase.from("schema_heal_log").insert({
+          bug_id: bug.id,
+          error_fingerprint: fingerprint,
+          error_message: errorText.slice(0, 1000),
+          generated_sql: fix.sql,
+          explanation: fix.explanation,
+          risk_level: "high",
+          pre_state: preState,
+          execution_result: "skipped",
+          execution_error: "High risk — escalated for human review",
+        });
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "escalated" }).eq("id", bug.id);
+        continue;
+      }
+
+      // Insert pending log entry
+      const { data: healLog } = await supabase.from("schema_heal_log").insert({
+        bug_id: bug.id,
+        error_fingerprint: fingerprint,
+        error_message: errorText.slice(0, 1000),
+        generated_sql: fix.sql,
+        explanation: fix.explanation,
+        risk_level: fix.risk,
+        pre_state: preState,
+        execution_result: "pending",
+      }).select("id").single();
+
+      // Execute via Management API
+      const execResult = await executeMgmtQuery(fix.sql);
+
+      if (execResult.success) {
+        // Update log as success
+        await supabase.from("schema_heal_log").update({
+          execution_result: "success",
+          applied_at: new Date().toISOString(),
+        }).eq("id", healLog?.id);
+
+        // PostgREST reload
+        await executeMgmtQuery("NOTIFY pgrst, 'reload schema';");
+
+        // Mark bug as healed
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "fixed" }).eq("id", bug.id);
+
+        // Auto-learn: add error_pattern for instant matching next time
+        try {
+          const patternText = errorText.replace(/['"]/g, "").slice(0, 200);
+          await supabase.from("error_patterns").insert({
+            pattern: patternText,
+            match_type: "substring",
+            category: "schema",
+            severity: "critical",
+            auto_fix_action: "schema_heal",
+            fix_description: `Auto-learned: ${fix.explanation?.slice(0, 200)}`,
+            cooldown_minutes: 60,
+            enabled: true,
+          });
+        } catch { /* Don't fail if pattern already exists */ }
+
+        // Log to heal_log
+        try {
+          await supabase.from("heal_log").insert({
+            source: "sentinel:phase13",
+            action_type: "schema_heal",
+            description: `[schema_heal] Applied: ${fix.sql.slice(0, 200)}`,
+            created_at: new Date().toISOString(),
+          });
+        } catch { /* non-critical */ }
+
+        stats.schema_fixes_applied++;
+        fixesThisRun++;
+      } else {
+        // Update log as failed
+        await supabase.from("schema_heal_log").update({
+          execution_result: "failed",
+          execution_error: execResult.error?.slice(0, 500),
+        }).eq("id", healLog?.id);
+
+        runErrors.push(`Phase13: DDL execution failed for bug ${bug.id}: ${execResult.error?.slice(0, 100)}`);
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "failed" }).eq("id", bug.id);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Phase13: ${(err as Error).message}`);
+  }
+}
+
+interface AiFix {
+  sql: string;
+  explanation: string;
+  risk: "low" | "medium" | "high";
+}
+
+async function aiGenerateFix(
+  apiKey: string,
+  errorText: string,
+  errorType: SchemaErrorClass,
+  schemaContext: string,
+): Promise<AiFix | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: AI_FIX_MAX_TOKENS,
+        temperature: 0.1,
+        messages: [
+          {
+            role: "system",
+            content: `You are a PostgreSQL schema repair agent for a multi-tenant SaaS application.
+Generate MINIMAL, SAFE SQL to fix the error. Rules:
+- ONLY use: ALTER TABLE ... ADD COLUMN IF NOT EXISTS, CREATE OR REPLACE FUNCTION, CREATE INDEX IF NOT EXISTS, GRANT SELECT/INSERT/UPDATE/EXECUTE
+- NEVER use: DROP, TRUNCATE, DELETE, INSERT, UPDATE, CREATE TABLE, ALTER TABLE ... DROP, ALTER TABLE ... RENAME
+- NEVER touch auth.* or storage.* schemas
+- Generate ONE statement only (or one CREATE OR REPLACE FUNCTION block)
+- For missing columns: infer type from same column in other tables. Default to uuid if FK, text if unknown.
+- For missing relations in functions: fix the function to use the correct table name
+- Use IF NOT EXISTS / IF EXISTS where possible
+
+Respond in EXACTLY this format (no markdown, no extra text):
+SQL: <your single SQL statement>
+EXPLANATION: <one sentence>
+RISK: low|medium|high`,
+          },
+          {
+            role: "user",
+            content: `Error type: ${errorType}\nError: ${errorText.slice(0, 800)}\n\nSchema context:\n${schemaContext.slice(0, 1500)}`,
+          },
+        ],
+      }),
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`OpenAI ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const content: string = data.choices?.[0]?.message?.content || "";
+
+    // Parse structured response
+    const sqlMatch = content.match(/SQL:\s*(.+?)(?=\nEXPLANATION:)/s);
+    const explMatch = content.match(/EXPLANATION:\s*(.+?)(?=\nRISK:)/s);
+    const riskMatch = content.match(/RISK:\s*(low|medium|high)/i);
+
+    if (!sqlMatch) return null;
+
+    return {
+      sql: sqlMatch[1].trim(),
+      explanation: explMatch?.[1]?.trim() || "No explanation provided",
+      risk: (riskMatch?.[1]?.toLowerCase() as "low" | "medium" | "high") || "medium",
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    return null;
+  }
 }
