@@ -79,7 +79,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, disabled }: 
         setLoading(true);
         try {
             const res = await fetch(
-                `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}&format=json&apiKey=${GEOAPIFY_KEY}&filter=countrycode:us&limit=5&type=amenity,street,housenumber`
+                `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}&format=json&apiKey=${GEOAPIFY_KEY}&filter=countrycode:us&limit=5`
             );
             if (!res.ok) { setSuggestions([]); return; }
             const data = await res.json();
