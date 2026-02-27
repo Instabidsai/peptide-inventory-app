@@ -100,27 +100,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(502).json({ error: 'Payment processor returned invalid data' });
         }
 
-        // Fetch the checkout page server-side to extract the creditcard signature
-        // (PayGate365 generates it server-side; we scrape it to skip the provider selection page)
+        // Build direct checkout URL using Wert.io provider (clean card form, $1 minimum)
+        // process-payment.php 302-redirects to widget.wert.io — no signature needed
         const contactEmail = (order.contacts as any)?.email || '';
-        const payPageUrl = `https://checkout.365payment.co/pay.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd`;
-        const payPageRes = await fetch(payPageUrl);
-        const payPageHtml = await payPageRes.text();
-
-        // Extract signature from the creditcard provider URL in the page JS
-        // Exclude backticks (template literals), quotes, ampersands, whitespace
-        const sigMatch = payPageHtml.match(/signature=([A-Za-z0-9%+/=]+)/);
-        let checkoutUrl: string;
-
-        if (sigMatch) {
-            // Go directly to creditcard (MoonPay) provider with extracted signature
-            const signature = sigMatch[1];
-            checkoutUrl = `https://checkout.paygate.to/process-payment.php?currency=usd&address=${addressIn}&amount=${chargeTotal}&provider=creditcard&email=${encodeURIComponent(contactEmail)}&signature=${signature}`;
-        } else {
-            // Fallback: send to provider selection page if signature extraction fails
-            console.error('Could not extract creditcard signature from pay.php');
-            checkoutUrl = payPageUrl;
-        }
+        const checkoutUrl = `https://checkout.paygate.to/process-payment.php?currency=usd&address=${addressIn}&amount=${chargeTotal}&provider=wert&email=${encodeURIComponent(contactEmail)}`;
 
         // Update order with payment method
         await supabase
