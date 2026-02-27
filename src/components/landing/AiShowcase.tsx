@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
   Package,
@@ -8,6 +8,7 @@ import {
   Blocks,
   FileText,
   Check,
+  Monitor,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BuildPreviewVariant } from "@/components/crm/LiveBuildPreview";
@@ -20,6 +21,9 @@ export function AiShowcase() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const autoPlayRef = useRef(true);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // External preview state — synced via AiDemoChat callbacks
+  const [previewPhase, setPreviewPhase] = useState(-1);
+  const [previewShowResult, setPreviewShowResult] = useState(false);
 
   const demos: Record<
     string,
@@ -471,6 +475,8 @@ export function AiShowcase() {
   const handleDemoComplete = () => {
     if (!autoPlayRef.current) return;
     advanceTimerRef.current = setTimeout(() => {
+      setPreviewPhase(-1);
+      setPreviewShowResult(false);
       setActiveTab((prev) => {
         const idx = tabKeys.indexOf(prev);
         return tabKeys[(idx + 1) % tabKeys.length];
@@ -481,6 +487,8 @@ export function AiShowcase() {
   const handleTabChange = (value: string) => {
     autoPlayRef.current = false;
     if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    setPreviewPhase(-1);
+    setPreviewShowResult(false);
     setActiveTab(value);
   };
 
@@ -526,18 +534,112 @@ export function AiShowcase() {
               {(() => {
                 const demo = demos[activeTab];
                 if (!demo) return null;
+                const showExternalPreview = previewPhase >= 0 && !previewShowResult;
+                const showExternalResult = previewShowResult;
                 return (
                   <TabsContent key={activeTab} value={activeTab} forceMount>
-                    <div className="max-w-2xl mx-auto">
-                      <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
-                        <AiDemoChat
-                          messages={demo.messages}
-                          resultElement={demo.result}
-                          buildSteps={demo.buildSteps}
-                          buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
-                          onComplete={handleDemoComplete}
-                        />
-                      </Suspense>
+                    {/* ── Split-screen: chat left, live preview right ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6 items-start">
+                      {/* Left — Chat panel */}
+                      <div className="min-w-0">
+                        <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
+                          <AiDemoChat
+                            messages={demo.messages}
+                            resultElement={demo.result}
+                            buildSteps={demo.buildSteps}
+                            buildPreview={(phase) => <LiveBuildPreview phase={phase} variant={demo.variant} />}
+                            onComplete={handleDemoComplete}
+                            hidePreview
+                            showInputBar
+                            onBuildPhaseChange={setPreviewPhase}
+                            onShowResult={setPreviewShowResult}
+                          />
+                        </Suspense>
+                      </div>
+
+                      {/* Right — External live preview panel */}
+                      <div className="hidden lg:block min-w-0">
+                        <div className="relative rounded-xl overflow-hidden" style={{ padding: "1px", background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--border) / 0.3) 40%, hsl(var(--primary) / 0.15))" }}>
+                          <div className="rounded-[11px] bg-card/95 overflow-hidden">
+                            {/* Preview header */}
+                            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-background/60">
+                              <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground font-mono">
+                                Live Output
+                              </span>
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {(showExternalPreview || showExternalResult) && (
+                                  <>
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                                    </span>
+                                    <span className="text-[10px] text-primary font-mono">
+                                      {showExternalResult ? "READY" : `STEP ${previewPhase + 1}/${demo.buildSteps.length}`}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Preview content */}
+                            <div className="p-5 min-h-[360px] flex flex-col">
+                              <AnimatePresence mode="wait">
+                                {showExternalPreview && (
+                                  <motion.div
+                                    key="live-preview"
+                                    initial={{ opacity: 0, scale: 0.97 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.97 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="flex-1"
+                                  >
+                                    <Suspense fallback={null}>
+                                      <LiveBuildPreview phase={previewPhase} variant={demo.variant} />
+                                    </Suspense>
+                                  </motion.div>
+                                )}
+
+                                {showExternalResult && (
+                                  <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.4, ease: "easeOut" }}
+                                    className="flex-1"
+                                  >
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <Check className="w-4 h-4 text-primary" />
+                                      <span className="text-xs font-mono text-primary/80 uppercase tracking-wider font-medium">
+                                        Built & Deployed
+                                      </span>
+                                    </div>
+                                    {demo.result}
+                                  </motion.div>
+                                )}
+
+                                {!showExternalPreview && !showExternalResult && (
+                                  <motion.div
+                                    key="idle"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="flex-1 flex flex-col items-center justify-center text-center gap-3"
+                                  >
+                                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                      <Monitor className="w-6 h-6 text-primary/40" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-muted-foreground/60 font-medium">Waiting for AI...</p>
+                                      <p className="text-xs text-muted-foreground/40 mt-1">Preview will appear here as AI builds</p>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </TabsContent>
                 );

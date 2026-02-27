@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, User, Check } from "lucide-react";
+import { Bot, User, Check, ArrowUp } from "lucide-react";
 
 interface Message {
   role: "user" | "ai";
@@ -18,6 +18,14 @@ interface AiDemoChatProps {
   buildPreview?: (phase: number) => React.ReactNode;
   /** Called when the demo finishes playing all messages and shows the result */
   onComplete?: () => void;
+  /** When true, don't render internal preview/result — external panel handles it */
+  hidePreview?: boolean;
+  /** Called whenever the build phase changes (for external preview panels) */
+  onBuildPhaseChange?: (phase: number) => void;
+  /** Called when the result should show (for external preview panels) */
+  onShowResult?: (show: boolean) => void;
+  /** Show a fake input bar at the bottom for a more realistic chat look */
+  showInputBar?: boolean;
 }
 
 export function AiDemoChat({
@@ -28,6 +36,10 @@ export function AiDemoChat({
   buildSteps,
   buildPreview,
   onComplete,
+  hidePreview = false,
+  onBuildPhaseChange,
+  onShowResult,
+  showInputBar = false,
 }: AiDemoChatProps) {
   const [visibleMessages, setVisibleMessages] = useState<
     { role: "user" | "ai"; text: string; complete: boolean }[]
@@ -51,6 +63,10 @@ export function AiDemoChat({
   buildStepsRef.current = buildSteps;
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const onBuildPhaseChangeRef = useRef(onBuildPhaseChange);
+  onBuildPhaseChangeRef.current = onBuildPhaseChange;
+  const onShowResultRef = useRef(onShowResult);
+  onShowResultRef.current = onShowResult;
 
   const buildStepsShownRef = useRef(false);
   // Ref for the "advance to next message" timer — must survive typing effect cleanup
@@ -73,6 +89,15 @@ export function AiDemoChat({
   useEffect(() => {
     return () => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); };
   }, []);
+
+  // Sync external preview panel via callbacks
+  useEffect(() => {
+    onBuildPhaseChangeRef.current?.(buildPhaseForPreview);
+  }, [buildPhaseForPreview]);
+
+  useEffect(() => {
+    onShowResultRef.current?.(showResult);
+  }, [showResult]);
 
   // Auto-scroll chat area when new content appears (scroll container only, not page)
   useEffect(() => {
@@ -366,50 +391,64 @@ export function AiDemoChat({
       </div>
 
       {/* ── Live Build Preview (OUTSIDE scroll area — always visible) ── */}
-      <AnimatePresence mode="wait">
-        {showBuildPreview && (
-          <motion.div
-            key="build-preview"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="border-t border-primary/30 overflow-hidden bg-gradient-to-b from-primary/[0.03] to-transparent"
-          >
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                </span>
-                <span className="text-[11px] font-mono text-primary uppercase tracking-wider font-medium">
-                  Live Preview — Step {buildPhaseForPreview + 1} of {buildSteps?.length ?? 0}
-                </span>
+      {!hidePreview && (
+        <AnimatePresence mode="wait">
+          {showBuildPreview && (
+            <motion.div
+              key="build-preview"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="border-t border-primary/30 overflow-hidden bg-gradient-to-b from-primary/[0.03] to-transparent"
+            >
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                  </span>
+                  <span className="text-[11px] font-mono text-primary uppercase tracking-wider font-medium">
+                    Live Preview — Step {buildPhaseForPreview + 1} of {buildSteps?.length ?? 0}
+                  </span>
+                </div>
+                {buildPreview(buildPhaseForPreview)}
               </div>
-              {buildPreview(buildPhaseForPreview)}
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {/* Result element (replaces preview after AI finishes typing) */}
-        {showResult && resultElement && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="border-t border-primary/20 overflow-hidden"
-          >
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Check className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[11px] font-mono text-primary/80 uppercase tracking-wider">Built & Deployed</span>
+          {/* Result element (replaces preview after AI finishes typing) */}
+          {showResult && resultElement && (
+            <motion.div
+              key="result"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="border-t border-primary/20 overflow-hidden"
+            >
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[11px] font-mono text-primary/80 uppercase tracking-wider">Built & Deployed</span>
+                </div>
+                {resultElement}
               </div>
-              {resultElement}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* ── Fake input bar for realistic chat look ── */}
+      {showInputBar && (
+        <div className="border-t border-border/40 bg-background/40 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-3 py-2">
+            <span className="text-sm text-muted-foreground/50 flex-1">Ask AI to build something...</span>
+            <div className="w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
+              <ArrowUp className="w-3.5 h-3.5 text-primary/60" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
