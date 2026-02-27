@@ -172,7 +172,10 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [storeUrl, setStoreUrl] = useState('');
+  const [consumerKey, setConsumerKey] = useState('');
+  const [consumerSecret, setConsumerSecret] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [manualConnecting, setManualConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{
@@ -242,6 +245,35 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
       toast({ variant: 'destructive', title: 'Failed to start connection', description: err.message });
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const handleManualConnect = async () => {
+    if (!storeUrl.trim() || !consumerKey.trim() || !consumerSecret.trim()) {
+      toast({ variant: 'destructive', title: 'All fields required', description: 'Enter your store URL, Consumer Key, and Consumer Secret.' });
+      return;
+    }
+    setManualConnecting(true);
+    try {
+      const { data, error } = await invokeEdgeFunction<{ success: boolean; webhook_created: boolean; webhook_error?: string }>('woo-manual-connect', {
+        store_url: storeUrl.trim(),
+        consumer_key: consumerKey.trim(),
+        consumer_secret: consumerSecret.trim(),
+        org_id: orgId,
+      });
+      if (error) throw new Error(error.message);
+      queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
+      setConsumerKey('');
+      setConsumerSecret('');
+      if (data?.webhook_created) {
+        toast({ title: 'WooCommerce Connected!', description: 'Your store is connected and order sync webhook was auto-created.' });
+      } else {
+        toast({ title: 'WooCommerce Connected!', description: 'Keys saved. Webhook could not be auto-created — you may need to add it manually in WooCommerce.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Connection failed', description: err.message });
+    } finally {
+      setManualConnecting(false);
     }
   };
 
@@ -439,29 +471,56 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
               </p>
             </div>
 
-            {/* Manual Setup Fallback */}
+            {/* Paste API Keys Fallback */}
             <Accordion type="single" collapsible className="border-t pt-2">
               <AccordionItem value="manual" className="border-none">
                 <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2">
-                  Advanced: Manual Webhook Setup
+                  <Key className="h-3.5 w-3.5 mr-1.5 inline" />
+                  Or paste API keys instead
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pt-2">
-                  <p className="text-xs text-muted-foreground">
-                    If one-click connect doesn't work, you can manually configure the webhook:
-                  </p>
-                  <div className="rounded-lg bg-secondary/30 border border-border/40 p-4 space-y-2">
-                    <p className="text-sm font-medium">Manual Setup in WooCommerce:</p>
+                  <div className="rounded-lg bg-secondary/30 border border-border/40 p-4 space-y-3">
+                    <p className="text-sm font-medium">Quick 3-step setup:</p>
                     <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Go to <span className="font-mono">WooCommerce &rarr; Settings &rarr; Advanced &rarr; Webhooks</span></li>
-                      <li>Click <strong>Add webhook</strong></li>
-                      <li>Name: <span className="font-mono">ThePeptideAI Order Sync</span></li>
-                      <li>Status: <strong>Active</strong></li>
-                      <li>Topic: <strong>Order updated</strong></li>
-                      <li>Delivery URL: <code className="bg-muted px-1 rounded text-[10px]">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-webhook?org_id={orgId}</code></li>
-                      <li>Generate a secret and save it in the API Keys section below as "woo_webhook_secret"</li>
-                      <li>API Version: <strong>WP REST API Integration v3</strong></li>
-                      <li>Click <strong>Save webhook</strong></li>
+                      <li>In your WooCommerce admin go to <span className="font-mono">Settings → Advanced → REST API</span></li>
+                      <li>Click <strong>Add Key</strong>, name it anything, set permissions to <strong>Read/Write</strong>, click <strong>Generate</strong></li>
+                      <li>Copy the <strong>Consumer Key</strong> and <strong>Consumer Secret</strong> and paste them below</li>
                     </ol>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Consumer Key</Label>
+                      <Input
+                        value={consumerKey}
+                        onChange={e => setConsumerKey(e.target.value)}
+                        placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        type="password"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Consumer Secret</Label>
+                      <Input
+                        value={consumerSecret}
+                        onChange={e => setConsumerSecret(e.target.value)}
+                        placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        type="password"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleManualConnect}
+                      disabled={manualConnecting || !storeUrl.trim() || !consumerKey.trim() || !consumerSecret.trim()}
+                      className="w-full"
+                    >
+                      {manualConnecting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Key className="mr-2 h-4 w-4" />
+                      )}
+                      {manualConnecting ? 'Connecting...' : 'Connect with API Keys'}
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      We'll store your keys securely and auto-create the order sync webhook on your store.
+                    </p>
                   </div>
                 </AccordionContent>
               </AccordionItem>
