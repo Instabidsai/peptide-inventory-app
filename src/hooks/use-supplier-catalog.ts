@@ -14,7 +14,8 @@ export interface SupplierPeptide {
 
 /**
  * Fetches the supplier's live peptide catalog via the get_supplier_catalog RPC.
- * Only returns data if the tenant has a supplier_org_id set in tenant_config.
+ * Passes the effective org_id so impersonation works correctly
+ * (auth.uid() in the RPC is always the real user, not the impersonated one).
  */
 export function useSupplierCatalog(enabled = true) {
   const { profile } = useAuth();
@@ -23,11 +24,11 @@ export function useSupplierCatalog(enabled = true) {
   return useQuery({
     queryKey: ['supplier-catalog', orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_supplier_catalog');
+      const { data, error } = await supabase.rpc('get_supplier_catalog', { p_org_id: orgId });
       if (error) throw error;
       return (data || []) as SupplierPeptide[];
     },
     enabled: !!orgId && enabled,
-    staleTime: 2 * 60 * 1000, // 2 min — supplier catalog doesn't change often
+    staleTime: 2 * 60 * 1000,
   });
 }
