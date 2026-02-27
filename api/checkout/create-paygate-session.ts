@@ -100,10 +100,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(502).json({ error: 'Payment processor returned invalid data' });
         }
 
-        // Build direct checkout URL using Wert.io provider (clean card form, $1 minimum)
-        // process-payment.php 302-redirects to widget.wert.io — no signature needed
+        // Build hosted checkout URL
         const contactEmail = (order.contacts as any)?.email || '';
-        const checkoutUrl = `https://checkout.paygate.to/process-payment.php?currency=usd&address=${addressIn}&amount=${chargeTotal}&provider=wert&email=${encodeURIComponent(contactEmail)}`;
+        const checkoutUrl = `https://checkout.365payment.co/pay.php?address=${addressIn}&amount=${chargeTotal}&email=${encodeURIComponent(contactEmail)}&currency=usd`;
 
         // Update order with payment method
         await supabase
