@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,10 @@ import {
   RefreshCw,
   PackageSearch,
   Plug,
+  CheckCircle2,
+  ChevronDown,
+  Unplug,
+  Store,
 } from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +33,7 @@ import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
 import { BrandLogo } from '@/components/ui/brand-logos';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // ─── Service Configs ───
 
@@ -38,9 +44,6 @@ const API_KEY_SERVICES = [
   { key: 'stripe_publishable_key', label: 'Stripe Publishable Key (optional)', placeholder: 'pk_live_...' },
   { key: 'shippo_api_key', label: 'Shippo API Key', placeholder: 'shippo_live_...' },
   { key: 'openai_api_key', label: 'OpenAI API Key (AI Chat)', placeholder: 'sk-...' },
-  { key: 'woo_url', label: 'WooCommerce Store URL', placeholder: 'https://yourstore.com' },
-  { key: 'woo_user', label: 'WooCommerce Username', placeholder: 'admin@yourstore.com' },
-  { key: 'woo_app_pass', label: 'WooCommerce App Password', placeholder: 'xxxx xxxx xxxx xxxx' },
 ] as const;
 
 const OAUTH_SERVICES = [
@@ -163,14 +166,14 @@ function OAuthConnectionsSection() {
   );
 }
 
-// ─── WooCommerce Setup ───
+// ─── WooCommerce One-Click Connect ───
 
 function WooCommerceSetupSection({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [generating, setGenerating] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [storeUrl, setStoreUrl] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{
     woo_product_count: number;
@@ -180,208 +183,291 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     errors: number;
   } | null>(null);
 
-  const { data: wooSecret } = useQuery({
-    queryKey: ['tenant-api-keys', orgId, 'woo_webhook_secret'],
+  // Check WooCommerce connection status
+  const { data: wooConnection, isLoading: connLoading } = useQuery({
+    queryKey: ['tenant-connections', orgId, 'woocommerce'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tenant_api_keys')
-        .select('api_key, api_key_masked, updated_at')
+        .from('tenant_connections')
+        .select('*')
         .eq('org_id', orgId)
-        .eq('service', 'woo_webhook_secret')
+        .eq('service', 'woocommerce')
         .maybeSingle();
       if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      return data as { status: string; metadata: Record<string, any>; connected_at: string | null } | null;
     },
     enabled: !!orgId,
+    refetchInterval: (query) => {
+      // Poll every 3s while pending, stop once connected/disconnected
+      return query.state.data?.status === 'pending' ? 3000 : false;
+    },
   });
 
-  const webhookUrl = `${window.location.origin}/api/webhooks/woocommerce?org=${orgId}`;
+  // Listen for ?connected=woocommerce URL param (redirect from callback)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('connected=woocommerce')) {
+      toast({ title: 'WooCommerce Connected!', description: 'Your store is now connected. Orders will sync automatically.' });
+      queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
+      // Clean up URL param
+      window.location.hash = window.location.hash.replace(/[?&]connected=woocommerce/, '');
+    } else if (hash.includes('error=woocommerce_denied')) {
+      toast({ variant: 'destructive', title: 'Connection Denied', description: 'You declined the WooCommerce authorization. Try again when ready.' });
+      window.location.hash = window.location.hash.replace(/[?&]error=woocommerce_denied/, '');
+    }
+  }, []);
 
-  const generateSecret = async () => {
-    setGenerating(true);
+  const isConnected = wooConnection?.status === 'connected';
+  const isPending = wooConnection?.status === 'pending';
+  const connectedStoreUrl = wooConnection?.metadata?.store_url || '';
+
+  const handleConnect = async () => {
+    if (!storeUrl.trim()) {
+      toast({ variant: 'destructive', title: 'Enter your store URL', description: 'e.g. mystore.com or https://mystore.com' });
+      return;
+    }
+    setConnecting(true);
     try {
-      const bytes = new Uint8Array(32);
-      crypto.getRandomValues(bytes);
-      const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      const masked = secret.slice(0, 8) + '...' + secret.slice(-4);
-
-      const { error } = await supabase
-        .from('tenant_api_keys')
-        .upsert({
-          org_id: orgId,
-          service: 'woo_webhook_secret',
-          api_key: secret,
-          api_key_masked: masked,
-        }, { onConflict: 'org_id,service' });
-
-      if (error) throw error;
-
-      await navigator.clipboard.writeText(secret);
-      queryClient.invalidateQueries({ queryKey: ['tenant-api-keys', orgId, 'woo_webhook_secret'] });
-      toast({ title: 'Webhook secret generated & copied', description: 'Paste this into your WooCommerce webhook settings. It won\'t be shown again in full.' });
-    } catch (err) {
-      toast({ title: 'Failed to generate secret', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
+      const { data, error } = await invokeEdgeFunction<{ redirect_url: string }>('woo-connect', {
+        store_url: storeUrl.trim(),
+        org_id: orgId,
+      });
+      if (error) throw new Error(error.message);
+      if (data?.redirect_url) {
+        window.open(data.redirect_url, '_blank', 'width=700,height=700');
+        queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
+        toast({ title: 'Approve access on your store', description: 'A new window opened. Log in to your WooCommerce admin and click Approve.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Failed to start connection', description: err.message });
     } finally {
-      setGenerating(false);
+      setConnecting(false);
     }
   };
 
-  const copyToClipboard = async (text: string, type: 'url' | 'secret') => {
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
     try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const input = document.createElement('input');
-      input.value = text;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand('copy');
-      document.body.removeChild(input);
+      await supabase
+        .from('tenant_connections')
+        .update({ status: 'disconnected', state_token: null })
+        .eq('org_id', orgId)
+        .eq('service', 'woocommerce');
+      queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
+      toast({ title: 'WooCommerce disconnected' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Failed to disconnect', description: err.message });
+    } finally {
+      setDisconnecting(false);
     }
-    if (type === 'url') {
-      setCopiedUrl(true);
-      setTimeout(() => setCopiedUrl(false), 2000);
-    } else {
-      setCopiedSecret(true);
-      setTimeout(() => setCopiedSecret(false), 2000);
-    }
-    toast({ title: `${type === 'url' ? 'Webhook URL' : 'Secret'} copied` });
   };
+
+  const handleSyncProducts = useCallback(async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const resp = await fetch('/api/integrations/woo-sync-products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Sync failed');
+      setSyncResult(data);
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      toast({
+        title: 'Product sync complete',
+        description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Product sync failed',
+        description: (err as any)?.message || 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }, [queryClient, toast]);
+
+  if (connLoading) return <Skeleton className="h-48 w-full" />;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <BrandLogo id="woocommerce" className="h-6 w-6 inline-block align-middle mr-1" /> WooCommerce Integration
+          {isConnected && (
+            <Badge variant="default" className="bg-green-600 text-xs ml-auto">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
+            </Badge>
+          )}
+          {isPending && (
+            <Badge variant="outline" className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-xs ml-auto">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Waiting for approval...
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
           Connect your WooCommerce store to automatically sync orders, contacts, and inventory
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Webhook Delivery URL</Label>
-          <div className="flex gap-2">
-            <Input value={webhookUrl} readOnly className="text-xs font-mono" />
-            <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookUrl, 'url')}>
-              {copiedUrl ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Webhook Secret</Label>
-          {wooSecret ? (
-            <div className="flex items-center gap-2">
-              <Input value={wooSecret.api_key_masked} readOnly className="text-xs font-mono flex-1" />
-              <Badge variant="default" className="bg-primary text-xs whitespace-nowrap">Active</Badge>
-              <Button variant="outline" size="sm" onClick={generateSecret} disabled={generating}>
-                Regenerate
+        {/* ─── Connected State ─── */}
+        {isConnected && (
+          <>
+            <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 flex items-center gap-3">
+              <Store className="h-5 w-5 text-green-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-green-400">Store Connected</p>
+                <p className="text-xs text-muted-foreground truncate">{connectedStoreUrl}</p>
+                {wooConnection?.connected_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Connected {format(new Date(wooConnection.connected_at), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive shrink-0"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+              >
+                {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
               </Button>
             </div>
-          ) : (
-            <Button onClick={generateSecret} disabled={generating} variant="default" size="sm">
-              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
-              Generate Webhook Secret
-            </Button>
-          )}
-          <p className="text-xs text-muted-foreground">
-            The full secret is shown only once when generated. Copy it into WooCommerce immediately.
-          </p>
-        </div>
 
-        <div className="rounded-lg bg-secondary/30 border border-border/40 p-4 space-y-2">
-          <p className="text-sm font-medium">Setup in WooCommerce:</p>
-          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Go to <span className="font-mono">WooCommerce &rarr; Settings &rarr; Advanced &rarr; Webhooks</span></li>
-            <li>Click <strong>Add webhook</strong></li>
-            <li>Name: <span className="font-mono">ThePeptideAI Order Sync</span></li>
-            <li>Status: <strong>Active</strong></li>
-            <li>Topic: <strong>Order updated</strong> (fires on both create and update)</li>
-            <li>Delivery URL: paste the URL above</li>
-            <li>Secret: paste the generated secret</li>
-            <li>API Version: <strong>WP REST API Integration v3</strong></li>
-            <li>Click <strong>Save webhook</strong> &mdash; WooCommerce will send a test ping</li>
-          </ol>
-        </div>
-
-        <div className="border-t pt-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium flex items-center gap-2">
-                <PackageSearch className="h-4 w-4" /> Sync Product Catalog
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Import your WooCommerce products as peptides. Requires Store URL + App Password below.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={syncing}
-              onClick={async () => {
-                setSyncing(true);
-                setSyncResult(null);
-                try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) throw new Error('Not authenticated');
-                  const resp = await fetch('/api/integrations/woo-sync-products', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${session.access_token}`,
-                    },
-                    body: JSON.stringify({ dryRun: false }),
-                  });
-                  const data = await resp.json();
-                  if (!resp.ok) throw new Error(data.error || 'Sync failed');
-                  setSyncResult(data);
-                  queryClient.invalidateQueries({ queryKey: ['peptides'] });
-                  toast({
-                    title: 'Product sync complete',
-                    description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
-                  });
-                } catch (err) {
-                  toast({
-                    title: 'Product sync failed',
-                    description: (err as any)?.message || 'Unknown error',
-                    variant: 'destructive',
-                  });
-                } finally {
-                  setSyncing(false);
-                }
-              }}
-            >
-              {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              {syncing ? 'Syncing...' : 'Sync Products'}
-            </Button>
-          </div>
-          {syncResult && (
-            <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs space-y-1">
-              <p className="font-medium text-primary">Sync Results</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            {/* Product Sync */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-lg font-bold">{syncResult.woo_product_count}</p>
-                  <p className="text-muted-foreground">WooCommerce</p>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <PackageSearch className="h-4 w-4" /> Sync Product Catalog
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Import your WooCommerce products as peptides.
+                  </p>
                 </div>
-                <div>
-                  <p className="text-lg font-bold text-primary">{syncResult.created}</p>
-                  <p className="text-muted-foreground">Created</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-blue-400">{syncResult.updated}</p>
-                  <p className="text-muted-foreground">Updated</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-amber-400">{syncResult.skipped}</p>
-                  <p className="text-muted-foreground">Skipped</p>
-                </div>
+                <Button variant="outline" size="sm" disabled={syncing} onClick={handleSyncProducts}>
+                  {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {syncing ? 'Syncing...' : 'Sync Products'}
+                </Button>
               </div>
-              {syncResult.errors > 0 && (
-                <p className="text-red-400">⚠ {syncResult.errors} error(s) — check console</p>
+              {syncResult && (
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs space-y-1">
+                  <p className="font-medium text-primary">Sync Results</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold">{syncResult.woo_product_count}</p>
+                      <p className="text-muted-foreground">WooCommerce</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-primary">{syncResult.created}</p>
+                      <p className="text-muted-foreground">Created</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-400">{syncResult.updated}</p>
+                      <p className="text-muted-foreground">Updated</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-amber-400">{syncResult.skipped}</p>
+                      <p className="text-muted-foreground">Skipped</p>
+                    </div>
+                  </div>
+                  {syncResult.errors > 0 && (
+                    <p className="text-red-400">Warning: {syncResult.errors} error(s) during sync</p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+
+        {/* ─── Pending State ─── */}
+        {isPending && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 text-center space-y-2">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-amber-400" />
+            <p className="text-sm font-medium">Waiting for approval on your WooCommerce store...</p>
+            <p className="text-xs text-muted-foreground">
+              A window should have opened on your store. Log in as admin and click Approve.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                // Re-open the auth window if they closed it
+                handleConnect();
+              }}
+            >
+              Re-open authorization window
+            </Button>
+          </div>
+        )}
+
+        {/* ─── Not Connected State ─── */}
+        {!isConnected && !isPending && (
+          <>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Your WooCommerce Store URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={storeUrl}
+                    onChange={e => setStoreUrl(e.target.value)}
+                    placeholder="mystore.com"
+                    onKeyDown={e => e.key === 'Enter' && handleConnect()}
+                  />
+                  <Button onClick={handleConnect} disabled={connecting}>
+                    {connecting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Link2 className="mr-2 h-4 w-4" />
+                    )}
+                    {connecting ? 'Connecting...' : 'Connect WooCommerce'}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                You'll approve access on your own store. No passwords are shared with us — WooCommerce generates secure API keys automatically.
+              </p>
+            </div>
+
+            {/* Manual Setup Fallback */}
+            <Accordion type="single" collapsible className="border-t pt-2">
+              <AccordionItem value="manual" className="border-none">
+                <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2">
+                  Advanced: Manual Webhook Setup
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    If one-click connect doesn't work, you can manually configure the webhook:
+                  </p>
+                  <div className="rounded-lg bg-secondary/30 border border-border/40 p-4 space-y-2">
+                    <p className="text-sm font-medium">Manual Setup in WooCommerce:</p>
+                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Go to <span className="font-mono">WooCommerce &rarr; Settings &rarr; Advanced &rarr; Webhooks</span></li>
+                      <li>Click <strong>Add webhook</strong></li>
+                      <li>Name: <span className="font-mono">ThePeptideAI Order Sync</span></li>
+                      <li>Status: <strong>Active</strong></li>
+                      <li>Topic: <strong>Order updated</strong></li>
+                      <li>Delivery URL: <code className="bg-muted px-1 rounded text-[10px]">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-webhook?org_id={orgId}</code></li>
+                      <li>Generate a secret and save it in the API Keys section below as "woo_webhook_secret"</li>
+                      <li>API Version: <strong>WP REST API Integration v3</strong></li>
+                      <li>Click <strong>Save webhook</strong></li>
+                    </ol>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </>
+        )}
       </CardContent>
     </Card>
   );
