@@ -142,6 +142,8 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       await doHousekeeping(supabase);
       await checkPerformanceAnomalies(supabase, stats, runErrors);
       await escalateCriticalIncidents(supabase, stats, runErrors);
+      // Phase 13 runs even when no NEW bugs — it processes already-diagnosed bugs needing schema fixes
+      await healSchemaErrors(supabase, stats, runErrors);
       await finishRun(supabase, runId, stats, runErrors, "completed");
       return jsonResponse({ ok: true, message: "No unprocessed bugs", ...stats }, 200, corsHeaders);
     }
@@ -1433,14 +1435,19 @@ async function healSchemaErrors(
   runErrors: string[],
 ): Promise<void> {
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) return;
+  if (!openaiKey) {
+    runErrors.push("Phase13: OPENAI_API_KEY not set");
+    return;
+  }
 
   try {
-    // Collect bugs that AI says are auto-fixable AND match schema error patterns
+    // Collect bugs that need schema healing from TWO sources:
+    // 1. AI-diagnosed bugs with "AUTO-FIX POSSIBLE? Yes" that contain schema error text
+    // 2. Pattern-matched bugs where auto_fix_action = 'schema_heal' (Phase 5 skips these)
     const schemaPatterns = [/does not exist/i, /42703/, /42P01/];
 
-    // Check ALL recent bugs (not just diagnosed batch) — pull from bug_reports with diagnosis containing "AUTO-FIX POSSIBLE? Yes"
-    const { data: fixableBugs } = await supabase
+    // Source 1: AI-diagnosed bugs
+    const { data: aiDiagnosedBugs } = await supabase
       .from("bug_reports")
       .select("id, description, console_errors, page_url, org_id, sentinel_diagnosis")
       .not("sentinel_diagnosis", "is", null)
@@ -1449,23 +1456,55 @@ async function healSchemaErrors(
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (!fixableBugs || fixableBugs.length === 0) return;
+    // Source 2: Pattern-matched bugs with schema_heal action (these have sentinel_pattern_id set)
+    const { data: patternMatchedBugs } = await supabase
+      .from("bug_reports")
+      .select("id, description, console_errors, page_url, org_id, sentinel_diagnosis, sentinel_pattern_id")
+      .not("sentinel_pattern_id", "is", null)
+      .is("sentinel_schema_healed", null)
+      .not("sentinel_processed_at", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    // Merge and deduplicate
+    const seenIds = new Set<string>();
+    // deno-lint-ignore no-explicit-any
+    const allCandidates: any[] = [];
+    for (const bug of [...(aiDiagnosedBugs || []), ...(patternMatchedBugs || [])]) {
+      if (!seenIds.has(bug.id)) {
+        seenIds.add(bug.id);
+        allCandidates.push(bug);
+      }
+    }
+
+    if (allCandidates.length === 0) {
+      return;
+    }
 
     // Filter to schema-related errors only
-    const schemaBugs = fixableBugs.filter((bug) => {
+    const schemaBugs = allCandidates.filter((bug) => {
       const errorText = buildErrorText(bug as BugReport);
       return schemaPatterns.some((p) => p.test(errorText));
     });
 
-    if (schemaBugs.length === 0) return;
+    if (schemaBugs.length === 0) {
+      return;
+    }
 
     let fixesThisRun = 0;
+    const processedFingerprints = new Set<string>(); // Prevent duplicates within a single run
 
     for (const bug of schemaBugs) {
       if (fixesThisRun >= MAX_SCHEMA_FIXES_PER_RUN) break;
 
       const errorText = buildErrorText(bug as BugReport);
       const fingerprint = errorText.replace(/\s+/g, " ").trim().slice(0, 200);
+
+      // In-run dedup: skip if we already processed this fingerprint this run
+      if (processedFingerprints.has(fingerprint)) {
+        await supabase.from("bug_reports").update({ sentinel_schema_healed: "already_fixed" }).eq("id", bug.id);
+        continue;
+      }
 
       // Check cooldown: same fingerprint in last 24h?
       const cooldownCutoff = new Date(Date.now() - SCHEMA_FIX_COOLDOWN_HOURS * 3600_000).toISOString();
@@ -1483,11 +1522,13 @@ async function healSchemaErrors(
           // Too many failures for this fingerprint — escalate and skip
           runErrors.push(`Phase13: Skipping fingerprint (2+ failures): ${fingerprint.slice(0, 80)}`);
           await supabase.from("bug_reports").update({ sentinel_schema_healed: "escalated" }).eq("id", bug.id);
+          processedFingerprints.add(fingerprint);
           continue;
         }
         if (recentFixes.some((f) => f.execution_result === "success")) {
           // Already fixed successfully
           await supabase.from("bug_reports").update({ sentinel_schema_healed: "already_fixed" }).eq("id", bug.id);
+          processedFingerprints.add(fingerprint);
           continue;
         }
       }
@@ -1561,6 +1602,7 @@ async function healSchemaErrors(
         });
         runErrors.push(`Phase13: SQL blocked for bug ${bug.id}: ${validation.reason}`);
         await supabase.from("bug_reports").update({ sentinel_schema_healed: "blocked" }).eq("id", bug.id);
+        processedFingerprints.add(fingerprint);
         continue;
       }
 
@@ -1578,6 +1620,7 @@ async function healSchemaErrors(
           execution_error: "High risk — escalated for human review",
         });
         await supabase.from("bug_reports").update({ sentinel_schema_healed: "escalated" }).eq("id", bug.id);
+        processedFingerprints.add(fingerprint);
         continue;
       }
 
@@ -1636,6 +1679,7 @@ async function healSchemaErrors(
 
         stats.schema_fixes_applied++;
         fixesThisRun++;
+        processedFingerprints.add(fingerprint);
       } else {
         // Update log as failed
         await supabase.from("schema_heal_log").update({
@@ -1645,6 +1689,7 @@ async function healSchemaErrors(
 
         runErrors.push(`Phase13: DDL execution failed for bug ${bug.id}: ${execResult.error?.slice(0, 100)}`);
         await supabase.from("bug_reports").update({ sentinel_schema_healed: "failed" }).eq("id", bug.id);
+        processedFingerprints.add(fingerprint);
       }
     }
   } catch (err) {
@@ -1688,9 +1733,11 @@ Generate MINIMAL, SAFE SQL to fix the error. Rules:
 - NEVER use: DROP, TRUNCATE, DELETE, INSERT, UPDATE, CREATE TABLE, ALTER TABLE ... DROP, ALTER TABLE ... RENAME
 - NEVER touch auth.* or storage.* schemas
 - Generate ONE statement only (or one CREATE OR REPLACE FUNCTION block)
-- For missing columns: infer type from same column in other tables. Default to uuid if FK, text if unknown.
-- For missing relations in functions: fix the function to use the correct table name
+- For missing columns: The table name MUST come from the error message itself (e.g., "column expenses.org_id" means table=expenses). If the error is from inside a function (like an RPC call), the missing column belongs to whichever table the function's SQL references, NOT the function name or its parameter types.
+- For missing columns: infer type from the "Schema context" section showing the same column in other tables. Default to uuid if FK pattern, text if truly unknown.
+- For missing relations in functions: fix the function to use the correct existing table name. If you cannot determine the correct table, set RISK: high.
 - Use IF NOT EXISTS / IF EXISTS where possible
+- If you are uncertain about the fix, set RISK: high instead of guessing
 
 Respond in EXACTLY this format (no markdown, no extra text):
 SQL: <your single SQL statement>
