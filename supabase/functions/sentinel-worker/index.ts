@@ -75,6 +75,7 @@ interface ErrorPattern {
   last_fixed_at: string | null;
   times_matched?: number;
   times_fixed?: number;
+  source_filter?: string | null;
 }
 
 Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
@@ -117,6 +118,7 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     rollbacks_attempted: 0,
     anomalies_detected: 0,
     schema_fixes_applied: 0,
+    pages_circuit_broken: 0,
   };
   const runErrors: string[] = [];
 
@@ -144,6 +146,8 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       await escalateCriticalIncidents(supabase, stats, runErrors);
       // Phase 13 runs even when no NEW bugs — it processes already-diagnosed bugs needing schema fixes
       await healSchemaErrors(supabase, stats, runErrors);
+      // Phase 14 runs always — monitors page error density
+      await monitorPageAvailability(supabase, stats, runErrors);
       await finishRun(supabase, runId, stats, runErrors, "completed");
       return jsonResponse({ ok: true, message: "No unprocessed bugs", ...stats }, 200, corsHeaders);
     }
@@ -169,7 +173,7 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       let matched = false;
 
       for (const pat of activePatterns) {
-        if (matchesPattern(errorText, pat)) {
+        if (matchesPattern(errorText, pat, bug)) {
           matched = true;
           stats.patterns_matched++;
 
@@ -340,6 +344,14 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // ═══════════════════════════════════════════════════════════
     await healSchemaErrors(supabase, stats, runErrors);
 
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 14: Page Availability Monitor
+    // Detects pages with high error density (5+ errors in 1 hour from
+    // 2+ distinct sessions) and auto-circuit-breaks them. Auto-resolves
+    // when errors stop for 30 minutes.
+    // ═══════════════════════════════════════════════════════════
+    await monitorPageAvailability(supabase, stats, runErrors);
+
     await finishRun(supabase, runId, stats, runErrors, "completed");
 
     return jsonResponse(
@@ -375,7 +387,18 @@ function buildErrorText(bug: BugReport): string {
   return text;
 }
 
-function matchesPattern(text: string, pattern: ErrorPattern): boolean {
+function matchesPattern(text: string, pattern: ErrorPattern, bug?: BugReport): boolean {
+  // If pattern has a source_filter, only match bugs from that source
+  if (pattern.source_filter && bug?.console_errors) {
+    try {
+      const parsed = typeof bug.console_errors === "string" ? JSON.parse(bug.console_errors) : bug.console_errors;
+      const bugSource = parsed?.source || (Array.isArray(parsed) ? parsed[0]?.source : undefined);
+      if (bugSource !== pattern.source_filter) return false;
+    } catch {
+      return false; // Can't parse source → skip source-filtered patterns
+    }
+  }
+
   const lowerText = text.toLowerCase();
   const lowerPattern = pattern.pattern.toLowerCase();
 
@@ -1395,6 +1418,7 @@ async function finishRun(
       fixes_applied: stats.fixes_applied,
       circuit_breakers_tripped: stats.circuit_breakers_tripped,
       schema_fixes_applied: stats.schema_fixes_applied || 0,
+      pages_circuit_broken: stats.pages_circuit_broken || 0,
       errors: errors.length > 0 ? errors : null,
       status,
     })
@@ -1776,5 +1800,153 @@ RISK: low|medium|high`,
   } catch (err) {
     clearTimeout(timeout);
     return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 14: Page Availability Monitor
+// ═══════════════════════════════════════════════════════════════
+//
+// Detects pages with high error density and auto-circuit-breaks them.
+// A page is "unhealthy" when it has 5+ bug reports in the last hour
+// from 2+ distinct user_agent strings (proxy for distinct sessions).
+//
+// Circuit-breaker entries go into the `incidents` table with
+// source='sentinel:phase14'. Auto-resolves when a page has zero
+// new errors for 30+ minutes.
+
+const PAGE_ERROR_THRESHOLD = 5;       // min errors in window to trip
+const PAGE_SESSION_THRESHOLD = 2;     // min distinct sessions (user_agents)
+const PAGE_WINDOW_MINUTES = 60;       // look-back window
+const PAGE_RESOLVE_MINUTES = 30;      // quiet period to auto-resolve
+
+async function monitorPageAvailability(
+  supabase: ReturnType<typeof createClient>,
+  stats: Record<string, number>,
+  runErrors: string[],
+): Promise<void> {
+  try {
+    const windowStart = new Date(Date.now() - PAGE_WINDOW_MINUTES * 60_000).toISOString();
+
+    // ── 1. Find pages with high error density ──
+    const { data: recentBugs, error: fetchErr } = await supabase
+      .from("bug_reports")
+      .select("page_url, user_agent, created_at")
+      .gte("created_at", windowStart)
+      .not("page_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (fetchErr) {
+      runErrors.push(`Phase14 fetch: ${fetchErr.message}`);
+      return;
+    }
+    if (!recentBugs || recentBugs.length === 0) return;
+
+    // Group by page_url
+    const pageMap = new Map<string, { count: number; agents: Set<string>; latestAt: string }>();
+    for (const bug of recentBugs) {
+      const page = bug.page_url || "unknown";
+      const entry = pageMap.get(page) || { count: 0, agents: new Set<string>(), latestAt: bug.created_at };
+      entry.count++;
+      if (bug.user_agent) entry.agents.add(bug.user_agent.slice(0, 80));
+      if (bug.created_at > entry.latestAt) entry.latestAt = bug.created_at;
+      pageMap.set(page, entry);
+    }
+
+    // ── 2. Trip circuit breakers for unhealthy pages ──
+    for (const [page, info] of pageMap) {
+      if (info.count < PAGE_ERROR_THRESHOLD) continue;
+      if (info.agents.size < PAGE_SESSION_THRESHOLD) continue;
+
+      // Check if there's already an open incident for this page
+      const { data: existing } = await supabase
+        .from("incidents")
+        .select("id")
+        .eq("source", "sentinel:phase14")
+        .eq("status", "open")
+        .ilike("title", `%${page.slice(0, 50)}%`)
+        .limit(1);
+
+      if (existing && existing.length > 0) continue; // already tracked
+
+      // Create incident
+      const title = `Page unhealthy: ${page} (${info.count} errors, ${info.agents.size} sessions in ${PAGE_WINDOW_MINUTES}m)`;
+      await supabase.from("incidents").insert({
+        title: title.slice(0, 255),
+        severity: info.count >= 20 ? "critical" : info.count >= 10 ? "high" : "medium",
+        status: "open",
+        source: "sentinel:phase14",
+        details: JSON.stringify({
+          page_url: page,
+          error_count: info.count,
+          distinct_sessions: info.agents.size,
+          window_minutes: PAGE_WINDOW_MINUTES,
+          latest_error: info.latestAt,
+          sample_agents: Array.from(info.agents).slice(0, 3),
+        }),
+      });
+
+      // Also insert circuit_breaker marker in bug_reports so the frontend can check it
+      await supabase.from("bug_reports").insert({
+        description: `[CIRCUIT-BREAKER] Page ${page} auto-disabled: ${info.count} errors from ${info.agents.size} sessions`,
+        page_url: page,
+        status: "open",
+        console_errors: JSON.stringify({
+          source: "sentinel:phase14",
+          action: "circuit_break",
+          error_count: info.count,
+          sessions: info.agents.size,
+        }),
+      });
+
+      stats.pages_circuit_broken++;
+    }
+
+    // ── 3. Auto-resolve stale incidents ──
+    // Find open Phase 14 incidents where the page has had no errors for RESOLVE_MINUTES
+    const { data: openIncidents } = await supabase
+      .from("incidents")
+      .select("id, title, details")
+      .eq("source", "sentinel:phase14")
+      .eq("status", "open")
+      .limit(20);
+
+    if (!openIncidents || openIncidents.length === 0) return;
+
+    const resolveThreshold = new Date(Date.now() - PAGE_RESOLVE_MINUTES * 60_000).toISOString();
+
+    for (const incident of openIncidents) {
+      let pageUrl: string | null = null;
+      try {
+        const d = typeof incident.details === "string" ? JSON.parse(incident.details) : incident.details;
+        pageUrl = d?.page_url;
+      } catch { /* ignore */ }
+
+      if (!pageUrl) continue;
+
+      // Check for recent errors on this page
+      const { data: recentPageBugs } = await supabase
+        .from("bug_reports")
+        .select("id")
+        .eq("page_url", pageUrl)
+        .gte("created_at", resolveThreshold)
+        .not("description", "ilike", "%CIRCUIT-BREAKER%")
+        .limit(1);
+
+      if (!recentPageBugs || recentPageBugs.length === 0) {
+        // No recent errors — auto-resolve
+        await supabase
+          .from("incidents")
+          .update({
+            status: "resolved",
+            resolved_at: new Date().toISOString(),
+            resolution_notes: `Auto-resolved: no errors for ${PAGE_RESOLVE_MINUTES}+ minutes`,
+          })
+          .eq("id", incident.id);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Phase14: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

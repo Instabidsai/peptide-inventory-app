@@ -827,6 +827,131 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
   }, 0, "warn");
 
   // ═══════════════════════════════════════════════════════════
+  // 11. Schema drift detection (NEW v5)
+  // Verify critical tables have required columns. Failures get
+  // inserted as bug_reports so sentinel Phase 13 can auto-heal.
+  // ═══════════════════════════════════════════════════════════
+  {
+    const CRITICAL_SCHEMA: Record<string, string[]> = {
+      organizations: ["id", "name", "slug", "owner_id"],
+      profiles: ["id", "full_name", "email", "org_id", "role", "store_credit"],
+      peptides: ["id", "name", "org_id", "active"],
+      bottles: ["id", "peptide_id", "org_id", "status", "lot_id"],
+      sales_orders: ["id", "org_id", "status", "payment_status", "total_amount"],
+      sales_order_items: ["id", "sales_order_id", "peptide_id", "quantity", "unit_price"],
+      contacts: ["id", "org_id", "full_name", "email"],
+      commission_transactions: ["id", "org_id", "sales_order_id", "amount", "applied"],
+      lots: ["id", "peptide_id", "org_id", "quantity", "cost_per_unit"],
+      bug_reports: ["id", "description", "status", "page_url"],
+      incidents: ["id", "title", "severity", "status", "source"],
+      health_checks: ["id", "check_name", "category", "status", "latency_ms"],
+      sentinel_runs: ["id", "started_at", "status", "stats"],
+      error_patterns: ["id", "pattern", "match_type", "auto_fix_action", "enabled"],
+    };
+
+    const schemaStart = Date.now();
+    let schemaDriftCount = 0;
+
+    for (const [table, requiredCols] of Object.entries(CRITICAL_SCHEMA)) {
+      try {
+        // Use a SELECT with all required columns — if any is missing, it will error
+        const colList = requiredCols.join(", ");
+        const { error } = await supabase.from(table).select(colList).limit(0);
+        if (error) {
+          // Parse which column is missing from the error
+          const colMatch = error.message.match(/column (\w+\.\w+|\w+) does not exist/i);
+          const detail = colMatch ? colMatch[0] : error.message;
+
+          results.push({
+            check_name: `schema:${table}`,
+            category: "schema",
+            status: "fail",
+            latency_ms: Date.now() - schemaStart,
+            error_message: detail,
+          });
+          failures.push(`Schema drift: ${detail}`);
+          schemaDriftCount++;
+
+          // Insert as bug_report for sentinel Phase 13 to auto-heal
+          await supabase.from("bug_reports").insert({
+            description: `[AUTO] schema_drift: ${detail}`,
+            page_url: "health-probe/schema-check",
+            status: "open",
+            console_errors: JSON.stringify({
+              source: "schema_drift",
+              table,
+              required_columns: requiredCols,
+              error: error.message,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        } else {
+          results.push({
+            check_name: `schema:${table}`,
+            category: "schema",
+            status: "pass",
+            latency_ms: Date.now() - schemaStart,
+            error_message: null,
+          });
+        }
+      } catch (err) {
+        // Table might not exist at all
+        results.push({
+          check_name: `schema:${table}`,
+          category: "schema",
+          status: "fail",
+          latency_ms: Date.now() - schemaStart,
+          error_message: (err as Error).message,
+        });
+        failures.push(`Schema: table ${table} — ${(err as Error).message}`);
+      }
+    }
+
+    if (schemaDriftCount > 0) {
+      resourceMetrics.push({
+        metric_name: "schema_drift_count",
+        metric_value: schemaDriftCount,
+        threshold_warning: 1,
+        threshold_critical: 3,
+        status: schemaDriftCount >= 3 ? "critical" : schemaDriftCount >= 1 ? "warning" : "ok",
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 12. Cross-check: sentinel alive (NEW v5)
+  // Verify sentinel has run recently (within last 10 min).
+  // ═══════════════════════════════════════════════════════════
+  {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recentRuns } = await supabase
+      .from("sentinel_runs")
+      .select("id, started_at, status")
+      .gte("started_at", tenMinAgo)
+      .order("started_at", { ascending: false })
+      .limit(1);
+
+    if (!recentRuns || recentRuns.length === 0) {
+      results.push({
+        check_name: "sentinel_alive",
+        category: "infra",
+        status: "fail",
+        latency_ms: 0,
+        error_message: "Sentinel has not run in the last 10 minutes",
+      });
+      failures.push("Sentinel stale: no run in 10 min");
+    } else {
+      results.push({
+        check_name: "sentinel_alive",
+        category: "infra",
+        status: "pass",
+        latency_ms: 0,
+        error_message: null,
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // Write results to health_checks table
   // ═══════════════════════════════════════════════════════════
   const now = new Date().toISOString();

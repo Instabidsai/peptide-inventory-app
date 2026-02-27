@@ -1,6 +1,6 @@
 /**
- * Auto Error Reporter — Catches runtime errors and sends them to the database
- * WITHOUT requiring any user interaction.
+ * Auto Error Reporter v2 — Comprehensive runtime error + performance capture.
+ * Sends everything to bug_reports for sentinel auto-healing. Zero user interaction.
  *
  * SCALE-READY: Batches errors and flushes every 5s (or on unload) instead of
  * writing each error individually. 100 users × 10 errors/min = 1 batch insert
@@ -12,10 +12,14 @@
  *  3. Edge function invocation failures (via supabase.functions.invoke wrapper)
  *  4. React ErrorBoundary crashes (via explicit reportError() calls)
  *  5. Console.error intercepts (catches try/catch'd errors that show toasts)
- *  6. Failed HTTP fetches to Supabase endpoints
+ *  6. Failed HTTP fetches — ALL domains, not just Supabase (v2)
+ *  7. Slow fetches > 5s to any API endpoint (v2)
+ *  8. Network failures — fetch throws (DNS, timeout, CORS) (v2)
+ *  9. Poor Web Vitals — CLS > 0.25, LCP > 4s, INP > 500ms (v2)
+ * 10. Empty critical query results — Supabase queries that return 0 rows unexpectedly (v2)
  *
  * Rate limiting:
- *  - Max 10 errors per 60-second window per session
+ *  - Max 20 errors per 60-second window per session (raised from 10 for v2 sources)
  *  - Fingerprint-based dedup (source + first 100 chars of message)
  *  - Batch flushes every 5 seconds to reduce DB writes
  *
@@ -51,7 +55,7 @@ interface ErrorEntry {
 
 // ── Rate limiting ──────────────────────────────────────────────────
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 10;
+const MAX_PER_WINDOW = 20;
 const recentFingerprints = new Set<string>();
 let reportedInWindow = 0;
 let windowStart = Date.now();
@@ -269,34 +273,80 @@ export function installAutoErrorReporter() {
     } catch { /* never throw from here */ }
   };
 
-  // 0c. Intercept global fetch()
+  // 0c. Intercept global fetch() — ALL domains (v2)
+  // Tracks: HTTP errors, slow fetches (>5s), network failures (DNS/timeout/CORS)
+  const SLOW_FETCH_MS = 5_000;
+  // Skip reporting for static assets and common non-API resources
+  const FETCH_SKIP_EXTENSIONS = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map)(\?|$)/i;
+  const FETCH_SKIP_DOMAINS = /fonts\.googleapis|cdn\.jsdelivr|unpkg\.com|polyfill\.io/i;
+
   const origFetch = window.fetch;
   window.fetch = async (...fetchArgs: Parameters<typeof fetch>) => {
+    const fetchStart = Date.now();
+    const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
+    const urlClean = url.split('?')[0];
+
+    // Skip static assets and CDNs
+    if (FETCH_SKIP_EXTENSIONS.test(url) || FETCH_SKIP_DOMAINS.test(url)) {
+      return origFetch(...fetchArgs);
+    }
+
+    const isSupabase = url.includes('supabase') || url.includes('functions/v1');
+
     try {
       const resp = await origFetch(...fetchArgs);
+      const elapsed = Date.now() - fetchStart;
+
+      // ── Slow fetch detection (any domain) ──
+      if (elapsed >= SLOW_FETCH_MS) {
+        queueError({
+          message: `Slow fetch ${elapsed}ms: ${urlClean}`.slice(0, 300),
+          source: 'slow_fetch',
+          page: window.location.hash || '/',
+          extra: { url: urlClean, elapsed_ms: elapsed, status: resp.status },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // ── HTTP error detection ──
       if (!resp.ok) {
-        const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
-        if (url.includes('supabase') || url.includes('functions/v1')) {
-          const fnMatch = url.match(/functions\/v1\/([^?/]+)/);
-          const fnName = fnMatch?.[1] || '';
-          if (FIRE_AND_FORGET_FUNCTIONS.has(fnName) || DEPRECATED_FUNCTIONS.has(fnName)) {
-            return resp;
-          }
-          if (resp.status === 409 && url.includes('payment_email_queue')) {
-            return resp;
-          }
-          const bodyText = await resp.clone().text().catch(() => '');
-          queueError({
-            message: `HTTP ${resp.status} ${resp.statusText}: ${url.split('?')[0]}`.slice(0, 300),
-            source: 'fetch_error',
-            page: window.location.hash || '/',
-            extra: { url: url.split('?')[0], status: resp.status, body: bodyText.slice(0, 500) },
-            timestamp: new Date().toISOString(),
-          });
+        const fnMatch = url.match(/functions\/v1\/([^?/]+)/);
+        const fnName = fnMatch?.[1] || '';
+
+        // Supabase-specific filters
+        if (isSupabase) {
+          if (FIRE_AND_FORGET_FUNCTIONS.has(fnName) || DEPRECATED_FUNCTIONS.has(fnName)) return resp;
+          if (resp.status === 409 && url.includes('payment_email_queue')) return resp;
+          if ((resp.status === 401 || resp.status === 403) && url.includes('/auth/v1/')) return resp;
         }
+
+        // External API: only report 5xx (server errors) — 4xx is often expected (auth, not found)
+        if (!isSupabase && resp.status < 500) return resp;
+
+        const bodyText = isSupabase ? await resp.clone().text().catch(() => '') : '';
+        queueError({
+          message: `HTTP ${resp.status} ${resp.statusText}: ${urlClean}`.slice(0, 300),
+          source: isSupabase ? 'fetch_error' : 'external_fetch_error',
+          page: window.location.hash || '/',
+          extra: { url: urlClean, status: resp.status, body: bodyText.slice(0, 500), domain: new URL(url, window.location.origin).hostname },
+          timestamp: new Date().toISOString(),
+        });
       }
       return resp;
     } catch (err) {
+      // ── Network failure: DNS, timeout, CORS, connection refused ──
+      const elapsed = Date.now() - fetchStart;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // AbortError = intentional cancellation, skip
+      if (errMsg.includes('AbortError') || errMsg.includes('The user aborted')) throw err;
+
+      queueError({
+        message: `Network error (${elapsed}ms): ${urlClean} — ${errMsg}`.slice(0, 400),
+        source: 'network_error',
+        page: window.location.hash || '/',
+        extra: { url: urlClean, elapsed_ms: elapsed, error: errMsg, domain: isSupabase ? 'supabase' : 'external' },
+        timestamp: new Date().toISOString(),
+      });
       throw err;
     }
   };
@@ -331,6 +381,41 @@ export function installAutoErrorReporter() {
       page: window.location.hash || '/',
       timestamp: new Date().toISOString(),
     });
+  }
+
+  // 1c. Web Vitals → bug_reports bridge (poor scores only)
+  // Thresholds from https://web.dev/vitals/ "poor" tier
+  const VITAL_THRESHOLDS: Record<string, number> = { CLS: 0.25, LCP: 4000, INP: 500, FID: 300, TTFB: 1800 };
+  (window as any).__reportPoorVital = (name: string, value: number, rating: string) => {
+    if (rating !== 'poor') return;
+    const threshold = VITAL_THRESHOLDS[name];
+    queueError({
+      message: `Poor Web Vital: ${name} = ${name === 'CLS' ? value.toFixed(3) : Math.round(value) + 'ms'} (threshold: ${threshold})`,
+      source: 'poor_web_vital',
+      page: window.location.hash || '/',
+      extra: { vital_name: name, value, threshold, rating },
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  // 1d. Long Task observer — detects JS blocking the main thread > 100ms
+  if ('PerformanceObserver' in window) {
+    try {
+      const longTaskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.duration > 200) { // Only report > 200ms to reduce noise
+            queueError({
+              message: `Long task: ${Math.round(entry.duration)}ms blocking main thread`,
+              source: 'long_task',
+              page: window.location.hash || '/',
+              extra: { duration_ms: Math.round(entry.duration), entryType: entry.entryType, name: entry.name },
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+      });
+      longTaskObserver.observe({ type: 'longtask', buffered: true });
+    } catch { /* longtask not supported in all browsers */ }
   }
 
   // 2. Uncaught JavaScript errors
@@ -385,4 +470,13 @@ export function reportEdgeFunctionError(functionName: string, error: unknown) {
     extra: { functionName },
     timestamp: new Date().toISOString(),
   });
+}
+
+/**
+ * Report a poor Web Vital metric. Called from main.tsx web-vitals callbacks.
+ */
+export function reportPoorVital(name: string, value: number, rating: string) {
+  if ((window as any).__reportPoorVital) {
+    (window as any).__reportPoorVital(name, value, rating);
+  }
 }

@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
-import { installAutoErrorReporter } from './lib/auto-error-reporter'
+import { installAutoErrorReporter, reportPoorVital } from './lib/auto-error-reporter'
+import { installClickTracker } from './lib/click-tracker'
 import App from './App.tsx'
 import './index.css'
 
@@ -74,18 +75,24 @@ if (sentryDsn) {
 // ─── Auto Error Reporter (writes runtime errors to DB for auto-heal) ─────
 installAutoErrorReporter();
 
+// ─── Click Tracker (detects dead clicks + rage clicks → bug_reports) ─────
+installClickTracker();
+
 createRoot(document.getElementById("root")!).render(<App />);
 
 // ─── Web Vitals ─────────────────────────────────────────────────────────────
 import { onCLS, onFID, onLCP, onTTFB, onINP } from 'web-vitals';
 
 function reportVital(metric: { name: string; value: number; id: string; rating: string }) {
+  // Report to Sentry
   if (import.meta.env.PROD && sentryDsn) {
     Sentry.setMeasurement(metric.name, metric.value, metric.name === 'CLS' ? '' : 'millisecond');
     if (metric.rating === 'poor') {
       Sentry.captureMessage(`Poor Web Vital: ${metric.name} = ${metric.value}`, { level: 'warning', tags: { vital: metric.name, rating: metric.rating } });
     }
   }
+  // Report to auto-error-reporter → bug_reports → sentinel
+  reportPoorVital(metric.name, metric.value, metric.rating);
 }
 
 onCLS(reportVital);
