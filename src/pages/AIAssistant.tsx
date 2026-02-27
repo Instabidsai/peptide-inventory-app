@@ -12,7 +12,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { Bot, Send, Loader2, User, Trash2, Copy, Check, MessageCircle } from 'lucide-react';
+import { Bot, Send, Loader2, User, Trash2, Copy, Check, MessageCircle, Paperclip, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Message = AdminMessage | PartnerMessage;
@@ -69,6 +69,12 @@ export default function AIAssistant() {
   const [typedLength, setTypedLength] = useState(0);
   const prevMessageCountRef = useRef(0);
   const wasLoadingRef = useRef(false);
+
+  // File upload state
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [parsedFileContent, setParsedFileContent] = useState<string | null>(null);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -160,11 +166,70 @@ export default function AIAssistant() {
     adjustTextareaHeight();
   }, [input, adjustTextareaHeight]);
 
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ACCEPTED_TYPES = '.csv,.xlsx,.xls,.docx,.txt';
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ variant: 'destructive', title: 'File too large', description: 'Maximum file size is 5MB.' });
+      return;
+    }
+
+    setAttachedFile(file);
+    setIsParsingFile(true);
+
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+
+      if (ext === 'csv' || ext === 'txt') {
+        const text = await file.text();
+        setParsedFileContent(text);
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        const XLSX = await import('xlsx');
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheets = workbook.SheetNames.map((name) => {
+          const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[name]);
+          return `--- Sheet: ${name} ---\n${csv}`;
+        });
+        setParsedFileContent(sheets.join('\n\n'));
+      } else if (ext === 'docx') {
+        const mammoth = await import('mammoth');
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        setParsedFileContent(result.value);
+      } else {
+        toast({ variant: 'destructive', title: 'Unsupported file type', description: `File type .${ext} is not supported.` });
+        setAttachedFile(null);
+        setParsedFileContent(null);
+      }
+    } catch (err) {
+      console.error('File parse error:', err);
+      toast({ variant: 'destructive', title: 'Failed to parse file', description: (err as Error).message });
+      setAttachedFile(null);
+      setParsedFileContent(null);
+    } finally {
+      setIsParsingFile(false);
+    }
+  };
+
+  const removeAttachedFile = () => {
+    setAttachedFile(null);
+    setParsedFileContent(null);
+  };
+
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
-    sendMessage(input);
+    sendMessage(input, parsedFileContent ?? undefined, attachedFile?.name);
     setInput('');
+    setAttachedFile(null);
+    setParsedFileContent(null);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
@@ -229,7 +294,7 @@ export default function AIAssistant() {
               key={action}
               onClick={() => handleQuickAction(action)}
               disabled={isLoading}
-              className="w-full text-left px-3 py-2 text-sm rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-left px-3 py-2 text-sm rounded-lg border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {action}
             </button>
@@ -282,7 +347,7 @@ export default function AIAssistant() {
             <div className="lg:hidden">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground/60 hover:text-foreground" aria-label="Clear chat history">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" aria-label="Clear chat history">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </AlertDialogTrigger>
@@ -307,7 +372,7 @@ export default function AIAssistant() {
         <ScrollArea className="flex-1 px-4 md:px-6 py-4">
           {isLoadingHistory ? (
             <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-3 max-w-3xl mx-auto">
@@ -339,7 +404,7 @@ export default function AIAssistant() {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 }}
-                      className="text-xs text-muted-foreground/60"
+                      className="text-xs text-muted-foreground"
                     >
                       {assistantSub}
                     </motion.p>
@@ -355,7 +420,7 @@ export default function AIAssistant() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-full text-xs h-8 px-3 border-border/50 bg-muted/30 hover:bg-muted/60 hover:border-primary/30 transition-colors"
+                          className="rounded-full text-xs h-8 px-3 border-border bg-muted/60 hover:bg-muted hover:border-primary/30 transition-colors"
                           onClick={() => handleQuickAction(q)}
                         >
                           {q}
@@ -390,7 +455,7 @@ export default function AIAssistant() {
                         "p-3.5 rounded-2xl max-w-[85%] text-sm leading-relaxed",
                         msg.role === 'user'
                           ? "bg-primary text-primary-foreground rounded-tr-sm"
-                          : "bg-muted/50 border border-border/50 rounded-tl-sm",
+                          : "bg-muted/70 border border-border/60 rounded-tl-sm",
                         isTypewriting(msg) && "cursor-pointer"
                       )}
                       onClick={isTypewriting(msg) ? skipTypewriter : undefined}
@@ -426,7 +491,7 @@ export default function AIAssistant() {
                               {copiedId === msg.id ? (
                                 <Check className="h-3 w-3 text-primary" />
                               ) : (
-                                <Copy className="h-3 w-3 text-muted-foreground/50" />
+                                <Copy className="h-3 w-3 text-muted-foreground" />
                               )}
                             </button>
                           )}
@@ -454,7 +519,7 @@ export default function AIAssistant() {
                   <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/15">
                     <Bot className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="bg-muted/50 border border-border/50 p-3.5 rounded-2xl rounded-tl-sm flex items-center gap-2">
+                  <div className="bg-muted/70 border border-border/60 p-3.5 rounded-2xl rounded-tl-sm flex items-center gap-2">
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
                         <motion.div
@@ -473,7 +538,7 @@ export default function AIAssistant() {
                         />
                       ))}
                     </div>
-                    <span className="text-muted-foreground/50 text-xs">Working on it...</span>
+                    <span className="text-muted-foreground text-xs">Working on it...</span>
                   </div>
                 </motion.div>
               )}
@@ -489,7 +554,7 @@ export default function AIAssistant() {
               key={action}
               onClick={() => handleQuickAction(action)}
               disabled={isLoading}
-              className="shrink-0 px-3 py-1.5 text-xs rounded-full border border-border/50 bg-card hover:bg-muted/50 transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="shrink-0 px-3 py-1.5 text-xs rounded-full border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {action}
             </button>
@@ -497,30 +562,66 @@ export default function AIAssistant() {
         </div>
 
         {/* Input — auto-expanding textarea */}
-        <form onSubmit={handleSend} className="p-3 md:p-4 border-t border-border/40 bg-background/60 flex items-end gap-2 shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isAdminOrStaff
-              ? "Create orders, add contacts, check stock, run reports..."
-              : "Ask about protocols, check stock, view commissions..."
-            }
-            rows={1}
-            className="flex-1 min-h-[44px] max-h-[120px] resize-none rounded-xl bg-muted/30 border border-border/50 text-sm placeholder:text-muted-foreground/40 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isLoading}
-            autoFocus
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !input.trim()}
-            className="h-11 w-11 rounded-xl shrink-0"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            <span className="sr-only">Send</span>
-          </Button>
+        <form onSubmit={handleSend} className="p-3 md:p-4 border-t border-border/40 bg-background/60 shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0.75rem))' }}>
+          {/* Attached file chip */}
+          {attachedFile && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
+                <Paperclip className="h-3 w-3" />
+                {attachedFile.name}
+                {isParsingFile && <Loader2 className="h-3 w-3 animate-spin" />}
+                <button type="button" onClick={removeAttachedFile} className="ml-0.5 hover:text-destructive transition-colors">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {isAdminOrStaff && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading || isParsingFile}
+                className="h-11 w-11 rounded-xl shrink-0 text-muted-foreground hover:text-primary"
+                title="Attach a file (CSV, Excel, Word, TXT)"
+              >
+                <Paperclip className="h-4 w-4" />
+                <span className="sr-only">Attach file</span>
+              </Button>
+            )}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isAdminOrStaff
+                ? "Create orders, add contacts, check stock, run reports..."
+                : "Ask about protocols, check stock, view commissions..."
+              }
+              rows={1}
+              className="flex-1 min-h-[44px] max-h-[120px] resize-none rounded-xl bg-muted/40 border border-border/60 text-sm placeholder:text-muted-foreground/60 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isLoading}
+              autoFocus
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isLoading || !input.trim() || isParsingFile}
+              className="h-11 w-11 rounded-xl shrink-0"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <span className="sr-only">Send</span>
+            </Button>
+          </div>
         </form>
       </div>
     </div>

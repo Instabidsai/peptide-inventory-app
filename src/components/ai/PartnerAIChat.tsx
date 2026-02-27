@@ -218,7 +218,7 @@ export function PartnerAIChat() {
                             "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
                             msg.role === 'user'
                               ? "bg-primary text-white rounded-tr-sm"
-                              : "bg-muted/50 border border-border/50 text-foreground rounded-tl-sm"
+                              : "bg-muted/70 border border-border/60 text-foreground rounded-tl-sm"
                           )}
                         >
                           {msg.role === 'assistant' ? (
@@ -247,7 +247,7 @@ export function PartnerAIChat() {
                                 {copiedId === msg.id ? (
                                   <Check className="h-3 w-3 text-primary" />
                                 ) : (
-                                  <Copy className="h-3 w-3 text-muted-foreground/50" />
+                                  <Copy className="h-3 w-3 text-muted-foreground" />
                                 )}
                               </button>
                             )}
@@ -272,7 +272,7 @@ export function PartnerAIChat() {
                       <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <Bot className="h-3.5 w-3.5 text-primary" />
                       </div>
-                      <div className="bg-muted/50 border border-border/50 p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
+                      <div className="bg-muted/70 border border-border/60 p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2">
                         <div className="flex gap-1">
                           {[0, 1, 2].map((i) => (
                             <motion.div
@@ -291,7 +291,7 @@ export function PartnerAIChat() {
                             />
                           ))}
                         </div>
-                        <span className="text-muted-foreground/50 text-xs">Working on it...</span>
+                        <span className="text-muted-foreground text-xs">Working on it...</span>
                       </div>
                     </motion.div>
                   )}

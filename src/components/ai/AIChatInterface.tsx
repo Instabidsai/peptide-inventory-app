@@ -243,7 +243,7 @@ export const AIChatInterface = () => {
                                             initial={{ opacity: 0, y: 5 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: 0.25 }}
-                                            className="text-xs text-muted-foreground/60"
+                                            className="text-xs text-muted-foreground"
                                         >
                                             Ask me anything about your peptides and protocols
                                         </motion.p>
@@ -259,7 +259,7 @@ export const AIChatInterface = () => {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="rounded-full text-xs h-8 px-3 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-primary/30 transition-colors"
+                                                    className="rounded-full text-xs h-8 px-3 border-border bg-muted/60 hover:bg-muted hover:border-primary/40 transition-colors"
                                                     onClick={() => { sendMessage(q); }}
                                                 >
                                                     {q}
@@ -294,14 +294,14 @@ export const AIChatInterface = () => {
                                                 "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
                                                 msg.role === 'user'
                                                     ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                    : "bg-white/[0.04] border border-white/[0.06] rounded-tl-sm",
+                                                    : "bg-muted/70 border border-border/60 rounded-tl-sm",
                                                 isTypewriting(msg) && "cursor-pointer"
                                             )}
                                             onClick={isTypewriting(msg) ? skipTypewriter : undefined}
                                             title={isTypewriting(msg) ? "Click to skip animation" : undefined}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className="prose prose-sm prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-primary/[0.06] prose-pre:border prose-pre:border-primary/10 prose-pre:rounded-lg text-primary/90">
+                                                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border/50 prose-pre:rounded-lg">
                                                     <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
                                                     {isTypewriting(msg) && (
                                                         <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
@@ -324,7 +324,7 @@ export const AIChatInterface = () => {
                                                     {msg.role === 'assistant' && msg.id !== 'welcome' && (
                                                         <button
                                                             onClick={() => handleCopy(msg.content, msg.id)}
-                                                            className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/[0.06]"
+                                                            className="opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted"
                                                             aria-label="Copy response"
                                                         >
                                                             {copiedId === msg.id ? (
@@ -339,7 +339,7 @@ export const AIChatInterface = () => {
                                         </div>
 
                                         {msg.role === 'user' && (
-                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
+                                            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-muted text-foreground">
                                                 <User className="w-3.5 h-3.5" />
                                             </div>
                                         )}
@@ -358,7 +358,7 @@ export const AIChatInterface = () => {
                                     <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/20 text-primary">
                                         <Bot className="w-3.5 h-3.5" />
                                     </div>
-                                    <div className="bg-white/[0.04] border border-white/[0.06] p-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
+                                    <div className="bg-muted/70 border border-border/60 p-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
                                         <div className="flex gap-1">
                                             {[0, 1, 2].map((i) => (
                                                 <motion.div
@@ -377,7 +377,7 @@ export const AIChatInterface = () => {
                                                 />
                                             ))}
                                         </div>
-                                        <span className="text-primary/50 text-xs">Researching...</span>
+                                        <span className="text-muted-foreground text-xs">Researching...</span>
                                     </div>
                                 </motion.div>
                             )}
@@ -417,7 +417,7 @@ export const AIChatInterface = () => {
                         onKeyDown={handleKeyDown}
                         placeholder="Ask about protocols, symptoms, bloodwork..."
                         rows={1}
-                        className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm placeholder:text-muted-foreground/40 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-xl bg-muted/40 border border-border/60 text-sm placeholder:text-muted-foreground/60 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isLoading}
                     />
                     <TooltipProvider delayDuration={400}>
