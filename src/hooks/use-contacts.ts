@@ -144,6 +144,8 @@ export function useCreateContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
+      queryClient.invalidateQueries({ queryKey: ['full_network'] });
       toast({ title: 'Customer created successfully' });
     },
     onError: (error: Error) => {
@@ -170,6 +172,8 @@ export function useUpdateContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
+      queryClient.invalidateQueries({ queryKey: ['full_network'] });
       toast({ title: 'Customer updated successfully' });
     },
     onError: (error: Error) => {
@@ -198,6 +202,8 @@ export function useDeleteContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
+      queryClient.invalidateQueries({ queryKey: ['full_network'] });
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
