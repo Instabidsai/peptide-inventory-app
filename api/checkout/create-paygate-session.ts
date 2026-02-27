@@ -108,7 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const payPageHtml = await payPageRes.text();
 
         // Extract signature from the creditcard provider URL in the page JS
-        const sigMatch = payPageHtml.match(/signature=([^'"&\s]+)/);
+        // Exclude backticks (template literals), quotes, ampersands, whitespace
+        const sigMatch = payPageHtml.match(/signature=([A-Za-z0-9%+/=]+)/);
         let checkoutUrl: string;
 
         if (sigMatch) {
