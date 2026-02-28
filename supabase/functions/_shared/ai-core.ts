@@ -140,7 +140,6 @@ export async function findPeptides(supabase: any, orgId: string, query: string, 
     "kiss": "Kisspeptin", "selank": "Selank",
     "foxo": "FOXO4", "foxo4": "FOXO4",
     "aod": "AOD-9604", "aod9604": "AOD-9604",
-    "trt": "TRT Cypionate", "test": "TRT Cypionate", "testosterone": "TRT Cypionate",
     "bac": "Bacteriostatic", "bacwater": "Bacteriostatic",
     "vip": "VIP", "ara": "ARA-290",
     "glut": "Glutathione", "glutathione": "Glutathione",
@@ -207,6 +206,7 @@ export const tools = [
   { type: "function" as const, function: { name: "submit_suggestion", description: "Submit a feature suggestion or improvement idea for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { suggestion: { type: "string", description: "The feature idea or improvement suggestion" } }, required: ["suggestion"] } } },
   { type: "function" as const, function: { name: "report_issue", description: "Report a bug or issue for admin review. Shows up in the admin Automations queue.", parameters: { type: "object", properties: { description: { type: "string", description: "Description of the bug or issue" } }, required: ["description"] } } },
   { type: "function" as const, function: { name: "send_sms", description: "Send an SMS text message to a contact's phone number. Look up the contact first to get their phone number. Keep messages concise (under 300 chars). The message is sent via Textbelt and the contact can reply back.", parameters: { type: "object", properties: { phone: { type: "string", description: "Phone number in E.164 format (+15551234567) or 10-digit US format" }, message: { type: "string", description: "The text message to send (keep under 300 chars)" }, contact_name: { type: "string", description: "Name of recipient (for logging)" } }, required: ["phone", "message"] } } },
+  { type: "function" as const, function: { name: "bulk_update_pricing", description: "Update pricing for multiple products at once. Use this when a user uploads a pricing document (CSV, Excel, etc). Fuzzy-matches products by name or SKU.", parameters: { type: "object", properties: { updates: { type: "array", items: { type: "object", properties: { name: { type: "string", description: "Product name to match" }, retail_price: { type: "number" }, wholesale_price: { type: "number" }, sku: { type: "string" } } }, description: "Array of product updates with name and optional price/sku fields" } }, required: ["updates"] } } },
 ];
 
 // ── UUID resolvers ───────────────────────────────────────────
@@ -750,6 +750,46 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
           return "SMS sent to " + args.phone + (args.contact_name ? " (" + args.contact_name + ")" : "") + ". Message: \"" + args.message + "\". Quota remaining: " + result.quotaRemaining + ". If they reply, it will come back to the AI.";
         }
         return "SMS failed: " + (result.error || "Unknown error") + ". Quota: " + result.quotaRemaining;
+      }
+      case "bulk_update_pricing": {
+        const updates: Array<{ name: string; retail_price?: number; wholesale_price?: number; sku?: string }> = args.updates;
+        if (!updates?.length) return "No updates provided.";
+        const results: string[] = [];
+        let updated = 0, notFound = 0;
+        for (const item of updates) {
+          // Fuzzy match by name or SKU (case-insensitive)
+          let match: any = null;
+          if (item.sku) {
+            const { data } = await supabase.from("peptides").select("id, name, sku, retail_price").eq("org_id", orgId).ilike("sku", item.sku).limit(1);
+            if (data?.length) match = data[0];
+          }
+          if (!match && item.name) {
+            const { data } = await supabase.from("peptides").select("id, name, sku, retail_price").eq("org_id", orgId).ilike("name", "%" + item.name + "%").limit(1);
+            if (data?.length) match = data[0];
+          }
+          if (!match) {
+            results.push("NOT FOUND: " + (item.name || item.sku));
+            notFound++;
+            continue;
+          }
+          const updateFields: any = {};
+          if (item.retail_price !== undefined) updateFields.retail_price = item.retail_price;
+          if (item.wholesale_price !== undefined) updateFields.wholesale_price = item.wholesale_price;
+          if (item.sku !== undefined && item.sku !== match.sku) updateFields.sku = item.sku;
+          if (Object.keys(updateFields).length === 0) {
+            results.push("SKIPPED (no changes): " + match.name);
+            continue;
+          }
+          const { error } = await supabase.from("peptides").update(updateFields).eq("id", match.id).eq("org_id", orgId);
+          if (error) {
+            results.push("ERROR updating " + match.name + ": " + error.message);
+          } else {
+            const changes = Object.entries(updateFields).map(([k, v]) => k + "=" + v).join(", ");
+            results.push("UPDATED: " + match.name + " → " + changes);
+            updated++;
+          }
+        }
+        return "Bulk pricing update complete.\nUpdated: " + updated + " | Not found: " + notFound + " | Total: " + updates.length + "\n\n" + results.join("\n");
       }
       default:
         return "Unknown tool: " + name;

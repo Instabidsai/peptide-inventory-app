@@ -7,13 +7,14 @@ import {
     Moon,
     Sparkles,
     LayoutGrid,
+    Shield,
 } from 'lucide-react';
 import type { CategoryStyle } from './types';
 
-export const MAX_ITEM_QTY = 10;
+export const MAX_ITEM_QTY = 20;
 
 export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid,
+    Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield,
 };
 
 // Short 2-3 sentence descriptions for every product card.
@@ -71,8 +72,6 @@ export const PEPTIDE_CARD_DESCRIPTIONS: Record<string, string> = {
     // -- Sexual Function & Hormonal
     'PT-141': 'A melanocortin receptor agonist that enhances sexual desire and function through central nervous system pathways. Works on the brain to stimulate natural arousal — effective for both men and women.',
     'Kisspeptin': 'A neuropeptide that naturally stimulates GnRH release to support healthy testosterone and reproductive hormone levels. Plays a key role in puberty, fertility, and hormonal balance.',
-    'TRT': 'Testosterone replacement therapy for optimizing male hormone levels, supporting muscle growth, energy, and vitality. Available by prescription — consult with your provider for proper dosing and monitoring.',
-
     // -- Specialty
     'VIP': 'Vasoactive intestinal peptide that supports gut health, immune regulation, and respiratory function. Has neuroprotective properties and helps modulate inflammation throughout the body.',
 };
@@ -85,4 +84,5 @@ export const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     cognitive: { gradient: 'from-cyan-500 to-blue-600', glow: 'shadow-cyan-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(6,182,212,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-cyan-400 to-blue-600', borderHover: 'hover:border-cyan-500/25' },
     sleep: { gradient: 'from-indigo-500 to-violet-600', glow: 'shadow-indigo-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(99,102,241,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-indigo-400 to-violet-600', borderHover: 'hover:border-indigo-500/25' },
     anti_aging: { gradient: 'from-fuchsia-500 to-amber-400', glow: 'shadow-fuchsia-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(217,70,239,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-fuchsia-400 to-amber-400', borderHover: 'hover:border-fuchsia-500/25' },
+    immune: { gradient: 'from-emerald-500 to-teal-600', glow: 'shadow-emerald-500/8', hoverGlow: 'hover:shadow-[0_8px_40px_-8px_rgba(16,185,129,0.3),0_20px_60px_-12px_rgba(0,0,0,0.25)]', iconBg: 'bg-gradient-to-br from-emerald-400 to-teal-600', borderHover: 'hover:border-emerald-500/25' },
 };
