@@ -211,7 +211,7 @@ export const AIChatInterface = () => {
                 <ScrollArea className="flex-1 px-4 py-3">
                     {isLoadingHistory ? (
                         <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -301,10 +301,10 @@ export const AIChatInterface = () => {
                                             title={isTypewriting(msg) ? "Click to skip animation" : undefined}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border/50 prose-pre:rounded-lg">
+                                                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-foreground/80 prose-code:bg-foreground/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border/50 prose-pre:rounded-lg">
                                                     <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
                                                     {isTypewriting(msg) && (
-                                                        <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
+                                                        <span className="inline-block w-0.5 h-4 bg-foreground ml-0.5 animate-pulse align-middle" />
                                                     )}
                                                 </div>
                                             ) : (
@@ -330,7 +330,7 @@ export const AIChatInterface = () => {
                                                             {copiedId === msg.id ? (
                                                                 <Check className="h-3 w-3 text-primary" />
                                                             ) : (
-                                                                <Copy className="h-3 w-3 text-muted-foreground/50" />
+                                                                <Copy className="h-3 w-3 text-muted-foreground/70" />
                                                             )}
                                                         </button>
                                                     )}
@@ -363,7 +363,7 @@ export const AIChatInterface = () => {
                                             {[0, 1, 2].map((i) => (
                                                 <motion.div
                                                     key={i}
-                                                    className="w-1.5 h-1.5 rounded-full bg-primary/70"
+                                                    className="w-1.5 h-1.5 rounded-full bg-foreground/60"
                                                     animate={{
                                                         opacity: [0.3, 1, 0.3],
                                                         scale: [0.85, 1.2, 0.85],
@@ -402,7 +402,7 @@ export const AIChatInterface = () => {
                         aria-label="Upload document"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadDocument.isPending}
-                        className="h-10 w-10 rounded-xl text-muted-foreground/40 hover:text-foreground shrink-0"
+                        className="h-10 w-10 rounded-xl text-muted-foreground/60 hover:text-foreground shrink-0"
                     >
                         {uploadDocument.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

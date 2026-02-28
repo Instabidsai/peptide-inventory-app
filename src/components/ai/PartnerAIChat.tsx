@@ -277,7 +277,7 @@ export function PartnerAIChat() {
                           {[0, 1, 2].map((i) => (
                             <motion.div
                               key={i}
-                              className="w-1.5 h-1.5 rounded-full bg-primary/70"
+                              className="w-1.5 h-1.5 rounded-full bg-foreground/60"
                               animate={{
                                 opacity: [0.3, 1, 0.3],
                                 scale: [0.85, 1.2, 0.85],

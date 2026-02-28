@@ -90,6 +90,7 @@ export default function AIAssistant() {
 
   const ai = isAdminOrStaff ? adminAI : partnerAI;
   const { messages, sendMessage, clearChat, isLoading, isLoadingHistory } = ai;
+  const isImpersonating = 'isImpersonating' in ai && ai.isImpersonating;
 
   // Select quick actions by tier
   const quickActions = isAdmin
@@ -293,7 +294,7 @@ export default function AIAssistant() {
             <button
               key={action}
               onClick={() => handleQuickAction(action)}
-              disabled={isLoading}
+              disabled={isLoading || isImpersonating}
               className="w-full text-left px-3 py-2 text-sm rounded-lg border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {action}
@@ -376,8 +377,22 @@ export default function AIAssistant() {
             </div>
           ) : (
             <div className="space-y-3 max-w-3xl mx-auto">
+              {/* Impersonation preview notice */}
+              {isImpersonating && (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="h-14 w-14 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+                    <Bot className="h-7 w-7 text-amber-500" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="font-semibold text-sm">Tenant Preview Mode</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      You're viewing this tenant's AI Assistant. Chat is disabled during impersonation to protect data isolation.
+                    </p>
+                  </div>
+                </div>
+              )}
               {/* Animated starter section when no messages */}
-              {messages.length === 0 && !isLoading && (
+              {messages.length === 0 && !isLoading && !isImpersonating && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -462,10 +477,10 @@ export default function AIAssistant() {
                       title={isTypewriting(msg) ? "Click to skip animation" : undefined}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-primary prose-code:text-primary/80 prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-code:text-foreground/80 prose-code:bg-foreground/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
                           <ReactMarkdown>{getDisplayContent(msg)}</ReactMarkdown>
                           {isTypewriting(msg) && (
-                            <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
+                            <span className="inline-block w-0.5 h-4 bg-foreground ml-0.5 animate-pulse align-middle" />
                           )}
                         </div>
                       ) : (
@@ -524,7 +539,7 @@ export default function AIAssistant() {
                       {[0, 1, 2].map((i) => (
                         <motion.div
                           key={i}
-                          className="w-1.5 h-1.5 rounded-full bg-primary/70"
+                          className="w-1.5 h-1.5 rounded-full bg-foreground/60"
                           animate={{
                             opacity: [0.3, 1, 0.3],
                             scale: [0.85, 1.2, 0.85],
@@ -553,7 +568,7 @@ export default function AIAssistant() {
             <button
               key={action}
               onClick={() => handleQuickAction(action)}
-              disabled={isLoading}
+              disabled={isLoading || isImpersonating}
               className="shrink-0 px-3 py-1.5 text-xs rounded-full border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {action}
@@ -590,7 +605,7 @@ export default function AIAssistant() {
                 variant="ghost"
                 size="icon"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading || isParsingFile}
+                disabled={isLoading || isParsingFile || isImpersonating}
                 className="h-11 w-11 rounded-xl shrink-0 text-muted-foreground hover:text-primary"
                 title="Attach a file (CSV, Excel, Word, TXT)"
               >
@@ -603,19 +618,21 @@ export default function AIAssistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isAdminOrStaff
-                ? "Create orders, add contacts, check stock, run reports..."
-                : "Ask about protocols, check stock, view commissions..."
-              }
               rows={1}
               className="flex-1 min-h-[44px] max-h-[120px] resize-none rounded-xl bg-muted/40 border border-border/60 text-sm placeholder:text-muted-foreground/60 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isLoading}
+              disabled={isLoading || isImpersonating}
               autoFocus
+              placeholder={isImpersonating
+                ? "Chat disabled during tenant preview"
+                : isAdminOrStaff
+                  ? "Create orders, add contacts, check stock, run reports..."
+                  : "Ask about protocols, check stock, view commissions..."
+              }
             />
             <Button
               type="submit"
               size="icon"
-              disabled={isLoading || !input.trim() || isParsingFile}
+              disabled={isLoading || !input.trim() || isParsingFile || isImpersonating}
               className="h-11 w-11 rounded-xl shrink-0"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
