@@ -49,18 +49,24 @@ export interface MarkReceivedInput {
 }
 
 // Fetch all orders
+// super_admin (not impersonating) sees ALL orgs; everyone else sees their own org only.
 export function useOrders(status?: OrderStatus) {
     const { user, profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
 
     return useQuery({
-        queryKey: ['orders', status, profile?.org_id],
+        queryKey: ['orders', status, profile?.org_id, isSuperAdmin],
         queryFn: async () => {
             let query = supabase
                 .from('orders')
                 .select('*, peptides(id, name)')
-                .eq('org_id', profile!.org_id!)
                 .order('created_at', { ascending: false })
                 .limit(500);
+
+            // super_admin without impersonation sees all orgs
+            if (!isSuperAdmin) {
+                query = query.eq('org_id', profile!.org_id!);
+            }
 
             if (status) {
                 query = query.eq('status', status);
@@ -83,16 +89,21 @@ export function usePendingOrders() {
 // Get pending orders count
 export function usePendingOrdersCount() {
     const { user, profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
 
     return useQuery({
-        queryKey: ['orders', 'pending', 'count', profile?.org_id],
+        queryKey: ['orders', 'pending', 'count', profile?.org_id, isSuperAdmin],
         queryFn: async () => {
-            const { count, error } = await supabase
+            let query = supabase
                 .from('orders')
                 .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending')
-                .eq('org_id', profile!.org_id!);
+                .eq('status', 'pending');
 
+            if (!isSuperAdmin) {
+                query = query.eq('org_id', profile!.org_id!);
+            }
+
+            const { count, error } = await query;
             if (error) throw error;
             return count || 0;
         },
@@ -104,16 +115,21 @@ export function usePendingOrdersCount() {
 // Get total pending order value
 export function usePendingOrderValue() {
     const { user, profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
 
     return useQuery({
-        queryKey: ['orders', 'pending', 'value', profile?.org_id],
+        queryKey: ['orders', 'pending', 'value', profile?.org_id, isSuperAdmin],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('orders')
                 .select('quantity_ordered, estimated_cost_per_unit')
-                .eq('status', 'pending')
-                .eq('org_id', profile!.org_id!);
+                .eq('status', 'pending');
 
+            if (!isSuperAdmin) {
+                query = query.eq('org_id', profile!.org_id!);
+            }
+
+            const { data, error } = await query;
             if (error) throw error;
 
             const totalValue = data?.reduce((sum, order) => {
@@ -130,16 +146,21 @@ export function usePendingOrderValue() {
 // Get detailed pending financials (Total, Paid, Owed)
 export function usePendingOrderFinancials() {
     const { user, profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
 
     return useQuery({
-        queryKey: ['orders', 'pending', 'financials', profile?.org_id],
+        queryKey: ['orders', 'pending', 'financials', profile?.org_id, isSuperAdmin],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('orders')
                 .select('quantity_ordered, estimated_cost_per_unit, amount_paid')
-                .eq('status', 'pending')
-                .eq('org_id', profile!.org_id!);
+                .eq('status', 'pending');
 
+            if (!isSuperAdmin) {
+                query = query.eq('org_id', profile!.org_id!);
+            }
+
+            const { data, error } = await query;
             if (error) throw error;
 
             let totalValue = 0;
@@ -164,15 +185,21 @@ export function usePendingOrderFinancials() {
 // Get pending orders by peptide (for peptides page)
 export function usePendingOrdersByPeptide() {
     const { user, profile } = useAuth();
+    const isSuperAdmin = profile?.role === 'super_admin';
 
     return useQuery({
-        queryKey: ['orders', 'pending', 'by-peptide', profile?.org_id],
+        queryKey: ['orders', 'pending', 'by-peptide', profile?.org_id, isSuperAdmin],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('orders')
                 .select('peptide_id, quantity_ordered, expected_arrival_date, estimated_cost_per_unit')
-                .eq('status', 'pending')
-                .eq('org_id', profile!.org_id!);
+                .eq('status', 'pending');
+
+            if (!isSuperAdmin) {
+                query = query.eq('org_id', profile!.org_id!);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
