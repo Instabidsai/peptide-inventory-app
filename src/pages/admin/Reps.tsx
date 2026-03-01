@@ -1109,14 +1109,16 @@ function EditRepDialog({
     );
 }
 
-function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
+function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; pricing_mode: string; cost_plus_markup: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
     // DB-driven tier defaults (per-org)
     const { data: tierConfigs } = useTierConfig();
     const tierMap = new Map<string, TierConfig>();
     tierConfigs?.forEach((t) => tierMap.set(t.tier_key, t));
 
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
-    const [mult, setMult] = useState(rep.price_multiplier || 1.0);
+    const [mult, setMult] = useState(rep.price_multiplier || 2.0);
+    const [pricingMode, setPricingMode] = useState(rep.pricing_mode || 'cost_multiplier');
+    const [costPlus, setCostPlus] = useState(rep.cost_plus_markup || 2.0);
     const [tier, setTier] = useState(rep.partner_tier || 'standard');
     const [parentRep, setParentRep] = useState(rep.parent_rep_id || '');
 
@@ -1126,6 +1128,8 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
         if (dbTier) {
             setComm(dbTier.commission_rate * 100);
             setMult(dbTier.price_multiplier);
+            setPricingMode(dbTier.pricing_mode);
+            setCostPlus(dbTier.cost_plus_markup);
         }
     };
 
@@ -1179,18 +1183,74 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
             </p>
 
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Price Multiplier</Label>
-                <Input
-                    type="number"
-                    step="0.01"
-                    className="col-span-3"
-                    value={mult}
-                    onChange={e => { const v = parseFloat(e.target.value); setMult(isNaN(v) ? 1 : v); }}
-                />
+                <Label className="text-right">Pricing Mode</Label>
+                <Select value={pricingMode} onValueChange={(v) => {
+                    setPricingMode(v);
+                    if (v === 'percentage') setMult(0.8); // default 20% off
+                    else if (v === 'cost_multiplier') setMult(2.0);
+                }}>
+                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="cost_multiplier">Cost Multiplier (e.g. 2x cost)</SelectItem>
+                        <SelectItem value="cost_plus">Cost Plus (cost + $X)</SelectItem>
+                        <SelectItem value="percentage">Percentage of Retail</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-            <p className="text-xs text-muted-foreground text-right">
-                Partner pays {mult}x average cost per item
-            </p>
+
+            {pricingMode === 'percentage' ? (
+                <>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Discount</Label>
+                        <Select
+                            value={String(Math.round((1 - mult) * 100))}
+                            onValueChange={(v) => setMult(1 - parseInt(v) / 100)}
+                        >
+                            <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {[20, 25, 30, 35, 40, 45, 50, 55, 60].map(pct => (
+                                    <SelectItem key={pct} value={String(pct)}>{pct}% off retail</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-right">
+                        Partner pays {Math.round(mult * 100)}% of retail price
+                    </p>
+                </>
+            ) : pricingMode === 'cost_plus' ? (
+                <>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Markup ($)</Label>
+                        <Input
+                            type="number"
+                            step="0.50"
+                            className="col-span-3"
+                            value={costPlus}
+                            onChange={e => { const v = parseFloat(e.target.value); setCostPlus(isNaN(v) ? 0 : v); }}
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-right">
+                        Partner pays cost + ${costPlus.toFixed(2)} per item
+                    </p>
+                </>
+            ) : (
+                <>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Multiplier</Label>
+                        <Input
+                            type="number"
+                            step="0.1"
+                            className="col-span-3"
+                            value={mult}
+                            onChange={e => { const v = parseFloat(e.target.value); setMult(isNaN(v) ? 1 : v); }}
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-right">
+                        Partner pays {mult}x average cost per item
+                    </p>
+                </>
+            )}
 
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Upline</Label>
@@ -1218,6 +1278,8 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                 <Button onClick={() => onSubmit({
                     commission_rate: comm / 100,
                     price_multiplier: mult,
+                    pricing_mode: pricingMode,
+                    cost_plus_markup: costPlus,
                     partner_tier: tier,
                     parent_rep_id: parentRep || null
                 })}>

@@ -192,7 +192,12 @@ export default function TierConfigTab({ orgId }: { orgId?: string | null }) {
                                 <Label className="text-xs">Pricing Mode</Label>
                                 <Select
                                     value={editing.pricing_mode || 'cost_multiplier'}
-                                    onValueChange={(v) => setEditing(prev => ({ ...prev!, pricing_mode: v }))}
+                                    onValueChange={(v) => setEditing(prev => ({
+                                        ...prev!,
+                                        pricing_mode: v,
+                                        ...(v === 'percentage' && (prev?.price_multiplier ?? 2) > 1 ? { price_multiplier: 0.8 } : {}),
+                                        ...(v === 'cost_multiplier' && (prev?.price_multiplier ?? 0.8) < 1 ? { price_multiplier: 2.0 } : {}),
+                                    }))}
                                 >
                                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -202,9 +207,24 @@ export default function TierConfigTab({ orgId }: { orgId?: string | null }) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {editing.pricing_mode === 'cost_multiplier' || editing.pricing_mode === 'percentage' ? (
+                            {editing.pricing_mode === 'percentage' ? (
                                 <div className="space-y-1">
-                                    <Label className="text-xs">{editing.pricing_mode === 'cost_multiplier' ? 'Multiplier' : 'Retail Multiplier'}</Label>
+                                    <Label className="text-xs">Discount Off Retail</Label>
+                                    <Select
+                                        value={String(Math.round((1 - (editing.price_multiplier ?? 0.8)) * 100))}
+                                        onValueChange={(v) => setEditing(prev => ({ ...prev!, price_multiplier: 1 - parseInt(v) / 100 }))}
+                                    >
+                                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {[20, 25, 30, 35, 40, 45, 50, 55, 60].map(pct => (
+                                                <SelectItem key={pct} value={String(pct)}>{pct}% off retail</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ) : editing.pricing_mode === 'cost_multiplier' ? (
+                                <div className="space-y-1">
+                                    <Label className="text-xs">Multiplier</Label>
                                     <Input
                                         type="number"
                                         step="0.1"
