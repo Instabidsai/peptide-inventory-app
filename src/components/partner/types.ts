@@ -3,7 +3,8 @@ import type { PartnerNode, DownlineClient } from '@/hooks/use-partner';
 // Re-export for convenience
 export type { PartnerNode, DownlineClient };
 
-// Tier display config
+// Fallback tier display config — used when DB tier_config hasn't loaded yet.
+// Prefer useTierMap() from '@/hooks/use-tier-config' for live, per-org values.
 export const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
     senior: { label: 'Senior Partner', discount: '2x cost', emoji: '\u{1F947}' },
     standard: { label: 'Standard Partner', discount: '2x cost', emoji: '\u{1F948}' },

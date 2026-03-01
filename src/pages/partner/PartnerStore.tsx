@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { useTierMap, tierToInfo } from '@/hooks/use-tier-config';
 import {
     ShoppingCart,
     Package,
@@ -28,11 +29,11 @@ import {
     ExternalLink,
 } from 'lucide-react';
 
-// Tier config for display
-const TIER_INFO: Record<string, { label: string; discount: string; color: string }> = {
-    senior: { label: '🥇 Senior Partner', discount: '2x cost', color: 'text-amber-500' },
-    standard: { label: '🥈 Standard Partner', discount: '2x cost', color: 'text-blue-500' },
-    referral: { label: '🔗 Referral Partner', discount: '2x cost', color: 'text-sky-500' },
+// Color map for tier badges (tier_key -> tailwind class)
+const TIER_COLORS: Record<string, string> = {
+    senior: 'text-amber-500',
+    standard: 'text-blue-500',
+    referral: 'text-sky-500',
 };
 
 interface CartItem {
@@ -129,11 +130,17 @@ export default function PartnerStore() {
         enabled: !!profile?.org_id,
     });
 
-    const priceMultiplier = Number(partnerProfile?.price_multiplier) || 1.0;
+    const priceMultiplier = Number(partnerProfile?.price_multiplier) || 2.0;
     const partnerTier = partnerProfile?.partner_tier || 'standard';
-    const tierInfo = TIER_INFO[partnerTier] || TIER_INFO.standard;
-    const pricingMode = partnerProfile?.pricing_mode || 'percentage';
-    const costPlusMarkup = Number(partnerProfile?.cost_plus_markup) || 0;
+    const pricingMode = partnerProfile?.pricing_mode || 'cost_multiplier';
+    const costPlusMarkup = Number(partnerProfile?.cost_plus_markup) || 2;
+
+    // DB-driven tier info (per-org)
+    const { tierMap } = useTierMap();
+    const dbTier = tierMap.get(partnerTier);
+    const tierInfo = dbTier
+        ? { label: `${dbTier.emoji} ${dbTier.label}`, discount: tierToInfo(dbTier).discount, color: TIER_COLORS[partnerTier] || 'text-primary' }
+        : { label: `🥈 ${partnerTier}`, discount: `${priceMultiplier}x cost`, color: 'text-blue-500' };
 
     // Fetch avg lot costs — always needed for Partner 2x cost pricing
     const { data: lotCosts } = useQuery({
@@ -161,14 +168,27 @@ export default function PartnerStore() {
         enabled: !!profile?.org_id,
     });
 
-    // Partner price = 2x avg cost (hard-coded for all partners)
+    // Partner price — uses profile's pricing_mode + price_multiplier/cost_plus_markup
+    // Matches server-side create_validated_order RPC logic exactly.
     const getPartnerPrice = (peptide: { id: string; retail_price?: number | null }): number => {
         const avgCost = lotCosts?.[peptide.id] || 0;
-        if (avgCost > 0) {
-            return Math.round(avgCost * 2 * 100) / 100;
-        }
-        // Fallback: if no lot cost data, use retail × 0.4 as rough estimate
         const retail = Number(peptide.retail_price || 0);
+
+        if (pricingMode === 'cost_plus' && avgCost > 0) {
+            return Math.round((avgCost + costPlusMarkup) * 100) / 100;
+        }
+
+        if (pricingMode === 'cost_multiplier' && avgCost > 0) {
+            return Math.round(avgCost * priceMultiplier * 100) / 100;
+        }
+
+        // percentage mode — multiplier applied to retail
+        if (retail > 0) {
+            return Math.round(retail * priceMultiplier * 100) / 100;
+        }
+
+        // Last resort fallback
+        if (avgCost > 0) return Math.round(avgCost * priceMultiplier * 100) / 100;
         return Math.round(retail * 0.4 * 100) / 100;
     };
 
@@ -305,7 +325,7 @@ export default function PartnerStore() {
                     </Badge>
                     <Badge variant="secondary" className="text-sm px-3 py-1">
                         <Percent className="h-3 w-3 mr-1" />
-                        2x Cost Pricing
+                        {tierInfo.discount}
                     </Badge>
                 </div>
             </div>
@@ -686,8 +706,8 @@ export default function PartnerStore() {
                                 <span className="text-sm font-semibold text-green-500">Your Partner Discount</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                As a <span className={tierInfo.color}>{partnerTier}</span> partner, you get
-                                <span className="font-semibold"> 2x cost pricing</span> on all items — that's double our average cost, well below retail.
+                                As a <span className={tierInfo.color}>{tierInfo.label}</span>, you get
+                                <span className="font-semibold"> {tierInfo.discount}</span> on all items — well below retail.
                             </p>
                         </CardContent>
                     </Card>

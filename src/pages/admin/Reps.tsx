@@ -38,6 +38,7 @@ import {
     Link2,
     Copy,
     Check,
+    Settings2,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,6 +57,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
+import { useTierConfig, tierToInfo, type TierConfig } from '@/hooks/use-tier-config';
+const TierConfigTab = React.lazy(() => import('./components/TierConfigTab'));
 
 export default function Reps() {
     const navigate = useNavigate();
@@ -88,6 +91,7 @@ export default function Reps() {
 
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('list');
 
     // Confirm dialog state
     const [confirmDialog, setConfirmDialog] = useState<{
@@ -288,7 +292,7 @@ export default function Reps() {
                 </Button>
             </div>
 
-            <Tabs defaultValue="list" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="list" className="gap-2">
                         <Users className="h-4 w-4" /> List View
@@ -298,6 +302,9 @@ export default function Reps() {
                     </TabsTrigger>
                     <TabsTrigger value="invites" className="gap-2">
                         <Link2 className="h-4 w-4" /> Invite Links
+                    </TabsTrigger>
+                    <TabsTrigger value="tiers" className="gap-2">
+                        <Settings2 className="h-4 w-4" /> Tier Config
                     </TabsTrigger>
                 </TabsList>
 
@@ -511,7 +518,7 @@ export default function Reps() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {networkLoading ? (
+                            {activeTab !== 'network' ? null : networkLoading ? (
                                 <div className="flex items-center justify-center py-12 text-muted-foreground">
                                     <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading network...
                                 </div>
@@ -524,6 +531,12 @@ export default function Reps() {
 
                 <TabsContent value="invites">
                     <InviteLinksTab reps={reps || []} />
+                </TabsContent>
+
+                <TabsContent value="tiers">
+                    <React.Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+                        <TierConfigTab orgId={currentProfile?.org_id} />
+                    </React.Suspense>
                 </TabsContent>
             </Tabs>
 
@@ -1097,12 +1110,10 @@ function EditRepDialog({
 }
 
 function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
-    // Tier → default commission rate and price multiplier
-    const TIER_DEFAULTS: Record<string, { commission: number; multiplier: number; label: string }> = {
-        senior: { commission: 10, multiplier: 2.0, label: '2x cost pricing · 10% commission · Can recruit' },
-        standard: { commission: 10, multiplier: 2.0, label: '2x cost pricing · 10% commission' },
-        referral: { commission: 0, multiplier: 2.0, label: '2x cost pricing · 0% commission (referral only)' },
-    };
+    // DB-driven tier defaults (per-org)
+    const { data: tierConfigs } = useTierConfig();
+    const tierMap = new Map<string, TierConfig>();
+    tierConfigs?.forEach((t) => tierMap.set(t.tier_key, t));
 
     const [comm, setComm] = useState((rep.commission_rate || 0) * 100);
     const [mult, setMult] = useState(rep.price_multiplier || 1.0);
@@ -1111,15 +1122,21 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
 
     const handleTierChange = (newTier: string) => {
         setTier(newTier);
-        const defaults = TIER_DEFAULTS[newTier];
-        if (defaults) {
-            setComm(defaults.commission);
-            setMult(defaults.multiplier);
+        const dbTier = tierMap.get(newTier);
+        if (dbTier) {
+            setComm(dbTier.commission_rate * 100);
+            setMult(dbTier.price_multiplier);
         }
     };
 
     // Filter out the current rep from potential parents (can't be your own parent)
     const potentialParents = allReps.filter(r => r.id !== rep.id);
+
+    // Build tier description from DB config
+    const currentDbTier = tierMap.get(tier);
+    const tierDescription = currentDbTier
+        ? `${tierToInfo(currentDbTier).discount} · ${(currentDbTier.commission_rate * 100).toFixed(0)}% commission${currentDbTier.can_recruit ? ' · Can recruit' : ''}`
+        : null;
 
     return (
         <div className="grid gap-4 py-4">
@@ -1130,15 +1147,21 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                         <SelectValue placeholder="Select tier" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="senior">🥇 Senior Partner</SelectItem>
-                        <SelectItem value="standard">🥈 Standard Partner</SelectItem>
-                        <SelectItem value="referral">🔗 Referral Partner</SelectItem>
+                        {(tierConfigs && tierConfigs.length > 0 ? tierConfigs : [
+                            { tier_key: 'senior', emoji: '🥇', label: 'Senior Partner' },
+                            { tier_key: 'standard', emoji: '🥈', label: 'Standard Partner' },
+                            { tier_key: 'referral', emoji: '🔗', label: 'Referral Partner' },
+                        ]).filter((t: any) => t.active !== false).map((t: any) => (
+                            <SelectItem key={t.tier_key} value={t.tier_key}>
+                                {t.emoji} {t.label}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
-            {TIER_DEFAULTS[tier] && (
+            {tierDescription && (
                 <p className="text-xs text-muted-foreground text-right">
-                    {TIER_DEFAULTS[tier].label}
+                    {tierDescription}
                 </p>
             )}
 
