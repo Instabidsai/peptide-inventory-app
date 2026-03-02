@@ -14,7 +14,7 @@ export const STAFF_ALLOWED_TOOLS = new Set([
   "create_order", "add_items_to_order", "list_recent_orders", "update_sales_order", "fulfill_order",
   "list_purchase_orders", "create_purchase_order", "receive_purchase_order", "record_purchase_payment",
   "list_movements",
-  "list_commissions", "get_commission_stats", "search_partners",
+  "list_commissions", "get_commission_stats", "search_partners", "reassign_client",
   "list_protocols", "create_protocol",
   "list_requests", "respond_to_request",
   "get_dashboard_stats", "low_stock_report", "top_sellers", "revenue_by_period",
@@ -33,7 +33,7 @@ You can help with:
 - PRICING: Show cost/2x/3x/MSRP tiers for any peptide
 - MOVEMENTS: View inventory movements (sales, giveaways, internal use, losses, returns)
 - COMMISSIONS: View all commissions, update status (pay/void)
-- PARTNERS/REPS: List partners, search by name/email, update settings (commission rate, pricing, tier, parent rep)
+- PARTNERS/REPS: List partners, search by name/email, update settings (commission rate, pricing, tier, parent rep). The partner tree includes BOTH reps (from profiles) AND clients assigned to reps (from contacts). Use reassign_client to move a client under a different rep.
 - EXPENSES: Create/list expenses for tracking cash flow
 - FINANCIALS: Full P&L summary (revenue, COGS, overhead, profit, commissions)
 - PROTOCOLS: List/create treatment protocols with peptide items
@@ -99,7 +99,7 @@ RULES:
 19. NEVER give up after one failed search. If a tool returns "not found", check the pre-loaded catalog and suggest the closest match. Always offer alternatives.
 20. ADDING INVENTORY: When the user says "add inventory", "add stock", "we received bottles", or "add X of peptide Y" — use the add_inventory tool directly. Do NOT create a purchase order first. The add_inventory tool creates the lot + bottles in one step. Only use create_purchase_order when they explicitly want to track a future order from a supplier.
 21. VERIFY WRITES: After any update/create tool call, check the result for errors or confirmation. If the tool returns a success message with specific details (e.g. verified IDs, names), trust it. NEVER tell the user something is done unless the tool returned a clear success confirmation. If in doubt, use a list/search tool to verify.
-22. PARTNER MOVES: When asked to move a partner under another rep, use search_partners or the pre-loaded PARTNERS list to find BOTH partner IDs by name, then call update_partner with the correct partner_id and parent_rep_id. The tool will verify the move and confirm with names. Do NOT guess or hallucinate partner IDs.
+22. PARTNER TREE HAS TWO TYPES: The partner network tree shows BOTH (a) reps/partners from the profiles table [labeled PARTNER] and (b) clients assigned to reps from the contacts table [labeled CLIENT]. When searching, search_partners returns BOTH types. To move a PARTNER under another rep, use update_partner with parent_rep_id. To move a CLIENT under a different rep, use reassign_client with the contact_id and new_rep_id. ALWAYS use search_partners first to find the person and check their type label [PARTNER] vs [CLIENT] to know which tool to use. Do NOT guess or hallucinate IDs.
 
 PRICING TIERS:
 - Cost = avg_cost (base wholesale cost from lots)
@@ -189,9 +189,10 @@ export const tools = [
   { type: "function" as const, function: { name: "get_commission_stats", description: "Get commission totals broken down by status (pending, available, paid).", parameters: { type: "object", properties: {} } } },
   { type: "function" as const, function: { name: "update_commission", description: "Update a commission's status (mark as paid, void, etc.).", parameters: { type: "object", properties: { commission_id: { type: "string" }, status: { type: "string", enum: ["pending", "available", "paid", "void"] } }, required: ["commission_id", "status"] } } },
   { type: "function" as const, function: { name: "list_partners", description: "List all sales rep partners with commission rate, tier, pricing mode, and parent rep name.", parameters: { type: "object", properties: {} } } },
-  { type: "function" as const, function: { name: "search_partners", description: "Search partners/reps by name or email. Returns matching partners with their ID, tier, commission rate, and parent rep.", parameters: { type: "object", properties: { query: { type: "string", description: "Name or email to search for" } }, required: ["query"] } } },
+  { type: "function" as const, function: { name: "search_partners", description: "Search the partner network by name or email. Searches BOTH partners/reps (profiles) AND clients assigned to reps (contacts). Results are labeled [PARTNER] or [CLIENT] with IDs. Use this to find anyone visible in the partner tree.", parameters: { type: "object", properties: { query: { type: "string", description: "Name or email to search for" } }, required: ["query"] } } },
   { type: "function" as const, function: { name: "update_partner", description: "Update a partner/rep's settings: commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier, parent_rep_id. Verifies the update and returns confirmation with names.", parameters: { type: "object", properties: { partner_id: { type: "string" }, commission_rate: { type: "number" }, price_multiplier: { type: "number" }, pricing_mode: { type: "string", enum: ["percentage", "cost_plus", "cost_multiplier"] }, cost_plus_markup: { type: "number" }, partner_tier: { type: "string", enum: ["standard", "associate", "referral", "senior", "director", "executive"] }, parent_rep_id: { type: "string" } }, required: ["partner_id"] } } },
   { type: "function" as const, function: { name: "get_partner_detail", description: "Get detailed stats for a specific partner/rep including sales, commissions, tier.", parameters: { type: "object", properties: { partner_id: { type: "string" } }, required: ["partner_id"] } } },
+  { type: "function" as const, function: { name: "reassign_client", description: "Move a client/customer contact to a different rep in the partner tree. Updates the contact's assigned_rep_id. Use this when someone asks to move a CLIENT (not a partner) under a different rep. Use search_partners first to find the contact ID and target rep ID.", parameters: { type: "object", properties: { contact_id: { type: "string", description: "The contact's UUID (from search_partners [CLIENT] result)" }, new_rep_id: { type: "string", description: "The target rep's UUID (from search_partners [PARTNER] result)" } }, required: ["contact_id", "new_rep_id"] } } },
   { type: "function" as const, function: { name: "list_expenses", description: "List expenses with category, amount, date. Can filter by category (inventory, operating, etc.).", parameters: { type: "object", properties: { category: { type: "string" }, limit: { type: "number" } } } } },
   { type: "function" as const, function: { name: "create_expense", description: "Record an expense for tracking cash flow.", parameters: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD" }, category: { type: "string" }, amount: { type: "number" }, description: { type: "string" }, recipient: { type: "string" }, payment_method: { type: "string" }, status: { type: "string", enum: ["paid", "pending"] } }, required: ["date", "category", "amount"] } } },
   { type: "function" as const, function: { name: "get_financial_summary", description: "Get comprehensive P&L: revenue, COGS, gross profit, commissions, expenses, net profit.", parameters: { type: "object", properties: {} } } },
@@ -498,30 +499,44 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
       }
       case "list_partners": {
         const { data } = await supabase.from("profiles").select("id, full_name, email, commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier, parent_rep_id, credit_balance").eq("role", "sales_rep").eq("org_id", orgId).order("full_name");
-        if (!data?.length) return "No partners found.";
+        // Also fetch clients assigned to reps (visible in partner tree)
+        const { data: repClients } = await supabase.from("contacts").select("id, name, email, type, assigned_rep_id").eq("org_id", orgId).not("assigned_rep_id", "is", null).in("type", ["customer", "preferred"]).order("name");
+        if (!data?.length && !repClients?.length) return "No partners or assigned clients found.";
         // Build lookup map to resolve parent_rep_id → name
         const nameMap: Record<string, string> = {};
-        data.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unnamed"; });
-        return data.map((p: any) => {
+        (data || []).forEach((p: any) => { nameMap[p.id] = p.full_name || "Unnamed"; });
+        const lines: string[] = [];
+        (data || []).forEach((p: any) => {
           const parentName = p.parent_rep_id ? (nameMap[p.parent_rep_id] || "Unknown (ID:" + p.parent_rep_id.slice(0, 8) + ")") : "None";
-          return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | Balance:$" + Number(p.credit_balance || 0).toFixed(2) + " | ID:" + p.id;
-        }).join("\n");
+          lines.push("[PARTNER] " + (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | Balance:$" + Number(p.credit_balance || 0).toFixed(2) + " | ID:" + p.id);
+        });
+        (repClients || []).forEach((c: any) => {
+          const repName = c.assigned_rep_id ? (nameMap[c.assigned_rep_id] || "Unknown") : "Unassigned";
+          lines.push("[CLIENT] " + (c.name || "Unnamed") + " | " + (c.email || "") + " | Type:" + c.type + " | Assigned to:" + repName + " | ID:" + c.id);
+        });
+        return lines.join("\n");
       }
       case "search_partners": {
         const q = args.query;
-        const { data } = await supabase.from("profiles").select("id, full_name, email, partner_tier, commission_rate, parent_rep_id").eq("role", "sales_rep").eq("org_id", orgId).or("full_name.ilike.%" + q + "%,email.ilike.%" + q + "%");
-        if (!data?.length) return "No partners found matching '" + q + "'.";
-        // Resolve parent names
-        const allIds = [...new Set(data.map((p: any) => p.parent_rep_id).filter(Boolean))];
-        const parentNames: Record<string, string> = {};
-        if (allIds.length) {
-          const { data: parents } = await supabase.from("profiles").select("id, full_name").in("id", allIds);
-          parents?.forEach((p: any) => { parentNames[p.id] = p.full_name || "Unnamed"; });
-        }
-        return data.map((p: any) => {
-          const parentName = p.parent_rep_id ? (parentNames[p.parent_rep_id] || "Unknown") : "None";
-          return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id;
-        }).join("\n");
+        // Search profiles (actual partners/reps)
+        const { data: profileData } = await supabase.from("profiles").select("id, full_name, email, partner_tier, commission_rate, parent_rep_id").eq("role", "sales_rep").eq("org_id", orgId).or("full_name.ilike.%" + q + "%,email.ilike.%" + q + "%");
+        // Also search contacts assigned to reps (clients visible in partner tree)
+        const { data: contactData } = await supabase.from("contacts").select("id, name, email, type, assigned_rep_id").eq("org_id", orgId).not("assigned_rep_id", "is", null).or("name.ilike.%" + q + "%,email.ilike.%" + q + "%");
+        if (!profileData?.length && !contactData?.length) return "No partners or clients found matching '" + q + "'.";
+        // Build name lookup for all referenced rep IDs
+        const refIds = [...new Set([...(profileData || []).map((p: any) => p.parent_rep_id).filter(Boolean), ...(profileData || []).map((p: any) => p.id), ...(contactData || []).map((c: any) => c.assigned_rep_id).filter(Boolean)])];
+        const repNames: Record<string, string> = {};
+        if (refIds.length) { const { data: reps } = await supabase.from("profiles").select("id, full_name").in("id", refIds); reps?.forEach((r: any) => { repNames[r.id] = r.full_name || "Unnamed"; }); }
+        const lines: string[] = [];
+        (profileData || []).forEach((p: any) => {
+          const parentName = p.parent_rep_id ? (repNames[p.parent_rep_id] || "Unknown") : "None";
+          lines.push("[PARTNER] " + (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id);
+        });
+        (contactData || []).forEach((c: any) => {
+          const repName = c.assigned_rep_id ? (repNames[c.assigned_rep_id] || "Unknown") : "Unassigned";
+          lines.push("[CLIENT] " + (c.name || "Unnamed") + " | " + (c.email || "") + " | Type:" + c.type + " | Assigned to:" + repName + " | ID:" + c.id);
+        });
+        return lines.join("\n");
       }
       case "update_partner": {
         const u: any = {};
@@ -558,6 +573,19 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { data: sales } = await supabase.from("sales_orders").select("total_amount").eq("rep_id", args.partner_id).neq("status", "cancelled");
         const totalSales = sales?.reduce((s: number, o: any) => s + Number(o.total_amount), 0) || 0;
         return "Partner: " + profile.full_name + "\n  Email: " + profile.email + "\n  Tier: " + (profile.partner_tier || "standard") + "\n  Commission Rate: " + (Number(profile.commission_rate || 0) * 100).toFixed(0) + "%\n  Pricing: " + (profile.pricing_mode || "percentage") + " (multiplier: " + (profile.price_multiplier || 1) + ")\n  Balance: $" + Number(profile.credit_balance || 0).toFixed(2) + "\n  Orders: " + (orderCount || 0) + "\n  Customers: " + (customerCount || 0) + "\n  Total Sales: $" + totalSales.toFixed(2) + "\n  Commissions - Pending: $" + cs.pending.toFixed(2) + " | Available: $" + cs.available.toFixed(2) + " | Paid: $" + cs.paid.toFixed(2);
+      }
+      case "reassign_client": {
+        // Verify the target rep exists in this org
+        const { data: targetRep } = await supabase.from("profiles").select("id, full_name").eq("id", args.new_rep_id).eq("role", "sales_rep").eq("org_id", orgId).single();
+        if (!targetRep) return "Error: Target rep not found in this org (ID: " + args.new_rep_id + "). Use search_partners to find the correct [PARTNER] ID.";
+        // Update the contact's assigned_rep_id
+        const { error: updateErr } = await supabase.from("contacts").update({ assigned_rep_id: args.new_rep_id }).eq("id", args.contact_id).eq("org_id", orgId);
+        if (updateErr) return "Error: " + updateErr.message;
+        // Verify the change took effect
+        const { data: verifiedContact } = await supabase.from("contacts").select("id, name, email, assigned_rep_id").eq("id", args.contact_id).eq("org_id", orgId).single();
+        if (!verifiedContact) return "Error: Contact not found in this org (ID: " + args.contact_id + "). Use search_partners to find the correct [CLIENT] ID.";
+        if (verifiedContact.assigned_rep_id !== args.new_rep_id) return "Error: Reassignment did not take effect — the contact's assigned_rep_id did not change.";
+        return "VERIFIED — Client " + (verifiedContact.name || "Unknown") + " (ID:" + args.contact_id.slice(0, 8) + ") has been reassigned to " + targetRep.full_name + " (ID:" + args.new_rep_id.slice(0, 8) + "). They will now appear under " + targetRep.full_name + " in the partner tree.";
       }
       case "list_expenses": {
         const limit = args.limit || 20;
@@ -930,6 +958,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     { data: recentOrders },
     { data: onboardingMessages },
     { data: allPartners },
+    { data: repClients },
   ] = await Promise.all([
     supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", orgId).order("name"),
     supabase.from("lots").select("peptide_id, cost_per_unit, quantity_received").eq("org_id", orgId),
@@ -938,6 +967,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10),
     supabase.from("onboarding_messages").select("role, content, created_at").eq("org_id", orgId).order("created_at", { ascending: true }).limit(20),
     supabase.from("profiles").select("id, full_name, email, partner_tier, commission_rate, parent_rep_id").eq("role", "sales_rep").eq("org_id", orgId).order("full_name"),
+    supabase.from("contacts").select("id, name, email, type, assigned_rep_id").eq("org_id", orgId).not("assigned_rep_id", "is", null).in("type", ["customer", "preferred"]).order("name"),
   ]);
 
   const stockMap: Record<string, number> = {};
@@ -972,7 +1002,13 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
   (allPartners || []).forEach((p: any) => { partnerNameMap[p.id] = p.full_name || "Unnamed"; });
   const partnerLines = (allPartners || []).map((p: any) => {
     const parentName = p.parent_rep_id ? (partnerNameMap[p.parent_rep_id] || "Unknown") : "None";
-    return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id;
+    return "[PARTNER] " + (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id;
+  });
+
+  // Build client contacts assigned to reps (visible in partner tree)
+  const clientLines = (repClients || []).map((c: any) => {
+    const repName = c.assigned_rep_id ? (partnerNameMap[c.assigned_rep_id] || "Unknown rep") : "Unassigned";
+    return "[CLIENT] " + (c.name || "Unnamed") + " | " + (c.email || "") + " | Type:" + c.type + " | Assigned to:" + repName + " | ID:" + c.id;
   });
 
   // Build onboarding history summary so admin AI has full continuity
@@ -984,7 +1020,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     onboardingSection = "\n\nONBOARDING HISTORY (Setup Assistant conversation — this is what the merchant told us during initial setup):\n" + onboardingLines.join("\n");
   }
 
-  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nPARTNERS/REPS (" + partnerLines.length + " — use these IDs for partner operations):\n" + partnerLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
+  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nPARTNER NETWORK TREE (" + partnerLines.length + " partners + " + clientLines.length + " assigned clients — [PARTNER] entries use update_partner, [CLIENT] entries use reassign_client):\n" + partnerLines.join("\n") + (clientLines.length ? "\n" + clientLines.join("\n") : "") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
 }
 
 // ── GPT-4o tool-calling loop ─────────────────────────────────
