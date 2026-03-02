@@ -2,10 +2,9 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package, Plus, Minus, Search, Dna } from 'lucide-react';
+import { Plus, Minus, Search, Dna } from 'lucide-react';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
 import { getPeptideDescription } from './utils';
 import type { CartItem } from './types';
@@ -41,20 +40,6 @@ export function ProductGrid({
 }: ProductGridProps) {
     return (
         <div>
-            <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-premium flex items-center justify-center">
-                        <Package className="h-4 w-4 text-white" />
-                    </div>
-                    <h2 className="text-lg font-bold tracking-tight">Our Collection</h2>
-                </div>
-                {filteredPeptides && (
-                    <Badge variant="secondary" className="text-xs bg-muted/50 border-border/60">
-                        {filteredPeptides.length} items
-                    </Badge>
-                )}
-            </div>
-
             {isLoading ? (
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                     {Array.from({ length: 6 }).map((_, i) => (

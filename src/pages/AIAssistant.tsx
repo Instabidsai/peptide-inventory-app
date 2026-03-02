@@ -116,12 +116,21 @@ export default function AIAssistant() {
         ? 'Stock, commissions, clients, suggestions'
         : 'Stock, commissions, orders';
 
-  // Auto-scroll on new content
+  // Auto-scroll when messages change or loading toggles
   useEffect(() => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
     });
-  }, [messages, isLoading, typedLength]);
+  }, [messages, isLoading]);
+
+  // Throttled auto-scroll during typewriter (every 500ms instead of per-character)
+  useEffect(() => {
+    if (!typingMessageId) return;
+    const id = setInterval(() => {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+    return () => clearInterval(id);
+  }, [typingMessageId]);
 
   // Detect new AI messages and start typewriter
   useEffect(() => {
@@ -147,10 +156,10 @@ export default function AIAssistant() {
       return;
     }
 
-    const charsPerTick = msg.content.length > 300 ? 4 : msg.content.length > 150 ? 3 : 2;
+    const charsPerTick = msg.content.length > 300 ? 20 : msg.content.length > 150 ? 12 : 6;
     const timer = setTimeout(() => {
       setTypedLength(prev => Math.min(prev + charsPerTick, msg.content.length));
-    }, 18);
+    }, 30);
 
     return () => clearTimeout(timer);
   }, [typingMessageId, typedLength, messages]);
@@ -372,7 +381,7 @@ export default function AIAssistant() {
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 md:px-6 py-4">
           {isLoadingHistory ? (
-            <div className="flex items-center justify-center h-32">
+            <div className="flex items-center justify-center min-h-[50vh]">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
@@ -393,65 +402,40 @@ export default function AIAssistant() {
               )}
               {/* Animated starter section when no messages */}
               {messages.length === 0 && !isLoading && !isImpersonating && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center py-8 space-y-5"
-                >
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center"
-                  >
+                <div className="flex flex-col items-center justify-center py-8 space-y-5">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <MessageCircle className="h-7 w-7 text-primary" />
-                  </motion.div>
+                  </div>
                   <div className="text-center space-y-1">
-                    <motion.p
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
-                      className="font-semibold text-sm"
-                    >
+                    <p className="font-semibold text-sm">
                       Hey! I'm your {assistantLabel.toLowerCase()}
-                    </motion.p>
-                    <motion.p
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 }}
-                      className="text-xs text-muted-foreground"
-                    >
+                    </p>
+                    <p className="text-xs text-muted-foreground">
                       {assistantSub}
-                    </motion.p>
+                    </p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2 max-w-md">
-                    {quickActions.slice(0, 4).map((q, i) => (
-                      <motion.div
+                    {quickActions.slice(0, 4).map((q) => (
+                      <Button
                         key={q}
-                        initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 400, damping: 25 }}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full text-xs h-8 px-3 border-border bg-muted/60 hover:bg-muted hover:border-primary/30 transition-colors"
+                        onClick={() => handleQuickAction(q)}
                       >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full text-xs h-8 px-3 border-border bg-muted/60 hover:bg-muted hover:border-primary/30 transition-colors"
-                          onClick={() => handleQuickAction(q)}
-                        >
-                          {q}
-                        </Button>
-                      </motion.div>
+                        {q}
+                      </Button>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
 
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence initial={false}>
                 {messages.map((msg) => (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                     className={cn(
                       "flex w-full gap-2.5 group/msg",

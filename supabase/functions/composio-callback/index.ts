@@ -50,6 +50,86 @@ Deno.serve(withErrorReporting("composio-callback", async (req) => {
                 .eq('service', service);
         } else {
             // OAuth succeeded — store connection, clear state token (one-time use)
+            const connectionMeta: Record<string, any> = { connected_at: new Date().toISOString() };
+
+            // ── Shopify: auto-register webhooks ──────────────────
+            if (service === 'shopify' && connectedAccountId) {
+                const composioApiKey = Deno.env.get('COMPOSIO_API_KEY');
+                if (composioApiKey) {
+                    const webhookDeliveryUrl = `${sbUrl}/functions/v1/shopify-webhook?org_id=${orgId}`;
+                    const topics = ['orders/create', 'orders/updated'];
+                    let webhooksCreated = 0;
+
+                    for (const topic of topics) {
+                        try {
+                            const res = await fetch('https://backend.composio.dev/api/v2/actions/SHOPIFY_CREATE_WEBHOOK/execute', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': composioApiKey,
+                                },
+                                body: JSON.stringify({
+                                    connectedAccountId,
+                                    input: {
+                                        webhook: {
+                                            topic,
+                                            address: webhookDeliveryUrl,
+                                            format: 'json',
+                                        },
+                                    },
+                                }),
+                            });
+
+                            if (res.ok) {
+                                webhooksCreated++;
+                                console.log(`[composio-callback] Shopify webhook registered: ${topic}`);
+                            } else {
+                                const errText = await res.text();
+                                console.error(`[composio-callback] Failed to register Shopify webhook ${topic}: ${res.status} ${errText.slice(0, 200)}`);
+                            }
+                        } catch (fetchErr: any) {
+                            console.error(`[composio-callback] Network error registering Shopify webhook: ${fetchErr.message}`);
+                        }
+                    }
+
+                    // Generate and store webhook HMAC secret
+                    const webhookSecret = generateHexSecret(32);
+                    await supabase
+                        .from('tenant_api_keys')
+                        .upsert({
+                            org_id: orgId,
+                            service: 'shopify_webhook_secret',
+                            api_key: webhookSecret,
+                            api_key_masked: webhookSecret.slice(0, 8) + '...' + webhookSecret.slice(-4),
+                        }, { onConflict: 'org_id,service' });
+
+                    connectionMeta.webhook_created = webhooksCreated > 0;
+                    connectionMeta.webhooks_registered = webhooksCreated;
+                    connectionMeta.webhook_delivery_url = webhookDeliveryUrl;
+
+                    // Create notification for admin
+                    const { data: adminProfile } = await supabase
+                        .from('profiles')
+                        .select('user_id')
+                        .eq('org_id', orgId)
+                        .eq('role', 'admin')
+                        .limit(1)
+                        .maybeSingle();
+
+                    await supabase.from('notifications').insert({
+                        org_id: orgId,
+                        user_id: adminProfile?.user_id || null,
+                        type: 'integration',
+                        title: 'Shopify Connected!',
+                        message: webhooksCreated > 0
+                            ? `Your Shopify store is connected. ${webhooksCreated} webhook(s) registered — orders will sync automatically.`
+                            : 'Your Shopify store is connected. Webhooks could not be auto-created — you may need to add them manually.',
+                    }).catch(() => {});
+                } else {
+                    console.warn('[composio-callback] COMPOSIO_API_KEY not set, skipping Shopify webhook registration');
+                }
+            }
+
             await supabase
                 .from('tenant_connections')
                 .update({
@@ -57,7 +137,7 @@ Deno.serve(withErrorReporting("composio-callback", async (req) => {
                     state_token: null,
                     composio_connection_id: connectedAccountId || null,
                     connected_at: new Date().toISOString(),
-                    metadata: { connected_at: new Date().toISOString() },
+                    metadata: connectionMeta,
                 })
                 .eq('org_id', orgId)
                 .eq('service', service);
@@ -85,3 +165,9 @@ Deno.serve(withErrorReporting("composio-callback", async (req) => {
         });
     }
 }));
+
+function generateHexSecret(bytes: number): string {
+    const arr = new Uint8Array(bytes);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}

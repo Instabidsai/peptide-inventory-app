@@ -1,0 +1,2 @@
+[functions.shopify-sync-customers]
+verify_jwt = false

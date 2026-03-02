@@ -138,12 +138,12 @@ export default function OrderDetails() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('peptides')
-                .select('id, name, retail_price')
+                .select('id, name, retail_price, avg_cost')
                 .eq('org_id', profile!.org_id!)
                 .eq('active', true)
                 .order('name');
             if (error) throw error;
-            return data as { id: string; name: string; retail_price: number | null }[];
+            return data as { id: string; name: string; retail_price: number | null; avg_cost: number | null }[];
         },
         enabled: !!profile?.org_id && editing,
     });
@@ -543,6 +543,36 @@ export default function OrderDetails() {
                                                         />
                                                         <span className="text-xs text-muted-foreground">each</span>
                                                     </div>
+                                                    {(() => {
+                                                        const peptide = allPeptides?.find(p => p.id === item.peptide_id);
+                                                        if (!peptide) return null;
+                                                        const tiers: { label: string; price: number }[] = [
+                                                            { label: 'Giveaway', price: 0 },
+                                                            ...(peptide.avg_cost ? [
+                                                                { label: 'Cost', price: peptide.avg_cost },
+                                                                { label: '2x Cost', price: Math.round(peptide.avg_cost * 2 * 100) / 100 },
+                                                            ] : []),
+                                                            ...(peptide.retail_price ? [{ label: 'MSRP', price: peptide.retail_price }] : []),
+                                                        ];
+                                                        return (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {tiers.map(t => (
+                                                                    <Badge
+                                                                        key={t.label}
+                                                                        variant={item.unit_price === t.price ? 'default' : 'outline'}
+                                                                        className="cursor-pointer text-[10px] px-1.5 py-0"
+                                                                        onClick={() => {
+                                                                            const updated = [...editItems];
+                                                                            updated[idx] = { ...item, unit_price: t.price };
+                                                                            setEditItems(updated);
+                                                                        }}
+                                                                    >
+                                                                        {t.label} ${t.price.toFixed(2)}
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Button

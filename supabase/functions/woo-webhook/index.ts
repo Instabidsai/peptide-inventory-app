@@ -144,6 +144,11 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
+    // Extract coupon codes from the order
+    const discountCodes = (wooOrder.coupon_lines || [])
+      .map((cl: any) => cl.code)
+      .filter(Boolean);
+
     const result = await importExternalOrder(supabase, orgId, {
       platform: "woocommerce",
       external_id: String(wooOrder.id),
@@ -154,6 +159,7 @@ Deno.serve(async (req) => {
       total_amount: parseFloat(wooOrder.total) || 0,
       payment_status: mapWooPaymentStatus(wooOrder.status || "pending"),
       items,
+      discount_codes: discountCodes,
     }, adminProfile?.user_id);
 
     if (result.success && !result.error) {

@@ -47,16 +47,7 @@ export const ProtocolPackages = React.memo(function ProtocolPackages({
 
     return (
         <div>
-            <div className="flex items-center gap-3 mb-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-brand flex items-center justify-center">
-                    <Package className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-bold tracking-tight">Full Cycle Protocols</h2>
-                    <p className="text-xs text-muted-foreground/50">Complete protocol packages with exact vial quantities</p>
-                </div>
-            </div>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 mt-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 {resolvedPackages.map(({ pkg, resolvedItems, matchedItems }) => {
                     const Icon = ICON_MAP[pkg.icon] || Package;
                     const catStyle = CATEGORY_STYLES[pkg.category] || CATEGORY_STYLES.healing;

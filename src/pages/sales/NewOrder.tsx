@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Search, Plus, ShoppingCart, Trash2, User, ChevronRight, Eye, Check, ChevronsUpDown, Truck, MapPin, Users, ToggleLeft, ToggleRight, DollarSign, Percent, Wand2, Heart, TrendingUp, Flame, Brain, Moon, Sparkles, LayoutGrid, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { Separator } from '@/components/ui/separator';
@@ -194,15 +194,19 @@ export default function NewOrder() {
     const isPartnerOrder = selectedContact?.type === 'partner';
 
     // Auto-apply Partner pricing when a partner contact is selected
+    // Also disable commissions — partner orders never generate commission records
     useEffect(() => {
-        if (isPartnerOrder && cart.length > 0) {
-            setCart(prev => prev.map(item => {
-                const rawAvgCost = (item.peptide.avg_cost && item.peptide.avg_cost > 0)
-                    ? item.peptide.avg_cost
-                    : item.basePrice;
-                const partnerPrice = Math.round(rawAvgCost * 2 * 100) / 100;
-                return { ...item, unitPrice: partnerPrice, commissionRate: 0 };
-            }));
+        if (isPartnerOrder) {
+            setCommissionEnabled(false);
+            if (cart.length > 0) {
+                setCart(prev => prev.map(item => {
+                    const rawAvgCost = (item.peptide.avg_cost && item.peptide.avg_cost > 0)
+                        ? item.peptide.avg_cost
+                        : item.basePrice;
+                    const partnerPrice = Math.round(rawAvgCost * 2 * 100) / 100;
+                    return { ...item, unitPrice: partnerPrice, commissionRate: 0 };
+                }));
+            }
         }
     }, [isPartnerOrder]);
 
@@ -322,14 +326,27 @@ export default function NewOrder() {
         });
     };
 
-    const updateQuantity = (id: string, qty: number) => {
-        if (qty < 1) return;
-        setCart(prev => prev.map(item => item.peptide.id === id ? { ...item, quantity: qty } : item));
+    const updateQuantity = (id: string, delta: number) => {
+        setCart(prev => prev.map(item => {
+            if (item.peptide.id !== id) return item;
+            const newQty = item.quantity + delta;
+            return newQty < 1 ? item : { ...item, quantity: newQty };
+        }));
     };
 
     const updatePrice = (id: string, price: number, commRate: number) => {
         if (price < 0) return;
         setCart(prev => prev.map(item => item.peptide.id === id ? { ...item, unitPrice: price, commissionRate: commRate } : item));
+    };
+
+    const adjustPrice = (id: string, delta: number) => {
+        setCart(prev => prev.map(item => {
+            if (item.peptide.id !== id) return item;
+            const newPrice = Math.max(0, Math.round(item.unitPrice) + delta);
+            const tiers = getPricingTiers(item.peptide, item.basePrice, isPartnerOrder);
+            const matchTier = tiers.find(t => Math.abs(t.price - newPrice) < 0.5);
+            return { ...item, unitPrice: newPrice, commissionRate: matchTier ? matchTier.commRate : item.commissionRate };
+        }));
     };
 
     const removeFromCart = (id: string) => {
@@ -413,8 +430,8 @@ export default function NewOrder() {
                     quantity: item.quantity,
                     unit_price: item.unitPrice
                 })),
-                commission_amount: totalCommission,
-                manual_commissions: manualCommissions,
+                commission_amount: isPartnerOrder ? 0 : totalCommission,
+                manual_commissions: isPartnerOrder ? undefined : manualCommissions,
                 payment_status: isPartnerOrder ? 'commission_offset' : undefined,
                 payment_method: isPartnerOrder ? 'commission_offset' : undefined,
             });
@@ -653,23 +670,15 @@ export default function NewOrder() {
 
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.peptide.id, -1)}>-</Button>
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, 1)}>+</Button>
                                             </div>
 
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" onClick={() => {
-                                                    const newPrice = Math.max(0, Math.round(item.unitPrice) - 1);
-                                                    const matchTier = tiers.find(t => Math.abs(t.price - newPrice) < 0.5);
-                                                    updatePrice(item.peptide.id, newPrice, matchTier ? matchTier.commRate : item.commissionRate);
-                                                }}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" disabled={item.unitPrice <= 0} onClick={() => adjustPrice(item.peptide.id, -1)}>-</Button>
                                                 <span className="w-14 text-center text-sm font-medium">${Math.round(item.unitPrice)}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => {
-                                                    const newPrice = Math.round(item.unitPrice) + 1;
-                                                    const matchTier = tiers.find(t => Math.abs(t.price - newPrice) < 0.5);
-                                                    updatePrice(item.peptide.id, newPrice, matchTier ? matchTier.commRate : item.commissionRate);
-                                                }}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => adjustPrice(item.peptide.id, 1)}>+</Button>
                                             </div>
 
                                             <div className="w-16 text-right font-medium">
@@ -688,10 +697,11 @@ export default function NewOrder() {
                                         <div className="flex flex-wrap gap-2 mt-1 justify-end">
                                             <div className="text-xs text-muted-foreground self-center mr-1">Tiers:</div>
                                             {tiers.map(tier => (
-                                                <Badge
+                                                <button
                                                     key={tier.label}
-                                                    variant={tier.label === 'Partner Cost' ? 'default' : tier.variant}
+                                                    type="button"
                                                     className={cn(
+                                                        badgeVariants({ variant: tier.label === 'Partner Cost' ? 'default' : tier.variant }),
                                                         "cursor-pointer transition-colors",
                                                         item.unitPrice === tier.price
                                                             ? 'ring-2 ring-primary ring-offset-1'
@@ -701,7 +711,7 @@ export default function NewOrder() {
                                                     onClick={() => updatePrice(item.peptide.id, tier.price, tier.commRate)}
                                                 >
                                                     {tier.label}: ${tier.price.toFixed(0)}
-                                                </Badge>
+                                                </button>
                                             ))}
                                         </div>
                                     </div>

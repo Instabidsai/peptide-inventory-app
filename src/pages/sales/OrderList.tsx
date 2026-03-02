@@ -70,7 +70,7 @@ export default function OrderList() {
     const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'wholesale'>(
         sourceParam === 'woocommerce' || sourceParam === 'app' || sourceParam === 'wholesale' ? sourceParam : 'all'
     );
-    const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
+    const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial' | 'commission_offset'>('all');
     const [filterShipping, setFilterShipping] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -235,6 +235,7 @@ export default function OrderList() {
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="unpaid">Unpaid</SelectItem>
                         <SelectItem value="partial">Partial</SelectItem>
+                        <SelectItem value="commission_offset">Product Offset</SelectItem>
                     </SelectContent>
                 </Select>
                 <Select value={filterShipping} onValueChange={setFilterShipping}>

@@ -337,10 +337,10 @@ export function useCreateSalesOrder() {
 
             if (itemsError) throw itemsError;
 
-            // Process commission records
-            // Manual commissions: insert directly when frontend provides chain entries
+            // Process commission records — skip entirely for partner/commission_offset orders
+            const isPartnerOffset = input.payment_status === 'commission_offset';
             let commissionRecordsCreated = false;
-            if (input.manual_commissions && input.manual_commissions.length > 0 && commissionAmount > 0) {
+            if (!isPartnerOffset && input.manual_commissions && input.manual_commissions.length > 0 && commissionAmount > 0) {
                 const commEntries = input.manual_commissions.map(mc => ({
                     sale_id: order.id,
                     partner_id: mc.profile_id,
@@ -361,7 +361,7 @@ export function useCreateSalesOrder() {
                     supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
                 }
             }
-            if (!commissionRecordsCreated && repId) {
+            if (!isPartnerOffset && !commissionRecordsCreated && repId) {
                 // ALWAYS run the RPC when a rep exists — the RPC reads commission rates
                 // from profiles and walks the full chain (direct → parent → grandparent).
                 // Don't gate on commissionAmount — the frontend can miscalculate to 0

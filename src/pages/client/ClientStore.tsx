@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
@@ -12,6 +12,7 @@ import { CardContent } from '@/components/ui/card';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ContentFade } from '@/components/ui/content-fade';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Info } from 'lucide-react';
 
 import {
@@ -87,18 +88,21 @@ export default function ClientStore() {
         }
     }, [contact]);
 
-    // Get all active peptides
+    // Get all active peptides — MUST filter by org_id (multi-tenancy)
+    const orgId = authProfile?.org_id;
     const { data: peptides, isLoading, isError } = useQuery({
-        queryKey: ['client_store_peptides'],
+        queryKey: ['client_store_peptides', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('peptides')
                 .select('*')
                 .eq('active', true)
+                .eq('org_id', orgId!)
                 .order('name');
             if (error) throw error;
             return data;
         },
+        enabled: !!orgId,
     });
 
     // Get the assigned rep for this client (for commission tracking + pricing discount)
@@ -123,13 +127,14 @@ export default function ClientStore() {
     const pricingProfile = isPartner ? authProfile : assignedRep;
     const pricingMode = pricingProfile?.pricing_mode || 'percentage';
 
-    // Fetch avg lot costs for cost-based pricing (cost_plus or cost_multiplier)
+    // Fetch avg lot costs for cost-based pricing (cost_plus or cost_multiplier) — org-scoped
     const { data: lotCosts } = useQuery({
-        queryKey: ['client_lot_costs'],
+        queryKey: ['client_lot_costs', orgId],
         queryFn: async () => {
             const { data: lots } = await supabase
                 .from('lots')
                 .select('peptide_id, cost_per_unit')
+                .eq('org_id', orgId!)
                 .gt('cost_per_unit', 0);
             if (!lots) return {};
             const costMap: Record<string, { total: number; count: number }> = {};
@@ -145,7 +150,7 @@ export default function ClientStore() {
             });
             return result;
         },
-        enabled: isPartner && (pricingMode === 'cost_plus' || pricingMode === 'cost_multiplier'),
+        enabled: !!orgId && isPartner && (pricingMode === 'cost_plus' || pricingMode === 'cost_multiplier'),
     });
 
     const getClientPrice = (peptide: { id: string; retail_price?: number | null }): number => {
@@ -249,6 +254,23 @@ export default function ClientStore() {
         } catch { /* ignore malformed param */ }
     }, [searchParams, peptides]);
 
+    // Fetch sales counts for popularity sorting
+    const { data: salesCounts } = useQuery({
+        queryKey: ['peptide-sales-counts'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('sales_order_items')
+                .select('peptide_id, quantity');
+            if (!data) return new Map<string, number>();
+            const counts = new Map<string, number>();
+            for (const row of data) {
+                counts.set(row.peptide_id, (counts.get(row.peptide_id) || 0) + (row.quantity || 0));
+            }
+            return counts;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
     // Filter peptides by search query + visibility restrictions
     const filteredPeptides = peptides?.filter((p) => {
         if (!canSeePeptide(p, authProfile?.id, userRole?.role)) return false;
@@ -256,6 +278,19 @@ export default function ClientStore() {
         return p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     });
+
+    // Sort by popularity (most sold first), then alphabetically
+    const sortedPeptides = useMemo(() => {
+        if (!filteredPeptides) return [];
+        return [...filteredPeptides].sort((a, b) => {
+            const aCount = salesCounts?.get(a.id) || 0;
+            const bCount = salesCounts?.get(b.id) || 0;
+            if (aCount !== bCount) return bCount - aCount;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    }, [filteredPeptides, salesCounts]);
+
+    const [storeTab, setStoreTab] = useState<'peptides' | 'bundles' | 'protocols'>('peptides');
 
     const copyZelleEmail = async () => {
         try {
@@ -390,46 +425,72 @@ export default function ClientStore() {
                 onSearchChange={setSearchQuery}
             />
 
-            {/* Protocol Bundles */}
-            {!searchQuery && peptides && peptides.length > 0 && (
-                <ProtocolBundles
+            {/* Tabbed store layout — tabs hidden when searching */}
+            {!searchQuery && peptides && peptides.length > 0 ? (
+                <Tabs value={storeTab} onValueChange={(v) => setStoreTab(v as typeof storeTab)}>
+                    <TabsList className="w-full grid grid-cols-3 mb-6">
+                        <TabsTrigger value="peptides">Peptides</TabsTrigger>
+                        <TabsTrigger value="bundles">Combos</TabsTrigger>
+                        <TabsTrigger value="protocols">Protocols</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="peptides">
+                        <ProductGrid
+                            peptides={peptides}
+                            filteredPeptides={sortedPeptides}
+                            isLoading={isLoading}
+                            isError={isError}
+                            searchQuery={searchQuery}
+                            cart={cart}
+                            isPartner={isPartner}
+                            pricingMode={pricingMode}
+                            getClientPrice={getClientPrice}
+                            addToCart={addToCart}
+                            updateQuantity={updateQuantity}
+                            onSelectPeptide={(p: any) => { trackProductView(p.id, p.name); setSelectedPeptide(p); }}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="bundles">
+                        <ProtocolBundles
+                            peptides={peptides}
+                            cart={cart}
+                            isPartner={isPartner}
+                            pricingMode={pricingMode}
+                            getClientPrice={getClientPrice}
+                            addToCart={addToCart}
+                            onSelectProtocol={setSelectedProtocol}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="protocols">
+                        <ProtocolPackages
+                            peptides={peptides}
+                            cart={cart}
+                            isPartner={isPartner}
+                            pricingMode={pricingMode}
+                            getClientPrice={getClientPrice}
+                            addPackageToCart={addPackageToCart}
+                        />
+                    </TabsContent>
+                </Tabs>
+            ) : (
+                /* When searching, skip tabs — show filtered results directly */
+                <ProductGrid
                     peptides={peptides}
+                    filteredPeptides={sortedPeptides}
+                    isLoading={isLoading}
+                    isError={isError}
+                    searchQuery={searchQuery}
                     cart={cart}
                     isPartner={isPartner}
                     pricingMode={pricingMode}
                     getClientPrice={getClientPrice}
                     addToCart={addToCart}
-                    onSelectProtocol={setSelectedProtocol}
+                    updateQuantity={updateQuantity}
+                    onSelectPeptide={(p: any) => { trackProductView(p.id, p.name); setSelectedPeptide(p); }}
                 />
             )}
-
-            {/* Full Cycle Protocol Packages */}
-            {!searchQuery && peptides && peptides.length > 0 && (
-                <ProtocolPackages
-                    peptides={peptides}
-                    cart={cart}
-                    isPartner={isPartner}
-                    pricingMode={pricingMode}
-                    getClientPrice={getClientPrice}
-                    addPackageToCart={addPackageToCart}
-                />
-            )}
-
-            {/* Product Grid */}
-            <ProductGrid
-                peptides={peptides}
-                filteredPeptides={filteredPeptides}
-                isLoading={isLoading}
-                isError={isError}
-                searchQuery={searchQuery}
-                cart={cart}
-                isPartner={isPartner}
-                pricingMode={pricingMode}
-                getClientPrice={getClientPrice}
-                addToCart={addToCart}
-                updateQuantity={updateQuantity}
-                onSelectPeptide={(p: any) => { trackProductView(p.id, p.name); setSelectedPeptide(p); }}
-            />
 
             {/* Cart Summary */}
             <CartSummary

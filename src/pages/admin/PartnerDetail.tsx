@@ -16,6 +16,10 @@ import {
     Users,
     UserPlus,
     ShoppingCart,
+    Tag,
+    Plus,
+    Trash2,
+    Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -183,159 +187,6 @@ function NetworkTabContent({ repId }: { repId: string }) {
                 </div>
             </div>
             <DownlineVisualizer data={allNodes} />
-        </div>
-    );
-}
-
-export default function PartnerDetail() {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-
-    // 1. Fetch Partner Profile
-    const { data: partner, isLoading, isError, refetch } = useQuery({
-        queryKey: ['partner_detail', id],
-        queryFn: async () => {
-            if (!id) throw new Error("No ID");
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', id)
-                .maybeSingle();
-            if (error) throw error;
-            if (!data) throw new Error('Partner profile not found');
-            return data;
-        },
-        enabled: !!id
-    });
-
-    // 2. Fetch Stats (Optional - can be added later)
-
-    if (isLoading) {
-        return (
-            <div className="p-6 space-y-6">
-                <Skeleton className="h-8 w-1/3" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        );
-    }
-
-    if (isError) return <QueryError message="Failed to load partner details." onRetry={refetch} />;
-    if (!partner) return <div className="p-6">Partner not found</div>;
-
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" aria-label="Back to partners" onClick={() => navigate('/admin/reps')}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">{partner.full_name}</h1>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Badge variant={partner.role === 'sales_rep' ? 'secondary' : 'default'}>
-                            {partner.role?.replace('_', ' ')}
-                        </Badge>
-                        <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {partner.email}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-semibold">Commission Rate</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{((partner.commission_rate || 0) * 100).toFixed(0)}%</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-semibold">Partner Tier</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-2xl font-bold capitalize ${partner.partner_tier === 'referral' ? 'text-sky-400' : ''}`}>{partner.partner_tier || 'Standard'}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-semibold">Joined</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {partner.created_at ? format(new Date(partner.created_at), 'MMM yyyy') : 'N/A'}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Main Content Tabs */}
-            <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="place_order">Place Order</TabsTrigger>
-                    <TabsTrigger value="orders">Sales Orders</TabsTrigger>
-                    <TabsTrigger value="clients">Clients</TabsTrigger>
-                    <TabsTrigger value="network">Network Hierarchy</TabsTrigger>
-                    <TabsTrigger value="payouts">Payouts</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="place_order">
-                    <PlaceOrderTabContent partner={partner} />
-                </TabsContent>
-
-                <TabsContent value="overview" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Partner Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <span className="font-medium">Phone:</span> {partner.phone || 'N/A'}
-                                </div>
-                                <div>
-                                    <span className="font-medium">Address:</span> {partner.address || 'N/A'}
-                                </div>
-                                <div>
-                                    <span className="font-medium">Bio:</span> {partner.bio || 'N/A'}
-                                </div>
-                                <div>
-                                    <span className="font-medium">Price Multiplier:</span>{' '}
-                                    {partner.price_multiplier != null
-                                        ? `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
-                                        : 'Standard pricing'}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <ReferralActivityCard repId={id!} />
-                </TabsContent>
-
-                <TabsContent value="orders">
-                    <SalesOrdersTabContent repId={id!} />
-                </TabsContent>
-
-                <TabsContent value="clients">
-                    <AssignedClientsTabContent repId={id!} partnerTier={partner.partner_tier} />
-                </TabsContent>
-
-                <TabsContent value="network" className="space-y-4">
-                    {/* The new Downline Visualizer */}
-                    <NetworkTabContent repId={id!} />
-                </TabsContent>
-
-                <TabsContent value="payouts" className="space-y-4">
-                    <PayoutsTabContent repId={id!} />
-                </TabsContent>
-            </Tabs>
         </div>
     );
 }
@@ -1373,5 +1224,433 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 </DialogContent>
             </Dialog>
         </>
+    );
+}
+
+// ─── Discount Codes Tab ───
+function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: string }) {
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [creating, setCreating] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [newCode, setNewCode] = useState({ code: '', discount_percent: 20, platform: 'both' });
+
+    const { data: codes, isLoading } = useQuery({
+        queryKey: ['partner_discount_codes', repId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('partner_discount_codes')
+                .select('*')
+                .eq('partner_id', repId)
+                .eq('org_id', orgId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        },
+    });
+
+    const handleCreate = async () => {
+        if (!newCode.code.trim()) {
+            toast({ variant: 'destructive', title: 'Code required', description: 'Enter a discount code name.' });
+            return;
+        }
+        setCreating(true);
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            const token = session?.session?.access_token;
+            if (!token) throw new Error('Not authenticated');
+
+            const res = await fetch(
+                `${(supabase as any).supabaseUrl}/functions/v1/sync-discount-codes`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        action: 'create',
+                        code: newCode.code.trim().toUpperCase(),
+                        discount_percent: newCode.discount_percent,
+                        partner_id: repId,
+                        platform: newCode.platform,
+                    }),
+                }
+            );
+
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || 'Failed to create discount code');
+
+            toast({ title: 'Discount code created', description: `${newCode.code.toUpperCase()} is active.` });
+            setNewCode({ code: '', discount_percent: 20, platform: 'both' });
+            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', repId] });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Error', description: (err as any)?.message || 'Failed to create code.' });
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDelete = async (codeId: string, codeName: string) => {
+        setDeletingId(codeId);
+        try {
+            const { data: session } = await supabase.auth.getSession();
+            const token = session?.session?.access_token;
+            if (!token) throw new Error('Not authenticated');
+
+            const res = await fetch(
+                `${(supabase as any).supabaseUrl}/functions/v1/sync-discount-codes`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ action: 'delete', code_id: codeId }),
+                }
+            );
+
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || 'Failed to delete');
+
+            toast({ title: 'Deactivated', description: `${codeName} has been deactivated.` });
+            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', repId] });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Error', description: (err as any)?.message || 'Failed to delete code.' });
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading discount codes...</div>;
+
+    const activeCodes = codes?.filter(c => c.active) || [];
+    const inactiveCodes = codes?.filter(c => !c.active) || [];
+
+    const platformBadge = (platform: string | null) => {
+        if (platform === 'woocommerce') return <Badge variant="outline" className="text-xs">WooCommerce</Badge>;
+        if (platform === 'shopify') return <Badge variant="outline" className="text-xs">Shopify</Badge>;
+        if (platform === 'both') return <Badge variant="outline" className="text-xs">All Platforms</Badge>;
+        return <Badge variant="outline" className="text-xs text-muted-foreground">App Only</Badge>;
+    };
+
+    const syncBadge = (platformCouponId: string | null) => {
+        if (!platformCouponId) return <Badge variant="outline" className="text-xs text-amber-400 border-amber-500/30">Not Synced</Badge>;
+        const parts = platformCouponId.split(',').filter(Boolean);
+        return (
+            <div className="flex gap-1">
+                {parts.map(p => (
+                    <Badge key={p} variant="outline" className="text-xs text-green-400 border-green-500/30">
+                        {p.startsWith('woo:') ? 'WC' : p.startsWith('shopify:') ? 'Shopify' : p}
+                    </Badge>
+                ))}
+            </div>
+        );
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Create New Code */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Tag className="h-5 w-5" />
+                        Create Discount Code
+                    </CardTitle>
+                    <CardDescription>
+                        Create a coupon code for this partner. It will be synced to connected platforms.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="discount-code">Code</Label>
+                            <Input
+                                id="discount-code"
+                                placeholder="e.g. JOHN20"
+                                value={newCode.code}
+                                onChange={(e) => setNewCode(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="discount-pct">Discount %</Label>
+                            <Input
+                                id="discount-pct"
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={newCode.discount_percent}
+                                onChange={(e) => setNewCode(prev => ({ ...prev, discount_percent: Number(e.target.value) }))}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="discount-platform">Platform</Label>
+                            <select
+                                id="discount-platform"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                value={newCode.platform}
+                                onChange={(e) => setNewCode(prev => ({ ...prev, platform: e.target.value }))}
+                            >
+                                <option value="both">All Platforms</option>
+                                <option value="woocommerce">WooCommerce Only</option>
+                                <option value="shopify">Shopify Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <Button onClick={handleCreate} disabled={creating}>
+                        {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                        {creating ? 'Creating...' : 'Create Code'}
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Active Codes */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Active Codes ({activeCodes.length})</CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Code</TableHead>
+                                <TableHead className="text-center">Discount</TableHead>
+                                <TableHead>Platform</TableHead>
+                                <TableHead>Sync Status</TableHead>
+                                <TableHead className="text-center">Uses</TableHead>
+                                <TableHead>Created</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {activeCodes.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                        No active discount codes for this partner.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {activeCodes.map((dc) => (
+                                <TableRow key={dc.id}>
+                                    <TableCell className="font-mono font-bold text-primary">{dc.code}</TableCell>
+                                    <TableCell className="text-center">{dc.discount_percent}%</TableCell>
+                                    <TableCell>{platformBadge(dc.platform)}</TableCell>
+                                    <TableCell>{syncBadge(dc.platform_coupon_id)}</TableCell>
+                                    <TableCell className="text-center">{dc.uses_count || 0}</TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                        {format(new Date(dc.created_at), 'MMM d, yyyy')}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                            onClick={() => handleDelete(dc.id, dc.code)}
+                                            disabled={deletingId === dc.id}
+                                        >
+                                            {deletingId === dc.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            {/* Inactive / Deactivated Codes */}
+            {inactiveCodes.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-muted-foreground">Deactivated Codes ({inactiveCodes.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Code</TableHead>
+                                    <TableHead className="text-center">Discount</TableHead>
+                                    <TableHead>Platform</TableHead>
+                                    <TableHead className="text-center">Uses</TableHead>
+                                    <TableHead>Deactivated</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {inactiveCodes.map((dc) => (
+                                    <TableRow key={dc.id} className="opacity-50">
+                                        <TableCell className="font-mono line-through">{dc.code}</TableCell>
+                                        <TableCell className="text-center">{dc.discount_percent}%</TableCell>
+                                        <TableCell>{platformBadge(dc.platform)}</TableCell>
+                                        <TableCell className="text-center">{dc.uses_count || 0}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {dc.updated_at ? format(new Date(dc.updated_at), 'MMM d, yyyy') : '-'}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+}
+
+export default function PartnerDetail() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    // 1. Fetch Partner Profile
+    const { data: partner, isLoading, isError, refetch } = useQuery({
+        queryKey: ['partner_detail', id],
+        queryFn: async () => {
+            if (!id) throw new Error("No ID");
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', id)
+                .maybeSingle();
+            if (error) throw error;
+            if (!data) throw new Error('Partner profile not found');
+            return data;
+        },
+        enabled: !!id
+    });
+
+    if (isLoading) {
+        return (
+            <div className="p-6 space-y-6">
+                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        );
+    }
+
+    if (isError) return <QueryError message="Failed to load partner details." onRetry={refetch} />;
+    if (!partner) return <div className="p-6">Partner not found</div>;
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" aria-label="Back to partners" onClick={() => navigate('/admin/reps')}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">{partner.full_name}</h1>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Badge variant={partner.role === 'sales_rep' ? 'secondary' : 'default'}>
+                            {partner.role?.replace('_', ' ')}
+                        </Badge>
+                        <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" /> {partner.email}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-semibold">Commission Rate</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{((partner.commission_rate || 0) * 100).toFixed(0)}%</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-semibold">Partner Tier</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold capitalize ${partner.partner_tier === 'referral' ? 'text-sky-400' : ''}`}>{partner.partner_tier || 'Standard'}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-semibold">Joined</CardTitle>
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {partner.created_at ? format(new Date(partner.created_at), 'MMM yyyy') : 'N/A'}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Main Content Tabs */}
+            <Tabs defaultValue="overview" className="space-y-4">
+                <TabsList>
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="place_order">Place Order</TabsTrigger>
+                    <TabsTrigger value="orders">Sales Orders</TabsTrigger>
+                    <TabsTrigger value="clients">Clients</TabsTrigger>
+                    <TabsTrigger value="network">Network Hierarchy</TabsTrigger>
+                    <TabsTrigger value="payouts">Payouts</TabsTrigger>
+                    <TabsTrigger value="discount_codes">Discount Codes</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="place_order">
+                    <PlaceOrderTabContent partner={partner} />
+                </TabsContent>
+
+                <TabsContent value="overview" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Partner Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="font-medium">Phone:</span> {partner.phone || 'N/A'}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Address:</span> {partner.address || 'N/A'}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Bio:</span> {partner.bio || 'N/A'}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Price Multiplier:</span>{' '}
+                                    {partner.price_multiplier != null
+                                        ? `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
+                                        : 'Standard pricing'}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <ReferralActivityCard repId={id!} />
+                </TabsContent>
+
+                <TabsContent value="orders">
+                    <SalesOrdersTabContent repId={id!} />
+                </TabsContent>
+
+                <TabsContent value="clients">
+                    <AssignedClientsTabContent repId={id!} partnerTier={partner.partner_tier} />
+                </TabsContent>
+
+                <TabsContent value="network" className="space-y-4">
+                    <NetworkTabContent repId={id!} />
+                </TabsContent>
+
+                <TabsContent value="payouts" className="space-y-4">
+                    <PayoutsTabContent repId={id!} />
+                </TabsContent>
+
+                <TabsContent value="discount_codes" className="space-y-4">
+                    <DiscountCodesTabContent repId={id!} orgId={partner.org_id} />
+                </TabsContent>
+            </Tabs>
+        </div>
     );
 }

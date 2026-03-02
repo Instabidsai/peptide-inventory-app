@@ -20,6 +20,7 @@ export interface ExternalOrder {
   total_amount: number;
   payment_status: "paid" | "unpaid" | "partial";
   items: ExternalOrderItem[];
+  discount_codes?: string[];
 }
 
 export interface ImportResult {
@@ -58,13 +59,13 @@ export async function importExternalOrder(
       return { success: true, orderId: existing.id, matchedItems: 0, skippedItems: 0, error: "Order already imported" };
     }
   } else {
-    // For Shopify, check by notes pattern since there's no shopify_order_id column
+    // Shopify: use dedicated shopify_order_id column for reliable dedup
     const { data: existing } = await supabase
       .from("sales_orders")
       .select("id")
       .eq("org_id", orgId)
       .eq("order_source", "shopify")
-      .ilike("notes", `%Shopify Order #${order.external_id}%`)
+      .eq("shopify_order_id", order.external_id)
       .limit(1)
       .maybeSingle();
 
@@ -209,6 +210,8 @@ export async function importExternalOrder(
 
   if (order.platform === "woocommerce") {
     orderData.woo_order_id = parseInt(order.external_id) || null;
+  } else if (order.platform === "shopify") {
+    orderData.shopify_order_id = order.external_id;
   }
 
   const { data: newOrder, error: orderError } = await supabase
@@ -241,6 +244,41 @@ export async function importExternalOrder(
   if (itemsError) {
     console.error(`[platform-order-sync] Failed to create order items: ${itemsError.message}`);
     // Order was created, items failed — still return the order ID
+  }
+
+  // ── 6. Coupon code → partner attribution ──────────────────
+  if (order.discount_codes && order.discount_codes.length > 0) {
+    for (const code of order.discount_codes) {
+      const { data: discountCode } = await supabase
+        .from("partner_discount_codes")
+        .select("partner_id, id")
+        .eq("org_id", orgId)
+        .ilike("code", code)
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (discountCode) {
+        // Attribute order to partner
+        await supabase
+          .from("sales_orders")
+          .update({ assigned_rep_id: discountCode.partner_id })
+          .eq("id", newOrder.id);
+
+        // Increment uses count
+        await supabase.rpc("increment_discount_code_uses", { code_id: discountCode.id }).catch(() => {
+          // Fallback if RPC doesn't exist yet
+          supabase
+            .from("partner_discount_codes")
+            .update({ uses_count: (discountCode as any).uses_count + 1 })
+            .eq("id", discountCode.id)
+            .catch(() => {});
+        });
+
+        console.log(`[platform-order-sync] Attributed order ${newOrder.id} to partner ${discountCode.partner_id} via code "${code}"`);
+        break; // Only attribute to first matching code
+      }
+    }
   }
 
   console.log(`[platform-order-sync] Imported ${platformLabel} order #${order.external_id} → ${newOrder.id} (${matchedItems.length} items, ${skippedItems} skipped)`);

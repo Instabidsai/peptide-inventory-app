@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -84,6 +84,7 @@ export default function Contacts() {
   const deleteContact = useDeleteContact();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearch = useDeferredValue(searchQuery);
   const [repFilter, setRepFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -103,13 +104,13 @@ export default function Contacts() {
     defaultValues: { name: '', email: '', phone: '', type: 'customer', company: '', address: '', notes: '', assigned_rep_id: '' },
   });
 
-  const filteredContacts = contacts?.filter((c) => {
+  const filteredContacts = useMemo(() => contacts?.filter((c) => {
     // Text search
-    const matchesSearch = !searchQuery ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.assigned_rep?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = !deferredSearch ||
+      c.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+      c.email?.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+      c.company?.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+      c.assigned_rep?.full_name?.toLowerCase().includes(deferredSearch.toLowerCase());
 
     // Rep filter
     const matchesRep = repFilter === 'all' ||
@@ -119,7 +120,7 @@ export default function Contacts() {
     const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
 
     return matchesSearch && matchesRep && matchesSource;
-  });
+  }), [contacts, deferredSearch, repFilter, sourceFilter]);
 
   const contactSortAccessors = {
     name: (c: Contact) => c.name?.toLowerCase(),
@@ -520,43 +521,37 @@ export default function Contacts() {
             />
           ) : isMobile ? (
             <div className="space-y-3">
-              {sortedContacts?.map((contact, index) => (
-                <motion.div
+              {sortedContacts?.map((contact) => (
+                <Card
                   key={contact.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: index * 0.04 }}
+                  className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
+                  onClick={() => navigate(`/contacts/${contact.id}`)}
                 >
-                  <Card
-                    className="cursor-pointer hover:bg-accent/30 hover:shadow-card hover:border-border/80 transition-all"
-                    onClick={() => navigate(`/contacts/${contact.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-1.5">
-                        <div>
-                          <p className="font-medium">{contact.name}</p>
-                          <p className="text-xs text-muted-foreground">{contact.email || contact.phone || 'No contact info'}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {contact.source === 'woocommerce' && (
-                            <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Website</Badge>
-                          )}
-                          <Badge variant={typeColors[contact.type]} className="text-xs">{typeLabels[contact.type]}</Badge>
-                        </div>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div>
+                        <p className="font-medium">{contact.name}</p>
+                        <p className="text-xs text-muted-foreground">{contact.email || contact.phone || 'No contact info'}</p>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {contact.company && <span>{contact.company}</span>}
-                        {(() => {
-                          const count = contact.sales_orders?.length || 0;
-                          return count > 0 ? <span>{count} order{count !== 1 ? 's' : ''}</span> : null;
-                        })()}
-                        {contact.assigned_rep?.full_name && (
-                          <span className="flex items-center gap-0.5 text-blue-500"><Briefcase className="h-3 w-3" />{contact.assigned_rep.full_name}</span>
+                      <div className="flex items-center gap-1.5">
+                        {contact.source === 'woocommerce' && (
+                          <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Website</Badge>
                         )}
+                        <Badge variant={typeColors[contact.type]} className="text-xs">{typeLabels[contact.type]}</Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {contact.company && <span>{contact.company}</span>}
+                      {(() => {
+                        const count = contact.order_count ?? contact.sales_orders?.length ?? 0;
+                        return count > 0 ? <span>{count} order{count !== 1 ? 's' : ''}</span> : null;
+                      })()}
+                      {contact.assigned_rep?.full_name && (
+                        <span className="flex items-center gap-0.5 text-blue-500"><Briefcase className="h-3 w-3" />{contact.assigned_rep.full_name}</span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           ) : (
@@ -577,12 +572,9 @@ export default function Contacts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedContacts?.map((contact, index) => (
-                  <motion.tr
+                {sortedContacts?.map((contact) => (
+                  <tr
                     key={contact.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }}
                     className="border-b transition-colors cursor-pointer hover:bg-muted/50 data-[state=selected]:bg-muted"
                     onClick={() => navigate(`/contacts/${contact.id}`)}
                   >
@@ -660,7 +652,7 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-center">
                       {(() => {
-                        const count = contact.sales_orders?.length || 0;
+                        const count = contact.order_count ?? contact.sales_orders?.length ?? 0;
                         return count > 0
                           ? <Badge variant="secondary" className="text-xs">{count}</Badge>
                           : <span className="text-muted-foreground text-xs">0</span>;
@@ -668,6 +660,9 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {(() => {
+                        if (contact.last_order_date) {
+                          return format(new Date(contact.last_order_date), 'MMM d, yyyy');
+                        }
                         const orders = contact.sales_orders || [];
                         if (orders.length === 0) return '-';
                         const latest = orders.reduce((max, o) =>
@@ -679,7 +674,7 @@ export default function Contacts() {
                     <TableCell className="text-muted-foreground">
                       {contact.company || '-'}
                     </TableCell>
-                  </motion.tr>
+                  </tr>
                 ))}
               </TableBody>
             </Table>

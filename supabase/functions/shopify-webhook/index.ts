@@ -131,6 +131,11 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
+    // Extract discount codes from the order
+    const discountCodes = (shopifyOrder.discount_codes || [])
+      .map((dc: any) => dc.code)
+      .filter(Boolean);
+
     const result = await importExternalOrder(supabase, orgId, {
       platform: "shopify",
       external_id: String(shopifyOrder.id),
@@ -141,6 +146,7 @@ Deno.serve(async (req) => {
       total_amount: parseFloat(shopifyOrder.total_price) || 0,
       payment_status: mapShopifyPaymentStatus(shopifyOrder.financial_status || "pending"),
       items,
+      discount_codes: discountCodes,
     }, adminProfile?.user_id);
 
     if (result.success && !result.error) {

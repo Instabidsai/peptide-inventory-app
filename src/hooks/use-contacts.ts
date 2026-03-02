@@ -30,6 +30,9 @@ export interface Contact {
   // Joined data from useContacts list query
   assigned_rep?: { id: string; full_name: string | null } | null;
   sales_orders?: { id: string; created_at: string }[];
+  // Computed fields (when available)
+  order_count?: number;
+  last_order_date?: string | null;
 }
 
 export interface CreateContactInput {
@@ -64,8 +67,7 @@ export function useContacts(type?: ContactType, pagination?: PaginationState) {
           assigned_rep:assigned_rep_id (
             id,
             full_name
-          ),
-          sales_orders:sales_orders!client_id (id, created_at)
+          )
         `)
         .eq('org_id', profile.org_id)
         .order('name')

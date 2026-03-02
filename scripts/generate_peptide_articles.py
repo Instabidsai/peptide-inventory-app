@@ -628,8 +628,9 @@ def build_protocol_context(peptide_name: str) -> str:
 # ---------------------------------------------------------------------------
 SYNTHESIS_PROMPT = """You are a peptide research writer for an educational health platform.
 You have been given transcript excerpts from Dr. Trevor Bachmeyer's educational videos about {peptide_name}.
+You also have PROTOCOL DATA from our internal protocol system — real dosing tiers, named stacks, and supplement recommendations used in clinical practice.
 
-Using ONLY the source material provided, write a comprehensive, well-structured article about {peptide_name}.
+Using the source material AND protocol data, write a comprehensive, well-structured article about {peptide_name}.
 
 The article MUST follow this exact structure with these HTML headings:
 
@@ -640,33 +641,45 @@ A clear 2-3 paragraph introduction explaining what this peptide is, its origin, 
 Explain how {peptide_name} works at a biological level. Include pathways, receptors, or cellular mechanisms mentioned in the source material.
 
 <h2>Research Applications</h2>
-What conditions or goals is this peptide being researched for? Use bullet points (<ul><li>) for clarity. Include what the research community is exploring.
+What conditions or goals is this peptide being researched for? Use bullet points (<ul><li>) for clarity.
 
-<h2>Typical Research Protocols</h2>
-Dosing ranges, frequency, administration routes, and cycle lengths discussed in the source material. Present as a clean table or bullet list. Include reconstitution or storage notes if mentioned.
+<h2>Dosing Protocols</h2>
+Present dosing as a TIERED PROTOCOL TABLE using <table> with columns: Tier, Dose, Notes.
+Use the protocol data provided — it contains real dosing tiers (Conservative/Standard/Aggressive or similar).
+Include administration route, cycle pattern, and titration schedule if provided.
+Wrap warnings in <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin:12px 0"><strong>⚠️ Important:</strong> ...</div>
+
+<h2>Protocol Stacks & Synergistic Combinations</h2>
+If the protocol data shows this peptide belongs to named stacks (like "GLOW", "Healing Stack", "GH Stack"), describe each stack and how {peptide_name} fits into it.
+List which peptides it is commonly paired with in real protocols and WHY the combination works.
+If there is specific sequencing (like GH Stack timing), describe it clearly step by step.
+
+<h2>Supplement Recommendations</h2>
+If protocol data includes recommended supplements, present them as a table: Supplement, Dose, Rationale.
+If none are provided, skip this section entirely.
 
 <h2>Key Research Findings</h2>
-Summarize the most important studies, clinical data, or findings mentioned in the source material.
-
-<h2>Synergistic Combinations</h2>
-If the source material mentions combining {peptide_name} with other peptides or compounds, include this section. If not, skip it.
+Summarize the most important studies, clinical data, or findings from the source material.
 
 <h2>Important Considerations</h2>
-Side effects, contraindications, or cautions mentioned in the source material.
+Side effects, contraindications, or cautions. Include specific warnings from the protocol data.
 
 RULES:
 - Write in a professional, educational tone
 - Use proper HTML tags: <h2>, <p>, <ul>, <li>, <strong>, <em>, <table>, <tr>, <td>, <th>
+- Style tables with: <table style="width:100%;border-collapse:collapse;margin:16px 0"> and cells with style="border:1px solid #ddd;padding:8px;text-align:left"
 - Do NOT use <h1> tags (the page title handles that)
 - Do NOT include any markdown — output pure HTML only
-- Do NOT invent information not present in the source material
-- Every claim should be traceable to the provided excerpts
+- Merge the YouTube source material with the protocol data naturally — don't cite "protocol data" as a source
 - Include a brief disclaimer at the end: "This content is for educational and research purposes only. Consult a qualified healthcare provider before beginning any new protocol."
-- Target 800-1200 words
-- Make it scannable with clear headings and bullet points"""
+- Target 1000-1500 words (longer than before due to protocol detail)
+- Make it scannable with clear headings, tables, and bullet points
+
+{protocol_context}"""
 
 GENERATION_PROMPT = """You are a peptide research writer for an educational health platform.
 Write a comprehensive, well-structured article about {peptide_name}.
+You have PROTOCOL DATA from our internal protocol system — real dosing tiers, named stacks, and supplement recommendations used in clinical practice.
 
 {peptide_name} description: {description}
 
@@ -681,27 +694,39 @@ Explain how {peptide_name} works at a biological level. Include known pathways, 
 <h2>Research Applications</h2>
 What conditions or goals is this peptide being researched for? Use bullet points (<ul><li>) for clarity.
 
-<h2>Typical Research Protocols</h2>
-Common dosing ranges, frequency, administration routes, and cycle lengths found in the research literature. Present as a clean bullet list or table. Include reconstitution or storage notes where applicable.
+<h2>Dosing Protocols</h2>
+Present dosing as a TIERED PROTOCOL TABLE using <table> with columns: Tier, Dose, Notes.
+Use the protocol data provided — it contains real dosing tiers (Conservative/Standard/Aggressive or similar).
+Include administration route, cycle pattern, and titration schedule if provided.
+Wrap warnings in <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;margin:12px 0"><strong>⚠️ Important:</strong> ...</div>
+
+<h2>Protocol Stacks & Synergistic Combinations</h2>
+If the protocol data shows this peptide belongs to named stacks (like "GLOW", "Healing Stack", "GH Stack"), describe each stack and how {peptide_name} fits into it.
+List which peptides it is commonly paired with in real protocols and WHY the combination works.
+If there is specific sequencing (like GH Stack timing), describe it clearly step by step.
+
+<h2>Supplement Recommendations</h2>
+If protocol data includes recommended supplements, present them as a table: Supplement, Dose, Rationale.
+If none are provided, skip this section entirely.
 
 <h2>Key Research Findings</h2>
 Summarize the most important published studies or clinical data.
 
-<h2>Synergistic Combinations</h2>
-If there are known synergistic combinations with other peptides or compounds, include them. Otherwise skip this section.
-
 <h2>Important Considerations</h2>
-Known side effects, contraindications, or cautions from the literature.
+Known side effects, contraindications, or cautions. Include specific warnings from the protocol data.
 
 RULES:
 - Write in a professional, educational tone based on published research
 - Use proper HTML tags: <h2>, <p>, <ul>, <li>, <strong>, <em>, <table>, <tr>, <td>, <th>
+- Style tables with: <table style="width:100%;border-collapse:collapse;margin:16px 0"> and cells with style="border:1px solid #ddd;padding:8px;text-align:left"
 - Do NOT use <h1> tags
 - Do NOT include any markdown — output pure HTML only
-- Base content on well-established research literature
+- Merge the protocol data naturally into the article — don't cite "protocol data" as a source
 - Include a brief disclaimer at the end: "This content is for educational and research purposes only. Consult a qualified healthcare provider before beginning any new protocol."
-- Target 800-1200 words
-- Make it scannable with clear headings and bullet points"""
+- Target 1000-1500 words (longer than before due to protocol detail)
+- Make it scannable with clear headings, tables, and bullet points
+
+{protocol_context}"""
 
 # Theme descriptions for generation prompt context
 THEME_DESCRIPTIONS: dict[str, str] = {
@@ -779,6 +804,17 @@ def supabase_rpc(fn_name: str, params: dict) -> list[dict]:
         return json.loads(resp.read().decode())
 
 
+def supabase_delete(path: str, params: dict) -> None:
+    """DELETE request to Supabase REST API."""
+    import urllib.request
+    import urllib.parse
+
+    url = f"{SUPABASE_URL}/rest/v1/{path}?{urllib.parse.urlencode(params, doseq=True)}"
+    req = urllib.request.Request(url, headers=HEADERS, method="DELETE")
+    with urllib.request.urlopen(req) as resp:
+        resp.read()  # consume response
+
+
 def openai_chat(system_prompt: str, user_prompt: str, model: str = "gpt-4o-mini") -> str:
     """Call OpenAI chat completions API."""
     import urllib.request
@@ -795,7 +831,7 @@ def openai_chat(system_prompt: str, user_prompt: str, model: str = "gpt-4o-mini"
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.3,
-        "max_tokens": 4000,
+        "max_tokens": 6000,
     }
     body = json.dumps(payload).encode()
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
@@ -919,15 +955,24 @@ def build_source_material(chunks: list[dict], max_words: int = 6000) -> str:
 
 
 def generate_article_from_sources(peptide_name: str, source_material: str) -> str:
-    """Generate an article by synthesizing YouTube transcript content."""
-    system = SYNTHESIS_PROMPT.format(peptide_name=peptide_name)
+    """Generate an article by synthesizing YouTube transcript content + protocol data."""
+    proto_ctx = build_protocol_context(peptide_name)
+    system = SYNTHESIS_PROMPT.format(
+        peptide_name=peptide_name,
+        protocol_context=proto_ctx if proto_ctx else "(No additional protocol data available for this peptide.)",
+    )
     user = f"Here are the transcript excerpts about {peptide_name}:\n\n{source_material}\n\nPlease synthesize this into a comprehensive article about {peptide_name}."
     return openai_chat(system, user)
 
 
 def generate_article_from_knowledge(peptide_name: str, description: str) -> str:
-    """Generate an article from general research knowledge."""
-    system = GENERATION_PROMPT.format(peptide_name=peptide_name, description=description)
+    """Generate an article from general research knowledge + protocol data."""
+    proto_ctx = build_protocol_context(peptide_name)
+    system = GENERATION_PROMPT.format(
+        peptide_name=peptide_name,
+        description=description,
+        protocol_context=proto_ctx if proto_ctx else "(No additional protocol data available for this peptide.)",
+    )
     user = f"Write a comprehensive research article about {peptide_name}."
     return openai_chat(system, user)
 
@@ -1006,11 +1051,16 @@ def main():
         has_content = name in theme_chunks and len(theme_chunks[name]) > 0
         chunk_count = len(theme_chunks.get(name, []))
 
+        proto_preview = build_protocol_context(name)
+        proto_lines = len(proto_preview.splitlines()) if proto_preview else 0
+
         print(f"\n  >> {name}")
         if has_content:
             print(f"     Source: {chunk_count} embedding chunks (Dr. Bachmeyer)")
         else:
             print(f"     Source: Research knowledge (no YouTube content)")
+        if proto_lines:
+            print(f"     Protocol data: {proto_lines} lines of dosing/stack/supplement context")
 
         if args.dry_run:
             print(f"     [DRY RUN] Would generate article")
@@ -1035,6 +1085,14 @@ def main():
             text_only = _re.sub(r"<[^>]+>", " ", html)
             text_only = _re.sub(r"\s+", " ", text_only).strip()
             description = text_only[:200] + "..." if len(text_only) > 200 else text_only
+
+            # Delete old article if --force
+            if args.force:
+                try:
+                    supabase_delete("resources", {"type": "eq.article", "theme_id": f"eq.{tid}"})
+                    print(f"     Deleted old article for {name}")
+                except Exception:
+                    pass  # no old article, that's fine
 
             resource = {
                 "title": f"{name}: Complete Research Guide",

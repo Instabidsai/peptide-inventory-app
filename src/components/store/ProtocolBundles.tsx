@@ -4,7 +4,7 @@ import { CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GlassCard } from '@/components/ui/glass-card';
-import { Layers, Package, Plus, Check } from 'lucide-react';
+import { Package, Plus, Check } from 'lucide-react';
 import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import type { CartItem, SelectedProtocol } from './types';
@@ -31,17 +31,8 @@ export function ProtocolBundles({
 }: ProtocolBundlesProps) {
     return (
         <div>
-            <div className="flex items-center gap-3 mb-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-brand flex items-center justify-center">
-                    <Layers className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-bold tracking-tight">Commonly Taken Together</h2>
-                    <p className="text-xs text-muted-foreground/50">Popular peptide combinations</p>
-                </div>
-            </div>
             <motion.div
-                className="grid gap-4 grid-cols-1 sm:grid-cols-2 mt-4"
+                className="grid gap-4 grid-cols-1 sm:grid-cols-2"
                 initial="hidden"
                 animate="show"
                 variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}

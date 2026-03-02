@@ -24,6 +24,8 @@ import {
   ChevronDown,
   Unplug,
   Store,
+  Users,
+  ShoppingBag,
 } from 'lucide-react';
 import { useTenantConnections, useConnectService } from '@/hooks/use-tenant-connections';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -184,6 +186,14 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     skipped: number;
     errors: number;
   } | null>(null);
+  const [syncingCustomers, setSyncingCustomers] = useState(false);
+  const [customerSyncResult, setCustomerSyncResult] = useState<{
+    total: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
 
   // Check WooCommerce connection status
   const { data: wooConnection, isLoading: connLoading } = useQuery({
@@ -242,7 +252,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ store_url: storeUrl.trim(), org_id: orgId }),
@@ -282,7 +292,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -342,7 +352,7 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ dryRun: false }),
       });
@@ -362,6 +372,41 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
       });
     } finally {
       setSyncing(false);
+    }
+  }, [queryClient, toast]);
+
+  const handleSyncCustomers = useCallback(async () => {
+    setSyncingCustomers(true);
+    setCustomerSyncResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-sync-customers`;
+      const resp = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Customer sync failed');
+      setCustomerSyncResult(data);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: 'Customer sync complete',
+        description: `${data.imported} imported, ${data.updated} updated, ${data.skipped} unchanged`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Customer sync failed',
+        description: (err as any)?.message || 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingCustomers(false);
     }
   }, [queryClient, toast]);
 
@@ -488,6 +533,50 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
                 </div>
               )}
             </div>
+
+            {/* Customer Sync */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Sync Customers
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Import your WooCommerce customers as contacts.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" disabled={syncingCustomers} onClick={handleSyncCustomers}>
+                  {syncingCustomers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Users className="mr-2 h-4 w-4" />}
+                  {syncingCustomers ? 'Syncing...' : 'Sync Customers'}
+                </Button>
+              </div>
+              {customerSyncResult && (
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs space-y-1">
+                  <p className="font-medium text-primary">Customer Sync Results</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold">{customerSyncResult.total}</p>
+                      <p className="text-muted-foreground">WooCommerce</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-primary">{customerSyncResult.imported}</p>
+                      <p className="text-muted-foreground">Imported</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-400">{customerSyncResult.updated}</p>
+                      <p className="text-muted-foreground">Updated</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-amber-400">{customerSyncResult.skipped}</p>
+                      <p className="text-muted-foreground">Unchanged</p>
+                    </div>
+                  </div>
+                  {customerSyncResult.errors > 0 && (
+                    <p className="text-red-400">Warning: {customerSyncResult.errors} error(s) during sync</p>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -596,6 +685,321 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
               </AccordionItem>
             </Accordion>
           </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Shopify One-Click Connect ───
+
+function ShopifySetupSection({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const connectService = useConnectService();
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [syncingProducts, setSyncingProducts] = useState(false);
+  const [syncingCustomers, setSyncingCustomers] = useState(false);
+  const [productSyncResult, setProductSyncResult] = useState<{
+    shopify_product_count: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
+  const [customerSyncResult, setCustomerSyncResult] = useState<{
+    total: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
+
+  // Check Shopify connection status
+  const { data: shopifyConnection, isLoading: connLoading } = useQuery({
+    queryKey: ['tenant-connections', orgId, 'shopify'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_connections')
+        .select('*')
+        .eq('org_id', orgId)
+        .eq('service', 'shopify')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data as { status: string; metadata: Record<string, any>; connected_at: string | null } | null;
+    },
+    enabled: !!orgId,
+    refetchInterval: (query) => {
+      return query.state.data?.status === 'pending' ? 3000 : false;
+    },
+  });
+
+  const isConnected = shopifyConnection?.status === 'connected';
+  const isPending = shopifyConnection?.status === 'pending';
+  const webhooksRegistered = shopifyConnection?.metadata?.webhooks_registered === true;
+
+  const handleConnect = () => {
+    connectService.mutate('shopify', {
+      onError: (err: Error) => {
+        toast({ title: 'Connection failed', description: err.message, variant: 'destructive' });
+      },
+    });
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await supabase
+        .from('tenant_connections')
+        .update({ status: 'disconnected', state_token: null })
+        .eq('org_id', orgId)
+        .eq('service', 'shopify');
+      queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'shopify'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-connections'] });
+      toast({ title: 'Shopify disconnected' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Failed to disconnect', description: err.message });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const handleSyncProducts = useCallback(async () => {
+    setSyncingProducts(true);
+    setProductSyncResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shopify-sync-products`;
+      const resp = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Product sync failed');
+      setProductSyncResult(data);
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      toast({
+        title: 'Product sync complete',
+        description: `${data.created} created, ${data.updated} updated, ${data.skipped} skipped`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Product sync failed',
+        description: (err as any)?.message || 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingProducts(false);
+    }
+  }, [queryClient, toast]);
+
+  const handleSyncCustomers = useCallback(async () => {
+    setSyncingCustomers(true);
+    setCustomerSyncResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/shopify-sync-customers`;
+      const resp = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Customer sync failed');
+      setCustomerSyncResult(data);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: 'Customer sync complete',
+        description: `${data.imported} imported, ${data.updated} updated, ${data.skipped} unchanged`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Customer sync failed',
+        description: (err as any)?.message || 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingCustomers(false);
+    }
+  }, [queryClient, toast]);
+
+  if (connLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <BrandLogo id="shopify" fallbackEmoji="🛒" className="h-6 w-6 inline-block align-middle mr-1" /> Shopify Integration
+          {isConnected && (
+            <Badge variant="default" className="bg-green-600 text-xs ml-auto">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
+            </Badge>
+          )}
+          {isPending && (
+            <Badge variant="outline" className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-xs ml-auto">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Connecting...
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>
+          Connect your Shopify store to automatically sync products, orders, and customers
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* ─── Connected State ─── */}
+        {isConnected && (
+          <>
+            <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 flex items-center gap-3">
+              <ShoppingBag className="h-5 w-5 text-green-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-green-400">Shopify Store Connected</p>
+                {shopifyConnection?.connected_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Connected {format(new Date(shopifyConnection.connected_at), 'MMM d, yyyy')}
+                  </p>
+                )}
+                {webhooksRegistered && (
+                  <p className="text-xs text-green-500/70">Order webhooks active — new orders sync automatically</p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive shrink-0"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+              >
+                {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {/* Product Sync */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <PackageSearch className="h-4 w-4" /> Sync Product Catalog
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Import your Shopify products as peptides.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" disabled={syncingProducts} onClick={handleSyncProducts}>
+                  {syncingProducts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {syncingProducts ? 'Syncing...' : 'Sync Products'}
+                </Button>
+              </div>
+              {productSyncResult && (
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs space-y-1">
+                  <p className="font-medium text-primary">Product Sync Results</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold">{productSyncResult.shopify_product_count}</p>
+                      <p className="text-muted-foreground">Shopify</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-primary">{productSyncResult.created}</p>
+                      <p className="text-muted-foreground">Created</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-400">{productSyncResult.updated}</p>
+                      <p className="text-muted-foreground">Updated</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-amber-400">{productSyncResult.skipped}</p>
+                      <p className="text-muted-foreground">Skipped</p>
+                    </div>
+                  </div>
+                  {productSyncResult.errors > 0 && (
+                    <p className="text-red-400">Warning: {productSyncResult.errors} error(s) during sync</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Customer Sync */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Sync Customers
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Import your Shopify customers as contacts.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" disabled={syncingCustomers} onClick={handleSyncCustomers}>
+                  {syncingCustomers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Users className="mr-2 h-4 w-4" />}
+                  {syncingCustomers ? 'Syncing...' : 'Sync Customers'}
+                </Button>
+              </div>
+              {customerSyncResult && (
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs space-y-1">
+                  <p className="font-medium text-primary">Customer Sync Results</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold">{customerSyncResult.total}</p>
+                      <p className="text-muted-foreground">Shopify</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-primary">{customerSyncResult.imported}</p>
+                      <p className="text-muted-foreground">Imported</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-400">{customerSyncResult.updated}</p>
+                      <p className="text-muted-foreground">Updated</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-amber-400">{customerSyncResult.skipped}</p>
+                      <p className="text-muted-foreground">Unchanged</p>
+                    </div>
+                  </div>
+                  {customerSyncResult.errors > 0 && (
+                    <p className="text-red-400">Warning: {customerSyncResult.errors} error(s) during sync</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ─── Pending State ─── */}
+        {isPending && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 text-center space-y-2">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-amber-400" />
+            <p className="text-sm font-medium">Connecting to Shopify...</p>
+            <p className="text-xs text-muted-foreground">
+              Complete the authorization flow in the popup window.
+            </p>
+          </div>
+        )}
+
+        {/* ─── Not Connected State ─── */}
+        {!isConnected && !isPending && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Connect with one click — we'll authorize via OAuth and automatically set up order sync webhooks.
+            </p>
+            <Button onClick={handleConnect} disabled={connectService.isPending}>
+              {connectService.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              {connectService.isPending ? 'Connecting...' : 'Connect Shopify'}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -960,6 +1364,7 @@ export default function Integrations() {
       >
         <OAuthConnectionsSection />
         <WooCommerceSetupSection orgId={organization.id} />
+        <ShopifySetupSection orgId={organization.id} />
         <ScrapedPeptidesReview orgId={organization.id} />
         <ApiKeysSection orgId={organization.id} />
       </motion.div>

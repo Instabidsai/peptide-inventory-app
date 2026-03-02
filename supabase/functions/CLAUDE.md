@@ -89,8 +89,12 @@ Deno.serve(async (req) => {
 | `woo-callback` | WooCommerce OAuth callback |
 | `woo-manual-connect` | Manual WooCommerce connection (API key auth) |
 | `shopify-webhook` | Receives Shopify events |
+| `shopify-sync-products` | Sync Shopify product catalog → peptides table |
+| `shopify-sync-customers` | Import Shopify customers → contacts table |
+| `woo-sync-customers` | Import WooCommerce customers → contacts table |
+| `sync-discount-codes` | Create/update/delete partner discount codes on platforms |
 | `composio-connect` | Initiates Composio OAuth for integrations |
-| `composio-callback` | Composio OAuth callback |
+| `composio-callback` | Composio OAuth callback (+ auto webhook registration for Shopify) |
 | `create-supplier-order` | Places order with peptide supplier |
 
 ### Automation / Health
@@ -133,3 +137,10 @@ supabase functions logs <function-name> --tail
 ## Agent Notes
 _Add discoveries here as you work on edge functions._
 <!-- agents: append findings below with date -->
+<!-- added 2026-03-02 -->
+- **Shopify end-to-end**: composio-callback now auto-registers `orders/create` and `orders/updated` webhooks after Shopify OAuth completes. Uses `SHOPIFY_CREATE_WEBHOOK` via Composio API.
+- **platform-order-sync.ts**: Now supports `shopify_order_id` for dedup + `discount_codes` field for coupon→partner attribution via `partner_discount_codes` table.
+- **Customer sync pattern**: Both `woo-sync-customers` and `shopify-sync-customers` match by email (case-insensitive), only update existing contacts if new data is richer (has phone/address/name when existing doesn't).
+- **Composio response shapes**: `extractCustomers()` and `extractProducts()` helpers handle multiple possible response formats from Composio API (data.customers, response_data.customers, etc).
+- **Discount code platform sync**: Two-step process for Shopify — create priceRule first, then create discount code under it. Composite `platform_coupon_id` format: `woo:123,shopify:456`.
+- **New migration**: `partner_discount_codes` table with RLS. Unique constraint on `(org_id, code)`. Soft-delete via `active` boolean.

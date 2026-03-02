@@ -38,6 +38,11 @@ BEGIN
         RETURN;
     END IF;
 
+    -- Skip partner/commission_offset orders — no commissions on these
+    IF v_order.payment_status = 'commission_offset' THEN
+        RETURN;
+    END IF;
+
     v_rep_id := v_order.rep_id;
 
     -- If no rep on the order, try to find one from the client's profile
