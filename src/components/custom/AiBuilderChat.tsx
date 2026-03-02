@@ -237,7 +237,7 @@ export function AiBuilderChat() {
                 className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'bg-primary text-primary-foreground rounded-br-sm'
-                    : 'bg-muted rounded-bl-sm'
+                    : 'bg-muted text-foreground rounded-bl-sm'
                 }`}
               >
                 {msg.content}

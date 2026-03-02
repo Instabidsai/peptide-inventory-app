@@ -93,7 +93,7 @@ export default function SetupAssistant() {
                     'rounded-2xl px-4 py-3 max-w-[80%] text-sm',
                     isUser
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/50 border border-border/50',
+                      : 'bg-muted/50 border border-border/50 text-foreground',
                   )}
                 >
                   {isThinking ? (
@@ -102,7 +102,7 @@ export default function SetupAssistant() {
                       <span className="text-muted-foreground">Thinking...</span>
                     </div>
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2">
+                    <div className="prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:underline [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2">
                       <ReactMarkdown>
                         {msg.content}
                       </ReactMarkdown>

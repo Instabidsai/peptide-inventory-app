@@ -224,11 +224,11 @@ export function AdminAIChat() {
                             "p-3 rounded-2xl max-w-[80%] text-sm leading-relaxed",
                             msg.role === 'user'
                               ? "bg-primary text-primary-foreground rounded-tr-sm"
-                              : "bg-muted/70 border border-border/60 rounded-tl-sm"
+                              : "bg-muted/70 border border-border/60 text-foreground rounded-tl-sm"
                           )}
                         >
                           {msg.role === 'assistant' ? (
-                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2">
+                            <div className="prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-foreground prose-a:text-primary prose-a:underline">
                               <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
                           ) : (
