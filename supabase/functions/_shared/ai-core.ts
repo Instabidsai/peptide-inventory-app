@@ -30,7 +30,7 @@ You can help with:
 - PURCHASE ORDERS: Create supplier orders, mark received (auto-creates inventory), record payments
 - ADD INVENTORY: Directly add stock (lot + bottles) without a PO — use when admin says "add inventory" or "we received X bottles"
 - INVENTORY: Create/update peptides, view lots, check bottle stats, view stock levels
-- PRICING: Show cost/2x/3x/MSRP tiers for any peptide
+- PRICING: Show MSRP / -20% / -30% / -40% / Partner Cost tiers for any peptide
 - MOVEMENTS: View inventory movements (sales, giveaways, internal use, losses, returns)
 - COMMISSIONS: View all commissions, update status (pay/void)
 - PARTNERS/REPS: List partners, search by name/email, update settings (commission rate, pricing, tier, parent rep). The partner tree includes BOTH reps (from profiles) AND clients assigned to reps (from contacts). Use reassign_client to move a client under a different rep.
@@ -54,7 +54,7 @@ You can help with:
 - PURCHASE ORDERS: Create supplier orders, mark received (auto-creates inventory), record payments
 - ADD INVENTORY: Directly add stock (lot + bottles) without a PO — use when told "add inventory" or "we received X bottles"
 - INVENTORY: View peptides, pricing, lots, bottle stats, stock levels (read-only — cannot create/modify peptides)
-- PRICING: Show cost/2x/3x/MSRP tiers for any peptide
+- PRICING: Show MSRP / -20% / -30% / -40% / Partner Cost tiers for any peptide
 - MOVEMENTS: View inventory movements (read-only)
 - COMMISSIONS: View commissions and stats (read-only — cannot pay/void commissions)
 - PROTOCOLS: List and create treatment protocols
@@ -80,7 +80,7 @@ export const SHARED_RULES = `
 RULES:
 1. ALWAYS confirm before creating or modifying data. Show a clear summary and ask "Should I proceed?" or similar.
 2. When the user confirms (yes, do it, go ahead, confirm, proceed, yep, etc.), THEN execute the tools.
-3. If pricing tier isn't specified, ASK: cost, 2x, 3x, or MSRP?
+3. If pricing tier isn't specified, ASK: MSRP, -20%, -30%, -40%, or Partner Cost?
 4. Default delivery method is 'ship' unless they say pickup/local.
 5. Keep responses concise - use bullet points for summaries.
 6. If a contact already exists (found via search), use them instead of creating a duplicate.
@@ -101,11 +101,12 @@ RULES:
 21. VERIFY WRITES: After any update/create tool call, check the result carefully. If it returned a clear success with specific details, trust it. If it returned an ERROR on a write operation (create_order, fulfill_order, update_partner, etc.), DO NOT just report the error — the write may have PARTIALLY SUCCEEDED before the error. Always follow up with a read/list tool (e.g. list_recent_orders, search_partners) to check whether the data was actually created/changed. Tell the user the truth: what succeeded, what failed, and what you verified.
 22. PARTNER TREE HAS TWO TYPES: The partner network tree shows BOTH (a) reps/partners from the profiles table [labeled PARTNER] and (b) clients assigned to reps from the contacts table [labeled CLIENT]. When searching, search_partners returns BOTH types. To move a PARTNER under another rep, use update_partner with parent_rep_id. To move a CLIENT under a different rep, use reassign_client with the contact_id and new_rep_id. ALWAYS use search_partners first to find the person and check their type label [PARTNER] vs [CLIENT] to know which tool to use. Do NOT guess or hallucinate IDs.
 
-PRICING TIERS:
-- Cost = avg_cost (base wholesale cost from lots)
-- 2x = avg_cost x 2
-- 3x = avg_cost x 3
+PRICING TIERS (MSRP-based):
 - MSRP = retail_price (full retail)
+- MSRP -20% = retail_price x 0.80 (minimum discount)
+- MSRP -30% = retail_price x 0.70
+- MSRP -40% = retail_price x 0.60
+- Partner Cost = avg_cost x 2 (for partner/wholesale orders only)
 
 COMMISSION: Revenue-based. Direct rep gets their commission_rate x sale total. Override commissions go up the chain (second_tier, third_tier).
 
@@ -169,7 +170,7 @@ export const tools = [
   { type: "function" as const, function: { name: "update_contact", description: "Update an existing contact's details.", parameters: { type: "object", properties: { contact_id: { type: "string" }, name: { type: "string" }, email: { type: "string" }, phone: { type: "string" }, address: { type: "string" }, notes: { type: "string" } }, required: ["contact_id"] } } },
   { type: "function" as const, function: { name: "search_peptides", description: "Search peptides by name. Returns stock count, avg cost, retail price.", parameters: { type: "object", properties: { query: { type: "string", description: "Peptide name or partial name" } }, required: ["query"] } } },
   { type: "function" as const, function: { name: "list_all_peptides", description: "List ALL peptides with stock counts and pricing. Use when user asks 'what do we have' or 'show all inventory'.", parameters: { type: "object", properties: {} } } },
-  { type: "function" as const, function: { name: "get_pricing", description: "Get all pricing tiers for a peptide: cost, 2x, 3x, MSRP.", parameters: { type: "object", properties: { peptide_name: { type: "string" } }, required: ["peptide_name"] } } },
+  { type: "function" as const, function: { name: "get_pricing", description: "Get MSRP-based pricing tiers for a peptide: MSRP, -20%, -30%, -40%, Partner Cost.", parameters: { type: "object", properties: { peptide_name: { type: "string" } }, required: ["peptide_name"] } } },
   { type: "function" as const, function: { name: "create_peptide", description: "Create a new peptide product.", parameters: { type: "object", properties: { name: { type: "string" }, description: { type: "string" }, sku: { type: "string" }, retail_price: { type: "number" } }, required: ["name"] } } },
   { type: "function" as const, function: { name: "update_peptide", description: "Update a peptide's details (name, description, sku, retail_price, active status).", parameters: { type: "object", properties: { peptide_id: { type: "string" }, name: { type: "string" }, description: { type: "string" }, sku: { type: "string" }, retail_price: { type: "number" }, active: { type: "boolean" } }, required: ["peptide_id"] } } },
   { type: "function" as const, function: { name: "get_bottle_stats", description: "Get bottle count breakdown by status (in_stock, sold, given_away, internal_use, lost, returned, expired).", parameters: { type: "object", properties: {} } } },
@@ -301,7 +302,9 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
           lots.forEach((l: any) => { const c = Number(l.cost_per_unit || 0); const q = Number(l.quantity_received || 0); totalCost += c * q; totalQty += q; });
           avgCost = totalQty > 0 ? totalCost / totalQty : 0;
         }
-        return "Pricing for " + data.name + ":\n  Cost: $" + avgCost.toFixed(2) + "\n  2x: $" + (avgCost * 2).toFixed(2) + "\n  3x: $" + (avgCost * 3).toFixed(2) + "\n  MSRP: $" + Number(data.retail_price).toFixed(2);
+        const retail = Number(data.retail_price || 0);
+        const partnerCost = avgCost > 0 ? (avgCost * 2) : 0;
+        return "Pricing for " + data.name + ":\n  MSRP: $" + retail.toFixed(2) + "\n  MSRP -20%: $" + (retail * 0.80).toFixed(2) + "\n  MSRP -30%: $" + (retail * 0.70).toFixed(2) + "\n  MSRP -40%: $" + (retail * 0.60).toFixed(2) + "\n  Partner Cost (2x avg): $" + partnerCost.toFixed(2);
       }
       case "create_peptide": {
         const { data: peptide, error } = await supabase.from("peptides").insert({ org_id: orgId, name: args.name, description: args.description || null, sku: args.sku || null, retail_price: args.retail_price || 0, active: true }).select().single();
@@ -985,7 +988,8 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
   const catalogLines = (allPeptides || []).map((p: any) => {
     const stock = stockMap[p.id] || 0;
     const avg = costMap[p.id] && costMap[p.id].totalQty > 0 ? costMap[p.id].totalCost / costMap[p.id].totalQty : 0;
-    return p.name + " | Stock: " + stock + " | Cost: $" + avg.toFixed(2) + " | 2x: $" + (avg * 2).toFixed(2) + " | 3x: $" + (avg * 3).toFixed(2) + " | MSRP: $" + Number(p.retail_price).toFixed(2) + (p.active === false ? " | INACTIVE" : "") + " | ID: " + p.id;
+    const retail = Number(p.retail_price || 0);
+    return p.name + " | Stock: " + stock + " | MSRP: $" + retail.toFixed(2) + " | -20%: $" + (retail * 0.80).toFixed(2) + " | -30%: $" + (retail * 0.70).toFixed(2) + " | -40%: $" + (retail * 0.60).toFixed(2) + " | Partner Cost: $" + (avg > 0 ? (avg * 2).toFixed(2) : "N/A") + (p.active === false ? " | INACTIVE" : "") + " | ID: " + p.id;
   });
 
   const contactLines = (recentContacts || []).map((c: any) =>
