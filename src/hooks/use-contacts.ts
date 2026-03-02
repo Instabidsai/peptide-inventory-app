@@ -170,9 +170,10 @@ export function useUpdateContact() {
         .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Update failed — contact not found or you lack permission to edit it.');
 
       // Sync name to linked profile so partner area stays current
-      if (input.name && data?.linked_user_id) {
+      if (input.name && data.linked_user_id) {
         await supabase
           .from('profiles')
           .update({ full_name: input.name })
@@ -181,12 +182,15 @@ export function useUpdateContact() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contacts', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['downline_clients'] });
       queryClient.invalidateQueries({ queryKey: ['full_network'] });
       queryClient.invalidateQueries({ queryKey: ['all_org_reps'] });
       queryClient.invalidateQueries({ queryKey: ['partner_downline'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_contact_record'] });
+      queryClient.invalidateQueries({ queryKey: ['contact_order_stats'] });
       toast({ title: 'Customer updated successfully' });
     },
     onError: (error: Error) => {

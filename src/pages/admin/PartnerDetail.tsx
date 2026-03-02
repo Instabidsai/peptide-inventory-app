@@ -425,6 +425,7 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
                     sales_order_items (quantity, peptides (name))
                 `)
                 .eq('rep_id', repId)
+                .neq('payment_status', 'commission_offset')
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data || [];
@@ -582,14 +583,13 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .eq('email', profile.email)
                 .maybeSingle();
             if (!contact) return [];
-            // Fetch movements where this contact is the buyer with commission_offset payment
+            // Fetch sales_orders where this partner is the customer with commission_offset
             const { data } = await supabase
-                .from('movements')
-                .select('id, movement_date, amount_paid, payment_status, notes, movement_items(price_at_sale)')
-                .eq('contact_id', contact.id)
+                .from('sales_orders')
+                .select('id, created_at, total_amount, payment_status, contacts(name), sales_order_items(quantity, unit_price)')
+                .eq('client_id', contact.id)
                 .eq('payment_status', 'commission_offset')
-                .eq('type', 'sale')
-                .order('movement_date', { ascending: false });
+                .order('created_at', { ascending: false });
             return data || [];
         }
     });
@@ -630,26 +630,22 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 return;
             }
 
-            // 2. Find unpaid movements for this contact and apply the amount
-            const { data: unpaidMovements } = await supabase
-                .from('movements')
-                .select('id, payment_status, amount_paid, movement_items(price_at_sale)')
-                .eq('contact_id', contact.id)
-                .neq('payment_status', 'paid')
-                .neq('status', 'returned')
+            // 2. Find unpaid commission_offset orders for this contact and apply the amount
+            const { data: unpaidOrders } = await supabase
+                .from('sales_orders')
+                .select('id, payment_status, amount_paid, total_amount')
+                .eq('client_id', contact.id)
+                .eq('payment_status', 'commission_offset')
                 .order('created_at', { ascending: true });
 
             let remaining = amount;
 
-            if (unpaidMovements && unpaidMovements.length > 0) {
-                for (const movement of unpaidMovements) {
+            if (unpaidOrders && unpaidOrders.length > 0) {
+                for (const order of unpaidOrders) {
                     if (remaining <= 0) break;
 
-                    type MovementItem = { price_at_sale: number };
-                    const totalPrice = (movement.movement_items as MovementItem[] | undefined)?.reduce(
-                        (sum: number, item: MovementItem) => sum + (item.price_at_sale || 0), 0
-                    ) || 0;
-                    const alreadyPaid = movement.amount_paid || 0;
+                    const totalPrice = Number(order.total_amount || 0);
+                    const alreadyPaid = Number(order.amount_paid || 0);
                     const owedOnThis = totalPrice - alreadyPaid;
 
                     if (owedOnThis <= 0) continue;
@@ -659,14 +655,13 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     const fullyPaid = newAmountPaid >= totalPrice;
 
                     await supabase
-                        .from('movements')
+                        .from('sales_orders')
                         .update({
                             amount_paid: newAmountPaid,
-                            payment_status: fullyPaid ? 'paid' : 'partial',
-                            payment_date: new Date().toISOString(),
+                            payment_status: fullyPaid ? 'paid' : 'commission_offset',
                             notes: `Commission credit applied: $${paymentOnThis.toFixed(2)}`
                         })
-                        .eq('id', movement.id);
+                        .eq('id', order.id);
 
                     remaining -= paymentOnThis;
                 }
@@ -680,7 +675,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 
             // 4. Refresh queries
             queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions', repId] });
-            queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['partner-product-orders', repId] });
 
             const appliedAmount = amount - remaining;
             toast({
@@ -711,11 +706,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 
     // Compute commission vs product ledger
     const totalCommissionsEarned = commissions?.reduce((s, c) => s + (Number(c.amount) || 0), 0) || 0;
-    const totalProductReceived = productOrders?.reduce((s, m) => {
-        type MItem = { price_at_sale: number };
-        const items = m.movement_items as MItem[] | undefined;
-        return s + (items?.reduce((sum: number, i: MItem) => sum + (i.price_at_sale || 0), 0) || 0);
-    }, 0) || 0;
+    const totalProductReceived = productOrders?.reduce((s, o) => s + Number(o.total_amount || 0), 0) || 0;
     const netBalance = Math.round((totalCommissionsEarned - totalProductReceived) * 100) / 100;
 
     return (

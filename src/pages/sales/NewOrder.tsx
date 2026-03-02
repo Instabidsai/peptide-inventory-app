@@ -670,15 +670,15 @@ export default function NewOrder() {
 
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.peptide.id, -1)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Decrease quantity" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.peptide.id, -1)}>-</Button>
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, 1)}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none active:scale-90" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, 1)}>+</Button>
                                             </div>
 
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" disabled={item.unitPrice <= 0} onClick={() => adjustPrice(item.peptide.id, -1)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Decrease price" disabled={item.unitPrice <= 0} onClick={() => adjustPrice(item.peptide.id, -1)}>-</Button>
                                                 <span className="w-14 text-center text-sm font-medium">${Math.round(item.unitPrice)}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => adjustPrice(item.peptide.id, 1)}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none active:scale-90" aria-label="Increase price" onClick={() => adjustPrice(item.peptide.id, 1)}>+</Button>
                                             </div>
 
                                             <div className="w-16 text-right font-medium">
@@ -696,23 +696,29 @@ export default function NewOrder() {
                                         {/* Suggested Pricing Badges */}
                                         <div className="flex flex-wrap gap-2 mt-1 justify-end">
                                             <div className="text-xs text-muted-foreground self-center mr-1">Tiers:</div>
-                                            {tiers.map(tier => (
-                                                <button
-                                                    key={tier.label}
-                                                    type="button"
-                                                    className={cn(
-                                                        badgeVariants({ variant: tier.label === 'Partner Cost' ? 'default' : tier.variant }),
-                                                        "cursor-pointer transition-colors",
-                                                        item.unitPrice === tier.price
-                                                            ? 'ring-2 ring-primary ring-offset-1'
-                                                            : 'hover:bg-muted',
-                                                        tier.label === 'Partner Cost' && 'bg-violet-600 hover:bg-violet-700 text-white'
-                                                    )}
-                                                    onClick={() => updatePrice(item.peptide.id, tier.price, tier.commRate)}
-                                                >
-                                                    {tier.label}: ${tier.price.toFixed(0)}
-                                                </button>
-                                            ))}
+                                            {tiers.map(tier => {
+                                                const isSelected = Math.abs(item.unitPrice - tier.price) < 0.01;
+                                                return (
+                                                    <button
+                                                        key={tier.label}
+                                                        type="button"
+                                                        className={cn(
+                                                            badgeVariants({ variant: tier.label === 'Partner Cost' ? 'default' : tier.variant }),
+                                                            "transition-colors",
+                                                            isSelected
+                                                                ? 'ring-2 ring-primary ring-offset-1'
+                                                                : 'cursor-pointer hover:bg-muted',
+                                                            tier.label === 'Partner Cost' && 'bg-violet-600 hover:bg-violet-700 text-white'
+                                                        )}
+                                                        onClick={() => {
+                                                            if (!isSelected) updatePrice(item.peptide.id, tier.price, tier.commRate);
+                                                        }}
+                                                        aria-current={isSelected ? 'true' : undefined}
+                                                    >
+                                                        {tier.label}: ${tier.price.toFixed(0)}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )
