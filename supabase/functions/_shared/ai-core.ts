@@ -14,7 +14,7 @@ export const STAFF_ALLOWED_TOOLS = new Set([
   "create_order", "add_items_to_order", "list_recent_orders", "update_sales_order", "fulfill_order",
   "list_purchase_orders", "create_purchase_order", "receive_purchase_order", "record_purchase_payment",
   "list_movements",
-  "list_commissions", "get_commission_stats",
+  "list_commissions", "get_commission_stats", "search_partners",
   "list_protocols", "create_protocol",
   "list_requests", "respond_to_request",
   "get_dashboard_stats", "low_stock_report", "top_sellers", "revenue_by_period",
@@ -33,7 +33,7 @@ You can help with:
 - PRICING: Show cost/2x/3x/MSRP tiers for any peptide
 - MOVEMENTS: View inventory movements (sales, giveaways, internal use, losses, returns)
 - COMMISSIONS: View all commissions, update status (pay/void)
-- PARTNERS/REPS: List partners, update settings (commission rate, pricing, tier)
+- PARTNERS/REPS: List partners, search by name/email, update settings (commission rate, pricing, tier, parent rep)
 - EXPENSES: Create/list expenses for tracking cash flow
 - FINANCIALS: Full P&L summary (revenue, COGS, overhead, profit, commissions)
 - PROTOCOLS: List/create treatment protocols with peptide items
@@ -98,6 +98,8 @@ RULES:
 18. ONE-STEP ORDERS: You have peptide IDs, all pricing tiers, contact IDs, and addresses pre-loaded. Create orders directly without searching first — you already have the data. Don't waste tool calls on search_peptides or search_contacts when you can see the answer in your context.
 19. NEVER give up after one failed search. If a tool returns "not found", check the pre-loaded catalog and suggest the closest match. Always offer alternatives.
 20. ADDING INVENTORY: When the user says "add inventory", "add stock", "we received bottles", or "add X of peptide Y" — use the add_inventory tool directly. Do NOT create a purchase order first. The add_inventory tool creates the lot + bottles in one step. Only use create_purchase_order when they explicitly want to track a future order from a supplier.
+21. VERIFY WRITES: After any update/create tool call, check the result for errors or confirmation. If the tool returns a success message with specific details (e.g. verified IDs, names), trust it. NEVER tell the user something is done unless the tool returned a clear success confirmation. If in doubt, use a list/search tool to verify.
+22. PARTNER MOVES: When asked to move a partner under another rep, use search_partners or the pre-loaded PARTNERS list to find BOTH partner IDs by name, then call update_partner with the correct partner_id and parent_rep_id. The tool will verify the move and confirm with names. Do NOT guess or hallucinate partner IDs.
 
 PRICING TIERS:
 - Cost = avg_cost (base wholesale cost from lots)
@@ -186,8 +188,9 @@ export const tools = [
   { type: "function" as const, function: { name: "list_commissions", description: "List all commission records with partner name, amount, type, status, and linked sale.", parameters: { type: "object", properties: { status: { type: "string", enum: ["pending", "available", "paid", "void"] }, partner_id: { type: "string" }, limit: { type: "number" } } } } },
   { type: "function" as const, function: { name: "get_commission_stats", description: "Get commission totals broken down by status (pending, available, paid).", parameters: { type: "object", properties: {} } } },
   { type: "function" as const, function: { name: "update_commission", description: "Update a commission's status (mark as paid, void, etc.).", parameters: { type: "object", properties: { commission_id: { type: "string" }, status: { type: "string", enum: ["pending", "available", "paid", "void"] } }, required: ["commission_id", "status"] } } },
-  { type: "function" as const, function: { name: "list_partners", description: "List all sales rep partners with commission rate, tier, pricing mode.", parameters: { type: "object", properties: {} } } },
-  { type: "function" as const, function: { name: "update_partner", description: "Update a partner/rep's settings: commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier.", parameters: { type: "object", properties: { partner_id: { type: "string" }, commission_rate: { type: "number" }, price_multiplier: { type: "number" }, pricing_mode: { type: "string", enum: ["percentage", "cost_plus", "cost_multiplier"] }, cost_plus_markup: { type: "number" }, partner_tier: { type: "string", enum: ["standard", "associate", "referral", "senior", "director", "executive"] }, parent_rep_id: { type: "string" } }, required: ["partner_id"] } } },
+  { type: "function" as const, function: { name: "list_partners", description: "List all sales rep partners with commission rate, tier, pricing mode, and parent rep name.", parameters: { type: "object", properties: {} } } },
+  { type: "function" as const, function: { name: "search_partners", description: "Search partners/reps by name or email. Returns matching partners with their ID, tier, commission rate, and parent rep.", parameters: { type: "object", properties: { query: { type: "string", description: "Name or email to search for" } }, required: ["query"] } } },
+  { type: "function" as const, function: { name: "update_partner", description: "Update a partner/rep's settings: commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier, parent_rep_id. Verifies the update and returns confirmation with names.", parameters: { type: "object", properties: { partner_id: { type: "string" }, commission_rate: { type: "number" }, price_multiplier: { type: "number" }, pricing_mode: { type: "string", enum: ["percentage", "cost_plus", "cost_multiplier"] }, cost_plus_markup: { type: "number" }, partner_tier: { type: "string", enum: ["standard", "associate", "referral", "senior", "director", "executive"] }, parent_rep_id: { type: "string" } }, required: ["partner_id"] } } },
   { type: "function" as const, function: { name: "get_partner_detail", description: "Get detailed stats for a specific partner/rep including sales, commissions, tier.", parameters: { type: "object", properties: { partner_id: { type: "string" } }, required: ["partner_id"] } } },
   { type: "function" as const, function: { name: "list_expenses", description: "List expenses with category, amount, date. Can filter by category (inventory, operating, etc.).", parameters: { type: "object", properties: { category: { type: "string" }, limit: { type: "number" } } } } },
   { type: "function" as const, function: { name: "create_expense", description: "Record an expense for tracking cash flow.", parameters: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD" }, category: { type: "string" }, amount: { type: "number" }, description: { type: "string" }, recipient: { type: "string" }, payment_method: { type: "string" }, status: { type: "string", enum: ["paid", "pending"] } }, required: ["date", "category", "amount"] } } },
@@ -496,14 +499,53 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
       case "list_partners": {
         const { data } = await supabase.from("profiles").select("id, full_name, email, commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier, parent_rep_id, credit_balance").eq("role", "sales_rep").eq("org_id", orgId).order("full_name");
         if (!data?.length) return "No partners found.";
-        return data.map((p: any) => (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Mode:" + (p.pricing_mode || "percentage") + " | Balance:$" + Number(p.credit_balance || 0).toFixed(2) + " | ID:" + p.id).join("\n");
+        // Build lookup map to resolve parent_rep_id → name
+        const nameMap: Record<string, string> = {};
+        data.forEach((p: any) => { nameMap[p.id] = p.full_name || "Unnamed"; });
+        return data.map((p: any) => {
+          const parentName = p.parent_rep_id ? (nameMap[p.parent_rep_id] || "Unknown (ID:" + p.parent_rep_id.slice(0, 8) + ")") : "None";
+          return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | Balance:$" + Number(p.credit_balance || 0).toFixed(2) + " | ID:" + p.id;
+        }).join("\n");
+      }
+      case "search_partners": {
+        const q = args.query;
+        const { data } = await supabase.from("profiles").select("id, full_name, email, partner_tier, commission_rate, parent_rep_id").eq("role", "sales_rep").eq("org_id", orgId).or("full_name.ilike.%" + q + "%,email.ilike.%" + q + "%");
+        if (!data?.length) return "No partners found matching '" + q + "'.";
+        // Resolve parent names
+        const allIds = [...new Set(data.map((p: any) => p.parent_rep_id).filter(Boolean))];
+        const parentNames: Record<string, string> = {};
+        if (allIds.length) {
+          const { data: parents } = await supabase.from("profiles").select("id, full_name").in("id", allIds);
+          parents?.forEach((p: any) => { parentNames[p.id] = p.full_name || "Unnamed"; });
+        }
+        return data.map((p: any) => {
+          const parentName = p.parent_rep_id ? (parentNames[p.parent_rep_id] || "Unknown") : "None";
+          return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id;
+        }).join("\n");
       }
       case "update_partner": {
         const u: any = {};
         for (const key of ["commission_rate", "price_multiplier", "pricing_mode", "cost_plus_markup", "partner_tier", "parent_rep_id"]) { if (args[key] !== undefined) u[key] = args[key]; }
-        const { error } = await supabase.from("profiles").update(u).eq("id", args.partner_id);
+        // Security: scope update to org_id
+        const { error } = await supabase.from("profiles").update(u).eq("id", args.partner_id).eq("org_id", orgId);
         if (error) return "Error: " + error.message;
-        return "Partner " + args.partner_id.slice(0, 8) + " updated: " + Object.keys(u).join(", ");
+        // Verify the update by reading back
+        const { data: verified } = await supabase.from("profiles").select("id, full_name, parent_rep_id, commission_rate, partner_tier, pricing_mode").eq("id", args.partner_id).eq("org_id", orgId).single();
+        if (!verified) return "Error: Update may have failed — partner not found in this org (ID: " + args.partner_id + ").";
+        // Build detailed confirmation
+        const changes: string[] = [];
+        if (u.parent_rep_id !== undefined) {
+          // Resolve new parent name
+          const { data: parentProfile } = await supabase.from("profiles").select("full_name").eq("id", verified.parent_rep_id).single();
+          const parentName = parentProfile?.full_name || "Unknown";
+          changes.push("Moved under " + parentName + " (parent_rep_id: " + verified.parent_rep_id + ")");
+        }
+        if (u.commission_rate !== undefined) changes.push("Commission rate: " + (Number(verified.commission_rate || 0) * 100).toFixed(0) + "%");
+        if (u.partner_tier !== undefined) changes.push("Tier: " + verified.partner_tier);
+        if (u.pricing_mode !== undefined) changes.push("Pricing mode: " + verified.pricing_mode);
+        if (u.price_multiplier !== undefined) changes.push("Price multiplier updated");
+        if (u.cost_plus_markup !== undefined) changes.push("Cost-plus markup updated");
+        return "VERIFIED — Partner " + (verified.full_name || "Unknown") + " (ID:" + args.partner_id.slice(0, 8) + ") updated: " + changes.join("; ") + ".";
       }
       case "get_partner_detail": {
         const { data: profile } = await supabase.from("profiles").select("id, full_name, email, commission_rate, price_multiplier, pricing_mode, cost_plus_markup, partner_tier, credit_balance, parent_rep_id").eq("id", args.partner_id).single();
@@ -887,6 +929,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     { data: recentContacts },
     { data: recentOrders },
     { data: onboardingMessages },
+    { data: allPartners },
   ] = await Promise.all([
     supabase.from("peptides").select("id, name, retail_price, active").eq("org_id", orgId).order("name"),
     supabase.from("lots").select("peptide_id, cost_per_unit, quantity_received").eq("org_id", orgId),
@@ -894,6 +937,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     supabase.from("contacts").select("id, name, email, phone, address, type").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
     supabase.from("sales_orders").select("id, status, payment_status, total_amount, created_at, contacts(name), sales_order_items(quantity, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10),
     supabase.from("onboarding_messages").select("role, content, created_at").eq("org_id", orgId).order("created_at", { ascending: true }).limit(20),
+    supabase.from("profiles").select("id, full_name, email, partner_tier, commission_rate, parent_rep_id").eq("role", "sales_rep").eq("org_id", orgId).order("full_name"),
   ]);
 
   const stockMap: Record<string, number> = {};
@@ -923,6 +967,14 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     return "#" + o.id.slice(0, 8) + " | " + (o.contacts?.name || "?") + " | " + o.status + "/" + o.payment_status + " | $" + Number(o.total_amount).toFixed(2) + " | " + items + " | " + new Date(o.created_at).toLocaleDateString() + " | ID: " + o.id;
   });
 
+  // Build partner/rep list with resolved parent names
+  const partnerNameMap: Record<string, string> = {};
+  (allPartners || []).forEach((p: any) => { partnerNameMap[p.id] = p.full_name || "Unnamed"; });
+  const partnerLines = (allPartners || []).map((p: any) => {
+    const parentName = p.parent_rep_id ? (partnerNameMap[p.parent_rep_id] || "Unknown") : "None";
+    return (p.full_name || "Unnamed") + " | " + (p.email || "") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName + " | ID:" + p.id;
+  });
+
   // Build onboarding history summary so admin AI has full continuity
   let onboardingSection = "";
   if (onboardingMessages && onboardingMessages.length > 0) {
@@ -932,7 +984,7 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
     onboardingSection = "\n\nONBOARDING HISTORY (Setup Assistant conversation — this is what the merchant told us during initial setup):\n" + onboardingLines.join("\n");
   }
 
-  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
+  return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nPARTNERS/REPS (" + partnerLines.length + " — use these IDs for partner operations):\n" + partnerLines.join("\n") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
 }
 
 // ── GPT-4o tool-calling loop ─────────────────────────────────
