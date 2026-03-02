@@ -4,6 +4,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
 import { usePendingOrdersByPeptide } from '@/hooks/use-orders';
+import { useCreateLot } from '@/hooks/use-lots';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check, PackagePlus } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
@@ -87,6 +88,32 @@ export default function Peptides() {
   const [deletingPeptide, setDeletingPeptide] = useState<Peptide | null>(null);
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
   const [addingToCatalog, setAddingToCatalog] = useState<Set<string>>(new Set());
+
+  // Quick Stock Add
+  const [quickStockPeptide, setQuickStockPeptide] = useState<Peptide | null>(null);
+  const [quickStockQty, setQuickStockQty] = useState('');
+  const [quickStockCost, setQuickStockCost] = useState('');
+  const createLot = useCreateLot();
+
+  const handleQuickStock = async () => {
+    if (!quickStockPeptide) return;
+    const qty = parseInt(quickStockQty, 10);
+    const cost = parseFloat(quickStockCost);
+    if (!qty || qty <= 0 || !cost || cost <= 0) return;
+    const lotNum = `QS-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    try {
+      await createLot.mutateAsync({
+        peptide_id: quickStockPeptide.id,
+        lot_number: lotNum,
+        quantity_received: qty,
+        cost_per_unit: cost,
+        payment_status: 'paid',
+      });
+      setQuickStockPeptide(null);
+      setQuickStockQty('');
+      setQuickStockCost('');
+    } catch { /* toast from hook */ }
+  };
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),
@@ -564,6 +591,17 @@ export default function Peptides() {
                           <span className="text-muted-foreground">
                             ${(peptide.retail_price || 0).toFixed(2)}
                           </span>
+                          {canEdit && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-auto gap-1 text-xs"
+                              onClick={(e) => { e.stopPropagation(); setQuickStockPeptide(peptide); setQuickStockQty(''); setQuickStockCost(''); }}
+                            >
+                              <PackagePlus className="h-3.5 w-3.5" />
+                              Add Stock
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -611,12 +649,26 @@ export default function Peptides() {
                         {peptide.sku || '-'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={
-                          (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
-                          (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
-                        }>
-                          {peptide.stock_count || 0} Vials
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className={
+                            (peptide.stock_count || 0) === 0 ? 'text-red-500 border-red-500/30' :
+                            (peptide.stock_count || 0) < 5 ? 'text-amber-500 border-amber-500/30' : ''
+                          }>
+                            {peptide.stock_count || 0} Vials
+                          </Badge>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-primary"
+                              title="Quick add stock"
+                              aria-label={`Quick add stock for ${peptide.name}`}
+                              onClick={() => { setQuickStockPeptide(peptide); setQuickStockQty(''); setQuickStockCost(''); }}
+                            >
+                              <PackagePlus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                         {(peptide.stock_count || 0) === 0 && (
                           <span className="text-xs text-red-500 block">Out of Stock</span>
                         )}
@@ -839,6 +891,64 @@ export default function Peptides() {
         peptideId={historyPeptide?.id || null}
         peptideName={historyPeptide?.name || ''}
       />
+
+      {/* Quick Stock Add Dialog */}
+      <Dialog open={!!quickStockPeptide} onOpenChange={(open) => { if (!open) setQuickStockPeptide(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5 text-primary" />
+              Add Stock
+            </DialogTitle>
+            <DialogDescription>
+              {quickStockPeptide?.name} — record a purchase
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label htmlFor="qs-qty" className="text-sm font-medium">Quantity Purchased</label>
+              <Input
+                id="qs-qty"
+                type="number"
+                min="1"
+                placeholder="e.g. 10"
+                value={quickStockQty}
+                onChange={(e) => setQuickStockQty(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="qs-cost" className="text-sm font-medium">Cost Per Unit ($)</label>
+              <Input
+                id="qs-cost"
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="e.g. 12.50"
+                value={quickStockCost}
+                onChange={(e) => setQuickStockCost(e.target.value)}
+              />
+            </div>
+            {quickStockQty && quickStockCost && parseFloat(quickStockQty) > 0 && parseFloat(quickStockCost) > 0 && (
+              <div className="rounded-lg bg-muted/50 border p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Cost</span>
+                  <span className="font-semibold">${(parseFloat(quickStockQty) * parseFloat(quickStockCost)).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickStockPeptide(null)}>Cancel</Button>
+            <Button
+              onClick={handleQuickStock}
+              disabled={createLot.isPending || !quickStockQty || !quickStockCost || parseFloat(quickStockQty) <= 0 || parseFloat(quickStockCost) <= 0}
+            >
+              {createLot.isPending ? 'Adding...' : 'Add Stock'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Wholesale Margin Calculator — visible in wholesale tab */}
       {isWholesaleView && canEdit && <MarginCalculator />}
