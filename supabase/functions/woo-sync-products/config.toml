@@ -1,0 +1,2 @@
+[functions.woo-sync-products]
+verify_jwt = false
