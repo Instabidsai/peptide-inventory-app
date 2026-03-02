@@ -5,7 +5,7 @@ import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/h
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+
 import DownlineVisualizer from './components/DownlineVisualizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,7 +59,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { useTierConfig, tierToInfo, type TierConfig } from '@/hooks/use-tier-config';
-const TierConfigTab = React.lazy(() => import('./components/TierConfigTab'));
+import TierConfigTab from './components/TierConfigTab';
 
 export default function Reps() {
     const navigate = useNavigate();
@@ -107,17 +107,19 @@ export default function Reps() {
 
     // Fetch unassigned customer contacts
     const { data: unassignedContacts, refetch: refetchUnassigned } = useQuery({
-        queryKey: ['unassigned_contacts'],
+        queryKey: ['unassigned_contacts', currentProfile?.org_id],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('contacts')
                 .select('id, name, email, type')
                 .is('assigned_rep_id', null)
                 .eq('type', 'customer')
+                .eq('org_id', currentProfile!.org_id!)
                 .order('name');
             if (error) throw error;
             return data || [];
         },
+        enabled: !!currentProfile?.org_id,
     });
 
     // Fetch pending partners (promoted but no auth account yet — show in Active Partners table)
@@ -345,13 +347,49 @@ export default function Reps() {
                                         }
 
                                         // Build hierarchy: top-level first, then children under each
-                                        const repIds = new Set(reps.map(r => r.id));
-                                        const topLevel = reps.filter(r => !r.parent_rep_id || !repIds.has(r.parent_rep_id));
-                                        const childrenOf = (parentId: string) => reps.filter(r => r.parent_rep_id === parentId);
+                                        const safeReps = reps ?? [];
+                                        const repIds = new Set(safeReps.map(r => r.id));
+                                        const topLevel = safeReps.filter(r => !r.parent_rep_id || !repIds.has(r.parent_rep_id));
+                                        const childrenOf = (parentId: string) => safeReps.filter(r => r.parent_rep_id === parentId);
 
                                         // Get customer contacts for a given rep
                                         const clientsOf = (repId: string) =>
                                             (customerContacts || []).filter(c => c.assigned_rep_id === repId);
+
+                                        // Helper: find or create a contact for this partner, then navigate to new order
+                                        const handlePartnerOrder = async (rep: UserProfile) => {
+                                            try {
+                                                // Look for existing contact matching partner email
+                                                if (rep.email) {
+                                                    const { data: existingContact } = await supabase
+                                                        .from('contacts')
+                                                        .select('id')
+                                                        .eq('email', rep.email)
+                                                        .eq('org_id', currentProfile?.org_id ?? '')
+                                                        .maybeSingle();
+                                                    if (existingContact) {
+                                                        navigate(`/sales/new?contact_id=${existingContact.id}`);
+                                                        return;
+                                                    }
+                                                }
+                                                // No contact found — create one as type=partner
+                                                const { data: newContact, error } = await supabase
+                                                    .from('contacts')
+                                                    .insert({
+                                                        name: rep.full_name || 'Partner',
+                                                        email: rep.email || null,
+                                                        type: 'partner',
+                                                        org_id: currentProfile?.org_id || null,
+                                                        linked_user_id: rep.id,
+                                                    })
+                                                    .select('id')
+                                                    .single();
+                                                if (error) throw error;
+                                                navigate(`/sales/new?contact_id=${newContact.id}`);
+                                            } catch (err) {
+                                                toast({ variant: 'destructive', title: 'Failed to start order', description: (err as any)?.message || 'Unknown error' });
+                                            }
+                                        };
 
                                         const renderRow = (rep: UserProfile, depth: number = 0): React.ReactNode[] => {
                                             const children = childrenOf(rep.id);
@@ -362,6 +400,9 @@ export default function Reps() {
                                                         <div className="flex gap-1">
                                                             <Button variant="outline" size="sm" onClick={() => navigate(`/admin/partners/${rep.id}`)}>
                                                                 <Eye className="h-4 w-4 mr-1" /> View
+                                                            </Button>
+                                                            <Button variant="secondary" size="sm" className="text-orange-600" onClick={() => handlePartnerOrder(rep)}>
+                                                                <ShoppingCart className="h-4 w-4 mr-1" /> Order
                                                             </Button>
                                                             <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950" onClick={() => { setAddingToRep(rep); setNewClient({ name: '', email: '', phone: '', address: '' }); setAssignContactId(''); }}>
                                                                 <UserPlus className="h-4 w-4 mr-1" /> Client
@@ -535,11 +576,7 @@ export default function Reps() {
                 </TabsContent>
 
                 <TabsContent value="tiers">
-                    <ErrorBoundary fallback={<div className="text-center py-8 text-muted-foreground">Failed to load Tier Config. <button className="underline" onClick={() => window.location.reload()}>Reload</button></div>}>
-                        <React.Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
-                            <TierConfigTab orgId={currentProfile?.org_id} />
-                        </React.Suspense>
-                    </ErrorBoundary>
+                    <TierConfigTab orgId={currentProfile?.org_id} />
                 </TabsContent>
             </Tabs>
 
@@ -745,7 +782,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                     </p>
                 </CardHeader>
                 <CardContent>
-                    {reps.length === 0 ? (
+                    {!reps || reps.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">No partners yet.</p>
                     ) : (
                         <div className="space-y-3">
