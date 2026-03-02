@@ -57,6 +57,31 @@ if (sentryDsn) {
 })();
 
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────
+// Recover pending referral from localStorage when sessionStorage is empty
+// (email confirmation may open in a new tab where sessionStorage doesn't persist).
+function recoverReferralFromStorage(): { refId: string; role: string; org: string } | null {
+  const refId = sessionStorage.getItem('partner_ref');
+  if (refId) {
+    return {
+      refId,
+      role: sessionStorage.getItem('partner_ref_role') || 'customer',
+      org: sessionStorage.getItem('partner_ref_org') || '',
+    };
+  }
+  try {
+    const backup = localStorage.getItem('pending_referral');
+    if (!backup) return null;
+    const parsed = JSON.parse(backup);
+    const ttl = 24 * 60 * 60 * 1000; // 24h — matches link-referral.ts
+    if (!parsed.refId || Date.now() - (parsed.ts || 0) >= ttl) return null;
+    // Restore to sessionStorage so Auth.tsx finds it
+    sessionStorage.setItem('partner_ref', parsed.refId);
+    sessionStorage.setItem('partner_ref_role', parsed.role || 'customer');
+    if (parsed.orgId) sessionStorage.setItem('partner_ref_org', parsed.orgId);
+    return { refId: parsed.refId, role: parsed.role || 'customer', org: parsed.orgId || '' };
+  } catch { return null; }
+}
+
 // Supabase implicit OAuth puts tokens in the URL hash (#access_token=xxx&...)
 // which conflicts with HashRouter (also uses the hash for routing).
 // Intercept tokens synchronously BEFORE React renders so HashRouter never
@@ -72,15 +97,12 @@ if (sentryDsn) {
     sessionStorage.setItem('sb_oauth_access_token', params.get('access_token')!);
     sessionStorage.setItem('sb_oauth_refresh_token', params.get('refresh_token')!);
 
-    // If there's a pending referral in sessionStorage, redirect to /auth
-    // with the referral params so Auth.tsx can handle linking directly.
-    // This is more robust than relying on Onboarding to pick it up later.
-    const refId = sessionStorage.getItem('partner_ref');
-    if (refId) {
-      const role = sessionStorage.getItem('partner_ref_role') || 'customer';
-      const org = sessionStorage.getItem('partner_ref_org') || '';
-      const orgSuffix = org ? '&org=' + encodeURIComponent(org) : '';
-      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(refId) + '&role=' + encodeURIComponent(role) + orgSuffix);
+    // If there's a pending referral, redirect to /auth with the referral
+    // params so Auth.tsx can handle linking directly.
+    const ref = recoverReferralFromStorage();
+    if (ref) {
+      const orgSuffix = ref.org ? '&org=' + encodeURIComponent(ref.org) : '';
+      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(ref.refId) + '&role=' + encodeURIComponent(ref.role) + orgSuffix);
     } else if (localStorage.getItem('selected_plan')) {
       // SaaS signup via /get-started — send to onboarding to create org
       window.history.replaceState(null, '', window.location.pathname + '#/onboarding');

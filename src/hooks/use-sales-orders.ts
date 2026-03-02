@@ -131,7 +131,7 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
                 .from('sales_orders')
                 .select(`
           *,
-          contacts (id, name, email),
+          contacts!client_id (id, name, email),
           profiles (id, full_name),
           sales_order_items (
             *,
@@ -164,7 +164,7 @@ export function useSalesOrder(orderId?: string) {
                 .from('sales_orders')
                 .select(`
           *,
-          contacts (id, name, email),
+          contacts!client_id (id, name, email),
           profiles (id, full_name),
           sales_order_items (
             *,
@@ -192,7 +192,7 @@ export function useMySalesOrders() {
                 .from('sales_orders')
                 .select(`
           *,
-          contacts (id, name, email),
+          contacts!client_id (id, name, email),
           sales_order_items (
             *,
             peptides (id, name)
@@ -348,6 +348,7 @@ export function useCreateSalesOrder() {
                         commission_rate: mc.commission_rate,
                         type: mc.type,
                         status: 'pending' as const,
+                        org_id: profile.org_id,
                     }));
                     const { error: commError } = await supabase
                         .from('commissions')
@@ -499,12 +500,12 @@ export function useCreateValidatedOrder() {
 
             if (error) throw new Error(`Order RPC failed: ${error.message}`);
 
-            const result = data as { success: boolean; error?: string; order_id?: string; total?: number };
+            const result = data as { success: boolean; error?: string; order_id?: string; total?: number; total_amount?: number };
             if (!result.success) {
                 throw new Error(result.error || 'Order validation failed');
             }
 
-            return { id: result.order_id!, total_amount: result.total ?? 0 };
+            return { id: result.order_id!, total_amount: result.total ?? result.total_amount ?? 0 };
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
@@ -574,7 +575,7 @@ export function useUpdateSalesOrder() {
                 try {
                     const { data: orderData } = await supabase
                         .from('sales_orders')
-                        .select('client_id, contacts!inner(linked_user_id)')
+                        .select('client_id, contacts!client_id(linked_user_id)')
                         .eq('id', variables.id)
                         .maybeSingle();
 
@@ -903,7 +904,7 @@ export function useDeleteSalesOrder() {
             await supabase
                 .from('sales_order_items')
                 .delete()
-                .eq('order_id', id);
+                .eq('sales_order_id', id);
 
             // ── 5. Finally delete the sales order itself ──
             const { error } = await supabase
@@ -1019,7 +1020,7 @@ export function useCreateShippingLabel() {
                 // Look up the order to get client_id, then contact to get linked_user_id
                 const { data: orderData } = await supabase
                     .from('sales_orders')
-                    .select('client_id, contacts!inner(linked_user_id, name)')
+                    .select('client_id, contacts!client_id(linked_user_id, name)')
                     .eq('id', orderId)
                     .maybeSingle();
 
@@ -1116,7 +1117,7 @@ export function useBuyShippingLabel() {
             try {
                 const { data: orderData } = await supabase
                     .from('sales_orders')
-                    .select('client_id, contacts!inner(linked_user_id, name)')
+                    .select('client_id, contacts!client_id(linked_user_id, name)')
                     .eq('id', orderId)
                     .maybeSingle();
 

@@ -77,7 +77,7 @@ export default function PartnerOrders() {
                 .from('sales_orders')
                 .select(`
                     *,
-                    contacts (id, name, email),
+                    contacts!client_id (id, name, email),
                     sales_order_items (
                         *,
                         peptides (id, name)
@@ -237,7 +237,6 @@ export default function PartnerOrders() {
                                 <OrderCard
                                     key={order.id}
                                     order={order}
-                                    getStatus={getStatus}
                                     commission={commissionBySale.get(order.id)}
                                     repName={order.rep_id !== myProfileId ? (repNames.get(order.rep_id) || null) : null}
                                     myName={myName || undefined}
