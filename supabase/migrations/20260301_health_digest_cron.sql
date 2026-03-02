@@ -1,0 +1,13 @@
+-- =============================================================
+-- health-digest cron schedule — Daily morning health digest email
+-- =============================================================
+
+-- Run health-digest edge function daily at 7:00 AM UTC (2:00 AM EST)
+-- NOTE: Run manually if pg_cron resets:
+-- SELECT cron.schedule('health-digest-daily', '0 7 * * *', $$
+--   SELECT net.http_post(
+--     url := 'https://mckkegmkpqdicudnfhor.supabase.co/functions/v1/health-digest',
+--     headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>', 'Content-Type', 'application/json'),
+--     body := '{}'::jsonb
+--   );
+-- $$);

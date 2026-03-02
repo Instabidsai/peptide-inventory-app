@@ -1,3 +1,4 @@
+/* eslint-disable max-lines, complexity, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
@@ -30,12 +31,12 @@ import { validateSql, executeMgmtQuery, getTableColumns, getFunctionSource, find
 const MAX_BUGS_PER_RUN = 100;
 const CIRCUIT_BREAKER_THRESHOLD = 10;
 const CIRCUIT_BREAKER_WINDOW_MIN = 15;
-const AI_DIAGNOSIS_BATCH = 5;
+const AI_DIAGNOSIS_BATCH = 15;
 const DEPLOY_CORRELATION_WINDOW_MIN = 30;
 const ESCALATION_COOLDOWN_MIN = 60;  // Don't spam emails — 1 per hour per incident
 const ANOMALY_THRESHOLD_MULTIPLIER = 2.5; // Flag if latency > 2.5x baseline
-const MAX_SCHEMA_FIXES_PER_RUN = 3;
-const SCHEMA_FIX_COOLDOWN_HOURS = 24;
+const MAX_SCHEMA_FIXES_PER_RUN = 10;
+const SCHEMA_FIX_COOLDOWN_HOURS = 4;
 const AI_FIX_MAX_TOKENS = 800;
 
 // ── Feature key → error category mapping for circuit breakers ──
@@ -59,8 +60,11 @@ interface BugReport {
   description: string;
   console_errors: string | null;
   page_url: string | null;
-  org_id: string | null;
+  org_id?: string | null;
   created_at: string;
+  status?: string;
+  user_agent?: string | null;
+  error_fingerprint?: string | null;
 }
 
 interface ErrorPattern {
@@ -191,9 +195,12 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
             })
             .eq("id", bug.id);
 
-          if (pat.auto_fix_action && pat.auto_fix_action !== "log_only") {
-            matchedActions.push({ bug, pattern: pat });
-          }
+          // Phase 3 upgrade: eliminate log_only dead end
+          // All matched patterns get routed to action — log_only upgraded to suppress
+          const effectiveAction = (pat.auto_fix_action === "log_only" || !pat.auto_fix_action)
+            ? "suppress"
+            : pat.auto_fix_action;
+          matchedActions.push({ bug, pattern: { ...pat, auto_fix_action: effectiveAction } });
           break;
         }
       }
@@ -212,16 +219,58 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     if (openaiKey && diagnoseBatch.length > 0) {
       for (const bug of diagnoseBatch) {
         try {
-          const diagnosis = await aiDiagnose(openaiKey, bug);
+          // Phase 4 upgrade: structured fix plans instead of free-text diagnosis
+          const fixPlan = await createFixPlan(openaiKey, bug);
           stats.ai_diagnoses++;
 
-          await supabase
-            .from("bug_reports")
-            .update({
-              sentinel_processed_at: new Date().toISOString(),
-              sentinel_diagnosis: diagnosis,
-            })
-            .eq("id", bug.id);
+          if (fixPlan && fixPlan.fix_type) {
+            // Write fix plan to DB
+            const { data: planRow } = await supabase.from("fix_plans").insert({
+              bug_report_id: bug.id,
+              category: fixPlan.category || "unknown",
+              fix_type: fixPlan.fix_type,
+              fix_payload: fixPlan.fix_payload || {},
+              ai_confidence: fixPlan.confidence || 0.5,
+              explanation: fixPlan.explanation || "",
+              error_fingerprint: bug.error_fingerprint || (bug.description || "").slice(0, 200),
+              status: (fixPlan.confidence || 0) >= 0.7 ? "approved" : (fixPlan.confidence || 0) >= 0.4 ? "queued" : "rejected",
+            }).select("id").single();
+
+            await supabase
+              .from("bug_reports")
+              .update({
+                sentinel_processed_at: new Date().toISOString(),
+                sentinel_diagnosis: `[FIX_PLAN] ${fixPlan.fix_type}: ${fixPlan.explanation}`,
+                fix_plan_id: planRow?.id || null,
+              })
+              .eq("id", bug.id);
+
+            // Auto-approved plans with safe fix types get executed immediately
+            if ((fixPlan.confidence || 0) >= 0.7 && ["suppress", "client_instruction"].includes(fixPlan.fix_type)) {
+              matchedActions.push({
+                bug,
+                pattern: {
+                  id: `ai-plan-${planRow?.id}`,
+                  auto_fix_action: fixPlan.fix_type,
+                  fix_description: fixPlan.explanation,
+                  pattern: bug.error_fingerprint || "",
+                  cooldown_minutes: 0,
+                  times_fixed: 0,
+                  times_matched: 0,
+                  last_fixed_at: null,
+                  ...fixPlan.fix_payload,
+                },
+              });
+            }
+          } else {
+            await supabase
+              .from("bug_reports")
+              .update({
+                sentinel_processed_at: new Date().toISOString(),
+                sentinel_diagnosis: fixPlan?.explanation || "AI could not determine fix",
+              })
+              .eq("id", bug.id);
+          }
         } catch (err) {
           runErrors.push(`AI diagnosis failed for ${bug.id}: ${(err as Error).message}`);
           await supabase
@@ -252,6 +301,47 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
 
       try {
         switch (pattern.auto_fix_action) {
+          case "suppress":
+            // Phase 5 upgrade: suppress = expected behavior, mark resolved immediately
+            await supabase
+              .from("bug_reports")
+              .update({
+                status: "resolved",
+                sentinel_diagnosis: `[SUPPRESSED] ${pattern.fix_description || "Expected behavior — auto-suppressed"}`,
+                client_healed: true,
+              })
+              .eq("id", bug.id);
+            stats.fixes_applied++;
+            break;
+          case "client_instruction": {
+            // Phase 5 upgrade: write heal instruction for browser-side self-healing
+            const fp = bug.error_fingerprint || (bug.description || "").slice(0, 200);
+            const instrType = pattern.instruction_type || "suppress";
+            const { data: existingInstr } = await supabase
+              .from("client_heal_instructions")
+              .select("id")
+              .eq("error_fingerprint", fp)
+              .limit(1);
+            if (!existingInstr || existingInstr.length === 0) {
+              await supabase.from("client_heal_instructions").insert({
+                error_fingerprint: fp,
+                instruction_type: instrType,
+                instruction_payload: pattern.instruction_payload || {},
+                active: true,
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              });
+            }
+            await supabase
+              .from("bug_reports")
+              .update({
+                status: "resolved",
+                sentinel_diagnosis: `[CLIENT_HEAL] ${instrType}: ${pattern.fix_description || "Client-side heal instruction created"}`,
+                client_healed: true,
+              })
+              .eq("id", bug.id);
+            stats.fixes_applied++;
+            break;
+          }
           case "create_incident":
             await createAutoIncident(supabase, bug, pattern);
             stats.fixes_applied++;
@@ -351,6 +441,21 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
     // when errors stop for 30 minutes.
     // ═══════════════════════════════════════════════════════════
     await monitorPageAvailability(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 15: Fix Plan Executor
+    // Executes approved fix plans (from Phase 4 AI or meta-sentinel).
+    // Dispatches by fix_type: suppress, client_instruction, config_change,
+    // rpc_call, schema_ddl, code_patch. Max 10 per run.
+    // ═══════════════════════════════════════════════════════════
+    await executeFixPlans(supabase, stats, runErrors);
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 16: Stale Incident Re-Diagnosis
+    // Routes "detected" incidents older than 2h back through AI diagnosis
+    // instead of letting them sit forever.
+    // ═══════════════════════════════════════════════════════════
+    await rediagnoseStaleIncidents(supabase, stats, runErrors);
 
     await finishRun(supabase, runId, stats, runErrors, "completed");
 
@@ -463,6 +568,95 @@ Be concise. No markdown. No pleasantries.`,
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || "No diagnosis returned";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Structured Fix Plan Generator (Phase 4 upgrade)
+// ═══════════════════════════════════════════════════════════════
+interface FixPlanResult {
+  fix_type: string;
+  fix_payload: Record<string, unknown>;
+  confidence: number;
+  explanation: string;
+  category: string;
+}
+
+async function createFixPlan(apiKey: string, bug: BugReport): Promise<FixPlanResult | null> {
+  const errorText = buildErrorText(bug).slice(0, 2000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: AI_FIX_MAX_TOKENS,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `You are an autonomous self-healing AI for a SaaS application (multi-tenant peptide inventory CRM).
+Analyze the error and return a JSON fix plan. You MUST return valid JSON with these fields:
+{
+  "fix_type": "suppress|client_instruction|config_change|rpc_call|schema_ddl|code_patch|create_incident",
+  "fix_payload": { ... action-specific data ... },
+  "confidence": 0.0-1.0,
+  "explanation": "what you'll fix and why",
+  "category": "auth|network|client|database|edge_function|validation|unknown"
+}
+
+Fix type guide:
+- "suppress": Error is expected behavior (auth expiry, transient network, chunk loads, ResizeObserver). confidence >= 0.8
+- "client_instruction": Browser can self-heal (re_auth, reload, clear_cache). fix_payload: { "instruction_type": "re_auth|reload|clear_cache|suppress" }
+- "config_change": Fix via DB config update. fix_payload: { "table": "...", "column": "...", "value": "...", "where": {...} }
+- "schema_ddl": Missing column/table/index. fix_payload: { "ddl": "ALTER TABLE..." }
+- "code_patch": Frontend code needs fixing. fix_payload: { "file_path": "src/...", "description": "what to change" }
+- "create_incident": Genuinely unknown/complex error needing investigation. confidence < 0.4
+- "rpc_call": Call a Supabase RPC function. fix_payload: { "function_name": "...", "args": {...} }
+
+Rules:
+- Prefer suppress/client_instruction for auth, network, chunk errors (they're almost always transient)
+- Only use code_patch if the error clearly points to a specific code defect
+- Set confidence realistically: 0.9+ for obvious suppress, 0.7+ for clear fix, 0.4-0.6 for uncertain
+- Never return confidence > 0.5 for create_incident — incidents are last resort`,
+          },
+          {
+            role: "user",
+            content: `Error from page "${bug.page_url || 'unknown'}":\n${errorText}`,
+          },
+        ],
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`OpenAI ${res.status}`);
+
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content);
+    if (!parsed.fix_type) return null;
+
+    return {
+      fix_type: parsed.fix_type,
+      fix_payload: parsed.fix_payload || {},
+      confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5)),
+      explanation: parsed.explanation || "",
+      category: parsed.category || "unknown",
+    };
+  } catch {
+    return null;
   } finally {
     clearTimeout(timeout);
   }
@@ -1948,5 +2142,299 @@ async function monitorPageAvailability(
     }
   } catch (err) {
     runErrors.push(`Phase14: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 15: Fix Plan Executor
+// ═══════════════════════════════════════════════════════════════
+const MAX_FIX_PLANS_PER_RUN = 10;
+
+async function executeFixPlans(
+  supabase: ReturnType<typeof createClient>,
+  stats: Record<string, number>,
+  runErrors: string[],
+): Promise<void> {
+  try {
+    // Fetch approved fix plans waiting for execution
+    const { data: plans } = await supabase
+      .from("fix_plans")
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: true })
+      .limit(MAX_FIX_PLANS_PER_RUN);
+
+    if (!plans || plans.length === 0) return;
+
+    for (const plan of plans) {
+      try {
+        let executionResult: Record<string, unknown> = {};
+        let revertPayload: Record<string, unknown> = {};
+
+        switch (plan.fix_type) {
+          case "suppress": {
+            // Create suppression pattern in error_patterns
+            const fp = plan.error_fingerprint || "";
+            const { data: existing } = await supabase
+              .from("error_patterns")
+              .select("id")
+              .eq("pattern", fp.slice(0, 200))
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              const { data: newPattern } = await supabase.from("error_patterns").insert({
+                pattern: fp.slice(0, 200),
+                match_type: "substring",
+                category: plan.category || "unknown",
+                severity: "low",
+                auto_fix_action: "suppress",
+                fix_description: `[AUTO] ${plan.explanation}`,
+                enabled: true,
+              }).select("id").single();
+              revertPayload = { action: "delete_pattern", pattern_id: newPattern?.id };
+            }
+
+            // Also resolve the originating bug
+            if (plan.bug_report_id) {
+              await supabase.from("bug_reports").update({
+                status: "resolved",
+                sentinel_diagnosis: `[FIX_PLAN_EXECUTED] suppress: ${plan.explanation}`,
+                client_healed: true,
+              }).eq("id", plan.bug_report_id);
+            }
+
+            executionResult = { suppressed: true };
+            stats.fixes_applied = (stats.fixes_applied || 0) + 1;
+            break;
+          }
+
+          case "client_instruction": {
+            const fp = plan.error_fingerprint || "";
+            const instrType = (plan.fix_payload as any)?.instruction_type || "suppress";
+            const { data: existing } = await supabase
+              .from("client_heal_instructions")
+              .select("id")
+              .eq("error_fingerprint", fp.slice(0, 200))
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              const { data: newInstr } = await supabase.from("client_heal_instructions").insert({
+                error_fingerprint: fp.slice(0, 200),
+                instruction_type: instrType,
+                instruction_payload: (plan.fix_payload as any)?.instruction_payload || {},
+                active: true,
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              }).select("id").single();
+              revertPayload = { action: "deactivate_instruction", instruction_id: newInstr?.id };
+            }
+
+            if (plan.bug_report_id) {
+              await supabase.from("bug_reports").update({
+                status: "resolved",
+                sentinel_diagnosis: `[FIX_PLAN_EXECUTED] client_instruction: ${instrType}`,
+                client_healed: true,
+              }).eq("id", plan.bug_report_id);
+            }
+
+            executionResult = { instruction_created: true, type: instrType };
+            stats.fixes_applied = (stats.fixes_applied || 0) + 1;
+            break;
+          }
+
+          case "config_change": {
+            const payload = plan.fix_payload as any;
+            if (payload?.table && payload?.column && payload?.value !== undefined) {
+              // Get current value for revert
+              const { data: current } = await supabase
+                .from(payload.table)
+                .select(payload.column)
+                .match(payload.where || {})
+                .limit(1)
+                .single();
+
+              revertPayload = {
+                action: "config_revert",
+                table: payload.table,
+                column: payload.column,
+                previous_value: current?.[payload.column],
+                where: payload.where,
+              };
+
+              await supabase
+                .from(payload.table)
+                .update({ [payload.column]: payload.value })
+                .match(payload.where || {});
+
+              executionResult = { config_updated: true, table: payload.table, column: payload.column };
+              stats.fixes_applied = (stats.fixes_applied || 0) + 1;
+            }
+            break;
+          }
+
+          case "rpc_call": {
+            const payload = plan.fix_payload as any;
+            if (payload?.function_name) {
+              const { data, error } = await supabase.rpc(payload.function_name, payload.args || {});
+              if (error) throw error;
+              executionResult = { rpc_called: true, function: payload.function_name, result: data };
+              revertPayload = { action: "manual_review", note: `Revert RPC ${payload.function_name}` };
+              stats.fixes_applied = (stats.fixes_applied || 0) + 1;
+            }
+            break;
+          }
+
+          case "schema_ddl": {
+            // Delegate to existing Phase 13 schema healer infrastructure
+            const payload = plan.fix_payload as any;
+            if (payload?.ddl) {
+              const validation = validateSql(payload.ddl);
+              if (!validation.safe) {
+                throw new Error(`DDL blocked: ${validation.reason}`);
+              }
+              const mgmtResult = await executeMgmtQuery(payload.ddl);
+              if (!mgmtResult.ok) throw new Error(mgmtResult.error);
+              executionResult = { ddl_executed: true, ddl: payload.ddl };
+              revertPayload = { action: "manual_review", note: `Revert DDL: ${payload.ddl}` };
+              stats.fixes_applied = (stats.fixes_applied || 0) + 1;
+            }
+            break;
+          }
+
+          case "code_patch": {
+            // Delegate to code-patcher edge function
+            const supabaseUrl = Deno.env.get("SUPABASE_URL");
+            const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+            if (supabaseUrl && serviceKey) {
+              // Create code_patches row first
+              await supabase.from("code_patches").insert({
+                fix_plan_id: plan.id,
+                deploy_status: "pending",
+                files_changed: [(plan.fix_payload as any)?.file_path || "unknown"],
+              });
+
+              // Call code-patcher
+              const patchRes = await fetch(`${supabaseUrl}/functions/v1/code-patcher`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${serviceKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ fix_plan_id: plan.id }),
+              });
+              const patchData = await patchRes.json();
+              executionResult = { code_patch_triggered: true, ...patchData };
+              revertPayload = { action: "revert_pr", pr_url: patchData?.pr_url };
+            }
+            break;
+          }
+
+          default:
+            executionResult = { skipped: true, reason: `Unknown fix_type: ${plan.fix_type}` };
+            break;
+        }
+
+        // Mark plan as executed
+        await supabase.from("fix_plans").update({
+          status: "success",
+          executed_at: new Date().toISOString(),
+          execution_result: executionResult,
+          revert_payload: revertPayload,
+        }).eq("id", plan.id);
+
+        await supabase.from("heal_log").insert({
+          action: `fix_plan:${plan.fix_type}`,
+          result: "success",
+          details: `Plan ${plan.id}: ${plan.explanation}`,
+        });
+
+      } catch (err) {
+        await supabase.from("fix_plans").update({
+          status: "failed",
+          executed_at: new Date().toISOString(),
+          execution_result: { error: (err as Error).message },
+        }).eq("id", plan.id);
+        runErrors.push(`Phase15 fix plan ${plan.id}: ${(err as Error).message}`);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Phase15: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 16: Stale Incident Re-Diagnosis
+// ═══════════════════════════════════════════════════════════════
+const STALE_INCIDENT_HOURS = 2;
+const MAX_REDIAGNOSE_PER_RUN = 5;
+
+async function rediagnoseStaleIncidents(
+  supabase: ReturnType<typeof createClient>,
+  stats: Record<string, number>,
+  runErrors: string[],
+): Promise<void> {
+  try {
+    const staleThreshold = new Date(Date.now() - STALE_INCIDENT_HOURS * 60 * 60 * 1000).toISOString();
+
+    const { data: staleIncidents } = await supabase
+      .from("incidents")
+      .select("id, title, error_pattern, diagnosis, severity")
+      .eq("status", "detected")
+      .lt("created_at", staleThreshold)
+      .is("fix_plan_id", null)
+      .order("created_at", { ascending: true })
+      .limit(MAX_REDIAGNOSE_PER_RUN);
+
+    if (!staleIncidents || staleIncidents.length === 0) return;
+
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiKey) return;
+
+    for (const incident of staleIncidents) {
+      try {
+        // Create a synthetic bug for the AI to analyze
+        const syntheticBug: BugReport = {
+          id: incident.id,
+          description: `${incident.title}\n${incident.error_pattern || ""}\n${incident.diagnosis || ""}`,
+          page_url: "",
+          console_errors: null,
+          status: "open",
+          created_at: "",
+          user_agent: null,
+          error_fingerprint: incident.error_pattern || null,
+        };
+
+        const fixPlan = await createFixPlan(openaiKey, syntheticBug);
+
+        if (fixPlan && fixPlan.fix_type && fixPlan.confidence >= 0.5) {
+          const { data: planRow } = await supabase.from("fix_plans").insert({
+            incident_id: incident.id,
+            category: fixPlan.category,
+            fix_type: fixPlan.fix_type,
+            fix_payload: fixPlan.fix_payload,
+            ai_confidence: fixPlan.confidence,
+            explanation: fixPlan.explanation,
+            error_fingerprint: incident.error_pattern || "",
+            status: fixPlan.confidence >= 0.7 ? "approved" : "queued",
+          }).select("id").single();
+
+          await supabase.from("incidents").update({
+            fix_plan_id: planRow?.id,
+            resolution_method: `ai_rediagnosis:${fixPlan.fix_type}`,
+          }).eq("id", incident.id);
+        } else {
+          // Can't fix — auto-suppress to prevent infinite re-diagnosis
+          await supabase.from("incidents").update({
+            status: "resolved",
+            resolved_at: new Date().toISOString(),
+            resolution_method: "auto_suppressed_stale",
+            resolution_notes: `Stale ${STALE_INCIDENT_HOURS}h+, AI confidence ${fixPlan?.confidence?.toFixed(2) || "N/A"} too low. Auto-suppressed.`,
+          }).eq("id", incident.id);
+        }
+      } catch (err) {
+        runErrors.push(`Phase16 incident ${incident.id}: ${(err as Error).message}`);
+      }
+    }
+  } catch (err) {
+    runErrors.push(`Phase16: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

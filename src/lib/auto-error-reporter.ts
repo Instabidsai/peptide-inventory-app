@@ -53,6 +53,68 @@ interface ErrorEntry {
   timestamp: string;
 }
 
+// ── Client-Side Self-Healing Cache ────────────────────────────────
+interface HealInstruction {
+  error_fingerprint: string;
+  instruction_type: 'suppress' | 're_auth' | 'reload' | 'clear_cache';
+  instruction_payload: Record<string, unknown>;
+}
+const healCache = new Map<string, HealInstruction>();
+let healCacheLoaded = false;
+const reloadGuard = new Set<string>();
+
+async function loadHealInstructions() {
+  if (healCacheLoaded || IS_TEST) return;
+  try {
+    const jwt = getSessionToken() || SB_ANON_KEY;
+    const resp = await _rawFetch(
+      `${SB_URL}/rest/v1/client_heal_instructions?active=eq.true&select=error_fingerprint,instruction_type,instruction_payload`,
+      { headers: { 'apikey': SB_ANON_KEY, 'Authorization': `Bearer ${jwt}` } },
+    );
+    if (resp.ok) {
+      const instructions: HealInstruction[] = await resp.json();
+      for (const instr of instructions) healCache.set(instr.error_fingerprint, instr);
+      healCacheLoaded = true;
+    }
+  } catch { /* best effort */ }
+}
+
+function checkClientHeal(errorMsg: string): boolean {
+  if (healCache.size === 0) return false;
+  for (const [fp, instr] of healCache) {
+    if (errorMsg.includes(fp) || fp.includes(errorMsg.slice(0, 100))) {
+      executeHealInstruction(instr);
+      return true;
+    }
+  }
+  return false;
+}
+
+function executeHealInstruction(instr: HealInstruction) {
+  switch (instr.instruction_type) {
+    case 'suppress':
+      break;
+    case 're_auth':
+      try { supabase.auth.signOut().then(() => { window.location.href = '/#/auth'; }); } catch { /* */ }
+      break;
+    case 'reload':
+      if (!reloadGuard.has(instr.error_fingerprint)) {
+        reloadGuard.add(instr.error_fingerprint);
+        setTimeout(() => window.location.reload(), 500);
+      }
+      break;
+    case 'clear_cache':
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && !k.startsWith('sb-')) keys.push(k); }
+        keys.forEach(k => localStorage.removeItem(k));
+        sessionStorage.clear();
+        setTimeout(() => window.location.reload(), 500);
+      } catch { /* */ }
+      break;
+  }
+}
+
 // ── Rate limiting ──────────────────────────────────────────────────
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
@@ -76,7 +138,7 @@ function fingerprint(entry: ErrorEntry): string {
 // ── Batch queue ────────────────────────────────────────────────────
 const FLUSH_INTERVAL_MS = 5_000;
 const MAX_BATCH_SIZE = 20;
-let queue: ErrorEntry[] = [];
+const queue: ErrorEntry[] = [];
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Try to get a JWT from localStorage (supabase stores session there). */
@@ -168,6 +230,9 @@ async function flushQueue() {
 function queueError(entry: ErrorEntry) {
   if (IS_TEST) return; // Never write to DB during tests
 
+  // Client-side self-healing: check if we have a heal instruction for this error
+  if (checkClientHeal(entry.message)) return; // Healed — don't report
+
   resetWindowIfNeeded();
 
   const fp = fingerprint(entry);
@@ -190,6 +255,25 @@ function queueError(entry: ErrorEntry) {
 export function installAutoErrorReporter() {
   if (IS_TEST) return; // Skip entirely in test environment
 
+  // Load client heal instructions from DB
+  loadHealInstructions();
+
+  // Subscribe to real-time updates for heal instructions
+  try {
+    supabase
+      .channel('client-heal')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_heal_instructions' }, (payload: Record<string, any>) => {
+        const row = payload.new as HealInstruction | undefined;
+        if (payload.eventType === 'DELETE' || (row && !row.instruction_type)) {
+          healCache.delete(payload.old?.error_fingerprint);
+        } else if (row?.error_fingerprint) {
+          healCache.set(row.error_fingerprint, row);
+        }
+      })
+      .subscribe();
+  } catch { /* Realtime not critical */ }
+
   // Start the flush timer
   if (!flushTimer) {
     flushTimer = setInterval(flushQueue, FLUSH_INTERVAL_MS);
@@ -203,7 +287,6 @@ export function installAutoErrorReporter() {
   });
   window.addEventListener('beforeunload', () => {
     if (queue.length > 0) {
-      const jwt = getSessionToken() || SB_ANON_KEY;
       const rows = queue.splice(0).map((entry) => ({
         description: `[AUTO] ${entry.source}: ${entry.message}`.slice(0, 500),
         page_url: entry.page,
@@ -227,25 +310,22 @@ export function installAutoErrorReporter() {
 
   // 0. Wrap supabase.functions.invoke to auto-capture edge function errors
   const origInvoke = supabase.functions.invoke.bind(supabase.functions);
-  (supabase.functions as any).invoke = async (functionName: string, options?: any) => {
-    try {
-      const result = await origInvoke(functionName, options);
-      if (result.error) {
-        if (!FIRE_AND_FORGET_FUNCTIONS.has(functionName) && !DEPRECATED_FUNCTIONS.has(functionName)) {
-          queueError({
-            message: `Edge function '${functionName}' failed: ${result.error.message || JSON.stringify(result.error)}`,
-            source: 'edge_function',
-            page: window.location.hash || '/',
-            stack: result.error instanceof Error ? result.error.stack : undefined,
-            extra: { functionName, context: result.error.context },
-            timestamp: new Date().toISOString(),
-          });
-        }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (supabase.functions as any).invoke = async (functionName: string, options?: Record<string, unknown>) => {
+    const result = await origInvoke(functionName, options);
+    if (result.error) {
+      if (!FIRE_AND_FORGET_FUNCTIONS.has(functionName) && !DEPRECATED_FUNCTIONS.has(functionName)) {
+        queueError({
+          message: `Edge function '${functionName}' failed: ${result.error.message || JSON.stringify(result.error)}`,
+          source: 'edge_function',
+          page: window.location.hash || '/',
+          stack: result.error instanceof Error ? result.error.stack : undefined,
+          extra: { functionName, context: result.error.context },
+          timestamp: new Date().toISOString(),
+        });
       }
-      return result;
-    } catch (err: any) {
-      throw err;
     }
+    return result;
   };
 
   // 0b. Intercept console.error
@@ -281,6 +361,7 @@ export function installAutoErrorReporter() {
   const FETCH_SKIP_DOMAINS = /fonts\.googleapis|cdn\.jsdelivr|unpkg\.com|polyfill\.io/i;
 
   const origFetch = window.fetch;
+  // eslint-disable-next-line complexity
   window.fetch = async (...fetchArgs: Parameters<typeof fetch>) => {
     const fetchStart = Date.now();
     const url = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : fetchArgs[0] instanceof Request ? fetchArgs[0].url : String(fetchArgs[0]);
@@ -388,6 +469,7 @@ export function installAutoErrorReporter() {
   // 1c. Web Vitals → bug_reports bridge (poor scores only)
   // Thresholds from https://web.dev/vitals/ "poor" tier
   const VITAL_THRESHOLDS: Record<string, number> = { CLS: 0.25, LCP: 4000, INP: 500, FID: 300, TTFB: 1800 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).__reportPoorVital = (name: string, value: number, rating: string) => {
     if (rating !== 'poor') return;
     const threshold = VITAL_THRESHOLDS[name];
@@ -483,7 +565,9 @@ export function reportEdgeFunctionError(functionName: string, error: unknown) {
  * Report a poor Web Vital metric. Called from main.tsx web-vitals callbacks.
  */
 export function reportPoorVital(name: string, value: number, rating: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((window as any).__reportPoorVital) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__reportPoorVital(name, value, rating);
   }
 }
