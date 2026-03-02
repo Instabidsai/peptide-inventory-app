@@ -409,7 +409,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         const { error: itemErr } = await supabase.from("sales_order_items").insert(lineItems);
         if (itemErr) return "Order created (#" + order.id.slice(0, 8) + ") but items failed: " + itemErr.message;
         if (repId) {
-          await supabase.rpc("process_sale_commission", { p_sale_id: order.id }).catch(() => {});
+          try { await supabase.rpc("process_sale_commission", { p_sale_id: order.id }); } catch (_) { /* silent */ }
           notifyPartnerCommissions(supabase, order.id, orgId).catch(() => {});
         }
         const itemSummary = args.items.map((i: any) => i.quantity + "x @ $" + i.unit_price.toFixed(2)).join(", ");
@@ -465,7 +465,7 @@ export async function executeTool(name: string, args: any, supabase: any, orgId:
         if (rpcErr) return "Error: " + rpcErr.message;
         if (!result?.success) return "Error: " + (result?.error || "Unknown fulfillment error");
         // Fire-and-forget commission processing
-        await supabase.rpc("process_sale_commission", { p_sale_id: resolvedId }).catch(() => {});
+        try { await supabase.rpc("process_sale_commission", { p_sale_id: resolvedId }); } catch (_) { /* silent */ }
         notifyPartnerCommissions(supabase, resolvedId, orgId).catch(() => {});
         return "Order #" + resolvedId.slice(0, 8) + " FULFILLED. " + result.bottles_allocated + " bottles deducted from inventory.";
       }
