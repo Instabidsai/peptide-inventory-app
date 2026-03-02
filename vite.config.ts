@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ['react', 'react-dom'],
   },
   esbuild: {
     drop: mode === 'production' ? ['debugger'] : [],
@@ -84,7 +85,7 @@ export default defineConfig(({ mode }) => ({
           'vendor-query': ['@tanstack/react-query'],
           'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge', 'zod'],
           'vendor-sentry': ['@sentry/react'],
-          'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
+          'vendor-three': ['three', '@react-three/fiber'],
         },
       },
     },
