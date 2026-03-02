@@ -21,6 +21,7 @@ export interface UserProfile {
     credit_balance: number; // Partner's wallet balance
     org_id: string;
     parent_rep_id?: string | null;
+    can_recruit?: boolean | null;
 }
 
 export function useProfile() {

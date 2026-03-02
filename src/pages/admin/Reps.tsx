@@ -663,6 +663,9 @@ export default function Reps() {
 function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const { profile: authProfile } = useAuth();
+    const { data: tierConfigs } = useTierConfig();
+    const tierRecruitMap = new Map<string, boolean>();
+    tierConfigs?.forEach(t => tierRecruitMap.set(t.tier_key, t.can_recruit));
 
     const handleCopy = async (url: string, key: string) => {
         try {
@@ -738,7 +741,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <Link2 className="h-5 w-5" /> Partner Invite Links
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                        Each partner has a <strong>customer</strong> link. Only <strong>Senior</strong> partners can also recruit new partners.
+                        Each partner has a <strong>customer</strong> link. Partners with <strong>recruit</strong> access can also share partner referral links.
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -749,7 +752,8 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                             {reps.map(rep => {
                                 const customerUrl = `${window.location.origin}/#/auth?ref=${rep.id}`;
                                 const partnerUrl = `${window.location.origin}/#/auth?ref=${rep.id}&role=partner`;
-                                const canRecruit = rep.partner_tier === 'senior';
+                                // Per-person override → tier default fallback
+                                const canRecruit = rep.can_recruit ?? tierRecruitMap.get(rep.partner_tier || 'standard') ?? false;
                                 return (
                                     <div
                                         key={rep.id}
@@ -1112,7 +1116,7 @@ function EditRepDialog({
     );
 }
 
-function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; pricing_mode: string; cost_plus_markup: number; partner_tier: string; parent_rep_id: string | null }) => void }) {
+function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserProfile[], onSubmit: (u: { commission_rate: number; price_multiplier: number; pricing_mode: string; cost_plus_markup: number; partner_tier: string; parent_rep_id: string | null; can_recruit: boolean | null }) => void }) {
     // DB-driven tier defaults (per-org)
     const { data: tierConfigs } = useTierConfig();
     const tierMap = new Map<string, TierConfig>();
@@ -1124,6 +1128,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
     const [costPlus, setCostPlus] = useState(rep.cost_plus_markup || 2.0);
     const [tier, setTier] = useState(rep.partner_tier || 'standard');
     const [parentRep, setParentRep] = useState(rep.parent_rep_id || '');
+    const [canRecruit, setCanRecruit] = useState<boolean | null>(rep.can_recruit ?? null);
 
     const handleTierChange = (newTier: string) => {
         setTier(newTier);
@@ -1256,6 +1261,24 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
             )}
 
             <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Can Recruit</Label>
+                <Select
+                    value={canRecruit === null ? 'default' : canRecruit ? 'yes' : 'no'}
+                    onValueChange={(v) => setCanRecruit(v === 'default' ? null : v === 'yes')}
+                >
+                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="default">Use tier default ({currentDbTier?.can_recruit ? 'Yes' : 'No'})</SelectItem>
+                        <SelectItem value="yes">Yes — can share partner referral links</SelectItem>
+                        <SelectItem value="no">No — customer referral links only</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <p className="text-xs text-muted-foreground text-right">
+                Override whether this partner can recruit other partners into the network.
+            </p>
+
+            <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Upline</Label>
                 <Select value={parentRep || '__none__'} onValueChange={(v) => setParentRep(v === '__none__' ? '' : v)}>
                     <SelectTrigger className="col-span-3">
@@ -1284,7 +1307,8 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     pricing_mode: pricingMode,
                     cost_plus_markup: costPlus,
                     partner_tier: tier,
-                    parent_rep_id: parentRep || null
+                    parent_rep_id: parentRep || null,
+                    can_recruit: canRecruit,
                 })}>
                     Save Changes
                 </Button>

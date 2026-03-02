@@ -3,20 +3,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link2, Copy, Check } from 'lucide-react';
 
-/** Only Senior partners can recruit new partners */
-const CAN_RECRUIT_TIERS = ['senior'];
-
 interface ReferralLinkCardProps {
     profileId: string | undefined;
-    /** Current partner's tier — only senior+ can see the partner recruitment link */
+    /** Current partner's tier — used as fallback when canRecruitOverride is not set */
     partnerTier?: string;
     /** Current user's role — admins always see both links */
     userRole?: string;
     /** Effective org_id — ensures signups land in the correct tenant (multi-tenancy) */
     orgId?: string | null;
+    /** Per-person can_recruit flag from profile. null = use tier default */
+    canRecruitOverride?: boolean | null;
 }
 
-export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId }: ReferralLinkCardProps) {
+export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId, canRecruitOverride }: ReferralLinkCardProps) {
     const [copiedType, setCopiedType] = useState<string | null>(null);
 
     if (!profileId) return null;
@@ -25,7 +24,9 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId }: Re
     // Use /join? path (not /#/auth?) so links survive SMS/text apps that strip hash fragments
     const customerUrl = `${window.location.origin}/join?ref=${profileId}${orgSuffix}`;
     const partnerUrl = `${window.location.origin}/join?ref=${profileId}&role=partner${orgSuffix}`;
-    const canRecruit = userRole === 'admin' || userRole === 'super_admin' || CAN_RECRUIT_TIERS.includes(partnerTier || '');
+    // Admin/super_admin always can recruit. Otherwise use per-person flag, with tier-based fallback (senior = true).
+    const canRecruit = userRole === 'admin' || userRole === 'super_admin'
+        || (canRecruitOverride !== undefined && canRecruitOverride !== null ? canRecruitOverride : partnerTier === 'senior');
 
     const handleCopy = async (url: string, type: string) => {
         try {

@@ -22,6 +22,7 @@ interface Profile {
   pricing_mode?: string;
   cost_plus_markup?: number;
   parent_rep_id?: string | null;
+  can_recruit?: boolean | null;
 }
 
 interface UserRole {
@@ -140,37 +141,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(profileData);
 
       if (profileData?.org_id) {
-        // Fetch user role
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('org_id', profileData.org_id)
-          .maybeSingle();
+        const [roleResult, orgResult] = await Promise.all([
+          supabase.from('user_roles').select('*').eq('user_id', userId).eq('org_id', profileData.org_id).maybeSingle(),
+          supabase.from('organizations').select('*').eq('id', profileData.org_id).maybeSingle(),
+        ]);
 
-        if (roleError) {
-          const msg = `Failed to load user role: ${roleError.message}`;
+        if (roleResult.error) {
+          const msg = `Failed to load user role: ${roleResult.error.message}`;
           logger.error('AuthProvider:', msg);
           setAuthError(msg);
           setUserRole(null);
         } else {
-          setUserRole(roleData);
+          setUserRole(roleResult.data);
         }
 
-        // Fetch organization
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('id', profileData.org_id)
-          .maybeSingle();
-
-        if (orgError) {
-          const msg = `Failed to load organization: ${orgError.message}`;
+        if (orgResult.error) {
+          const msg = `Failed to load organization: ${orgResult.error.message}`;
           logger.error('AuthProvider:', msg);
           setAuthError(msg);
           setOrganization(null);
         } else {
-          setOrganization(orgData);
+          setOrganization(orgResult.data);
         }
       } else {
         setUserRole(null);
