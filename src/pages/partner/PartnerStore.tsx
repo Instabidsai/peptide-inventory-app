@@ -609,7 +609,16 @@ export default function PartnerStore() {
                                                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
                                                     <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Pay via Venmo to @{VENMO_HANDLE}</p>
                                                     <a
-                                                        href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                        href={`https://venmo.com/${VENMO_HANDLE?.replace(/^@/, '')}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            const clean = (VENMO_HANDLE || '').replace(/^@/, '');
+                                                            const deepLink = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(clean)}&amount=${cartTotal.toFixed(2)}&note=Order`;
+                                                            const webUrl = `https://venmo.com/${clean}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`;
+                                                            window.location.href = deepLink;
+                                                            const timer = setTimeout(() => window.open(webUrl, '_blank'), 1500);
+                                                            window.addEventListener('blur', () => clearTimeout(timer), { once: true });
+                                                        }}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
@@ -669,7 +678,16 @@ export default function PartnerStore() {
                                             )}
                                             {paymentMethod === 'venmo' && (
                                                 <a
-                                                    href={`https://venmo.com/${VENMO_HANDLE}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                    href={`https://venmo.com/${VENMO_HANDLE?.replace(/^@/, '')}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        const clean = (VENMO_HANDLE || '').replace(/^@/, '');
+                                                        const deepLink = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(clean)}&amount=${cartTotal.toFixed(2)}&note=Order`;
+                                                        const webUrl = `https://venmo.com/${clean}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`;
+                                                        window.location.href = deepLink;
+                                                        const timer = setTimeout(() => window.open(webUrl, '_blank'), 1500);
+                                                        window.addEventListener('blur', () => clearTimeout(timer), { once: true });
+                                                    }}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >

@@ -21,6 +21,7 @@ import {
     Users,
     Copy,
     Check,
+    CreditCard,
     Calendar,
     Palette,
     Save,
@@ -359,6 +360,101 @@ function ShippingConfigSection({ orgId }: { orgId: string }) {
   );
 }
 
+// ─── Payment Methods Tab ───
+function PaymentMethodsTab({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [payment, setPayment] = useState({
+    zelle_email: '',
+    venmo_handle: '',
+    cashapp_handle: '',
+  });
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ['tenant-config-payment', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('zelle_email, venmo_handle, cashapp_handle')
+        .eq('org_id', orgId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (config) setPayment(prev => ({ ...prev, ...config }));
+  }, [config]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update(payment)
+        .eq('org_id', orgId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['tenant-config-payment'] });
+      invalidateTenantConfigCache();
+      toast({ title: 'Payment methods saved' });
+    } catch (err) {
+      toast({ title: 'Failed to save', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <CreditCard className="h-5 w-5" /> Payment Methods
+        </CardTitle>
+        <CardDescription>
+          Payment handles shown to customers on checkout. Customers send payments to these accounts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Zelle Email / Phone</Label>
+          <Input
+            value={payment.zelle_email}
+            onChange={e => setPayment(p => ({ ...p, zelle_email: e.target.value }))}
+            placeholder="email@example.com or (555) 123-4567"
+          />
+          <p className="text-xs text-muted-foreground">Customers will see this on checkout when paying via Zelle</p>
+        </div>
+        <div className="space-y-2">
+          <Label>Venmo Handle</Label>
+          <Input
+            value={payment.venmo_handle}
+            onChange={e => setPayment(p => ({ ...p, venmo_handle: e.target.value }))}
+            placeholder="@YourVenmoHandle"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>CashApp Handle</Label>
+          <Input
+            value={payment.cashapp_handle}
+            onChange={e => setPayment(p => ({ ...p, cashapp_handle: e.target.value }))}
+            placeholder="$YourCashTag"
+          />
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Payment Methods
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function Settings() {
   usePageTitle('Settings');
   const { profile, organization, userRole, refreshProfile } = useAuth();
@@ -494,14 +590,22 @@ export default function Settings() {
                 <Building2 className="h-4 w-4" />
                 Organization
               </TabsTrigger>
-              <TabsTrigger value="branding" className="gap-2">
-                <Palette className="h-4 w-4" />
-                Branding
-              </TabsTrigger>
-              <TabsTrigger value="shipping" className="gap-2">
-                <Truck className="h-4 w-4" />
-                Shipping
-              </TabsTrigger>
+              {organization?.id && (
+                <>
+                  <TabsTrigger value="branding" className="gap-2">
+                    <Palette className="h-4 w-4" />
+                    Branding
+                  </TabsTrigger>
+                  <TabsTrigger value="shipping" className="gap-2">
+                    <Truck className="h-4 w-4" />
+                    Shipping
+                  </TabsTrigger>
+                  <TabsTrigger value="payments" className="gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payments
+                  </TabsTrigger>
+                </>
+              )}
               <TabsTrigger value="team" className="gap-2">
                 <Users className="h-4 w-4" />
                 Team
@@ -598,6 +702,12 @@ export default function Settings() {
         {isAdmin && organization?.id && (
           <TabsContent value="shipping">
             <ShippingConfigSection orgId={organization.id} />
+          </TabsContent>
+        )}
+
+        {isAdmin && organization?.id && (
+          <TabsContent value="payments">
+            <PaymentMethodsTab orgId={organization.id} />
           </TabsContent>
         )}
 
