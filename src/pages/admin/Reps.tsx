@@ -5,6 +5,7 @@ import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/h
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DownlineVisualizer from './components/DownlineVisualizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -534,9 +535,11 @@ export default function Reps() {
                 </TabsContent>
 
                 <TabsContent value="tiers">
-                    <React.Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
-                        <TierConfigTab orgId={currentProfile?.org_id} />
-                    </React.Suspense>
+                    <ErrorBoundary fallback={<div className="text-center py-8 text-muted-foreground">Failed to load Tier Config. <button className="underline" onClick={() => window.location.reload()}>Reload</button></div>}>
+                        <React.Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+                            <TierConfigTab orgId={currentProfile?.org_id} />
+                        </React.Suspense>
+                    </ErrorBoundary>
                 </TabsContent>
             </Tabs>
 
@@ -1152,9 +1155,9 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                     </SelectTrigger>
                     <SelectContent>
                         {(tierConfigs && tierConfigs.length > 0 ? tierConfigs : [
-                            { tier_key: 'senior', emoji: '🥇', label: 'Senior Partner' },
-                            { tier_key: 'standard', emoji: '🥈', label: 'Standard Partner' },
-                            { tier_key: 'referral', emoji: '🔗', label: 'Referral Partner' },
+                            { tier_key: 'senior', emoji: '🥇', label: 'Senior Partner', active: true },
+                            { tier_key: 'standard', emoji: '🥈', label: 'Standard Partner', active: true },
+                            { tier_key: 'referral', emoji: '🔗', label: 'Referral Partner', active: true },
                         ]).filter((t: any) => t.active !== false).map((t: any) => (
                             <SelectItem key={t.tier_key} value={t.tier_key}>
                                 {t.emoji} {t.label}

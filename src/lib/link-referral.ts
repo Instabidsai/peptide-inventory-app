@@ -1,13 +1,13 @@
 import { supabase } from '@/integrations/sb_client/client';
 
 /** Default partner tier settings for referral signups.
- *  NOTE: The actual pricing is set by the link_referral RPC
- *  (cost_multiplier mode, markup=2). These are display-only defaults. */
+ *  NOTE: The actual pricing is set by the link_referral RPC.
+ *  These defaults should match the RPC values. */
 export const REFERRAL_PARTNER_DEFAULTS = {
-  partner_tier: 'standard' as const,
-  commission_rate: 0.10,
-  price_multiplier: 2.0,
-  pricing_mode: 'cost_multiplier' as const,
+  partner_tier: 'referral' as const,
+  commission_rate: 0.075,
+  price_multiplier: 0.8,
+  pricing_mode: 'percentage' as const,
   cost_plus_markup: 2,
 };
 

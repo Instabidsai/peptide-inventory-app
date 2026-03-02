@@ -8,7 +8,7 @@ export type { PartnerNode, DownlineClient };
 export const TIER_INFO: Record<string, { label: string; discount: string; emoji: string }> = {
     senior: { label: 'Senior Partner', discount: '2x cost', emoji: '\u{1F947}' },
     standard: { label: 'Standard Partner', discount: '2x cost', emoji: '\u{1F948}' },
-    referral: { label: 'Referral Partner', discount: '2x cost', emoji: '\u{1F517}' },
+    referral: { label: 'Referral Partner', discount: '20% off retail', emoji: '\u{1F517}' },
 };
 
 export type SheetView = 'balance' | 'commissions' | 'owed' | 'earnings' | 'add-person' | null;

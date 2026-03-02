@@ -121,5 +121,5 @@ export function tierToInfo(tier: TierConfig) {
 const FALLBACK_TIERS: TierConfig[] = [
     { id: '', org_id: '', tier_key: 'senior', label: 'Senior Partner', emoji: '🥇', commission_rate: 0.10, price_multiplier: 2.0, pricing_mode: 'cost_multiplier', cost_plus_markup: 2.0, can_recruit: true, sort_order: 1, active: true, created_at: '', updated_at: '' },
     { id: '', org_id: '', tier_key: 'standard', label: 'Standard Partner', emoji: '🥈', commission_rate: 0.10, price_multiplier: 2.0, pricing_mode: 'cost_multiplier', cost_plus_markup: 2.0, can_recruit: false, sort_order: 2, active: true, created_at: '', updated_at: '' },
-    { id: '', org_id: '', tier_key: 'referral', label: 'Referral Partner', emoji: '🔗', commission_rate: 0.00, price_multiplier: 2.0, pricing_mode: 'cost_multiplier', cost_plus_markup: 2.0, can_recruit: false, sort_order: 3, active: true, created_at: '', updated_at: '' },
+    { id: '', org_id: '', tier_key: 'referral', label: 'Referral Partner', emoji: '🔗', commission_rate: 0.075, price_multiplier: 0.8, pricing_mode: 'percentage', cost_plus_markup: 2.0, can_recruit: false, sort_order: 3, active: true, created_at: '', updated_at: '' },
 ];
