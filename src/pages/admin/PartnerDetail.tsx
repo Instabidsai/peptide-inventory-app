@@ -279,11 +279,16 @@ export default function PartnerDetail() {
             <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="place_order">Place Order</TabsTrigger>
                     <TabsTrigger value="orders">Sales Orders</TabsTrigger>
                     <TabsTrigger value="clients">Clients</TabsTrigger>
                     <TabsTrigger value="network">Network Hierarchy</TabsTrigger>
                     <TabsTrigger value="payouts">Payouts</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="place_order">
+                    <PlaceOrderTabContent partner={partner} />
+                </TabsContent>
 
                 <TabsContent value="overview" className="space-y-4">
                     <Card>
@@ -331,6 +336,225 @@ export default function PartnerDetail() {
                     <PayoutsTabContent repId={id!} />
                 </TabsContent>
             </Tabs>
+        </div>
+    );
+}
+
+function PlaceOrderTabContent({ partner }: { partner: any }) {
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const [isCreatingContact, setIsCreatingContact] = useState(false);
+
+    // Find the partner's contact record by email match
+    const { data: partnerContact, isLoading: contactLoading, refetch: refetchContact } = useQuery({
+        queryKey: ['partner_contact_record', partner.id, partner.email],
+        queryFn: async () => {
+            if (!partner.email) return null;
+            const { data } = await supabase
+                .from('contacts')
+                .select('id, name, email, type, address')
+                .eq('email', partner.email)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!partner.email,
+    });
+
+    // Fetch orders where this partner is the buyer (contact_id match)
+    const { data: partnerOrders, isLoading: ordersLoading } = useQuery({
+        queryKey: ['partner_own_orders', partnerContact?.id],
+        queryFn: async () => {
+            if (!partnerContact?.id) return [];
+            const { data, error } = await supabase
+                .from('sales_orders')
+                .select(`
+                    id, created_at, status, payment_status, total_amount,
+                    sales_order_items (quantity, peptides (name))
+                `)
+                .eq('client_id', partnerContact.id)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!partnerContact?.id,
+    });
+
+    const handleCreateContact = async () => {
+        if (!partner.email) {
+            toast({ variant: 'destructive', title: 'No email', description: 'This partner has no email on their profile.' });
+            return;
+        }
+        setIsCreatingContact(true);
+        try {
+            const { error } = await supabase
+                .from('contacts')
+                .insert({
+                    name: partner.full_name || 'Partner',
+                    email: partner.email,
+                    phone: partner.phone || null,
+                    address: partner.address || null,
+                    type: 'partner',
+                    assigned_rep_id: partner.parent_rep_id || null,
+                    org_id: partner.org_id,
+                });
+            if (error) throw error;
+            toast({ title: 'Contact created', description: `Contact record created for ${partner.full_name}.` });
+            refetchContact();
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Failed', description: (err as any)?.message || 'Could not create contact.' });
+        } finally {
+            setIsCreatingContact(false);
+        }
+    };
+
+    const handlePlaceOrder = () => {
+        if (partnerContact?.id) {
+            navigate(`/sales/new?contact_id=${partnerContact.id}`);
+        }
+    };
+
+    // Pricing info
+    const pricingMode = partner.pricing_mode || 'percentage';
+    const multiplier = partner.price_multiplier;
+    const markup = partner.cost_plus_markup;
+    const discountPct = multiplier != null ? ((1 - multiplier) * 100).toFixed(0) : null;
+
+    const statusColor = (s: string) => {
+        if (s === 'fulfilled' || s === 'delivered') return 'bg-green-500/10 text-green-500 border-green-500/20';
+        if (s === 'cancelled') return 'bg-red-500/10 text-red-500 border-red-500/20';
+        if (s === 'shipped') return 'bg-primary/10 text-primary border-primary/20';
+        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    };
+
+    if (contactLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
+
+    return (
+        <div className="space-y-4">
+            {/* Pricing Summary */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5" />
+                        Order for {partner.full_name}
+                    </CardTitle>
+                    <CardDescription>
+                        Place a new order for this partner at their configured discount.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-3">
+                        <Badge variant="outline" className="text-sm px-3 py-1 border-violet-500/40 text-violet-400">
+                            Partner Pricing: 2x Avg Cost
+                        </Badge>
+                        {discountPct && (
+                            <Badge variant="outline" className="text-sm px-3 py-1">
+                                {discountPct}% off retail (x{multiplier})
+                            </Badge>
+                        )}
+                        {pricingMode === 'cost_plus' && markup != null && (
+                            <Badge variant="outline" className="text-sm px-3 py-1">
+                                Cost + ${markup} markup
+                            </Badge>
+                        )}
+                        <Badge variant="outline" className="text-sm px-3 py-1">
+                            Payment: Commission Offset
+                        </Badge>
+                    </div>
+
+                    {partnerContact ? (
+                        <Button size="lg" onClick={handlePlaceOrder} className="w-full sm:w-auto">
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            New Order for {partner.full_name}
+                        </Button>
+                    ) : (
+                        <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                                No contact record found for this partner. A contact record is required to place orders.
+                            </p>
+                            <Button onClick={handleCreateContact} disabled={isCreatingContact}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                {isCreatingContact ? 'Creating...' : `Create Contact for ${partner.full_name}`}
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Partner's Own Order History */}
+            {partnerContact && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Partner's Order History</CardTitle>
+                        <CardDescription>
+                            Orders where {partner.full_name} is the buyer ({partnerOrders?.length || 0} orders)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        {ordersLoading ? (
+                            <div className="py-4 text-center text-muted-foreground">Loading orders...</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Items</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Payment</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(!partnerOrders || partnerOrders.length === 0) && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                                No orders yet for this partner.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {partnerOrders?.map((order) => {
+                                        const items = order.sales_order_items || [];
+                                        const itemSummary = items.map((i: any) =>
+                                            `${i.peptides?.name || '?'} x${i.quantity}`
+                                        ).join(', ');
+
+                                        return (
+                                            <TableRow
+                                                key={order.id}
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => navigate(`/sales/${order.id}`)}
+                                            >
+                                                <TableCell className="text-sm">
+                                                    {format(new Date(order.created_at), 'MMM d, yyyy')}
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground max-w-[250px] truncate">
+                                                    {itemSummary || '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={`text-xs ${statusColor(order.status)}`}>
+                                                        {order.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={`text-xs ${
+                                                        order.payment_status === 'paid'
+                                                            ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                                                            : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                    }`}>
+                                                        {order.payment_status || 'pending'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    ${Number(order.total_amount || 0).toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
