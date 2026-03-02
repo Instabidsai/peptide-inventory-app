@@ -38,9 +38,16 @@ async function validateShopifyHmac(
     ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-  const computed = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  const computed = new Uint8Array(sig);
+  const expected = Uint8Array.from(atob(hmacHeader), (c) => c.charCodeAt(0));
 
-  return computed === hmacHeader;
+  // Constant-time comparison to prevent timing attacks
+  if (computed.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < computed.length; i++) {
+    mismatch |= computed[i] ^ expected[i];
+  }
+  return mismatch === 0;
 }
 
 // ── Main handler ─────────────────────────────────────────────

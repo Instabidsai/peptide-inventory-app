@@ -1,0 +1,2 @@
+[functions.woo-webhook]
+verify_jwt = false

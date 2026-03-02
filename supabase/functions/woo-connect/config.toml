@@ -1,0 +1,2 @@
+[functions.woo-connect]
+verify_jwt = false
