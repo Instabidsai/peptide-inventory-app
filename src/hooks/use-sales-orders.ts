@@ -339,6 +339,7 @@ export function useCreateSalesOrder() {
 
             // Process commission records
             // Manual commissions: insert directly when frontend provides chain entries
+            let commissionRecordsCreated = false;
             if (input.manual_commissions && input.manual_commissions.length > 0 && commissionAmount > 0) {
                 const commEntries = input.manual_commissions.map(mc => ({
                     sale_id: order.id,
@@ -353,12 +354,14 @@ export function useCreateSalesOrder() {
                     .from('commissions')
                     .insert(commEntries);
                 if (commError) {
-                    logger.error("Manual commission insert failed:", commError);
-                    toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
+                    logger.error("Manual commission insert failed, falling back to RPC:", commError);
+                    // Fall through to RPC — manual insert can fail due to RLS
                 } else {
+                    commissionRecordsCreated = true;
                     supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
                 }
-            } else if (repId) {
+            }
+            if (!commissionRecordsCreated && repId) {
                 // ALWAYS run the RPC when a rep exists — the RPC reads commission rates
                 // from profiles and walks the full chain (direct → parent → grandparent).
                 // Don't gate on commissionAmount — the frontend can miscalculate to 0
