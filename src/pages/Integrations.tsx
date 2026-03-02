@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/sb_client/client';
-import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -233,13 +232,29 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     }
     setConnecting(true);
     try {
-      const { data, error } = await invokeEdgeFunction<{ redirect_url: string }>('woo-connect', {
-        store_url: storeUrl.trim(),
-        org_id: orgId,
+      // Get fresh session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated — please sign in again');
+
+      // Direct fetch to bypass supabase.functions.invoke() SDK issues
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-connect`;
+      const response = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ store_url: storeUrl.trim(), org_id: orgId }),
       });
-      if (error) throw new Error(error.message);
-      if (data?.redirect_url) {
-        window.open(data.redirect_url, '_blank', 'width=700,height=700');
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || `Server returned ${response.status}`);
+      }
+
+      if (result.redirect_url) {
+        window.open(result.redirect_url, '_blank', 'width=700,height=700');
         queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
         toast({ title: 'Approve access on your store', description: 'A new window opened. Log in to your WooCommerce admin and click Approve.' });
       }
@@ -257,17 +272,36 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     }
     setManualConnecting(true);
     try {
-      const { data, error } = await invokeEdgeFunction<{ success: boolean; webhook_created: boolean; webhook_error?: string }>('woo-manual-connect', {
-        store_url: storeUrl.trim(),
-        consumer_key: consumerKey.trim(),
-        consumer_secret: consumerSecret.trim(),
-        org_id: orgId,
+      // Get fresh session for auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated — please sign in again');
+
+      // Direct fetch to bypass supabase.functions.invoke() SDK issues
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-manual-connect`;
+      const response = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          store_url: storeUrl.trim(),
+          consumer_key: consumerKey.trim(),
+          consumer_secret: consumerSecret.trim(),
+          org_id: orgId,
+        }),
       });
-      if (error) throw new Error(error.message);
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || `Server returned ${response.status}`);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['tenant-connections', orgId, 'woocommerce'] });
       setConsumerKey('');
       setConsumerSecret('');
-      if (data?.webhook_created) {
+      if (result.webhook_created) {
         toast({ title: 'WooCommerce Connected!', description: 'Your store is connected and order sync webhook was auto-created.' });
       } else {
         toast({ title: 'WooCommerce Connected!', description: 'Keys saved. Webhook could not be auto-created — you may need to add it manually in WooCommerce.' });
@@ -849,11 +883,12 @@ function ApiKeysSection({ orgId }: { orgId: string }) {
                     value={keys[key] || ''}
                     onChange={e => setKeys(k => ({ ...k, [key]: e.target.value }))}
                     placeholder={saved ? `Current: ${saved.api_key_masked}` : placeholder}
+                    className="pr-9"
                   />
                   <button
                     type="button"
                     onClick={() => setVisible(v => ({ ...v, [key]: !v[key] }))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
                   >
                     {visible[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
