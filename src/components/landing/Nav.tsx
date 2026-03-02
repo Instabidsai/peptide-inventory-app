@@ -93,7 +93,7 @@ export function Nav() {
               size="sm"
               onClick={() => navigate("/auth")}
             >
-              Business Login
+              Sign In
             </Button>
             <Button
               size="sm"
@@ -135,7 +135,7 @@ export function Nav() {
                     variant="ghost"
                     onClick={() => navigate("/auth")}
                   >
-                    Business Login
+                    Sign In
                   </Button>
                   <Button
                     onClick={() => {
