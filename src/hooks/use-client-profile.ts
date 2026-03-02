@@ -16,7 +16,14 @@ export function useClientProfile() {
                 .eq('linked_user_id', user.id)
                 .maybeSingle();
 
-            if (error) throw error;
+            // If the query errors (RLS, network, etc.) but we have a valid user,
+            // return null instead of throwing — lets the dashboard show the
+            // welcome/no-contact state instead of a hard error wall.
+            // This also handles admin preview_role=customer gracefully.
+            if (error) {
+                console.warn('[useClientProfile] contacts query failed, treating as no contact:', error.message);
+                return null;
+            }
             return data;
         },
         enabled: !!user,
