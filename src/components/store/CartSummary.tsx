@@ -220,25 +220,14 @@ export function CartSummary({
                                 <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-3 space-y-2">
                                     <p className="text-xs font-medium text-blue-300">Pay via Venmo to @{venmoHandle}</p>
                                     <a
-                                        href={`https://venmo.com/${venmoHandle?.replace(/^@/, '')}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            const clean = (venmoHandle || '').replace(/^@/, '');
-                                            const deepLink = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(clean)}&amount=${cartTotal.toFixed(2)}&note=Order`;
-                                            const webUrl = `https://venmo.com/${clean}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`;
-                                            window.location.href = deepLink;
-                                            const timer = setTimeout(() => window.open(webUrl, '_blank'), 1500);
-                                            window.addEventListener('blur', () => clearTimeout(timer), { once: true });
-                                        }}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((venmoHandle || '').replace(/^@/, ''))}&amount=${cartTotal.toFixed(2)}&note=Order`}
                                         className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:underline"
                                     >
                                         <ExternalLink className="h-3 w-3" />
-                                        Open Venmo — ${cartTotal.toFixed(2)}
+                                        Open Venmo App — ${cartTotal.toFixed(2)}
                                     </a>
                                     <p className="text-xs text-muted-foreground">
-                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> via the link above or search @{venmoHandle} in Venmo.
+                                        Tap above to open the Venmo app. If it doesn't open, search <strong>@{venmoHandle}</strong> in Venmo and send <strong>${cartTotal.toFixed(2)}</strong>.
                                     </p>
                                 </div>
                             )}
@@ -298,22 +287,11 @@ export function CartSummary({
                             )}
                             {paymentMethod === 'venmo' && (
                                 <a
-                                    href={`https://venmo.com/${venmoHandle?.replace(/^@/, '')}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        const clean = (venmoHandle || '').replace(/^@/, '');
-                                        const deepLink = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(clean)}&amount=${cartTotal.toFixed(2)}&note=Order`;
-                                        const webUrl = `https://venmo.com/${clean}?txn=pay&amount=${cartTotal.toFixed(2)}&note=Order`;
-                                        window.location.href = deepLink;
-                                        const timer = setTimeout(() => window.open(webUrl, '_blank'), 1500);
-                                        window.addEventListener('blur', () => clearTimeout(timer), { once: true });
-                                    }}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((venmoHandle || '').replace(/^@/, ''))}&amount=${cartTotal.toFixed(2)}&note=Order`}
                                 >
                                     <Button variant="outline" size="sm">
                                         <ExternalLink className="h-3 w-3 mr-1" />
-                                        Open Venmo to Pay
+                                        Open Venmo App to Pay
                                     </Button>
                                 </a>
                             )}
