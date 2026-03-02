@@ -46,7 +46,7 @@ interface AuthContextType {
   loading: boolean;
   authError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; user: User | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -294,12 +294,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (error) return { error };
+    if (error) return { error, user: null };
 
     // Profile is auto-created by the handle_new_user DB trigger (SECURITY DEFINER).
     // No client-side upsert needed — it would fail with RLS 42501 before email confirmation.
 
-    return { error: null };
+    return { error: null, user: data.user };
   };
 
   const signOut = async () => {

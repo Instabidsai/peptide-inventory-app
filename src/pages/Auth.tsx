@@ -456,7 +456,7 @@ export default function Auth() {
     if (planParam) {
       localStorage.setItem('selected_plan', planParam);
     }
-    const { error } = await signUp(data.email, data.password, data.fullName);
+    const { error, user: newUser } = await signUp(data.email, data.password, data.fullName);
 
     if (error) {
       trackAuthError('email_signup', error.message);
@@ -473,34 +473,50 @@ export default function Auth() {
       return;
     }
 
-    // If referral param exists, try to link immediately
-    if (refParam) {
-      const { data: { user: newUser }, error: userErr } = await supabase.auth.getUser();
-      if (newUser) {
-        const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam, orgParam);
-        if (result.success) {
-          sessionStorage.removeItem('partner_ref');
-          sessionStorage.removeItem('partner_ref_role');
-          await refreshProfile();
-          queryClient.invalidateQueries({ queryKey: ['client-profile'] });
-          setIsLoading(false);
-          toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
-          navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
-          return;
-        }
-        // linkReferral failed — store ref for retry and show the actual error
-        storeSessionReferral(refParam, roleParam, orgParam);
+    // With autoconfirm ON, signUp returns the user + session immediately.
+    // Use the returned user directly — no separate getUser() call needed.
+    if (refParam && newUser) {
+      referralHandled.current = true;
+      const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam, orgParam);
+      if (result.success) {
+        sessionStorage.removeItem('partner_ref');
+        sessionStorage.removeItem('partner_ref_role');
+        sessionStorage.removeItem('partner_ref_org');
+        localStorage.removeItem('pending_referral');
+        localStorage.removeItem('partner_ref');
+        await refreshProfile();
+        queryClient.invalidateQueries({ queryKey: ['client-profile'] });
         setIsLoading(false);
-        toast({ variant: 'destructive', title: 'Referral link error (signup)', description: `Error: ${result.error || 'Unknown'} | ref=${refParam?.slice(0,8)}…`, duration: 15000 });
+        toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
+        navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
         return;
-      } else {
-        // User not confirmed yet — store referral for later
-        storeSessionReferral(refParam, roleParam, orgParam);
       }
+      // linkReferral failed — store ref for retry and show the actual error
+      storeSessionReferral(refParam, roleParam, orgParam);
+      setIsLoading(false);
+      toast({ variant: 'destructive', title: 'Referral link error (signup)', description: `Error: ${result.error || 'Unknown'} | ref=${refParam?.slice(0,8)}…`, duration: 15000 });
+      return;
     }
 
+    // Referral present but no user (email confirmation required — shouldn't happen with autoconfirm)
+    if (refParam && !newUser) {
+      storeSessionReferral(refParam, roleParam, orgParam);
+    }
+
+    // User created with autoconfirm — session is live, let auth listener redirect
+    if (newUser) {
+      setIsLoading(false);
+      if (isMerchantSignup) {
+        toast({ title: 'Account created!', description: 'Setting up your business...' });
+      } else {
+        toast({ title: 'Welcome!', description: 'Your account is ready.' });
+      }
+      // Auth state listener will fire → ProtectedRoute/RoleBasedRedirect handles navigation
+      return;
+    }
+
+    // No user returned = email confirmation required (autoconfirm is off)
     setIsLoading(false);
-    // Merchant self-signup — tell them to confirm email
     if (isMerchantSignup) {
       toast({
         title: 'Account created!',
@@ -509,7 +525,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'Account created!',
-        description: 'Please check your email to confirm your account, or log in if email confirmation is disabled.',
+        description: 'Check your email to confirm your account, then log in.',
       });
     }
     setMode('login');
