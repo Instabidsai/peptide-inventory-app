@@ -41,7 +41,7 @@ function LazyBatch({ children, fallback = null }: { children: React.ReactNode; f
     return () => io.disconnect();
   }, []);
 
-  if (visible) return <Suspense fallback={null}>{children}</Suspense>;
+  if (visible) return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
   return <div ref={ref} style={{ minHeight: 1 }}>{fallback}</div>;
 }
 
@@ -62,26 +62,26 @@ export default function CrmLanding() {
       <Nav />
       <Hero />
       {showBatch1 && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<div>Loading...</div>}>
           <BusinessLogin />
           <TwoPathFork />
           <TrustBar />
           <PainPoints />
         </Suspense>
       )}
-      <LazyBatch>
+      <LazyBatch fallback={<div>Loading...</div>}>
         <IntegrationsBanner />
         <PlatformFeatures />
         <StartABusinessSteps />
         <SupplyChain />
       </LazyBatch>
-      <LazyBatch>
+      <LazyBatch fallback={<div>Loading...</div>}>
         <PaymentIntegration />
         <HowItWorks />
         <AiShowcase />
         <TwoAiBrains />
       </LazyBatch>
-      <LazyBatch>
+      <LazyBatch fallback={<div>Loading...</div>}>
         <Testimonials />
         <Pricing />
         <Faq />
