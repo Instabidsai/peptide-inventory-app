@@ -125,6 +125,11 @@ installClickTracker();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
+// Signal to the boot sentinel that React mounted successfully.
+// If this line runs, the bundle loaded and React rendered — clear the deadline.
+(window as any).__APP_BOOTED = true;
+clearTimeout((window as any).__BOOT_DEADLINE);
+
 // ─── Web Vitals ─────────────────────────────────────────────────────────────
 import { onCLS, onFID, onLCP, onTTFB, onINP } from 'web-vitals';
 

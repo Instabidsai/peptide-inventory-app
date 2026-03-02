@@ -1,0 +1,2 @@
+[functions.synthetic-monitor]
+verify_jwt = false

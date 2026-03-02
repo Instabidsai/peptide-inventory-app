@@ -1,0 +1,2 @@
+[functions.boot-failure]
+verify_jwt = false

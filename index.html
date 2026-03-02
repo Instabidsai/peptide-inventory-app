@@ -33,6 +33,63 @@
 
   <body>
     <div id="root"></div>
+
+    <!-- Boot Sentinel: catches fatal JS crashes that kill the entire app before
+         React mounts. Runs BEFORE the bundle, so it works even when the bundle
+         is completely broken. Reports to Supabase edge function for auto-rollback. -->
+    <script>
+    (function(){
+      var DEADLINE_MS = 15000;
+      var REPORT_URL = 'https://mckkegmkpqdicudnfhor.supabase.co/functions/v1/boot-failure';
+      var errors = [];
+
+      // Capture any JS errors during module evaluation
+      window.addEventListener('error', function(e) {
+        if (!window.__APP_BOOTED) {
+          errors.push({
+            msg: e.message || 'Unknown error',
+            file: (e.filename || '').split('/').pop(),
+            line: e.lineno,
+            col: e.colno
+          });
+        }
+      });
+
+      // If React doesn't mount within DEADLINE_MS, the app is dead
+      window.__BOOT_DEADLINE = setTimeout(function() {
+        if (window.__APP_BOOTED) return;
+
+        // Show a visible fallback instead of black page
+        var root = document.getElementById('root');
+        if (root && !root.children.length) {
+          root.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;background:#0f0a1a;color:#e2e8f0;padding:2rem;text-align:center">'
+            + '<h1 style="font-size:1.5rem;margin-bottom:1rem">We\'re experiencing a temporary issue</h1>'
+            + '<p style="color:#94a3b8;margin-bottom:2rem">The page is loading slower than expected. Please try refreshing.</p>'
+            + '<button onclick="location.reload()" style="background:#7c3aed;color:white;border:none;padding:0.75rem 2rem;border-radius:0.5rem;font-size:1rem;cursor:pointer">Refresh Page</button>'
+            + '</div>';
+        }
+
+        // Report the crash to our edge function
+        try {
+          var payload = JSON.stringify({
+            url: location.href,
+            user_agent: navigator.userAgent,
+            errors: errors,
+            timestamp: new Date().toISOString()
+          });
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon(REPORT_URL, payload);
+          } else {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', REPORT_URL, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(payload);
+          }
+        } catch(e) { /* reporting failed — don't make things worse */ }
+      }, DEADLINE_MS);
+    })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
