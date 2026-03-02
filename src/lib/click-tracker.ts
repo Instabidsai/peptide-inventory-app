@@ -152,14 +152,25 @@ export function installClickTracker() {
   let mutationObserver: MutationObserver | null = null;
   try {
     mutationObserver = new MutationObserver((mutations) => {
-      // Count meaningful mutations (skip attribute-only changes on same element)
       for (const m of mutations) {
         if (m.type === 'childList' && (m.addedNodes.length > 0 || m.removedNodes.length > 0)) {
           domMutationsSinceClick++;
         }
+        // Count attribute changes that indicate UI state transitions (Radix tabs, dialogs, etc.)
+        if (m.type === 'attributes') {
+          const attr = m.attributeName;
+          if (attr === 'data-state' || attr === 'aria-selected' || attr === 'aria-hidden' || attr === 'hidden') {
+            domMutationsSinceClick++;
+          }
+        }
       }
     });
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-state', 'aria-selected', 'aria-hidden', 'hidden'],
+    });
   } catch { /* fallback: skip mutation tracking */ }
 
   // ── Fetch counter (patched into window.fetch) ──
@@ -200,6 +211,10 @@ export function installClickTracker() {
     // Clicking an input/textarea/select to focus is normal — not a dead click
     const tagLower = interactive.tagName.toLowerCase();
     if (tagLower === 'input' || tagLower === 'textarea' || tagLower === 'select') return;
+
+    // Skip elements inside external links — opening a new tab produces no in-page effect
+    if (interactive.closest('a[target="_blank"]')) return;
+    if (tagLower === 'a' && (interactive as HTMLAnchorElement).target === '_blank') return;
 
     // Snapshot current counters
     const fetchBaseline = fetchesSinceClick;

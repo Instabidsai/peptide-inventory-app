@@ -85,6 +85,19 @@ export default function GetStarted() {
     }
   }, [loading, user, profile, navigate]);
 
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const signupForm = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { email: '', password: '', confirmPassword: '', fullName: '', agreedToTerms: false as unknown as true },
+  });
+
+  const watchPassword = signupForm.watch('password');
+  const strength = watchPassword ? getPasswordStrength(watchPassword) : null;
+
   if (loading || user) {
     const message = user ? 'Setting up your account...' : 'Loading...';
     return (
@@ -186,19 +199,6 @@ export default function GetStarted() {
       toast({ variant: 'destructive', title: 'Google sign in failed', description: error.message });
     }
   };
-
-  const loginForm = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  });
-
-  const signupForm = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', fullName: '', agreedToTerms: false as unknown as true },
-  });
-
-  const watchPassword = signupForm.watch('password');
-  const strength = watchPassword ? getPasswordStrength(watchPassword) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">

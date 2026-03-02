@@ -22,10 +22,16 @@ import Dashboard from "./pages/Dashboard";
 import Join from "./pages/Join";
 import NotFound from "./pages/NotFound";
 
-// Retry wrapper — reloads page on stale chunk errors after deploy
+// Retry wrapper — reloads page on stale chunk errors, with 30s cooldown to
+// prevent infinite reload loops when chunks fail for persistent reasons.
 function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
   return lazy(() => fn().catch(() => {
-    window.location.reload();
+    const key = 'chunk_reload';
+    const last = Number(sessionStorage.getItem(key) || 0);
+    if (Date.now() - last > 30_000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+    }
     return new Promise(() => {}); // reload handles it
   }));
 }

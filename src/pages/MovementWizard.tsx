@@ -468,22 +468,13 @@ export default function MovementWizard() {
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Other Charges (Supplies, Mixing, etc.)</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExtraItems([...extraItems, { id: Math.random().toString(), description: 'Bacteriostatic Water', price: 5.00 }])}
-                  >
-                    + Add Water ($5)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExtraItems([...extraItems, { id: Math.random().toString(), description: 'Custom charge', price: 0 }])}
-                  >
-                    + Custom Item
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExtraItems([...extraItems, { id: Math.random().toString(), description: 'Custom charge', price: 0 }])}
+                >
+                  + Custom Item
+                </Button>
               </div>
 
               {extraItems.length > 0 && (

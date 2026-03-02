@@ -48,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { QueryError } from "@/components/ui/query-error";
 import { logger } from '@/lib/logger';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Resource = {
     id: string;
@@ -100,30 +101,36 @@ export default function AdminResources() {
     });
 
     const queryClient = useQueryClient();
+    const { profile } = useAuth();
+    const orgId = profile?.org_id;
 
     // Data Fetching
     const { data: themes, isLoading: loadingThemes, isError: themesError, refetch: themesRefetch } = useQuery({
-        queryKey: ['resource-themes'],
+        queryKey: ['resource-themes', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('resource_themes')
                 .select('*')
+                .eq('org_id', orgId!)
                 .order('name');
             if (error) throw error;
             return data as Theme[];
-        }
+        },
+        enabled: !!orgId,
     });
 
     const { data: resources, isLoading: loadingResources, isError: resourcesError, refetch: resourcesRefetch } = useQuery({
-        queryKey: ['admin-resources'],
+        queryKey: ['admin-resources', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('resources')
                 .select('*')
+                .eq('org_id', orgId!)
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data as Resource[];
-        }
+        },
+        enabled: !!orgId,
     });
 
     // Mutations
@@ -133,7 +140,7 @@ export default function AdminResources() {
                 const { error } = await supabase.from('resource_themes').update(data).eq('id', editingTheme.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('resource_themes').insert([data]);
+                const { error } = await supabase.from('resource_themes').insert([{ ...data, org_id: orgId }]);
                 if (error) throw error;
             }
         },
@@ -167,7 +174,8 @@ export default function AdminResources() {
             const payload = {
                 ...data,
                 theme_id: data.theme_id === "none" ? null : data.theme_id,
-                duration: data.duration ? (parseInt(data.duration) || null) : null
+                duration: data.duration ? (parseInt(data.duration) || null) : null,
+                org_id: orgId
             };
             if (editingResource) {
                 const { error } = await supabase.from('resources').update(payload).eq('id', editingResource.id);
@@ -286,7 +294,7 @@ export default function AdminResources() {
             // Filter to only new peptides not already in themes
             const newThemes = peptides
                 .filter(p => !existingNames.has(p.name.toLowerCase()))
-                .map(p => ({ name: p.name, description: `Resources related to ${p.name}` }));
+                .map(p => ({ name: p.name, description: `Resources related to ${p.name}`, org_id: orgId }));
 
             if (newThemes.length === 0) {
                 return { created: 0, message: "All peptides already have themes" };

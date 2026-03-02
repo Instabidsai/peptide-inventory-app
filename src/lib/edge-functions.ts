@@ -46,7 +46,7 @@ export async function invokeEdgeFunction<T = unknown>(
   body: Record<string, unknown>,
 ): Promise<InvokeResult<T>> {
   // 1. Get cached session
-  let { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData } = await supabase.auth.getSession();
   let session = sessionData.session;
 
   if (!session) {

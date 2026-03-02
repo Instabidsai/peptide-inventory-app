@@ -1,6 +1,5 @@
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 
 /** Glass peptide vial with liquid inside */
@@ -130,9 +129,7 @@ export function VialScene({ className = '', height = 400 }: { className?: string
         <pointLight position={[-3, 2, 2]} intensity={0.5} color="#22c55e" />
         <pointLight position={[3, -2, -2]} intensity={0.3} color="#3b82f6" />
 
-        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-          <Vial />
-        </Float>
+        <Vial />
 
         <OrbitalParticles count={40} />
       </Canvas>

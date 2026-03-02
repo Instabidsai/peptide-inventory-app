@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -27,15 +28,18 @@ interface CommissionRow {
 
 export default function Commissions() {
     const { data: financials } = useFinancialMetrics();
+    const { profile } = useAuth();
+    const orgId = profile?.org_id;
 
     // Fetch ALL commissions — NO joins (Supabase FK resolution is unreliable)
     const { data: commissions, isLoading, isError, refetch } = useQuery({
-        queryKey: ['admin_commissions_full'],
+        queryKey: ['admin_commissions_full', orgId],
         queryFn: async () => {
             // 1. Fetch flat commissions
             const { data: rawCommissions, error } = await supabase
                 .from('commissions')
                 .select('id, created_at, partner_id, sale_id, type, amount, commission_rate, status')
+                .eq('org_id', orgId!)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

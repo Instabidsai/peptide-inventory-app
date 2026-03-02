@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,8 @@ export function ResourcesCard({ contactId }: ResourcesCardProps) {
 
 function AddResourceForm({ contactId, onComplete }: { contactId: string, onComplete: () => void }) {
     const queryClient = useQueryClient();
+    const { profile } = useAuth();
+    const orgId = profile?.org_id;
     const [title, setTitle] = useState('');
     const [url, setUrl] = useState('');
     const [type, setType] = useState<'video' | 'article' | 'pdf'>('article');
@@ -79,6 +82,7 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!orgId) { toast({ variant: 'destructive', title: 'Error', description: 'No organization found' }); return; }
         setLoading(true);
         try {
             const { error } = await supabase
@@ -87,7 +91,8 @@ function AddResourceForm({ contactId, onComplete }: { contactId: string, onCompl
                     contact_id: contactId,
                     title,
                     url,
-                    type
+                    type,
+                    org_id: orgId
                 });
 
             if (error) throw error;

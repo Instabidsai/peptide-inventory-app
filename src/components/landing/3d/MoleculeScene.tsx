@@ -1,7 +1,13 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, MeshDistortMaterial } from '@react-three/drei';
 import * as THREE from 'three';
+
+function isWebGLAvailable(): boolean {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch { return false; }
+}
 
 /** Single atom sphere with glow */
 function Atom({ position, scale = 1, color }: { position: [number, number, number]; scale?: number; color: string }) {
@@ -9,6 +15,7 @@ function Atom({ position, scale = 1, color }: { position: [number, number, numbe
   const speed = useMemo(() => 0.2 + Math.random() * 0.3, []);
 
   useFrame((_, delta) => {
+    if (!ref.current) return;
     ref.current.rotation.x += delta * speed;
     ref.current.rotation.z += delta * speed * 0.5;
   });
@@ -16,14 +23,12 @@ function Atom({ position, scale = 1, color }: { position: [number, number, numbe
   return (
     <mesh ref={ref} position={position} scale={scale}>
       <sphereGeometry args={[1, 24, 24]} />
-      <MeshDistortMaterial
+      <meshStandardMaterial
         color={color}
         emissive={color}
         emissiveIntensity={0.3}
         roughness={0.3}
         metalness={0.6}
-        distort={0.15}
-        speed={2}
         transparent
         opacity={0.85}
       />
@@ -81,6 +86,7 @@ function MoleculeCluster({ position, rotationSpeed = 0.15 }: { position: [number
   ];
 
   useFrame((_, delta) => {
+    if (!groupRef.current) return;
     groupRef.current.rotation.y += delta * rotationSpeed;
     groupRef.current.rotation.x += delta * rotationSpeed * 0.3;
   });
@@ -109,6 +115,7 @@ function Particles({ count = 60 }: { count?: number }) {
   }, [count]);
 
   useFrame((_, delta) => {
+    if (!ref.current) return;
     ref.current.rotation.y += delta * 0.02;
   });
 
@@ -129,27 +136,32 @@ function Particles({ count = 60 }: { count?: number }) {
 
 /** Full scene — drop this into any section */
 export function MoleculeScene({ className = '' }: { className?: string }) {
+  const [ok, setOk] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setOk(isWebGLAvailable() && typeof THREE.SphereGeometry === 'function');
+  }, []);
+
+  if (!ok) return null;
+
   return (
     <div className={`absolute inset-0 pointer-events-none ${className}`}>
       <Canvas
         camera={{ position: [0, 0, 8], fov: 50 }}
         dpr={[1, 1.5]}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, failIfMajorPerformanceCaveat: true }}
         style={{ background: 'transparent' }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener('webglcontextlost', (e) => e.preventDefault());
+        }}
       >
         <ambientLight intensity={0.4} />
         <pointLight position={[10, 10, 10]} intensity={0.8} color="#22c55e" />
         <pointLight position={[-10, -5, 5]} intensity={0.4} color="#3b82f6" />
 
-        <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.8}>
-          <MoleculeCluster position={[3, 1, -2]} rotationSpeed={0.12} />
-        </Float>
-        <Float speed={1.2} rotationIntensity={0.2} floatIntensity={0.6}>
-          <MoleculeCluster position={[-3.5, -1, -1]} rotationSpeed={0.08} />
-        </Float>
-        <Float speed={1.8} rotationIntensity={0.4} floatIntensity={1}>
-          <MoleculeCluster position={[0, 2.5, -3]} rotationSpeed={0.18} />
-        </Float>
+        <MoleculeCluster position={[3, 1, -2]} rotationSpeed={0.12} />
+        <MoleculeCluster position={[-3.5, -1, -1]} rotationSpeed={0.08} />
+        <MoleculeCluster position={[0, 2.5, -3]} rotationSpeed={0.18} />
 
         <Particles count={80} />
       </Canvas>

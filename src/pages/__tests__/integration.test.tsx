@@ -65,7 +65,7 @@ describe('Flow 1: Partner Referral Sign-Up', () => {
     const { consumeSessionReferral } = await import('@/lib/link-referral');
     const result = consumeSessionReferral();
 
-    expect(result).toEqual({ refId: 'ref-xyz', role: 'partner' });
+    expect(result).toEqual({ refId: 'ref-xyz', role: 'partner', orgId: null });
     // Should have cleared
     expect(sessionStorage.getItem('partner_ref')).toBeNull();
     expect(sessionStorage.getItem('partner_ref_role')).toBeNull();

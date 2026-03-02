@@ -157,7 +157,12 @@ export function useValidatedCheckout() {
                 p_delivery_method: input.delivery_method || 'ship',
             });
 
-            if (error) throw new Error(`Order RPC failed: ${error.message}`);
+            if (error) {
+                const msg = error.message;
+                if (/COALESCE/i.test(msg)) throw new Error('Checkout temporarily unavailable — please try again shortly.');
+                if (/could not find function/i.test(msg)) throw new Error('Checkout unavailable during system update — please try again in a few minutes.');
+                throw new Error(`Order RPC failed: ${msg}`);
+            }
 
             const result = data as { success: boolean; error?: string; order_id?: string; total?: number };
             if (!result.success) {

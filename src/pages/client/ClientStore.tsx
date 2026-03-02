@@ -17,6 +17,7 @@ import { Info } from 'lucide-react';
 import {
     StoreHeader,
     ProtocolBundles,
+    ProtocolPackages,
     ProductGrid,
     CartSummary,
     FloatingCartPill,
@@ -27,7 +28,8 @@ import {
     type PaymentMethod,
     type SelectedProtocol,
 } from '@/components/store';
-import { canSeePeptide, calculateClientPrice } from '@/components/store/utils';
+import { canSeePeptide, calculateClientPrice, matchPeptide } from '@/components/store/utils';
+import type { ProtocolPackage } from '@/data/protocol-packages';
 import { MAX_ITEM_QTY } from '@/components/store/constants';
 import { trackStorePageView, trackAddToCart, trackCartUpdate, trackRemoveFromCart, trackBeginCheckout, trackProductView } from '@/lib/funnel-tracker';
 
@@ -192,6 +194,30 @@ export default function ClientStore() {
                 return { ...i, quantity: newQty };
             }).filter(i => i.quantity > 0);
         });
+    };
+
+    const addPackageToCart = (pkg: ProtocolPackage) => {
+        const matched: string[] = [];
+        const missed: string[] = [];
+        for (const item of pkg.items) {
+            const peptide = matchPeptide(peptides || [], item.peptideName);
+            if (peptide) {
+                const price = getClientPrice(peptide);
+                setCart(prev => {
+                    const existing = prev.find(i => i.peptide_id === peptide.id);
+                    if (existing) {
+                        const newQty = Math.min(MAX_ITEM_QTY, existing.quantity + item.vialCount);
+                        return prev.map(i => i.peptide_id === peptide.id ? { ...i, quantity: newQty } : i);
+                    }
+                    return [...prev, { peptide_id: peptide.id, name: peptide.name, price, quantity: Math.min(MAX_ITEM_QTY, item.vialCount) }];
+                });
+                matched.push(peptide.name);
+            } else {
+                missed.push(item.peptideName);
+            }
+        }
+        if (matched.length) toast({ title: `${pkg.name} added`, description: `${matched.length} items added to cart.` });
+        if (missed.length) toast({ variant: 'destructive', title: 'Some items unavailable', description: missed.join(', ') });
     };
 
     const cartTotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
@@ -374,6 +400,18 @@ export default function ClientStore() {
                     getClientPrice={getClientPrice}
                     addToCart={addToCart}
                     onSelectProtocol={setSelectedProtocol}
+                />
+            )}
+
+            {/* Full Cycle Protocol Packages */}
+            {!searchQuery && peptides && peptides.length > 0 && (
+                <ProtocolPackages
+                    peptides={peptides}
+                    cart={cart}
+                    isPartner={isPartner}
+                    pricingMode={pricingMode}
+                    getClientPrice={getClientPrice}
+                    addPackageToCart={addPackageToCart}
                 />
             )}
 

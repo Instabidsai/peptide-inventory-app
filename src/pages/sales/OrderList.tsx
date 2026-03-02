@@ -22,7 +22,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { format } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     Plus,
     Trash2,
@@ -64,8 +64,12 @@ export default function OrderList() {
     const { userRole, profile } = useAuth();
     const navigate = useNavigate();
     const isMobile = useIsMobile();
+    const [searchParams] = useSearchParams();
+    const sourceParam = searchParams.get('source');
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
-    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'wholesale'>('all');
+    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'wholesale'>(
+        sourceParam === 'woocommerce' || sourceParam === 'app' || sourceParam === 'wholesale' ? sourceParam : 'all'
+    );
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
     const [filterShipping, setFilterShipping] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -182,7 +186,9 @@ export default function OrderList() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        {filterSource === 'woocommerce' ? 'WooCommerce Orders' : 'Sales Orders'}
+                    </h1>
                     <p className="text-muted-foreground">Manage customer orders and commissions.</p>
                 </div>
                 <div className="flex gap-2">

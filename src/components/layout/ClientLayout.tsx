@@ -27,7 +27,7 @@ export function ClientLayout() {
     // Guard: new customers may not have a contact record yet (created async by linkReferral).
     // useClientProfile polls every 2s while null, so this auto-resolves.
     const { data: contact, isLoading: isContactLoading } = useClientProfile();
-    const contactPending = !isContactLoading && contact === null;
+    const contactPending = !isAdmin && !isSalesRep && !isContactLoading && contact === null;
 
     const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback', user?.id],

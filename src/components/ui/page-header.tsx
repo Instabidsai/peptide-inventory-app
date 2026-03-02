@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronRight, Home, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { LucideIcon } from "lucide-react";
 
 interface Breadcrumb {
   label: string;

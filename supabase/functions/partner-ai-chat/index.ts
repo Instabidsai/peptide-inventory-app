@@ -241,10 +241,10 @@ async function executeTool(
       }
 
       case "search_resources": {
-        // resources table has no org_id — search all resources
         const { data, error } = await supabase
           .from("resources")
           .select("id, title, description, type, url")
+          .eq("org_id", orgId)
           .or("title.ilike.%" + args.query + "%,description.ilike.%" + args.query + "%")
           .limit(10);
         if (error) return "Error: " + error.message;

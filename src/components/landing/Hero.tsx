@@ -1,11 +1,22 @@
-import { useState, useEffect, lazy, Suspense, startTransition } from "react";
+import { useState, useEffect, lazy, Suspense, startTransition, Component, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
 
-const MoleculeScene = lazy(() => import("./3d/MoleculeScene").then(m => ({ default: m.MoleculeScene })));
+const MoleculeScene = lazy(() =>
+  import("./3d/MoleculeScene")
+    .then(m => ({ default: m.MoleculeScene }))
+    .catch(() => ({ default: (() => null) as React.FC }))
+);
+
+class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch() { /* decorative 3D — swallow silently */ }
+  render() { return this.state.hasError ? null : this.props.children; }
+}
 
 function tryReload(): boolean {
   const key = 'chunk_reload';
@@ -143,9 +154,11 @@ export function Hero() {
       />
       {/* 3D molecule background — hidden on mobile for performance */}
       <div className="hidden lg:block absolute inset-0 pointer-events-none opacity-40">
-        <Suspense fallback={null}>
-          <MoleculeScene />
-        </Suspense>
+        <Scene3DErrorBoundary>
+          <Suspense fallback={null}>
+            <MoleculeScene />
+          </Suspense>
+        </Scene3DErrorBoundary>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

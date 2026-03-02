@@ -4,8 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
-import { lookupKnowledge } from '@/data/protocol-knowledge';
-import type { ProtocolTemplate } from '@/data/protocol-knowledge';
+import { lookupKnowledge, type ProtocolTemplate } from '@/data/protocol-knowledge';
 import {
     type EnrichedProtocolItem,
     type IncludeSections,

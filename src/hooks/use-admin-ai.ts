@@ -65,7 +65,7 @@ export function useAdminAI() {
           return res;
         };
 
-        let session = (await supabase.auth.getSession()).data.session;
+        const session = (await supabase.auth.getSession()).data.session;
         if (!session) throw new Error('Not authenticated');
         let res = await makeRequest(session.access_token);
 

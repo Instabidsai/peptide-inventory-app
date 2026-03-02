@@ -1,7 +1,13 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float } from '@react-three/drei';
 import * as THREE from 'three';
+
+function isWebGLAvailable(): boolean {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch { return false; }
+}
 
 /** A single strand of the double helix */
 function HelixStrand({
@@ -121,22 +127,25 @@ function HelixGroup() {
 
 /** Standalone DNA helix scene — use as a visual element */
 export function DNAHelix({ className = '', height = 400 }: { className?: string; height?: number }) {
+  const [ok, setOk] = useState<boolean | null>(null);
+  useEffect(() => { setOk(isWebGLAvailable()); }, []);
+
   return (
     <div className={className} style={{ height, width: '100%' }}>
-      <Canvas
-        camera={{ position: [0, 0, 6], fov: 45 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent' }}
-      >
-        <ambientLight intensity={0.5} />
-        <pointLight position={[5, 5, 5]} intensity={0.8} color="#22c55e" />
-        <pointLight position={[-5, -3, 3]} intensity={0.4} color="#3b82f6" />
+      {ok && (
+        <Canvas
+          camera={{ position: [0, 0, 6], fov: 45 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, alpha: true, failIfMajorPerformanceCaveat: true }}
+          style={{ background: 'transparent' }}
+        >
+          <ambientLight intensity={0.5} />
+          <pointLight position={[5, 5, 5]} intensity={0.8} color="#22c55e" />
+          <pointLight position={[-5, -3, 3]} intensity={0.4} color="#3b82f6" />
 
-        <Float speed={0.8} rotationIntensity={0.1} floatIntensity={0.3}>
           <HelixGroup />
-        </Float>
-      </Canvas>
+        </Canvas>
+      )}
     </div>
   );
 }

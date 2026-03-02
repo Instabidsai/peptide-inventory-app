@@ -2,6 +2,23 @@ import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { PEPTIDE_CARD_DESCRIPTIONS } from './constants';
 import type { Peptide } from '@/hooks/use-peptides';
 
+/** Match a package/template peptide name against the DB peptides list (fuzzy). */
+export function matchPeptide(peptides: Peptide[], name: string): Peptide | undefined {
+    const lower = name.toLowerCase();
+    // 1. Exact startsWith match
+    const found = peptides.find(p => (p.name || '').toLowerCase().startsWith(lower));
+    if (found) return found;
+    // 2. Reverse startsWith (DB name is a prefix of the package name)
+    const reverse = peptides.find(p => lower.startsWith((p.name || '').toLowerCase()));
+    if (reverse) return reverse;
+    // 3. Normalized match (strip hyphens/spaces)
+    const norm = lower.replace(/[-\s]/g, '');
+    return peptides.find(p => {
+        const pNorm = (p.name || '').toLowerCase().replace(/[-\s]/g, '');
+        return pNorm === norm || pNorm.startsWith(norm) || norm.startsWith(pNorm);
+    });
+}
+
 export function getPeptideDescription(peptideName: string): string | null {
     // Check our curated short descriptions first (strip dosage for lookup)
     const baseName = peptideName.replace(/\s+\d+mg(\/\d+mg)?$/i, '');

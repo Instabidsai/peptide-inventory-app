@@ -1864,12 +1864,6 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
 
 export const RECOMMENDED_SUPPLIES = [
     {
-        name: 'Bacteriostatic Water (30mL)',
-        description: 'Sterile water with 0.9% benzyl alcohol for safely reconstituting lyophilized peptides',
-        link: 'https://www.amazon.com/dp/B0FHLRCH8K',
-        icon: 'droplets' as const,
-    },
-    {
         name: '0.5mL Insulin Syringes — 30G 5/16" Needles',
         description: 'Compact syringes with fine-gauge needles for subcutaneous injection',
         link: 'https://www.amazon.com/dp/B0DMNMNKN4',

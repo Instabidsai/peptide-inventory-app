@@ -336,11 +336,13 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-      const resp = await fetch('/api/integrations/woo-sync-products', {
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/woo-sync-products`;
+      const resp = await fetch(fnUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ dryRun: false }),
       });

@@ -29,7 +29,7 @@ export default function PayOrder() {
         queryKey: ['public_pay_order', orderId],
         queryFn: async () => {
             if (!orderId) return null;
-            const { data, error } = await supabase
+            const { data, error: fetchError } = await supabase
                 .from('sales_orders')
                 .select(`
                     id, total_amount, status, payment_status, created_at,
@@ -41,7 +41,7 @@ export default function PayOrder() {
                 `)
                 .eq('id', orderId)
                 .maybeSingle();
-            if (error) throw error;
+            if (fetchError) throw fetchError;
             return data;
         },
         enabled: !!orderId,

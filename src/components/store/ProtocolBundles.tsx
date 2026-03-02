@@ -36,8 +36,8 @@ export function ProtocolBundles({
                     <Layers className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-bold tracking-tight">Recommended Protocols</h2>
-                    <p className="text-xs text-muted-foreground/50">Curated peptide stacks for your goals</p>
+                    <h2 className="text-lg font-bold tracking-tight">Commonly Taken Together</h2>
+                    <p className="text-xs text-muted-foreground/50">Popular peptide combinations</p>
                 </div>
             </div>
             <motion.div

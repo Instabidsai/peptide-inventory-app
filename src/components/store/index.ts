@@ -1,5 +1,6 @@
 export { StoreHeader } from './StoreHeader';
 export { ProtocolBundles } from './ProtocolBundles';
+export { ProtocolPackages } from './ProtocolPackages';
 export { ProductGrid } from './ProductGrid';
 export { CartSummary } from './CartSummary';
 export { FloatingCartPill } from './FloatingCartPill';

@@ -26,7 +26,7 @@ export function TableSkeleton({ rows = 5, columns = 4 }: TableSkeletonProps) {
           className="flex gap-4 px-4 py-3.5 border-b border-border/40"
           style={{ animationDelay: `${row * 75}ms` }}
         >
-          {Array.from({ length: columns }).map((_, col) => (
+          {Array.from({ length: columns }).map((_c, col) => (
             <Skeleton
               key={`${row}-${col}`}
               className={`h-4 rounded ${columnWidths[col % columnWidths.length]}`}
