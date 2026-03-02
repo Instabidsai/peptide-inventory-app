@@ -68,6 +68,13 @@ export function CartSummary({
     updateQuantity,
     cartRef,
 }: CartSummaryProps) {
+    // Auto-reset cart 8 seconds after order is placed
+    React.useEffect(() => {
+        if (!orderPlaced) return;
+        const timer = setTimeout(() => onOrderPlacedReset(), 8000);
+        return () => clearTimeout(timer);
+    }, [orderPlaced, onOrderPlacedReset]);
+
     return (
         <AnimatePresence>
         {(cart.length > 0 || orderPlaced) && (
@@ -93,66 +100,67 @@ export function CartSummary({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Cart items compact list */}
-                    <div className="space-y-2">
-                        {cart.map(item => (
-                            <div key={item.peptide_id} className="flex items-center justify-between text-sm">
-                                <div className="flex-1 min-w-0">
-                                    <p className="truncate font-medium">{item.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        ${item.price.toFixed(2)} × {item.quantity}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => updateQuantity(item.peptide_id, -1)}
-                                        aria-label={`Decrease quantity of ${item.name}`}
-                                    >
-                                        <Minus className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => updateQuantity(item.peptide_id, 1)}
-                                        aria-label={`Increase quantity of ${item.name}`}
-                                    >
-                                        <Plus className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <span className="font-semibold w-16 text-right">
-                                        ${(item.price * item.quantity).toFixed(2)}
-                                    </span>
-                                </div>
+                    {/* Cart items, total, shipping, notes — hidden after order placed */}
+                    {!orderPlaced && (
+                        <>
+                            <div className="space-y-2">
+                                {cart.map(item => (
+                                    <div key={item.peptide_id} className="flex items-center justify-between text-sm">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="truncate font-medium">{item.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                ${item.price.toFixed(2)} × {item.quantity}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => updateQuantity(item.peptide_id, -1)}
+                                                aria-label={`Decrease quantity of ${item.name}`}
+                                            >
+                                                <Minus className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => updateQuantity(item.peptide_id, 1)}
+                                                aria-label={`Increase quantity of ${item.name}`}
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <span className="font-semibold w-16 text-right">
+                                                ${(item.price * item.quantity).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
 
-                    {/* Total */}
-                    <div className="border-t pt-3 flex justify-between items-center">
-                        <span className="text-muted-foreground">Total</span>
-                        <span className="text-xl font-bold text-primary">${cartTotal.toFixed(2)}</span>
-                    </div>
+                            <div className="border-t pt-3 flex justify-between items-center">
+                                <span className="text-muted-foreground">Total</span>
+                                <span className="text-xl font-bold text-primary">${cartTotal.toFixed(2)}</span>
+                            </div>
 
-                    {/* Shipping */}
-                    <AddressAutocomplete
-                        value={shippingAddress}
-                        onChange={onShippingAddressChange}
-                        disabled={orderPlaced}
-                    />
+                            <AddressAutocomplete
+                                value={shippingAddress}
+                                onChange={onShippingAddressChange}
+                                disabled={orderPlaced}
+                            />
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                        <label htmlFor="cart-notes" className="text-sm font-semibold">Notes (optional)</label>
-                        <Input
-                            id="cart-notes"
-                            placeholder="Any special instructions..."
-                            value={notes}
-                            onChange={e => onNotesChange(e.target.value)}
-                        />
-                    </div>
+                            <div className="space-y-2">
+                                <label htmlFor="cart-notes" className="text-sm font-semibold">Notes (optional)</label>
+                                <Input
+                                    id="cart-notes"
+                                    placeholder="Any special instructions..."
+                                    value={notes}
+                                    onChange={e => onNotesChange(e.target.value)}
+                                />
+                            </div>
+                        </>
+                    )}
 
                     {/* Payment Method Selection */}
                     {!orderPlaced ? (

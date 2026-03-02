@@ -78,6 +78,18 @@ export default function PartnerStore() {
     const [orderTotal, setOrderTotal] = useState(0); // Saved total for confirmation display
     const [placingOrder, setPlacingOrder] = useState(false);
 
+    // Auto-reset cart 8 seconds after order is placed
+    useEffect(() => {
+        if (!orderPlaced) return;
+        const timer = setTimeout(() => {
+            setOrderPlaced(false);
+            setCart([]);
+            setNotes('');
+            setShippingAddress('');
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [orderPlaced]);
+
     // Persist cart state to localStorage
     useEffect(() => {
         if (orderPlaced) return; // Don't persist after order is placed (cart is cleared)
@@ -463,94 +475,95 @@ export default function PartnerStore() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {cart.length === 0 ? (
+                            {cart.length === 0 && !orderPlaced ? (
                                 <p className="text-sm text-muted-foreground text-center py-4">
                                     Add peptides from the catalog to get started
                                 </p>
                             ) : (
                                 <>
-                                    {/* Cart Items */}
-                                    <div className="space-y-3">
-                                        {cart.map(item => (
-                                            <div key={item.peptide_id} className="flex items-center justify-between gap-2">
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{item.name}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        ${item.yourPrice.toFixed(2)} each
-                                                    </p>
+                                    {/* Cart Items, Totals, Shipping, Notes — hidden after order placed */}
+                                    {!orderPlaced && (
+                                        <>
+                                            <div className="space-y-3">
+                                                {cart.map(item => (
+                                                    <div key={item.peptide_id} className="flex items-center justify-between gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium truncate">{item.name}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                ${item.yourPrice.toFixed(2)} each
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-9 w-9"
+                                                                onClick={() => updateQuantity(item.peptide_id, -1)}
+                                                                aria-label={`Decrease quantity of ${item.name}`}
+                                                            >
+                                                                <Minus className="h-4 w-4" />
+                                                            </Button>
+                                                            <span className="w-8 text-center text-sm font-medium">
+                                                                {item.quantity}
+                                                            </span>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-9 w-9"
+                                                                onClick={() => updateQuantity(item.peptide_id, 1)}
+                                                                aria-label={`Increase quantity of ${item.name}`}
+                                                            >
+                                                                <Plus className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                        <span className="text-sm font-semibold w-16 text-right">
+                                                            ${(item.yourPrice * item.quantity).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="border-t pt-3 space-y-1">
+                                                {totalSavings > 0 && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-muted-foreground">Retail Total</span>
+                                                        <span className="line-through text-muted-foreground">${retailTotal.toFixed(2)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-muted-foreground">Your Total</span>
+                                                    <span className="text-lg font-bold text-primary">${cartTotal.toFixed(2)}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="h-9 w-9"
-                                                        onClick={() => updateQuantity(item.peptide_id, -1)}
-                                                        aria-label={`Decrease quantity of ${item.name}`}
-                                                    >
-                                                        <Minus className="h-4 w-4" />
-                                                    </Button>
-                                                    <span className="w-8 text-center text-sm font-medium">
-                                                        {item.quantity}
-                                                    </span>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="h-9 w-9"
-                                                        onClick={() => updateQuantity(item.peptide_id, 1)}
-                                                        aria-label={`Increase quantity of ${item.name}`}
-                                                    >
-                                                        <Plus className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                <span className="text-sm font-semibold w-16 text-right">
-                                                    ${(item.yourPrice * item.quantity).toFixed(2)}
-                                                </span>
+                                                {totalSavings > 0 && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-green-500">You Save</span>
+                                                        <span className="text-green-500 font-medium">${totalSavings.toFixed(2)}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))}
-                                    </div>
 
-                                    {/* Totals */}
-                                    <div className="border-t pt-3 space-y-1">
-                                        {totalSavings > 0 && (
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-muted-foreground">Retail Total</span>
-                                                <span className="line-through text-muted-foreground">${retailTotal.toFixed(2)}</span>
+                                            <div className="space-y-2">
+                                                <label htmlFor="partner-store-shipping-address" className="text-sm font-medium">Shipping Address</label>
+                                                <Textarea
+                                                    id="partner-store-shipping-address"
+                                                    placeholder="Enter shipping address..."
+                                                    value={shippingAddress}
+                                                    onChange={e => setShippingAddress(e.target.value)}
+                                                    rows={2}
+                                                />
                                             </div>
-                                        )}
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Your Total</span>
-                                            <span className="text-lg font-bold text-primary">${cartTotal.toFixed(2)}</span>
-                                        </div>
-                                        {totalSavings > 0 && (
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-green-500">You Save</span>
-                                                <span className="text-green-500 font-medium">${totalSavings.toFixed(2)}</span>
+
+                                            <div className="space-y-2">
+                                                <label htmlFor="partner-store-notes" className="text-sm font-medium">Notes (optional)</label>
+                                                <Input
+                                                    id="partner-store-notes"
+                                                    placeholder="Any special instructions..."
+                                                    value={notes}
+                                                    onChange={e => setNotes(e.target.value)}
+                                                />
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {/* Shipping */}
-                                    <div className="space-y-2">
-                                        <label htmlFor="partner-store-shipping-address" className="text-sm font-medium">Shipping Address</label>
-                                        <Textarea
-                                            id="partner-store-shipping-address"
-                                            placeholder="Enter shipping address..."
-                                            value={shippingAddress}
-                                            onChange={e => setShippingAddress(e.target.value)}
-                                            rows={2}
-                                        />
-                                    </div>
-
-                                    {/* Notes */}
-                                    <div className="space-y-2">
-                                        <label htmlFor="partner-store-notes" className="text-sm font-medium">Notes (optional)</label>
-                                        <Input
-                                            id="partner-store-notes"
-                                            placeholder="Any special instructions..."
-                                            value={notes}
-                                            onChange={e => setNotes(e.target.value)}
-                                        />
-                                    </div>
+                                        </>
+                                    )}
 
                                     {/* Payment Method Selection */}
                                     {!orderPlaced ? (
