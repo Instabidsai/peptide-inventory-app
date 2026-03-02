@@ -56,11 +56,12 @@ export function AdminAIChat() {
     dragRef.current = null;
   };
 
-  // Only show for admin/staff (check both profile.role and user_roles.role)
+  // Show for admin/staff/super_admin AND senior partners
   const role = userRole?.role || profile?.role;
+  const isSeniorPartner = role === 'sales_rep' && profile?.partner_tier === 'senior';
   const isStaff = role === 'staff';
-  const bubbleLabel = isStaff ? 'Operations Assistant' : 'Admin Assistant';
-  const bubbleSub = isStaff ? 'Orders, contacts, inventory' : 'Orders, contacts, inventory';
+  const bubbleLabel = isSeniorPartner ? 'Partner Assistant' : isStaff ? 'Operations Assistant' : 'Admin Assistant';
+  const bubbleSub = 'Orders, contacts, inventory';
 
   // Auto-scroll on new messages (must be before early return for hooks rules)
   useEffect(() => {
@@ -69,7 +70,7 @@ export function AdminAIChat() {
     }
   }, [messages, open]);
 
-  if (role !== 'admin' && role !== 'staff' && role !== 'super_admin') return null;
+  if (role !== 'admin' && role !== 'staff' && role !== 'super_admin' && !isSeniorPartner) return null;
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();

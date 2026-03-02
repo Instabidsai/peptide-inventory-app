@@ -55,8 +55,9 @@ export function PartnerAIChat() {
     dragRef.current = null;
   };
 
-  // Only show for sales_rep (partners)
+  // Only show for sales_rep (partners) — senior partners get AdminAIChat instead
   const role = userRole?.role || profile?.role;
+  const isSeniorPartner = role === 'sales_rep' && profile?.partner_tier === 'senior';
 
   // Auto-scroll on new messages (must be before early return for hooks rules)
   useEffect(() => {
@@ -65,7 +66,7 @@ export function PartnerAIChat() {
     }
   }, [messages, open]);
 
-  if (role !== 'sales_rep') return null;
+  if (role !== 'sales_rep' || isSeniorPartner) return null;
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
