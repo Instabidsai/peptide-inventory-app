@@ -25,14 +25,17 @@ import NotFound from "./pages/NotFound";
 // Retry wrapper — reloads page on stale chunk errors, with 30s cooldown to
 // prevent infinite reload loops when chunks fail for persistent reasons.
 function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
-  return lazy(() => fn().catch(() => {
+  return lazy(() => fn().catch((err) => {
     const key = 'chunk_reload';
     const last = Number(sessionStorage.getItem(key) || 0);
     if (Date.now() - last > 30_000) {
       sessionStorage.setItem(key, String(Date.now()));
       window.location.reload();
+      return new Promise(() => {}); // reload in progress — keep spinner showing
     }
-    return new Promise(() => {}); // reload handles it
+    // Already reloaded recently and still failing — surface the error
+    // so ErrorBoundary can show a recovery UI instead of hanging forever
+    throw err ?? new Error('Failed to load page module');
   }));
 }
 
