@@ -1,28 +1,54 @@
-import { useRef, useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, startTransition } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
 
-const AiDemoChat = lazy(() => import("@/components/crm/AiDemoChat").then(m => ({ default: m.AiDemoChat })));
-const LiveBuildPreview = lazy(() => import("@/components/crm/LiveBuildPreview").then(m => ({ default: m.LiveBuildPreview })));
+const MoleculeScene = lazy(() => import("./3d/MoleculeScene").then(m => ({ default: m.MoleculeScene })));
+
+function tryReload(): boolean {
+  const key = 'chunk_reload';
+  const last = Number(sessionStorage.getItem(key) || 0);
+  if (Date.now() - last > 30_000) {
+    sessionStorage.setItem(key, String(Date.now()));
+    window.location.reload();
+    return true;
+  }
+  return false;
+}
+function retryImport<T>(fn: () => Promise<T>): Promise<T> {
+  return fn().catch((err) => {
+    if (tryReload()) return new Promise<never>(() => {});
+    throw err;
+  });
+}
+const AiDemoChat = lazy(() => retryImport(() => import("@/components/crm/AiDemoChat").then(m => ({ default: m.AiDemoChat }))));
+const LiveBuildPreview = lazy(() => retryImport(() => import("@/components/crm/LiveBuildPreview").then(m => ({ default: m.LiveBuildPreview }))));
 
 const ROTATING_WORDS = ["Inventory", "Orders", "Fulfillment", "Commissions", "Client Health", "Compliance"];
 
 export function Hero() {
   const navigate = useNavigate();
-  const heroRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const [wordIdx, setWordIdx] = useState(0);
+  const [showDemo, setShowDemo] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setWordIdx((prev) => (prev + 1) % ROTATING_WORDS.length);
     }, 2200);
     return () => clearInterval(interval);
+  }, []);
+
+  // Defer heavy demo chat mount to after initial paint to avoid a single long task.
+  // startTransition lets React break the render into smaller chunks (concurrent mode).
+  useEffect(() => {
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(() => startTransition(() => setShowDemo(true)), { timeout: 1500 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(() => startTransition(() => setShowDemo(true)), 100);
+    return () => clearTimeout(id);
   }, []);
 
   const heroMessages = [
@@ -99,26 +125,28 @@ export function Hero() {
 
   return (
     <section
-      ref={heroRef}
       id="hero"
       className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden"
     >
-      {/* Inject shimmer keyframes */}
-      <style>{shimmerKeyframes}</style>
+      {/* Inject shimmer + orb keyframes */}
+      <style>{shimmerKeyframes}{`
+        @keyframes orb-drift-right { 0%,100%{transform:translateX(0)} 50%{transform:translateX(30px)} }
+        @keyframes orb-drift-left  { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-20px)} }
+      `}</style>
       {/* Animated gradient background orbs — parallax on scroll */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-      <motion.div
-        className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"
-        style={{ y: orbY1 }}
-        animate={{ x: [0, 30, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      <div
+        className="absolute top-20 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none will-change-transform animate-[orb-drift-right_8s_ease-in-out_infinite]"
       />
-      <motion.div
-        className="absolute bottom-10 left-10 w-72 h-72 bg-primary/[0.08] rounded-full blur-[100px] pointer-events-none"
-        style={{ y: orbY2 }}
-        animate={{ x: [0, -20, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+      <div
+        className="absolute bottom-10 left-10 w-72 h-72 bg-primary/[0.08] rounded-full blur-[100px] pointer-events-none will-change-transform animate-[orb-drift-left_10s_ease-in-out_infinite]"
       />
+      {/* 3D molecule background — hidden on mobile for performance */}
+      <div className="hidden lg:block absolute inset-0 pointer-events-none opacity-40">
+        <Suspense fallback={null}>
+          <MoleculeScene />
+        </Suspense>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -208,22 +236,27 @@ export function Hero() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
+            className="h-[400px] overflow-hidden"
           >
-            <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
-              <AiDemoChat
-                messages={heroMessages}
-                resultElement={dashboardPreview}
-                loop
-                typingSpeed={22}
-                buildSteps={[
-                  "Analyzing inventory schema...",
-                  "Designing dashboard layout...",
-                  "Connecting live data feeds...",
-                  "Deploying to your CRM...",
-                ]}
-                buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
-              />
-            </Suspense>
+            {showDemo ? (
+              <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
+                <AiDemoChat
+                  messages={heroMessages}
+                  resultElement={dashboardPreview}
+                  loop
+                  typingSpeed={22}
+                  buildSteps={[
+                    "Analyzing inventory schema...",
+                    "Designing dashboard layout...",
+                    "Connecting live data feeds...",
+                    "Deploying to your CRM...",
+                  ]}
+                  buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
+                />
+              </Suspense>
+            ) : (
+              <div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />
+            )}
           </motion.div>
         </div>
       </div>

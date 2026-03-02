@@ -84,6 +84,7 @@ export default defineConfig(({ mode }) => ({
           'vendor-query': ['@tanstack/react-query'],
           'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge', 'zod'],
           'vendor-sentry': ['@sentry/react'],
+          'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },
     },

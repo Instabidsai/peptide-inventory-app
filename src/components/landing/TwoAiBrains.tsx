@@ -1,6 +1,9 @@
+import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Bot, Wand2, Blocks, Brain, Sparkles, Check } from "lucide-react";
 import { fadeInUp } from "./constants";
+
+const DNAHelix = lazy(() => import("./3d/DNAHelix").then(m => ({ default: m.DNAHelix })));
 
 export function TwoAiBrains() {
   const capabilities = [
@@ -49,7 +52,7 @@ export function TwoAiBrains() {
 
         {/* Central brain visual + 3 capability cards */}
         <div className="max-w-4xl mx-auto">
-          {/* Brain hub */}
+          {/* Brain hub — 3D DNA helix on desktop, icon on mobile */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -57,12 +60,19 @@ export function TwoAiBrains() {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-8"
           >
-            <div className="relative">
+            {/* Mobile: simple icon */}
+            <div className="relative lg:hidden">
               <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2.5s" }} />
               <div className="absolute -inset-4 rounded-full bg-primary/5 animate-pulse" style={{ animationDuration: "3s" }} />
               <div className="relative w-16 h-16 rounded-full bg-background border-2 border-primary/50 flex items-center justify-center shadow-lg shadow-primary/25">
                 <Brain className="w-7 h-7 text-primary" />
               </div>
+            </div>
+            {/* Desktop: 3D DNA helix */}
+            <div className="hidden lg:block w-full max-w-xs">
+              <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary animate-pulse" /></div>}>
+                <DNAHelix height={200} />
+              </Suspense>
             </div>
           </motion.div>
 
