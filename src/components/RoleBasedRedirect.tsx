@@ -26,14 +26,14 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         return <Navigate to="/auth" replace />;
     }
 
-    // No role yet (new user, profile still being set up) — let ProtectedRoute
+    // No role yet (new user, profile still being set up) â let ProtectedRoute
     // handle the onboarding redirect; don't fight it with a redirect loop.
     if (!userRole?.role) {
         // If allowedRoles includes client/customer, allow through (new client scenario)
         if (allowedRoles?.some(r => ['client', 'customer'].includes(r))) {
             return <>{children}</>;
         }
-        // Otherwise show loading briefly — profile data may still be arriving
+        // Otherwise show loading briefly â profile data may still be arriving
         if (!profile?.org_id) {
             return <Navigate to="/onboarding" replace />;
         }
@@ -52,10 +52,10 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // super_admin lands on their normal admin dashboard (not auto-redirected)
         // They can switch to /vendor via the sidebar mode switcher
 
-        // Block clients/customers from admin areas — send to store or dashboard
+        // Block clients/customers from admin areas â send to store or dashboard
         if (roleName === 'client' || roleName === 'customer') {
             if (!allowedRoles || !allowedRoles.includes(roleName)) {
-                // All customers get at least 20% off — always route to store
+                // All customers get at least 20% off â always route to store
                 return <Navigate to="/store" replace />;
             }
         }
@@ -88,6 +88,6 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         return <>{children}</>;
     } catch (err) {
         logger.error("RoleBasedRedirect error:", err);
-        return <Navigate to="/" replace />;
+        return <Navigate to="/auth" replace />;
     }
 }
