@@ -2292,7 +2292,7 @@ async function executeFixPlans(
                 throw new Error(`DDL blocked: ${validation.reason}`);
               }
               const mgmtResult = await executeMgmtQuery(payload.ddl);
-              if (!mgmtResult.ok) throw new Error(mgmtResult.error);
+              if (!mgmtResult.success) throw new Error(mgmtResult.error);
               executionResult = { ddl_executed: true, ddl: payload.ddl };
               revertPayload = { action: "manual_review", note: `Revert DDL: ${payload.ddl}` };
               stats.fixes_applied = (stats.fixes_applied || 0) + 1;
