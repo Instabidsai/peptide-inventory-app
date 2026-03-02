@@ -1,7 +1,19 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Bot, Wand2, Blocks, Brain, Sparkles, Check } from "lucide-react";
 import { fadeInUp } from "./constants";
+
+class DNAHelixErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch() { /* decorative 3D — swallow silently */ }
+  render() {
+    if (this.state.hasError) {
+      return <div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary" /></div>;
+    }
+    return this.props.children;
+  }
+}
 
 const DNAHelix = lazy(() => import("./3d/DNAHelix").then(m => ({ default: m.DNAHelix })));
 
@@ -70,9 +82,11 @@ export function TwoAiBrains() {
             </div>
             {/* Desktop: 3D DNA helix */}
             <div className="hidden lg:block w-full max-w-xs">
-              <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary animate-pulse" /></div>}>
-                <DNAHelix height={200} />
-              </Suspense>
+              <DNAHelixErrorBoundary>
+                <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary animate-pulse" /></div>}>
+                  <DNAHelix height={200} />
+                </Suspense>
+              </DNAHelixErrorBoundary>
             </div>
           </motion.div>
 
