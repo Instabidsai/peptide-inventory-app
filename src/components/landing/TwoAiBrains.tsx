@@ -1,21 +1,6 @@
-import { lazy, Suspense, Component, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Bot, Wand2, Blocks, Brain, Sparkles, Check } from "lucide-react";
 import { fadeInUp } from "./constants";
-
-class DNAHelixErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch() { /* decorative 3D — swallow silently */ }
-  render() {
-    if (this.state.hasError) {
-      return <div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary" /></div>;
-    }
-    return this.props.children;
-  }
-}
-
-const DNAHelix = lazy(() => import("./3d/DNAHelix").then(m => ({ default: m.DNAHelix })));
 
 export function TwoAiBrains() {
   const capabilities = [
@@ -72,21 +57,12 @@ export function TwoAiBrains() {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-8"
           >
-            {/* Mobile: simple icon */}
-            <div className="relative lg:hidden">
+            <div className="relative">
               <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2.5s" }} />
               <div className="absolute -inset-4 rounded-full bg-primary/5 animate-pulse" style={{ animationDuration: "3s" }} />
               <div className="relative w-16 h-16 rounded-full bg-background border-2 border-primary/50 flex items-center justify-center shadow-lg shadow-primary/25">
                 <Brain className="w-7 h-7 text-primary" />
               </div>
-            </div>
-            {/* Desktop: 3D DNA helix */}
-            <div className="hidden lg:block w-full max-w-xs">
-              <DNAHelixErrorBoundary>
-                <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><Brain className="w-10 h-10 text-primary animate-pulse" /></div>}>
-                  <DNAHelix height={200} />
-                </Suspense>
-              </DNAHelixErrorBoundary>
             </div>
           </motion.div>
 

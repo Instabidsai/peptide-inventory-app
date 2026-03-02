@@ -1,22 +1,10 @@
-import { useState, useEffect, lazy, Suspense, startTransition, Component, type ReactNode } from "react";
+import { useState, useEffect, lazy, Suspense, startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
 
-const MoleculeScene = lazy(() =>
-  import("./3d/MoleculeScene")
-    .then(m => ({ default: m.MoleculeScene }))
-    .catch(() => ({ default: (() => null) as React.FC }))
-);
-
-class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch() { /* decorative 3D — swallow silently */ }
-  render() { return this.state.hasError ? null : this.props.children; }
-}
 
 function tryReload(): boolean {
   const key = 'chunk_reload';
@@ -152,14 +140,6 @@ export function Hero() {
       <div
         className="absolute bottom-10 left-10 w-72 h-72 bg-primary/[0.08] rounded-full blur-[100px] pointer-events-none will-change-transform animate-[orb-drift-left_10s_ease-in-out_infinite]"
       />
-      {/* 3D molecule background — hidden on mobile for performance */}
-      <div className="hidden lg:block absolute inset-0 pointer-events-none opacity-40">
-        <Scene3DErrorBoundary>
-          <Suspense fallback={null}>
-            <MoleculeScene />
-          </Suspense>
-        </Scene3DErrorBoundary>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">

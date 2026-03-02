@@ -1,11 +1,9 @@
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, Rocket, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/sb_client/client";
 import { fadeInUp } from "./constants";
-
-const VialScene = lazy(() => import("./3d/VialScene").then(m => ({ default: m.VialScene })));
 
 export function FinalCta() {
   const [name, setName] = useState("");
@@ -61,12 +59,6 @@ export function FinalCta() {
         <div className="rounded-[15px] bg-gradient-to-br from-primary/10 via-card to-card p-8 sm:p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/10 rounded-full blur-[60px] pointer-events-none" />
-          {/* 3D vial — desktop only, positioned to the right */}
-          <div className="hidden lg:block absolute -right-8 top-1/2 -translate-y-1/2 w-64 h-80 pointer-events-none opacity-30">
-            <Suspense fallback={null}>
-              <VialScene height={320} />
-            </Suspense>
-          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 mb-4 relative">
             <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
             <span className="text-xs font-medium text-yellow-300">
