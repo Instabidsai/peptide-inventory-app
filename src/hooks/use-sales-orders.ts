@@ -338,37 +338,52 @@ export function useCreateSalesOrder() {
             if (itemsError) throw itemsError;
 
             // Process commission records
-            if (commissionAmount > 0) {
-                if (input.manual_commissions && input.manual_commissions.length > 0) {
-                    // Manual commission entries — insert directly, skip RPC
-                    const commEntries = input.manual_commissions.map(mc => ({
-                        sale_id: order.id,
-                        partner_id: mc.profile_id,
-                        amount: mc.amount,
-                        commission_rate: mc.commission_rate,
-                        type: mc.type,
-                        status: 'pending' as const,
-                        org_id: profile.org_id,
-                    }));
-                    const { error: commError } = await supabase
-                        .from('commissions')
-                        .insert(commEntries);
-                    if (commError) {
-                        logger.error("Manual commission insert failed:", commError);
-                        toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
-                    } else {
-                        // Notify partners via SMS (fire and forget)
-                        supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
-                    }
+            // Manual commissions: insert directly when frontend provides chain entries
+            if (input.manual_commissions && input.manual_commissions.length > 0 && commissionAmount > 0) {
+                const commEntries = input.manual_commissions.map(mc => ({
+                    sale_id: order.id,
+                    partner_id: mc.profile_id,
+                    amount: mc.amount,
+                    commission_rate: mc.commission_rate,
+                    type: mc.type,
+                    status: 'pending' as const,
+                    org_id: profile.org_id,
+                }));
+                const { error: commError } = await supabase
+                    .from('commissions')
+                    .insert(commEntries);
+                if (commError) {
+                    logger.error("Manual commission insert failed:", commError);
+                    toast({ title: "Warning", description: "Order created but commission records failed. Admin will need to reconcile.", variant: "destructive" });
                 } else {
-                    // Auto commission via RPC (existing behavior)
-                    const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
-                    if (rpcError) {
-                        logger.error("Commission processing failed:", rpcError);
-                        toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
-                    } else {
-                        // Notify partners via SMS (fire and forget)
-                        supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
+                    supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
+                }
+            } else if (repId) {
+                // ALWAYS run the RPC when a rep exists — the RPC reads commission rates
+                // from profiles and walks the full chain (direct → parent → grandparent).
+                // Don't gate on commissionAmount — the frontend can miscalculate to 0
+                // but the DB knows the real rates.
+                const { error: rpcError } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
+                if (rpcError) {
+                    logger.error("Commission processing failed:", rpcError);
+                    toast({ title: "Warning", description: "Order created but commission processing failed. Admin will need to reconcile.", variant: "destructive" });
+                } else {
+                    supabase.functions.invoke('notify-commission', { body: { sale_id: order.id } }).catch(() => {});
+                }
+                // Sync order's commission_amount from whatever records the RPC actually created
+                const { data: commRecords } = await supabase
+                    .from('commissions')
+                    .select('amount, status')
+                    .eq('sale_id', order.id);
+                if (commRecords && commRecords.length > 0) {
+                    const actualTotal = commRecords
+                        .filter(r => r.status !== 'void')
+                        .reduce((s, r) => s + (r.amount || 0), 0);
+                    if (Math.abs(actualTotal - commissionAmount) > 0.01) {
+                        await supabase
+                            .from('sales_orders')
+                            .update({ commission_amount: Math.round(actualTotal * 100) / 100 })
+                            .eq('id', order.id);
                     }
                 }
             }

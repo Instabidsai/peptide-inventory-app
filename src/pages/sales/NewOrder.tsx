@@ -368,6 +368,8 @@ export default function NewOrder() {
     const cartTotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
     // Calculate total commission — chain-based when chain exists, per-item rates otherwise
+    // When a commission chain exists (rep assigned to contact), ALWAYS use chain rates from profiles.
+    // Per-item commissionRate is only the fallback for orders with no chain.
     const totalCommission = commissionEnabled
         ? (commissionChain.length > 0
             ? commissionChain.reduce((sum, entry) => {
@@ -654,15 +656,23 @@ export default function NewOrder() {
 
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease quantity" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.peptide.id, item.quantity - 1)}>-</Button>
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase quantity" onClick={() => updateQuantity(item.peptide.id, item.quantity + 1)}>+</Button>
                                             </div>
 
                                             <div className="flex items-center border border-border/60 rounded-lg">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" onClick={() => updatePrice(item.peptide.id, Math.max(0, Math.round(item.unitPrice) - 1), item.commissionRate)}>-</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Decrease price" onClick={() => {
+                                                    const newPrice = Math.max(0, Math.round(item.unitPrice) - 1);
+                                                    const matchTier = tiers.find(t => Math.abs(t.price - newPrice) < 0.5);
+                                                    updatePrice(item.peptide.id, newPrice, matchTier ? matchTier.commRate : item.commissionRate);
+                                                }}>-</Button>
                                                 <span className="w-14 text-center text-sm font-medium">${Math.round(item.unitPrice)}</span>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => updatePrice(item.peptide.id, Math.round(item.unitPrice) + 1, item.commissionRate)}>+</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-none" aria-label="Increase price" onClick={() => {
+                                                    const newPrice = Math.round(item.unitPrice) + 1;
+                                                    const matchTier = tiers.find(t => Math.abs(t.price - newPrice) < 0.5);
+                                                    updatePrice(item.peptide.id, newPrice, matchTier ? matchTier.commRate : item.commissionRate);
+                                                }}>+</Button>
                                             </div>
 
                                             <div className="w-16 text-right font-medium">

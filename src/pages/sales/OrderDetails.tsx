@@ -112,6 +112,26 @@ export default function OrderDetails() {
     const [editItemPrice, setEditItemPrice] = useState(0);
     const [linkCopied, setLinkCopied] = useState(false);
 
+    // Fetch commission records for this order
+    const { data: commissionRecords } = useQuery({
+        queryKey: ['order_commissions', id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('commissions')
+                .select('id, amount, commission_rate, type, status, partner_id, created_at, profiles:partner_id(full_name)')
+                .eq('sale_id', id!);
+            if (error) throw error;
+            return data as { id: string; amount: number; commission_rate: number; type: string; status: string; partner_id: string; created_at: string; profiles: { full_name: string | null } }[];
+        },
+        enabled: !!id,
+    });
+
+    const [showCommissionDetail, setShowCommissionDetail] = useState(false);
+    const [editingCommId, setEditingCommId] = useState<string | null>(null);
+    const [editCommAmount, setEditCommAmount] = useState(0);
+    const [editCommRate, setEditCommRate] = useState(0);
+    const [editCommStatus, setEditCommStatus] = useState('pending');
+
     // Fetch peptides for the "Add Item" picker
     const { data: allPeptides } = useQuery({
         queryKey: ['peptides-for-order-edit', profile?.org_id],
@@ -1142,16 +1162,314 @@ export default function OrderDetails() {
 
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-muted-foreground">Commission</CardTitle>
+                            <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
+                                <DollarSign className="h-4 w-4" /> Commission
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold flex items-center text-green-600">
-                                <DollarSign className="h-5 w-5 mr-1" />
-                                {order.commission_amount?.toFixed(2) || '0.00'}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Calculated at time of sale.
-                            </p>
+                        <CardContent className="space-y-3">
+                            {/* Default view: amount + Edit button */}
+                            {!showCommissionDetail ? (
+                                <div className="flex items-center justify-between">
+                                    <div className="text-2xl font-bold flex items-center text-green-600">
+                                        <DollarSign className="h-5 w-5 mr-1" />
+                                        {order.commission_amount?.toFixed(2) || '0.00'}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowCommissionDetail(true)}
+                                    >
+                                        <Pencil className="h-3 w-3 mr-1" /> Edit
+                                    </Button>
+                                </div>
+                            ) : (
+                                /* Edit mode: full breakdown with inline editing */
+                                <div className="space-y-4">
+                                    {/* Header row with total + done button */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold flex items-center text-green-600">
+                                            <DollarSign className="h-4 w-4 mr-1" />
+                                            {order.commission_amount?.toFixed(2) || '0.00'}
+                                            <span className="text-xs font-normal text-muted-foreground ml-2">total</span>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => { setShowCommissionDetail(false); setEditingCommId(null); }}
+                                        >
+                                            <Check className="h-3 w-3 mr-1" /> Done
+                                        </Button>
+                                    </div>
+
+                                    {/* Each person in the commission chain */}
+                                    {commissionRecords && commissionRecords.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {commissionRecords.map(rec => {
+                                                const isEditing = editingCommId === rec.id;
+                                                const typeLabel = rec.type === 'direct' ? 'Direct' : rec.type === 'second_tier_override' ? '2nd Tier' : '3rd Tier';
+                                                const statusColor = rec.status === 'void' ? 'text-red-400' :
+                                                    rec.status === 'paid' ? 'text-green-400' :
+                                                    rec.status === 'available' ? 'text-blue-400' : 'text-amber-400';
+
+                                                return (
+                                                    <div key={rec.id} className={`rounded-lg border p-3 space-y-2 ${isEditing ? 'bg-primary/5 border-primary/30' : 'bg-muted/20 border-border/40'}`}>
+                                                        {/* Row 1: Name, type, status */}
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium text-sm">{rec.profiles?.full_name || 'Unknown'}</span>
+                                                                <Badge variant="outline" className="text-[10px] h-5">{typeLabel}</Badge>
+                                                                <span className={`text-xs font-medium ${statusColor}`}>{rec.status}</span>
+                                                            </div>
+                                                            {!isEditing && (
+                                                                <span className={`text-sm font-bold ${rec.status === 'void' ? 'line-through text-muted-foreground' : ''}`}>
+                                                                    {(rec.commission_rate * 100).toFixed(0)}% &middot; ${rec.amount.toFixed(2)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Row 2: Either "edit row" controls or the edit pencil */}
+                                                        {isEditing ? (
+                                                            <>
+                                                                <div className="grid grid-cols-3 gap-2">
+                                                                    <div>
+                                                                        <label className="text-[10px] text-muted-foreground block mb-1">Amount ($)</label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            step="0.01"
+                                                                            min="0"
+                                                                            className="h-8 text-sm"
+                                                                            value={editCommAmount}
+                                                                            onChange={e => setEditCommAmount(parseFloat(e.target.value) || 0)}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-muted-foreground block mb-1">Rate (%)</label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            step="1"
+                                                                            min="0"
+                                                                            max="100"
+                                                                            className="h-8 text-sm"
+                                                                            value={Math.round(editCommRate * 100)}
+                                                                            onChange={e => setEditCommRate((parseFloat(e.target.value) || 0) / 100)}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-muted-foreground block mb-1">Status</label>
+                                                                        <Select value={editCommStatus} onValueChange={setEditCommStatus}>
+                                                                            <SelectTrigger className="h-8 text-sm">
+                                                                                <SelectValue />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="pending">Pending</SelectItem>
+                                                                                <SelectItem value="available">Available</SelectItem>
+                                                                                <SelectItem value="paid">Paid</SelectItem>
+                                                                                <SelectItem value="void">Void</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center justify-between pt-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="text-xs text-amber-400 hover:text-amber-300 h-7 px-2"
+                                                                        onClick={() => setEditCommAmount(0)}
+                                                                    >
+                                                                        Set $0
+                                                                    </Button>
+                                                                    <div className="flex gap-1">
+                                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditingCommId(null)}>
+                                                                            Cancel
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            className="h-7 px-3 text-xs"
+                                                                            onClick={async () => {
+                                                                                await supabase
+                                                                                    .from('commissions')
+                                                                                    .update({
+                                                                                        amount: Math.round(editCommAmount * 100) / 100,
+                                                                                        commission_rate: editCommRate,
+                                                                                        status: editCommStatus,
+                                                                                    })
+                                                                                    .eq('id', rec.id);
+                                                                                const updatedRecords = (commissionRecords || []).map(r =>
+                                                                                    r.id === rec.id
+                                                                                        ? { ...r, amount: editCommAmount, status: editCommStatus }
+                                                                                        : r
+                                                                                );
+                                                                                const newTotal = updatedRecords
+                                                                                    .filter(r => r.status !== 'void')
+                                                                                    .reduce((s, r) => s + r.amount, 0);
+                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
+                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                setEditingCommId(null);
+                                                                                toast({ title: 'Commission updated' });
+                                                                            }}
+                                                                        >
+                                                                            <Save className="h-3 w-3 mr-1" /> Save
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1 justify-end">
+                                                                {rec.status !== 'paid' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                                                        onClick={() => {
+                                                                            setEditingCommId(rec.id);
+                                                                            setEditCommAmount(rec.amount);
+                                                                            setEditCommRate(rec.commission_rate);
+                                                                            setEditCommStatus(rec.status);
+                                                                        }}
+                                                                    >
+                                                                        <Pencil className="h-3 w-3 mr-1" /> Edit
+                                                                    </Button>
+                                                                )}
+                                                                {rec.status !== 'void' && rec.status !== 'paid' && (
+                                                                    <>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300"
+                                                                            onClick={async () => {
+                                                                                await supabase
+                                                                                    .from('commissions')
+                                                                                    .update({ amount: 0 })
+                                                                                    .eq('id', rec.id);
+                                                                                const remaining = (commissionRecords || []).map(r =>
+                                                                                    r.id === rec.id ? { ...r, amount: 0 } : r
+                                                                                );
+                                                                                const newTotal = remaining
+                                                                                    .filter(r => r.status !== 'void')
+                                                                                    .reduce((s, r) => s + r.amount, 0);
+                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
+                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                toast({ title: 'Commission set to $0' });
+                                                                            }}
+                                                                        >
+                                                                            $0
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
+                                                                            onClick={async () => {
+                                                                                await supabase
+                                                                                    .from('commissions')
+                                                                                    .update({ status: 'void' })
+                                                                                    .eq('id', rec.id);
+                                                                                const remaining = (commissionRecords || [])
+                                                                                    .filter(r => r.id !== rec.id && r.status !== 'void');
+                                                                                const newTotal = remaining.reduce((s, r) => s + r.amount, 0);
+                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
+                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                toast({ title: 'Commission voided' });
+                                                                            }}
+                                                                        >
+                                                                            Void
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (order.commission_amount ?? 0) > 0 && order.rep_id ? (
+                                        /* Rep exists, commission amount set, but no individual records — run RPC to generate them */
+                                        <div className="space-y-2">
+                                            <div className="rounded-lg border p-3 bg-amber-500/5 border-amber-500/30 space-y-2">
+                                                <p className="text-sm text-muted-foreground">
+                                                    ${order.commission_amount?.toFixed(2)} commission for <span className="font-medium text-foreground">{order.profiles?.full_name || 'Sales Rep'}</span> — records missing from database.
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 px-3 text-xs border-primary/40"
+                                                        onClick={async () => {
+                                                            const { error } = await supabase.rpc('process_sale_commission', { p_sale_id: order.id });
+                                                            if (error) {
+                                                                toast({ title: 'Failed to generate records', description: error.message, variant: 'destructive' });
+                                                            } else {
+                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                toast({ title: 'Commission records generated for the full chain' });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Wand2 className="h-3 w-3 mr-1" /> Generate Commission Records
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300"
+                                                        onClick={() => {
+                                                            updateOrder.mutate({ id: order.id, commission_amount: 0 });
+                                                            toast({ title: 'Commission zeroed' });
+                                                        }}
+                                                    >
+                                                        $0
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">No commission on this order.</p>
+                                    )}
+
+                                    {/* Bulk actions at bottom */}
+                                    {commissionRecords && commissionRecords.some(r => r.status !== 'void' && r.status !== 'paid') && (
+                                        <div className="flex gap-2 pt-2 border-t border-border/40">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs flex-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                                                disabled={updateOrder.isPending}
+                                                onClick={async () => {
+                                                    if (commissionRecords) {
+                                                        for (const rec of commissionRecords) {
+                                                            if (rec.status !== 'void' && rec.status !== 'paid') {
+                                                                await supabase.from('commissions').update({ amount: 0 }).eq('id', rec.id);
+                                                            }
+                                                        }
+                                                    }
+                                                    updateOrder.mutate({ id: order.id, commission_amount: 0 });
+                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                    toast({ title: 'All commissions zeroed' });
+                                                }}
+                                            >
+                                                Zero All
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                                                disabled={updateOrder.isPending}
+                                                onClick={async () => {
+                                                    if (commissionRecords) {
+                                                        for (const rec of commissionRecords) {
+                                                            if (rec.status !== 'paid') {
+                                                                await supabase.from('commissions').update({ status: 'void' }).eq('id', rec.id);
+                                                            }
+                                                        }
+                                                    }
+                                                    updateOrder.mutate({ id: order.id, commission_amount: 0 });
+                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                    toast({ title: 'All commissions voided' });
+                                                }}
+                                            >
+                                                Void All
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
