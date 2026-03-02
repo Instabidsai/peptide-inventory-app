@@ -107,7 +107,6 @@ async function findOrCreateContact(
     if (existing) {
         const updates: Record<string, any> = {
             source: 'woocommerce',
-            assigned_rep_id: null,
         };
         if (wooCustomerId) updates.woo_customer_id = wooCustomerId;
         if (address) updates.address = address;
@@ -279,6 +278,7 @@ async function syncSingleWooOrder(
     const { data: existing } = await supabase
         .from('sales_orders')
         .select('id, woo_status')
+        .eq('org_id', orgId)
         .eq('woo_order_id', woo.id)
         .maybeSingle();
 

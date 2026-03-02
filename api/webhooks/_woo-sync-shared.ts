@@ -84,7 +84,6 @@ export async function findOrCreateContact(
     if (existing) {
         const updates: Record<string, any> = {
             source: 'woocommerce',
-            assigned_rep_id: null,
         };
         if (wooCustomerId) updates.woo_customer_id = wooCustomerId;
         if (address) updates.address = address;
@@ -208,11 +207,14 @@ export async function expandBundleItems(
 
 export async function calculateCogs(
     supabase: SupabaseClient,
-    items: { peptide_id: string; quantity: number }[]
+    items: { peptide_id: string; quantity: number }[],
+    orgId?: string
 ): Promise<number> {
-    const { data: lots } = await supabase
+    let query = supabase
         .from('lots')
         .select('peptide_id, cost_per_unit, quantity_received');
+    if (orgId) query = query.eq('org_id', orgId);
+    const { data: lots } = await query;
 
     // Weighted average: SUM(cost × qty) / SUM(qty)
     const grouped: Record<string, { totalCost: number; totalQty: number }> = {};
@@ -259,6 +261,7 @@ export async function syncSingleWooOrder(
     const { data: existing } = await supabase
         .from('sales_orders')
         .select('id, woo_status')
+        .eq('org_id', orgId)
         .eq('woo_order_id', woo.id)
         .maybeSingle();
 
@@ -341,7 +344,7 @@ export async function syncSingleWooOrder(
     }
 
     // Calculate financials
-    const cogsAmount = await calculateCogs(supabase, lineItems);
+    const cogsAmount = await calculateCogs(supabase, lineItems, orgId);
     const totalAmount = parseFloat(woo.total);
     const shippingFromWoo = parseFloat(woo.shipping_total || '0');
     const merchantFee = paymentStatus === 'paid' ? totalAmount * 0.05 : 0;
