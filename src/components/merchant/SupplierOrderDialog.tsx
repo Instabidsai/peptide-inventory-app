@@ -94,7 +94,11 @@ export default function SupplierOrderDialog() {
         : 25;
 
     // Supplier catalog already returns only active items with base_cost from the RPC
-    const catalogPeptides = (supplierPeptides || []).filter(p => (p.base_cost ?? 0) > 0);
+    // In custom mode, only show peptides that have a flat price assigned
+    const allCatalogPeptides = (supplierPeptides || []).filter(p => (p.base_cost ?? 0) > 0);
+    const catalogPeptides = hasFlatPricing
+        ? allCatalogPeptides.filter(p => flatPriceMap.has(p.id))
+        : allCatalogPeptides;
 
     /** Get wholesale price for a peptide — flat price takes priority over tier */
     const getPrice = (peptideId: string, baseCost: number, qty: number): number => {
