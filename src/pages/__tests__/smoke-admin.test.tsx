@@ -195,15 +195,9 @@ describe('Admin Pages — Smoke Tests', () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it('AdminFeedback renders without crashing', async () => {
-    const AdminFeedback = (await import('../AdminFeedback')).default;
-    const { container } = render(<AdminFeedback />, { wrapper: createPageWrapper(['/feedback']) });
-    expect(container.firstChild).toBeTruthy();
-  });
-
-  it('AdminRequests renders without crashing', async () => {
-    const AdminRequests = (await import('../admin/AdminRequests')).default;
-    const { container } = render(<AdminRequests />, { wrapper: createPageWrapper(['/requests']) });
+  it('FeedbackHub renders without crashing', async () => {
+    const FeedbackHub = (await import('../admin/FeedbackHub')).default;
+    const { container } = render(<FeedbackHub />, { wrapper: createPageWrapper(['/feedback']) });
     expect(container.firstChild).toBeTruthy();
   });
 

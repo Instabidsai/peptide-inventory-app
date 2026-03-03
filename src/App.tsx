@@ -58,8 +58,7 @@ const ContactDetails = lazyRetry(() => import("./pages/ContactDetails"));
 const Movements = lazyRetry(() => import("./pages/Movements"));
 const MovementWizard = lazyRetry(() => import("./pages/MovementWizard"));
 const Settings = lazyRetry(() => import("./pages/Settings"));
-const AdminFeedback = lazyRetry(() => import("./pages/AdminFeedback"));
-const AdminRequests = lazyRetry(() => import("./pages/admin/AdminRequests"));
+const FeedbackHub = lazyRetry(() => import("./pages/admin/FeedbackHub"));
 const AdminResources = lazyRetry(() => import("./pages/AdminResources"));
 const Commissions = lazyRetry(() => import("./pages/admin/Commissions"));
 const Finance = lazyRetry(() => import("./pages/admin/Finance"));
@@ -226,8 +225,8 @@ const App = () => (
                                 <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
                                 <Route path="/orders" element={<Orders />} />
 
-                                <Route path="/feedback" element={<RoleBasedRedirect><AdminFeedback /></RoleBasedRedirect>} />
-                                <Route path="/requests" element={<RoleBasedRedirect><AdminRequests /></RoleBasedRedirect>} />
+                                <Route path="/feedback" element={<RoleBasedRedirect><FeedbackHub /></RoleBasedRedirect>} />
+                                <Route path="/requests" element={<Navigate to="/feedback" replace />} />
                                 <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
 
                                 <Route path="/sales" element={<OrderList />} />

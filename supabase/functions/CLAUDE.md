@@ -103,11 +103,16 @@ Deno.serve(async (req) => {
 | `run-automations` | Executes automation rules engine | Manual or scheduled |
 | `check-low-supply` | Alerts when lot quantities fall below threshold | Scheduled (cron) |
 | `check-payment-emails` | Scans email inbox for Zelle/Venmo payment confirmations | Scheduled |
-| `health-probe` | Lightweight health check endpoint | Monitoring |
-| `health-digest` | Aggregates system health metrics | Scheduled |
-| `meta-sentinel` | Self-healing schema monitor | Scheduled |
-| `sentinel-worker` | Executes sentinel healing tasks | Called by meta-sentinel |
+| `health-probe` | 12-category infrastructure health (1,099 lines, ~40+ checks) | `*/5 * * * *` |
+| `health-digest` | Daily HTML health summary email via Resend (594 lines) | `0 7 * * *` |
+| `meta-sentinel` | Self-monitoring + adaptive thresholds (232 lines) | `*/30 * * * *` |
+| `sentinel-worker` | **17-phase autonomous self-healing engine (2,440 lines)** — see `sentinel-worker/CLAUDE.md` | `*/2 * * * *` |
+| `code-patcher` | GitHub API code repair: branch → commit → PR → Vercel preview → auto-merge (392 lines) | On-demand |
+| `boot-failure` | Boot crash receiver → auto-rollback after 3+ unique IPs in 10min (210 lines) | On-demand |
+| `synthetic-monitor` | External content verification + auto-rollback (238 lines) | `*/5 * * * *` |
 | `deploy-webhook` | Triggers Vercel redeploy | CI/CD |
+
+> **Self-Healing System**: Full architecture docs at `sentinel-worker/CLAUDE.md` (319 lines). Read that BEFORE touching any self-healing code.
 
 ---
 

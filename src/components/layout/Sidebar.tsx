@@ -39,8 +39,7 @@ const navigation = [
   { name: 'Protocols', href: '/protocols', icon: FileText, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Protocol Builder', href: '/protocol-builder', icon: Wand2, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Resources', href: '/admin-resources', icon: BookOpen, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Requests', href: '/requests', icon: MessageSquare, roles: ['admin', 'staff'] },
-  { name: 'Feedback', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
+  { name: 'Feedback Hub', href: '/feedback', icon: MessageSquare, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Customizations', href: '/customizations', icon: Wand2, roles: ['admin'] },
   { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
@@ -72,7 +71,7 @@ const NAV_GROUPS = [
   { label: 'Inventory', names: ['Peptides', 'Lots', 'Bottles', 'Supplements', 'Movements'] },
   { label: 'Sales', names: ['Orders', 'Sales Orders', 'Fulfillment'] },
   { label: 'People', names: ['Customers', 'Partners', 'Commissions'] },
-  { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Requests', 'Feedback'] },
+  { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Feedback Hub'] },
   { label: 'Partner', names: ['Partner Portal', 'Partner Store', 'My Orders'] },
   { label: 'Admin', names: ['Financials', 'Automations', 'Customizations', 'Features', 'Integrations', 'Settings'] },
 ];
@@ -116,17 +115,32 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     enabled: !!user
   });
 
-  // Fetch pending request count for badge
-  const { data: pendingRequestCount } = useQuery({
-    queryKey: ['pending_request_count'],
+  // Fetch pending feedback count for badge (client requests + partner suggestions for super_admin)
+  const { data: pendingFeedbackCount } = useQuery({
+    queryKey: ['pending_feedback_count', organization?.id, effectiveRole],
     queryFn: async () => {
-      const { count } = await supabase
+      const orgId = organization?.id;
+      if (!orgId) return 0;
+
+      const { count: requestCount } = await supabase
         .from('client_requests')
         .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId)
         .in('status', ['pending']);
-      return count || 0;
+
+      let suggestionCount = 0;
+      if (effectiveRole === 'super_admin') {
+        const { count } = await supabase
+          .from('partner_suggestions')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', orgId)
+          .eq('status', 'new');
+        suggestionCount = count || 0;
+      }
+
+      return (requestCount || 0) + suggestionCount;
     },
-    enabled: effectiveRole === 'admin' || effectiveRole === 'staff' || effectiveRole === 'super_admin',
+    enabled: !!organization?.id && (effectiveRole === 'admin' || effectiveRole === 'staff' || effectiveRole === 'super_admin'),
     refetchInterval: 60000,
   });
 
@@ -178,9 +192,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           )}
           <item.icon className={cn('h-4.5 w-4.5 transition-transform duration-200', isActive ? 'text-primary' : 'group-hover:scale-110')} />
           <span className="flex-1">{item.name}</span>
-          {item.name === 'Requests' && (pendingRequestCount || 0) > 0 && (
+          {item.name === 'Feedback Hub' && (pendingFeedbackCount || 0) > 0 && (
             <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-500/30 px-1">
-              {pendingRequestCount}
+              {pendingFeedbackCount}
             </span>
           )}
           {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/60" />}
