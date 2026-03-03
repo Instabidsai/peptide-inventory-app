@@ -90,6 +90,92 @@ export default function Reps() {
         },
     });
 
+    // Remove a partner — demotes back to client, reassigns their downline
+    const removePartner = useMutation({
+        mutationFn: async (rep: UserProfile) => {
+            const orgId = currentProfile?.org_id;
+            if (!orgId) throw new Error('No org context');
+
+            // 1. Reassign child partners to this partner's upline (preserves hierarchy)
+            const { error: childErr } = await supabase
+                .from('profiles')
+                .update({ parent_rep_id: rep.parent_rep_id || null })
+                .eq('parent_rep_id', rep.id)
+                .eq('org_id', orgId);
+            if (childErr) throw childErr;
+
+            // 2. Unassign any contacts assigned to this partner
+            const { error: contactErr } = await supabase
+                .from('contacts')
+                .update({ assigned_rep_id: null })
+                .eq('assigned_rep_id', rep.id)
+                .eq('org_id', orgId);
+            if (contactErr) throw contactErr;
+
+            // 3. Demote the partner's profile back to client
+            const { error: profileErr } = await supabase
+                .from('profiles')
+                .update({
+                    role: 'client',
+                    commission_rate: 0,
+                    partner_tier: null,
+                    parent_rep_id: null,
+                    price_multiplier: null,
+                    can_recruit: null,
+                })
+                .eq('id', rep.id)
+                .eq('org_id', orgId);
+            if (profileErr) throw profileErr;
+
+            // 4. Update user_roles table
+            const { error: roleErr } = await supabase
+                .from('user_roles')
+                .update({ role: 'client' })
+                .eq('user_id', rep.user_id);
+            if (roleErr && roleErr.code !== 'PGRST116') throw roleErr; // ignore "no rows" error
+
+            // 5. Update any linked contact record back to customer type
+            await supabase
+                .from('contacts')
+                .update({ type: 'customer' })
+                .eq('linked_user_id', rep.user_id)
+                .eq('org_id', orgId);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['reps'] });
+            queryClient.invalidateQueries({ queryKey: ['rep_customers_list'] });
+            queryClient.invalidateQueries({ queryKey: ['rep_performance'] });
+            queryClient.invalidateQueries({ queryKey: ['full_network'] });
+            queryClient.invalidateQueries({ queryKey: ['pending_partners'] });
+            queryClient.invalidateQueries({ queryKey: ['team_candidates'] });
+            queryClient.invalidateQueries({ queryKey: ['unassigned_contacts'] });
+            toast({ title: 'Partner removed', description: 'Demoted to client. Downline has been reassigned to their upline.' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to remove partner', description: error.message });
+        },
+    });
+
+    // Remove a pending partner (contact promoted but no auth account yet) — revert to customer
+    const removePendingPartner = useMutation({
+        mutationFn: async (contactId: string) => {
+            const { error } = await supabase
+                .from('contacts')
+                .update({ type: 'customer', invite_link: null })
+                .eq('id', contactId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pending_partners'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['customer_contacts_for_promote'] });
+            toast({ title: 'Pending partner removed', description: 'Reverted to customer.' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Failed to remove pending partner', description: error.message });
+        },
+    });
+
     const [editingRep, setEditingRep] = useState<UserProfile | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('list');
@@ -413,6 +499,19 @@ export default function Reps() {
                                                             <Button variant="ghost" size="sm" onClick={() => setEditingRep(rep)}>
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                                                onClick={() => setConfirmDialog({
+                                                                    open: true,
+                                                                    title: 'Remove Partner',
+                                                                    description: `Remove ${rep.full_name} as a partner? They will be demoted to a regular client. Their ${(customerContacts || []).filter(c => c.assigned_rep_id === rep.id).length} customer(s) will become unassigned, and any downline partners will be moved up to ${rep.parent_rep_id ? repNameMap.get(rep.parent_rep_id) || 'their upline' : 'top-level'}. Existing commission records are preserved.`,
+                                                                    action: () => removePartner.mutate(rep),
+                                                                })}
+                                                            >
+                                                                <UserX className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">
@@ -529,6 +628,19 @@ export default function Reps() {
                                                                     <Copy className="h-4 w-4 mr-1" /> Link
                                                                 </Button>
                                                             )}
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                                                onClick={() => setConfirmDialog({
+                                                                    open: true,
+                                                                    title: 'Remove Pending Partner',
+                                                                    description: `Remove ${p.name} as a pending partner? They will be reverted to a regular customer.`,
+                                                                    action: () => removePendingPartner.mutate(p.id),
+                                                                })}
+                                                            >
+                                                                <UserX className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">{p.name}</TableCell>
