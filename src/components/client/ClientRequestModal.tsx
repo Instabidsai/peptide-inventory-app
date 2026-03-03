@@ -118,6 +118,22 @@ export function ClientRequestModal({
 
         setIsSubmitting(true);
         try {
+            // 0. Ensure user has a profile row (required by client_requests_profile_fk)
+            const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("user_id")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+            if (!existingProfile) {
+                await supabase.from("profiles").upsert({
+                    user_id: user.id,
+                    email: user.email,
+                    full_name: profile.full_name || user.email?.split("@")[0] || "User",
+                    org_id: profile.org_id,
+                }, { onConflict: "user_id" });
+            }
+
             // 1. Upload Files (Mock/Real)
             const uploadedAttachments = [];
             if (files.length > 0) {
@@ -183,9 +199,11 @@ export function ClientRequestModal({
             setFiles([]);
             onOpenChange(false);
             onSuccess?.();
-        } catch (error) {
+        } catch (error: unknown) {
+            const pgError = error as { message?: string; code?: string; details?: string };
             logger.error("Error sending request:", error);
-            toast.error("Failed to send request. Please try again.");
+            const detail = pgError?.message || pgError?.details || "Unknown error";
+            toast.error(`Failed to send request: ${detail}`);
         } finally {
             setIsSubmitting(false);
         }
