@@ -62,7 +62,8 @@ BEGIN
             'org_id', NEW.org_id,
             'order_id', NEW.id,
             'total_amount', NEW.total_amount,
-            'source', COALESCE(NEW.order_source, 'manual')
+            'source', COALESCE(NEW.order_source, 'manual'),
+            'payment_method', COALESCE(NEW.payment_method, '')
         )
     );
 
