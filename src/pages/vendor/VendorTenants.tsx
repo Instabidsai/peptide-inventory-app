@@ -3,16 +3,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { useTenants, TenantSummary } from '@/hooks/use-tenants';
+import { useTenants, useDeleteTenant, TenantSummary } from '@/hooks/use-tenants';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, Package, ShoppingCart, Copy, Search, Eye } from 'lucide-react';
+import { Building2, Users, Package, ShoppingCart, Copy, Search, Eye, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-function TenantRow({ tenant }: { tenant: TenantSummary }) {
+function TenantRow({ tenant, onDelete }: { tenant: TenantSummary; onDelete: (t: TenantSummary) => void }) {
     const navigate = useNavigate();
     const { startImpersonation } = useImpersonation();
 
@@ -87,9 +96,20 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
                 </Badge>
             </TableCell>
             <TableCell>
-                <Button size="sm" variant="outline" onClick={enterTenant} className="h-7 px-2 text-xs gap-1 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-600">
-                    <Eye className="h-3 w-3" /> Enter
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button size="sm" variant="outline" onClick={enterTenant} className="h-7 px-2 text-xs gap-1 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-600">
+                        <Eye className="h-3 w-3" /> Enter
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        title="Delete tenant"
+                        onClick={(e) => { e.stopPropagation(); onDelete(tenant); }}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
             </TableCell>
         </TableRow>
     );
@@ -97,7 +117,10 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
 
 export default function VendorTenants() {
     const { data: tenants, isLoading } = useTenants();
+    const deleteTenant = useDeleteTenant();
     const [search, setSearch] = useState('');
+    const [deletingTenant, setDeletingTenant] = useState<TenantSummary | null>(null);
+    const [confirmName, setConfirmName] = useState('');
 
     const filtered = (tenants || []).filter(t => {
         if (!search) return true;
@@ -106,6 +129,13 @@ export default function VendorTenants() {
             || t.brand_name.toLowerCase().includes(q)
             || (t.support_email || '').toLowerCase().includes(q);
     });
+
+    const handleConfirmDelete = async () => {
+        if (!deletingTenant) return;
+        await deleteTenant.mutateAsync(deletingTenant.org_id);
+        setDeletingTenant(null);
+        setConfirmName('');
+    };
 
     return (
         <div className="space-y-6">
@@ -151,12 +181,12 @@ export default function VendorTenants() {
                                         <TableHead>Support</TableHead>
                                         <TableHead>Created</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead className="w-[70px]"></TableHead>
+                                        <TableHead className="w-[100px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filtered.map(tenant => (
-                                        <TenantRow key={tenant.org_id} tenant={tenant} />
+                                        <TenantRow key={tenant.org_id} tenant={tenant} onDelete={setDeletingTenant} />
                                     ))}
                                 </TableBody>
                             </Table>
@@ -164,6 +194,40 @@ export default function VendorTenants() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Tenant Confirmation */}
+            <AlertDialog open={!!deletingTenant} onOpenChange={(open) => { if (!open) { setDeletingTenant(null); setConfirmName(''); } }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">Delete Tenant?</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                This will permanently delete <strong>{deletingTenant?.brand_name || deletingTenant?.org_name}</strong> and ALL of its data — users, orders, inventory, contacts, everything.
+                            </span>
+                            <span className="block font-medium text-destructive">This cannot be undone.</span>
+                            <span className="block text-sm">
+                                Type <strong>{deletingTenant?.org_name}</strong> to confirm:
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                        value={confirmName}
+                        onChange={e => setConfirmName(e.target.value)}
+                        placeholder={deletingTenant?.org_name}
+                        className="mt-2"
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <Button
+                            variant="destructive"
+                            disabled={confirmName !== deletingTenant?.org_name || deleteTenant.isPending}
+                            onClick={handleConfirmDelete}
+                        >
+                            {deleteTenant.isPending ? 'Deleting...' : 'Delete Tenant'}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
