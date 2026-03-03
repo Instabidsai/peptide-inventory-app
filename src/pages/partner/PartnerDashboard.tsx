@@ -271,7 +271,7 @@ export default function PartnerDashboard() {
             <motion.div variants={staggerItem}>
             <SectionErrorBoundary section="Referral Links">
             <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} orgId={authProfile?.org_id} canRecruitOverride={authProfile?.can_recruit} />
-            <TeamReferralLinks downline={downline || []} />
+            <TeamReferralLinks downline={downline || []} orgId={authProfile?.org_id} />
             </SectionErrorBoundary>
             </motion.div>
 

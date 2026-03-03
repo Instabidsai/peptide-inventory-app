@@ -6,13 +6,17 @@ import type { PartnerNode } from './types';
 
 interface TeamReferralLinksProps {
     downline: PartnerNode[];
+    /** Effective org_id — ensures signups land in the correct tenant */
+    orgId?: string | null;
 }
 
-export function TeamReferralLinks({ downline }: TeamReferralLinksProps) {
+export function TeamReferralLinks({ downline, orgId }: TeamReferralLinksProps) {
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const partners = downline.filter(d => !d.isClient && d.depth === 1);
 
     if (partners.length === 0) return null;
+
+    const orgSuffix = orgId ? `&org=${orgId}` : '';
 
     const handleCopy = async (url: string, key: string) => {
         try {
@@ -37,7 +41,7 @@ export function TeamReferralLinks({ downline }: TeamReferralLinksProps) {
                     Team Referral Links
                 </p>
                 {partners.map(p => {
-                    const custUrl = `${window.location.origin}/#/auth?ref=${p.id}`;
+                    const custUrl = `${window.location.origin}/join?ref=${p.id}${orgSuffix}`;
                     return (
                         <div key={p.id} className="pl-4 space-y-1.5 border-l-2 border-violet-500/20">
                             <p className="text-sm font-medium">{p.full_name}</p>

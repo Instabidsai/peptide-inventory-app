@@ -46,26 +46,30 @@ if (sentryDsn) {
   if (!ref) return;
   const role = params.get('role') || 'customer';
   const org = params.get('org');
+  const tier = params.get('tier');
   const orgSuffix = org ? `&org=${encodeURIComponent(org)}` : '';
+  const tierSuffix = tier ? `&tier=${encodeURIComponent(tier)}` : '';
   // Store referral in sessionStorage + localStorage as backup
   sessionStorage.setItem('partner_ref', ref);
   sessionStorage.setItem('partner_ref_role', role);
   if (org) sessionStorage.setItem('partner_ref_org', org);
-  localStorage.setItem('partner_ref', JSON.stringify({ refId: ref, role, orgId: org || null, ts: Date.now() }));
+  if (tier) sessionStorage.setItem('partner_ref_tier', tier);
+  localStorage.setItem('pending_referral', JSON.stringify({ refId: ref, role, orgId: org || null, tier: tier || null, ts: Date.now() }));
   // Rewrite URL to hash-based route
-  window.history.replaceState(null, '', `/#/auth?ref=${encodeURIComponent(ref)}&role=${encodeURIComponent(role)}${orgSuffix}`);
+  window.history.replaceState(null, '', `/#/auth?ref=${encodeURIComponent(ref)}&role=${encodeURIComponent(role)}${orgSuffix}${tierSuffix}`);
 })();
 
 // ─── OAuth Hash Interceptor ───────────────────────────────────────────────
 // Recover pending referral from localStorage when sessionStorage is empty
 // (email confirmation may open in a new tab where sessionStorage doesn't persist).
-function recoverReferralFromStorage(): { refId: string; role: string; org: string } | null {
+function recoverReferralFromStorage(): { refId: string; role: string; org: string; tier: string } | null {
   const refId = sessionStorage.getItem('partner_ref');
   if (refId) {
     return {
       refId,
       role: sessionStorage.getItem('partner_ref_role') || 'customer',
       org: sessionStorage.getItem('partner_ref_org') || '',
+      tier: sessionStorage.getItem('partner_ref_tier') || '',
     };
   }
   try {
@@ -78,7 +82,8 @@ function recoverReferralFromStorage(): { refId: string; role: string; org: strin
     sessionStorage.setItem('partner_ref', parsed.refId);
     sessionStorage.setItem('partner_ref_role', parsed.role || 'customer');
     if (parsed.orgId) sessionStorage.setItem('partner_ref_org', parsed.orgId);
-    return { refId: parsed.refId, role: parsed.role || 'customer', org: parsed.orgId || '' };
+    if (parsed.tier) sessionStorage.setItem('partner_ref_tier', parsed.tier);
+    return { refId: parsed.refId, role: parsed.role || 'customer', org: parsed.orgId || '', tier: parsed.tier || '' };
   } catch { return null; }
 }
 
@@ -102,7 +107,8 @@ function recoverReferralFromStorage(): { refId: string; role: string; org: strin
     const ref = recoverReferralFromStorage();
     if (ref) {
       const orgSuffix = ref.org ? '&org=' + encodeURIComponent(ref.org) : '';
-      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(ref.refId) + '&role=' + encodeURIComponent(ref.role) + orgSuffix);
+      const tierSuffix = ref.tier ? '&tier=' + encodeURIComponent(ref.tier) : '';
+      window.history.replaceState(null, '', window.location.pathname + '#/auth?ref=' + encodeURIComponent(ref.refId) + '&role=' + encodeURIComponent(ref.role) + orgSuffix + tierSuffix);
     } else if (localStorage.getItem('selected_plan')) {
       // SaaS signup via /get-started — send to onboarding to create org
       window.history.replaceState(null, '', window.location.pathname + '#/onboarding');
