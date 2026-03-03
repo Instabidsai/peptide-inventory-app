@@ -9,7 +9,6 @@ import {
     ShoppingCart,
     Plus,
     Minus,
-    CreditCard,
     Loader2,
     ExternalLink,
     Check,
@@ -193,7 +192,6 @@ export function CartSummary({
                             <span className="text-sm font-semibold">Payment Method</span>
                             <div className="grid grid-cols-2 gap-2">
                                 {([
-                                    { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
                                     { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                     { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
@@ -270,26 +268,15 @@ export function CartSummary({
                             <Button
                                 className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                 size="lg"
-                                onClick={() => {
-                                    if (paymentMethod === 'card') {
-                                        onShowCheckoutConfirm();
-                                    } else {
-                                        onCheckout();
-                                    }
-                                }}
+                                onClick={onCheckout}
                                 disabled={checkoutPending || placingOrder || cart.length === 0}
                             >
                                 {(checkoutPending || placingOrder) ? (
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : paymentMethod === 'card' ? (
-                                    <CreditCard className="h-4 w-4 mr-2" />
                                 ) : (
                                     <ExternalLink className="h-4 w-4 mr-2" />
                                 )}
-                                {paymentMethod === 'card'
-                                    ? `Pay with Card — $${cartTotal.toFixed(2)}`
-                                    : `Place Order — $${cartTotal.toFixed(2)}`
-                                }
+                                {`Place Order — $${cartTotal.toFixed(2)}`}
                             </Button>
                         </div>
                     ) : (

@@ -438,60 +438,7 @@ export default function PayOrder() {
                 {!waitingForPayment && (
                     <Card>
                         <CardContent className="pt-6 space-y-4">
-                            <h2 className="font-semibold">Pay with Card</h2>
-                            <p className="text-xs text-muted-foreground -mt-2">
-                                Includes 3% processing fee (${cardFee.toFixed(2)})
-                            </p>
-
-                            {/* PsiFi Card Payment */}
-                            <Button
-                                className="w-full"
-                                size="lg"
-                                onClick={handlePayWithCard}
-                                disabled={paying || payingPaygate}
-                            >
-                                {paying ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Opening checkout...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} — PsiFi
-                                    </>
-                                )}
-                            </Button>
-
-                            {/* PayGate365 Card Payment */}
-                            <Button
-                                className="w-full"
-                                size="lg"
-                                variant="outline"
-                                onClick={handlePayWithPaygate365}
-                                disabled={payingPaygate || paying}
-                            >
-                                {payingPaygate ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Opening checkout...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Pay ${cardTotal.toFixed(2)} — PayGate365
-                                    </>
-                                )}
-                            </Button>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Separator className="w-full" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-2 text-muted-foreground">or pay manually</span>
-                                </div>
-                            </div>
+                            <h2 className="font-semibold">Payment Methods</h2>
 
                             {/* Manual Payment Methods */}
                             <div className="space-y-3 text-sm">
@@ -524,7 +471,7 @@ export default function PayOrder() {
 
                 {/* Footer */}
                 <p className="text-xs text-center text-muted-foreground">
-                    Secure checkout powered by PsiFi &amp; PayGate365
+                    Secure checkout
                 </p>
             </div>
         </div>

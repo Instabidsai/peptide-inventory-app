@@ -53,7 +53,7 @@ export default function ClientStore() {
     const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
     const [selectedPeptide, setSelectedPeptide] = useState<any>(null);
     const [selectedProtocol, setSelectedProtocol] = useState<SelectedProtocol | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('zelle');
     const [copiedZelle, setCopiedZelle] = useState(false);
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
@@ -312,38 +312,7 @@ export default function ClientStore() {
     };
 
     // Card checkout -- validated server-side pricing + PsiFi payment redirect
-    const handleCardCheckout = async () => {
-        if (!user?.id) {
-            toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
-            return;
-        }
-        if (cart.length === 0) {
-            toast({ variant: 'destructive', title: 'Cart is empty', description: 'Add items to your cart before checking out.' });
-            return;
-        }
-        if (!contact?.id) {
-            toast({ variant: 'destructive', title: 'Profile not ready', description: 'Your account is still loading. Please try again in a moment.' });
-            return;
-        }
-        if (!shippingAddress.trim()) {
-            toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before checking out.' });
-            return;
-        }
-
-        checkout.mutate({
-            items: cart.map(i => ({
-                peptide_id: i.peptide_id,
-                quantity: i.quantity,
-            })),
-            shipping_address: shippingAddress || undefined,
-            notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}.\n${notes}`,
-            contact_id: contact?.id,
-        }, {
-            onSuccess: () => { localStorage.removeItem('peptide_cart'); },
-        });
-    };
-
-    // Non-card checkout -- server-validated pricing, creates order as awaiting payment
+    // Checkout — server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
         if (!user?.id) {
             toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
@@ -387,11 +356,7 @@ export default function ClientStore() {
 
     const handleCheckout = () => {
         try { trackBeginCheckout(itemCount, cartTotal); } catch { /* analytics must never block checkout */ }
-        if (paymentMethod === 'card') {
-            handleCardCheckout();
-        } else {
-            handleAlternativeCheckout();
-        }
+        handleAlternativeCheckout();
     };
 
     const loadingSkeleton = (
@@ -510,7 +475,7 @@ export default function ClientStore() {
                 orderPlaced={orderPlaced}
                 onOrderPlacedReset={() => {
                     setOrderPlaced(false);
-                    setPaymentMethod('card');
+                    setPaymentMethod('zelle');
                     setCart([]);
                     setNotes('');
                 }}

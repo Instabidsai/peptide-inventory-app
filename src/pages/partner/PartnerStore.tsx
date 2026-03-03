@@ -20,7 +20,6 @@ import {
     Percent,
     Plus,
     Minus,
-    CreditCard,
     Loader2,
     Search,
     Copy,
@@ -49,7 +48,7 @@ interface CartItem {
 // Merchant fee mapping (see order-profit.ts for fee exemption logic):
 //   'card' -> charged 5% merchant fee (maps to 'processor' in order-profit)
 //   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
-type PaymentMethod = 'card' | 'zelle' | 'cashapp' | 'venmo';
+type PaymentMethod = 'zelle' | 'cashapp' | 'venmo';
 
 // Zelle + Venmo loaded from tenant config in component
 
@@ -72,7 +71,7 @@ export default function PartnerStore() {
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => {
-        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).paymentMethod || 'card' : 'card'; } catch { return 'card'; }
+        try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).paymentMethod || 'zelle' : 'zelle'; } catch { return 'zelle'; }
     });
     const [copiedZelle, setCopiedZelle] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
@@ -269,23 +268,7 @@ export default function PartnerStore() {
 
     const clearCartStorage = () => localStorage.removeItem(storageKey);
 
-    // Card checkout — validated server-side pricing + PsiFi flow
-    const handleCardCheckout = () => {
-        if (!partnerProfile) return;
-
-        checkout.mutate({
-            items: cart.map(i => ({
-                peptide_id: i.peptide_id,
-                quantity: i.quantity,
-            })),
-            shipping_address: shippingAddress || undefined,
-            notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}.\n${notes}`,
-        }, {
-            onSuccess: () => clearCartStorage(), // Only clear cart after successful redirect
-        });
-    };
-
-    // Non-card checkout — server-validated pricing, creates order as awaiting payment
+    // Checkout — server-validated pricing, creates order as awaiting payment
     const handleAlternativeCheckout = async () => {
         if (!partnerProfile || cart.length === 0) return;
         setPlacingOrder(true);
@@ -317,11 +300,7 @@ export default function PartnerStore() {
     };
 
     const handleCheckout = () => {
-        if (paymentMethod === 'card') {
-            handleCardCheckout();
-        } else {
-            handleAlternativeCheckout();
-        }
+        handleAlternativeCheckout();
     };
 
     return (
@@ -568,7 +547,6 @@ export default function PartnerStore() {
                                             <span className="text-sm font-medium">Payment Method</span>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {([
-                                                    { id: 'card' as PaymentMethod, label: 'Card', icon: CreditCard },
                                                     ...(ZELLE_EMAIL ? [{ id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote }] : []),
                                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                                     ...(VENMO_HANDLE ? [{ id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone }] : []),
@@ -639,15 +617,10 @@ export default function PartnerStore() {
                                             >
                                                 {(checkout.isPending || placingOrder) ? (
                                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                ) : paymentMethod === 'card' ? (
-                                                    <CreditCard className="h-4 w-4 mr-2" />
                                                 ) : (
                                                     <ExternalLink className="h-4 w-4 mr-2" />
                                                 )}
-                                                {paymentMethod === 'card'
-                                                    ? `Pay with Card — $${cartTotal.toFixed(2)}`
-                                                    : `Place Order — $${cartTotal.toFixed(2)}`
-                                                }
+                                                {`Place Order — $${cartTotal.toFixed(2)}`}
                                             </Button>
                                         </div>
                                     ) : (
