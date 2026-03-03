@@ -204,27 +204,30 @@ export default function Reps() {
 
     // Fetch per-rep performance: sales volume + commission earned (from commissions table, not orders)
     const { data: repStats } = useQuery({
-        queryKey: ['rep_performance', reps?.map(r => r.id)],
+        queryKey: ['rep_performance', currentProfile?.org_id, reps?.map(r => r.id)],
         queryFn: async () => {
             if (!reps || reps.length === 0) return new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
 
-            // Get sales stats per rep (volume = orders where they're the rep)
+            // Get sales stats per rep (volume = orders where they're the rep) — org-scoped
             const { data: orders } = await supabase
                 .from('sales_orders')
                 .select('rep_id, total_amount')
+                .eq('org_id', currentProfile!.org_id!)
                 .not('rep_id', 'is', null)
                 .neq('status', 'cancelled');
 
-            // Get commission earned from commissions table (includes overrides!)
+            // Get commission earned from commissions table (includes overrides!) — org-scoped
             const { data: commissions } = await supabase
                 .from('commissions')
                 .select('partner_id, amount')
+                .eq('org_id', currentProfile!.org_id!)
                 .neq('status', 'void');
 
-            // Get customer counts per rep
+            // Get customer counts per rep — org-scoped
             const { data: contacts } = await supabase
                 .from('contacts')
                 .select('assigned_rep_id')
+                .eq('org_id', currentProfile!.org_id!)
                 .not('assigned_rep_id', 'is', null);
 
             const stats = new Map<string, { volume: number; commission: number; orders: number; customers: number }>();
@@ -253,7 +256,7 @@ export default function Reps() {
 
             return stats;
         },
-        enabled: !!reps && reps.length > 0,
+        enabled: !!reps && reps.length > 0 && !!currentProfile?.org_id,
     });
 
     // Fetch customer contacts for the 3rd-level tree in list view
@@ -740,35 +743,62 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
         );
     };
 
-    // Admin's own partner invite link (for recruiting new partners under yourself)
+    // Admin's own invite links
     const adminProfileId = authProfile?.id;
+    const adminOrgId = authProfile?.org_id;
 
     return (
         <div className="space-y-4">
-            {/* Admin's Own Partner Recruit Link */}
+            {/* Admin's Own Invite Links */}
             {adminProfileId && (
-                <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-purple-500/5">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <UserPlus className="h-5 w-5 text-violet-400" /> Recruit New Partners
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                            Send this link to someone and they sign up as a <strong>partner</strong> under you.
-                        </p>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-3">
-                            <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-violet-300 truncate">
-                                {`${window.location.origin}/#/auth?ref=${adminProfileId}&role=partner`}
-                            </code>
-                            <CopyBtn
-                                url={`${window.location.origin}/#/auth?ref=${adminProfileId}&role=partner`}
-                                copyKey="admin-partner"
-                                label="Copy Link"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Customer Invite Link */}
+                    <Card className="border-emerald-500/20 bg-gradient-to-r from-emerald-500/5 to-green-500/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <ShoppingCart className="h-5 w-5 text-emerald-400" /> Invite Customers
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Send this link so someone can <strong>sign up and purchase</strong>.
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-3">
+                                <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-emerald-300 truncate">
+                                    {`${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                </code>
+                                <CopyBtn
+                                    url={`${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    copyKey="admin-customer"
+                                    label="Copy Link"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                    {/* Partner Recruit Link */}
+                    <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-purple-500/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <UserPlus className="h-5 w-5 text-violet-400" /> Recruit Partners
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Send this link so someone signs up as a <strong>partner</strong> under you.
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-3">
+                                <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-violet-300 truncate">
+                                    {`${window.location.origin}/join?ref=${adminProfileId}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                </code>
+                                <CopyBtn
+                                    url={`${window.location.origin}/join?ref=${adminProfileId}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    copyKey="admin-partner"
+                                    label="Copy Link"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             {/* Per-Partner Links */}
@@ -787,8 +817,8 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                     ) : (
                         <div className="space-y-3">
                             {reps.map(rep => {
-                                const customerUrl = `${window.location.origin}/#/auth?ref=${rep.id}`;
-                                const partnerUrl = `${window.location.origin}/#/auth?ref=${rep.id}&role=partner`;
+                                const customerUrl = `${window.location.origin}/join?ref=${rep.id}${adminOrgId ? `&org=${adminOrgId}` : ''}`;
+                                const partnerUrl = `${window.location.origin}/join?ref=${rep.id}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`;
                                 // Per-person override → tier default fallback
                                 const canRecruit = rep.can_recruit ?? tierRecruitMap.get(rep.partner_tier || 'standard') ?? false;
                                 return (
@@ -911,7 +941,19 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                 p_redirect_origin: window.location.origin,
             });
 
-            if (error) throw error;
+            if (error) {
+                // 409 = unique constraint — partner profile already exists
+                if (error.code === '23505' || error.message?.includes('409') || (error as any).status === 409) {
+                    toast({ title: 'Already a Partner', description: `${contact.name} has already been promoted to partner.` });
+                    queryClient.invalidateQueries({ queryKey: ['reps'] });
+                    queryClient.invalidateQueries({ queryKey: ['pending_partners'] });
+                    onOpenChange(false);
+                    setSelectedContactId('');
+                    setParentRepId('');
+                    return;
+                }
+                throw error;
+            }
             if (!data?.success) throw new Error(data?.message || 'Promotion failed');
 
             // If an invite link was generated, copy it to clipboard
