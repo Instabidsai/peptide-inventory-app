@@ -18,12 +18,14 @@ import {
 import { Users, Plus, Loader2, CheckCircle2, Send, ExternalLink, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useHouseholdMembers, useAddHouseholdMember, useInviteHouseholdMember } from '@/hooks/use-household';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HouseholdSectionProps {
     contactId: string;
 }
 
 export function HouseholdSection({ contactId }: HouseholdSectionProps) {
+    const { profile } = useAuth();
     const { data: householdMembers, isLoading: isLoadingHousehold } = useHouseholdMembers(contactId);
     const addHouseholdMember = useAddHouseholdMember(contactId);
     const inviteHouseholdMember = useInviteHouseholdMember();
@@ -43,6 +45,7 @@ export function HouseholdSection({ contactId }: HouseholdSectionProps) {
                 const result = await inviteHouseholdMember.mutateAsync({
                     contactId: newContactId,
                     email: newMemberEmail.trim(),
+                    targetOrgId: profile?.org_id || null,
                 });
                 setLastMemberInviteLink(result.action_link);
             }
@@ -59,6 +62,7 @@ export function HouseholdSection({ contactId }: HouseholdSectionProps) {
             const result = await inviteHouseholdMember.mutateAsync({
                 contactId: memberId,
                 email: memberEmail,
+                targetOrgId: profile?.org_id || null,
             });
             setLastMemberInviteLink(result.action_link);
         } catch {

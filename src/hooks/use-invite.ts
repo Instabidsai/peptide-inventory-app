@@ -6,6 +6,7 @@ interface InviteRepInput {
     email: string;
     fullName: string;
     parentRepId?: string;
+    targetOrgId?: string | null;
 }
 
 export function useInviteRep() {
@@ -13,12 +14,13 @@ export function useInviteRep() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ email, fullName, parentRepId }: InviteRepInput) => {
+        mutationFn: async ({ email, fullName, parentRepId, targetOrgId }: InviteRepInput) => {
             const { data, error } = await supabase.rpc('invite_new_rep', {
                 p_email: email,
                 p_full_name: fullName || '',
                 p_parent_rep_id: parentRepId || null,
                 p_redirect_origin: window.location.origin,
+                p_target_org_id: targetOrgId || null,
             });
 
             if (error) throw error;

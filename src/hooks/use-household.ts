@@ -78,11 +78,12 @@ export function useInviteHouseholdMember() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ contactId, email }: { contactId: string; email: string }) => {
+        mutationFn: async ({ contactId, email, targetOrgId }: { contactId: string; email: string; targetOrgId?: string | null }) => {
             const { data, error } = await supabase.rpc('generate_invite_link', {
                 p_contact_id: contactId,
                 p_tier: 'family',
                 p_redirect_origin: window.location.origin,
+                p_target_org_id: targetOrgId || null,
             });
             if (error) throw error;
             if (!data?.success) throw new Error(data?.message || 'Invite failed');

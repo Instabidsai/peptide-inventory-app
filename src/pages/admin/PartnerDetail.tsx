@@ -570,18 +570,32 @@ function PayoutsTabContent({ repId }: { repId: string }) {
     const { data: productOrders } = useQuery({
         queryKey: ['partner-product-orders', repId],
         queryFn: async () => {
-            // Find the partner's contact record via email match
+            // Find the partner's contact record — try linked_user_id first, then email
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('email')
+                .select('email, user_id')
                 .eq('id', repId)
                 .maybeSingle();
-            if (!profile?.email) return [];
-            const { data: contact } = await supabase
-                .from('contacts')
-                .select('id')
-                .eq('email', profile.email)
-                .maybeSingle();
+            if (!profile) return [];
+            let contact: { id: string } | null = null;
+            // Strategy 1: match by linked_user_id (handles auto-generated internal emails)
+            if (profile.user_id) {
+                const { data } = await supabase
+                    .from('contacts')
+                    .select('id')
+                    .eq('linked_user_id', profile.user_id)
+                    .maybeSingle();
+                if (data) contact = data;
+            }
+            // Strategy 2: match by email (fallback)
+            if (!contact && profile.email) {
+                const { data } = await supabase
+                    .from('contacts')
+                    .select('id')
+                    .eq('email', profile.email)
+                    .maybeSingle();
+                if (data) contact = data;
+            }
             if (!contact) return [];
             // Fetch sales_orders where this partner is the customer with commission_offset
             const { data } = await supabase
@@ -607,23 +621,37 @@ function PayoutsTabContent({ repId }: { repId: string }) {
         if (applyingId) return; // Prevent double-click
         setApplyingId(commissionId);
         try {
-            // 1. Find the partner's contact record by matching email
+            // 1. Find the partner's contact record — try linked_user_id first, then email
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('email')
+                .select('email, user_id')
                 .eq('id', repId)
                 .maybeSingle();
 
-            if (!profile?.email) {
-                toast({ title: 'Error', description: 'Could not find partner email.', variant: 'destructive' });
+            if (!profile) {
+                toast({ title: 'Error', description: 'Could not find partner profile.', variant: 'destructive' });
                 return;
             }
 
-            const { data: contact } = await supabase
-                .from('contacts')
-                .select('id')
-                .eq('email', profile.email)
-                .maybeSingle();
+            let contact: { id: string } | null = null;
+            // Strategy 1: match by linked_user_id (handles auto-generated internal emails)
+            if (profile.user_id) {
+                const { data } = await supabase
+                    .from('contacts')
+                    .select('id')
+                    .eq('linked_user_id', profile.user_id)
+                    .maybeSingle();
+                if (data) contact = data;
+            }
+            // Strategy 2: match by email (fallback)
+            if (!contact && profile.email) {
+                const { data } = await supabase
+                    .from('contacts')
+                    .select('id')
+                    .eq('email', profile.email)
+                    .maybeSingle();
+                if (data) contact = data;
+            }
 
             if (!contact) {
                 toast({ title: 'No Contact Record', description: 'This partner has no matching contact record to apply credit against.', variant: 'destructive' });
@@ -981,6 +1009,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 p_contact_id: selectedContact.id,
                 p_parent_rep_id: repId,
                 p_redirect_origin: window.location.origin,
+                p_target_org_id: partner.org_id || null,
             });
 
             if (error) throw error;

@@ -50,6 +50,7 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
                 p_contact_id: contact!.id,
                 p_tier: inviteTier,
                 p_redirect_origin: window.location.origin,
+                p_target_org_id: contact.org_id || null,
             });
 
             if (error) throw error;

@@ -1015,7 +1015,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        inviteRep.mutate({ email, fullName: name, parentRepId: parentRepId || undefined }, {
+        inviteRep.mutate({ email, fullName: name, parentRepId: parentRepId || undefined, targetOrgId: profile?.org_id || null }, {
             onSuccess: () => {
                 onOpenChange(false);
                 setEmail('');
