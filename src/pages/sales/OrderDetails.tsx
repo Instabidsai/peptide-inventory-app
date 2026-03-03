@@ -37,6 +37,7 @@ import {
     Link2,
     Check,
     Trash2,
+    RefreshCw,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -126,6 +127,7 @@ export default function OrderDetails() {
     const [editCommRate, setEditCommRate] = useState(0);
     const [editCommStatus, setEditCommStatus] = useState('pending');
     const [savingComm, setSavingComm] = useState(false);
+    const [recalculating, setRecalculating] = useState(false);
 
     // Unified busy flag — disables all action buttons to prevent rage clicks
     const batchUpdateOrderItems = useBatchUpdateOrderItems();
@@ -1183,13 +1185,33 @@ export default function OrderDetails() {
                                         <DollarSign className="h-5 w-5 mr-1" />
                                         {order.commission_amount?.toFixed(2) || '0.00'}
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCommissionDetail(true)}
-                                    >
-                                        <Pencil className="h-3 w-3 mr-1" /> Edit
-                                    </Button>
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={recalculating}
+                                            onClick={async () => {
+                                                setRecalculating(true);
+                                                try {
+                                                    const { data, error } = await supabase.rpc('recalculate_sale_commission', { p_sale_id: order.id });
+                                                    if (error) { toast({ variant: 'destructive', title: 'Recalculate failed', description: error.message }); return; }
+                                                    if (data && !data.success) { toast({ variant: 'destructive', title: 'Cannot recalculate', description: data.error }); return; }
+                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                    queryClient.invalidateQueries({ queryKey: ['sales_order', id] });
+                                                    toast({ title: 'Commissions recalculated', description: `Deleted ${data?.deleted || 0}, created ${data?.created || 0} records. New total: $${Number(data?.new_total || 0).toFixed(2)}` });
+                                                } catch { toast({ variant: 'destructive', title: 'Recalculate failed' }); } finally { setRecalculating(false); }
+                                            }}
+                                        >
+                                            <RefreshCw className={`h-3 w-3 mr-1 ${recalculating ? 'animate-spin' : ''}`} /> Recalc
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setShowCommissionDetail(true)}
+                                        >
+                                            <Pencil className="h-3 w-3 mr-1" /> Edit
+                                        </Button>
+                                    </div>
                                 </div>
                             ) : (
                                 /* Edit mode: full breakdown with inline editing */

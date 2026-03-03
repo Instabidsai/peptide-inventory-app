@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query'; // Added useQueryClient
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,7 @@ import {
     Plus,
     Trash2,
     Loader2,
+    Network,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -413,7 +414,8 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
 function SalesOrdersTabContent({ repId }: { repId: string }) {
     const navigate = useNavigate();
 
-    const { data: orders, isLoading } = useQuery({
+    // Direct orders (where this rep is the sales rep)
+    const { data: directOrders, isLoading } = useQuery({
         queryKey: ['partner_sales_orders', repId],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -432,11 +434,37 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
         },
     });
 
-    if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading sales orders...</div>;
+    // Override commissions — orders where this rep earned a second/third tier override
+    const { data: overrideCommissions, isLoading: overridesLoading } = useQuery({
+        queryKey: ['partner_override_commissions', repId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('commissions')
+                .select(`
+                    id, amount, commission_rate, type, status, sale_id,
+                    sales_orders!sale_id (
+                        id, created_at, status, payment_status, total_amount,
+                        contacts (name),
+                        profiles!rep_id (full_name),
+                        sales_order_items (quantity, peptides (name))
+                    )
+                `)
+                .eq('partner_id', repId)
+                .in('type', ['second_tier_override', 'third_tier_override'])
+                .neq('status', 'void');
+            if (error) throw error;
+            return data || [];
+        },
+    });
 
-    const totalVolume = orders?.reduce((s: number, o) => s + Number(o.total_amount || 0), 0) || 0;
-    const totalCommission = orders?.reduce((s: number, o) => s + Number(o.commission_amount || 0), 0) || 0;
-    const orderCount = orders?.length || 0;
+    if (isLoading || overridesLoading) return <div className="p-8 text-center text-muted-foreground">Loading sales orders...</div>;
+
+    const orders = directOrders || [];
+    const directVolume = orders.reduce((s: number, o) => s + Number(o.total_amount || 0), 0);
+    const directCommission = orders.reduce((s: number, o) => s + Number(o.commission_amount || 0), 0);
+    const overrideTotal = (overrideCommissions || []).reduce((s, c) => s + Number(c.amount || 0), 0);
+    const orderCount = orders.length;
+    const overrideCount = (overrideCommissions || []).length;
 
     const statusColor = (s: string) => {
         if (s === 'fulfilled' || s === 'delivered') return 'bg-green-500/10 text-green-500 border-green-500/20';
@@ -448,23 +476,30 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
     return (
         <div className="space-y-4">
             {/* Summary stats */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent className="pt-4 pb-3">
-                        <p className="text-xs text-muted-foreground">Total Orders</p>
+                        <p className="text-xs text-muted-foreground">Direct Orders</p>
                         <p className="text-2xl font-bold">{orderCount}</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent className="pt-4 pb-3">
                         <p className="text-xs text-muted-foreground">Sales Volume</p>
-                        <p className="text-2xl font-bold">${totalVolume.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">${directVolume.toFixed(2)}</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent className="pt-4 pb-3">
-                        <p className="text-xs text-muted-foreground">Total Commission</p>
-                        <p className="text-2xl font-bold text-green-500">${totalCommission.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Direct Commission</p>
+                        <p className="text-2xl font-bold text-green-500">${directCommission.toFixed(2)}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4 pb-3">
+                        <p className="text-xs text-muted-foreground">Override Commission</p>
+                        <p className="text-2xl font-bold text-blue-500">${overrideTotal.toFixed(2)}</p>
+                        {overrideCount > 0 && <p className="text-xs text-muted-foreground">{overrideCount} downline order{overrideCount !== 1 ? 's' : ''}</p>}
                     </CardContent>
                 </Card>
             </div>
@@ -543,6 +578,64 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Downline override orders */}
+            {overrideCount > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Downline Override Earnings</CardTitle>
+                        <CardDescription>{overrideCount} order{overrideCount !== 1 ? 's' : ''} from downline reps earning override commission</CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Client</TableHead>
+                                    <TableHead>Rep</TableHead>
+                                    <TableHead>Order Total</TableHead>
+                                    <TableHead>Tier</TableHead>
+                                    <TableHead className="text-right">Override Earned</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(overrideCommissions || []).map((comm) => {
+                                    const so = comm.sales_orders as any;
+                                    const tierLabel = comm.type === 'second_tier_override' ? '2nd Tier' : '3rd Tier';
+                                    return (
+                                        <TableRow
+                                            key={comm.id}
+                                            className="cursor-pointer hover:bg-muted/50"
+                                            onClick={() => navigate(`/sales/${comm.sale_id}`)}
+                                        >
+                                            <TableCell className="text-sm">
+                                                {so?.created_at ? format(new Date(so.created_at), 'MMM d, yyyy') : '-'}
+                                            </TableCell>
+                                            <TableCell className="font-medium">
+                                                {so?.contacts?.name || 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {so?.profiles?.full_name || 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                ${Number(so?.total_amount || 0).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                                    {tierLabel}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right text-blue-500 font-medium">
+                                                ${Number(comm.amount || 0).toFixed(2)}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
@@ -1523,6 +1616,8 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
 export default function PartnerDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
 
     // 1. Fetch Partner Profile
     const { data: partner, isLoading, isError, refetch } = useQuery({
@@ -1539,6 +1634,25 @@ export default function PartnerDetail() {
             return data;
         },
         enabled: !!id
+    });
+
+    // Toggle can_recruit on the profile
+    const toggleRecruit = useMutation({
+        mutationFn: async (newValue: boolean | null) => {
+            if (!id) throw new Error('No ID');
+            const { error } = await supabase
+                .from('profiles')
+                .update({ can_recruit: newValue })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['partner_detail', id] });
+            toast({ title: 'Updated', description: 'Recruitment setting saved.' });
+        },
+        onError: (err) => {
+            toast({ title: 'Error', description: (err as any)?.message || 'Failed to update', variant: 'destructive' });
+        },
     });
 
     if (isLoading) {
@@ -1574,7 +1688,7 @@ export default function PartnerDetail() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-semibold">Commission Rate</CardTitle>
@@ -1591,6 +1705,28 @@ export default function PartnerDetail() {
                     </CardHeader>
                     <CardContent>
                         <div className={`text-2xl font-bold capitalize ${partner.partner_tier === 'referral' ? 'text-sky-400' : ''}`}>{partner.partner_tier || 'Standard'}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-semibold">Can Recruit</CardTitle>
+                        <Network className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <Button
+                            variant={partner.can_recruit ? 'default' : 'outline'}
+                            size="sm"
+                            disabled={toggleRecruit.isPending}
+                            onClick={() => toggleRecruit.mutate(partner.can_recruit ? false : true)}
+                            className={partner.can_recruit
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'text-muted-foreground'}
+                        >
+                            {toggleRecruit.isPending ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : null}
+                            {partner.can_recruit ? 'Yes — Click to Disable' : 'No — Click to Enable'}
+                        </Button>
                     </CardContent>
                 </Card>
                 <Card>
