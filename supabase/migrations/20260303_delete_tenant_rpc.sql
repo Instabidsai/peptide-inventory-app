@@ -68,11 +68,9 @@ BEGIN
     SELECT id FROM discussion_topics WHERE org_id = target_org_id
   );
 
-  -- resource_comments / resource_metrics / resource_views → resources (org_id NO ACTION)
+  -- resource_comments / resource_views → resources (org_id NO ACTION)
+  -- NOTE: resource_metrics is a SYSTEM table (no resource_id column), not tenant-scoped — skip it
   DELETE FROM resource_comments WHERE resource_id IN (
-    SELECT id FROM resources WHERE org_id = target_org_id
-  );
-  DELETE FROM resource_metrics WHERE resource_id IN (
     SELECT id FROM resources WHERE org_id = target_org_id
   );
   DELETE FROM resource_views WHERE resource_id IN (
@@ -127,3 +125,8 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'deleted_org_id', target_org_id);
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.delete_tenant_cascade(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_tenant_cascade(uuid) TO service_role;
+
+NOTIFY pgrst, 'reload schema';
