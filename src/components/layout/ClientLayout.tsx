@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,11 +25,9 @@ export function ClientLayout() {
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
 
-    const queryClient = useQueryClient();
-
     // Guard: new customers may not have a contact record yet (created async by linkReferral).
     // useClientProfile polls every 2s while null and auto-heals after 8s.
-    const { data: contact, isLoading: isContactLoading } = useClientProfile();
+    const { data: contact, isLoading: isContactLoading, resetHeal } = useClientProfile();
     const contactPending = !isAdmin && !isSalesRep && !isContactLoading && contact === null;
 
     // Timeout: after 15s of contactPending, show retry UI instead of infinite spinner
@@ -162,7 +160,7 @@ export function ClientLayout() {
                                             size="sm"
                                             onClick={() => {
                                                 setPendingTooLong(false);
-                                                queryClient.invalidateQueries({ queryKey: ['client-profile'] });
+                                                resetHeal();
                                             }}
                                         >
                                             <RefreshCw className="mr-2 h-4 w-4" />
