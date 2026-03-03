@@ -6,6 +6,7 @@ import { useBottleStats } from '@/hooks/use-bottles';
 import { useMovements } from '@/hooks/use-movements';
 import { usePeptides } from '@/hooks/use-peptides';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useFinancialMetrics } from '@/hooks/use-financials';
 import { usePendingOrdersCount, usePendingOrderFinancials } from '@/hooks/use-orders';
 import { supabase } from '@/integrations/sb_client/client';
@@ -58,6 +59,24 @@ export default function AdminDashboard() {
     usePageTitle('Dashboard');
     const { organization, profile } = useAuth();
     const orgId = profile?.org_id;
+    const { isImpersonating, orgId: impOrgId } = useImpersonation();
+
+    // When impersonating, fetch the impersonated org's admin profile
+    // so ReferralLinkCard shows THEIR links, not the super_admin's
+    const { data: orgAdmin } = useQuery({
+        queryKey: ['org_admin_profile', impOrgId],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, referral_slug, full_name, org_id, role')
+                .eq('org_id', impOrgId!)
+                .in('role', ['admin', 'super_admin'])
+                .limit(1)
+                .maybeSingle();
+            return data;
+        },
+        enabled: isImpersonating && !!impOrgId,
+    });
     const [viewMode, setViewMode] = React.useState<'operations' | 'investment'>(() => {
         const saved = localStorage.getItem('dashboard_view_mode');
         return saved === 'investment' ? 'investment' : 'operations';
@@ -397,10 +416,10 @@ export default function AdminDashboard() {
                     transition={{ duration: 0.4, delay: 0.07, ease: [0.23, 1, 0.32, 1] }}
                 >
                     <ReferralLinkCard
-                        profileId={profile.id}
-                        userRole={profile.role}
+                        profileId={isImpersonating && orgAdmin ? orgAdmin.id : profile.id}
+                        userRole={isImpersonating && orgAdmin ? (orgAdmin.role as any) : profile.role}
                         orgId={orgId}
-                        referralSlug={profile.referral_slug}
+                        referralSlug={isImpersonating && orgAdmin ? orgAdmin.referral_slug : profile.referral_slug}
                     />
                 </motion.div>
             )}

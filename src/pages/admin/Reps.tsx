@@ -5,6 +5,7 @@ import { useReps, useUpdateProfile, type UserProfile, useTeamMembers } from '@/h
 import { useInviteRep } from '@/hooks/use-invite';
 import { useFullNetwork } from '@/hooks/use-partner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 import DownlineVisualizer from './components/DownlineVisualizer';
 import { Button } from '@/components/ui/button';
@@ -815,9 +816,27 @@ export default function Reps() {
 function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const { profile: authProfile } = useAuth();
+    const { isImpersonating, orgId: impOrgId } = useImpersonation();
     const { data: tierConfigs } = useTierConfig();
     const tierRecruitMap = new Map<string, boolean>();
     tierConfigs?.forEach(t => tierRecruitMap.set(t.tier_key, t.can_recruit));
+
+    // When impersonating, fetch the impersonated org's admin profile
+    // so we show THEIR referral links, not the super_admin's
+    const { data: orgAdmin } = useQuery({
+        queryKey: ['org_admin_profile', impOrgId],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, referral_slug, full_name, org_id')
+                .eq('org_id', impOrgId!)
+                .in('role', ['admin', 'super_admin'])
+                .limit(1)
+                .maybeSingle();
+            return data;
+        },
+        enabled: isImpersonating && !!impOrgId,
+    });
 
     const handleCopy = async (url: string, key: string) => {
         try {
@@ -855,10 +874,10 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
         );
     };
 
-    // Admin's own invite links
-    const adminProfileId = authProfile?.id;
-    const adminOrgId = authProfile?.org_id;
-    const adminSlug = authProfile?.referral_slug;
+    // Admin's own invite links — use impersonated org's admin when impersonating
+    const adminProfileId = isImpersonating && orgAdmin ? orgAdmin.id : authProfile?.id;
+    const adminOrgId = isImpersonating && orgAdmin ? orgAdmin.org_id : authProfile?.org_id;
+    const adminSlug = isImpersonating && orgAdmin ? orgAdmin.referral_slug : authProfile?.referral_slug;
 
     return (
         <div className="space-y-4">
