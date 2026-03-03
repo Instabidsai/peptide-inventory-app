@@ -6,23 +6,23 @@ import { BackToTop } from "@/components/landing/BackToTop";
 import { StickyMobileCta } from "@/components/landing/StickyMobileCta";
 
 // Lazy-load everything below the hero to avoid blocking the main thread
-const BusinessLogin = lazy(() => import("@/components/landing/BusinessLogin").then(m => ({ default: m.BusinessLogin })));
-const TwoPathFork = lazy(() => import("@/components/landing/TwoPathFork").then(m => ({ default: m.TwoPathFork })));
-const TrustBar = lazy(() => import("@/components/landing/TrustBar").then(m => ({ default: m.TrustBar })));
-const PainPoints = lazy(() => import("@/components/landing/PainPoints").then(m => ({ default: m.PainPoints })));
-const PlatformFeatures = lazy(() => import("@/components/landing/PlatformFeatures").then(m => ({ default: m.PlatformFeatures })));
-const StartABusinessSteps = lazy(() => import("@/components/landing/StartABusinessSteps").then(m => ({ default: m.StartABusinessSteps })));
-const SupplyChain = lazy(() => import("@/components/landing/SupplyChain").then(m => ({ default: m.SupplyChain })));
-const PaymentIntegration = lazy(() => import("@/components/landing/PaymentIntegration").then(m => ({ default: m.PaymentIntegration })));
-const HowItWorks = lazy(() => import("@/components/landing/HowItWorks").then(m => ({ default: m.HowItWorks })));
-const AiShowcase = lazy(() => import("@/components/landing/AiShowcase").then(m => ({ default: m.AiShowcase })));
-const TwoAiBrains = lazy(() => import("@/components/landing/TwoAiBrains").then(m => ({ default: m.TwoAiBrains })));
-const Testimonials = lazy(() => import("@/components/landing/Testimonials").then(m => ({ default: m.Testimonials })));
-const Pricing = lazy(() => import("@/components/landing/Pricing").then(m => ({ default: m.Pricing })));
-const Faq = lazy(() => import("@/components/landing/Faq").then(m => ({ default: m.Faq })));
-const FinalCta = lazy(() => import("@/components/landing/FinalCta").then(m => ({ default: m.FinalCta })));
-const IntegrationsBanner = lazy(() => import("@/components/landing/IntegrationsBanner").then(m => ({ default: m.IntegrationsBanner })));
-const Footer = lazy(() => import("@/components/landing/Footer").then(m => ({ default: m.Footer })));
+const BusinessLogin = lazy(() => import("@/components/landing/BusinessLogin").then(m => ({ default: m.BusinessLogin })));  
+const TwoPathFork = lazy(() => import("@/components/landing/TwoPathFork").then(m => ({ default: m.TwoPathFork })));  
+const TrustBar = lazy(() => import("@/components/landing/TrustBar").then(m => ({ default: m.TrustBar })));  
+const PainPoints = lazy(() => import("@/components/landing/PainPoints").then(m => ({ default: m.PainPoints })));  
+const PlatformFeatures = lazy(() => import("@/components/landing/PlatformFeatures").then(m => ({ default: m.PlatformFeatures })));  
+const StartABusinessSteps = lazy(() => import("@/components/landing/StartABusinessSteps").then(m => ({ default: m.StartABusinessSteps })));  
+const SupplyChain = lazy(() => import("@/components/landing/SupplyChain").then(m => ({ default: m.SupplyChain })));  
+const PaymentIntegration = lazy(() => import("@/components/landing/PaymentIntegration").then(m => ({ default: m.PaymentIntegration })));  
+const HowItWorks = lazy(() => import("@/components/landing/HowItWorks").then(m => ({ default: m.HowItWorks })));  
+const AiShowcase = lazy(() => import("@/components/landing/AiShowcase").then(m => ({ default: m.AiShowcase })));  
+const TwoAiBrains = lazy(() => import("@/components/landing/TwoAiBrains").then(m => ({ default: m.TwoAiBrains })));  
+const Testimonials = lazy(() => import("@/components/landing/Testimonials").then(m => ({ default: m.Testimonials })));  
+const Pricing = lazy(() => import("@/components/landing/Pricing").then(m => ({ default: m.Pricing })));  
+const Faq = lazy(() => import("@/components/landing/Faq").then(m => ({ default: m.Faq })));  
+const FinalCta = lazy(() => import("@/components/landing/FinalCta").then(m => ({ default: m.FinalCta })));  
+const IntegrationsBanner = lazy(() => import("@/components/landing/IntegrationsBanner").then(m => ({ default: m.IntegrationsBanner })));  
+const Footer = lazy(() => import("@/components/landing/Footer").then(m => ({ default: m.Footer })));  
 
 /** Sentinel that becomes visible when user scrolls near the fold.
  *  Triggers loading the next batch only when the user is actually scrolling. */
