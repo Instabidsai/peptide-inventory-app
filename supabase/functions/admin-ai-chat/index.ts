@@ -53,7 +53,14 @@ Deno.serve(withErrorReporting("admin-ai-chat", async (req) => {
 
     const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
     const role = userRole?.role || profile.role;
-    if (!["admin", "staff", "super_admin"].includes(role)) return json({ error: "Admin or staff role required" }, 403);
+
+    // Allow admin/staff/super_admin + senior partners
+    let allowed = ["admin", "staff", "super_admin"].includes(role);
+    if (!allowed && role === "sales_rep") {
+      const { data: partnerProfile } = await supabase.from("profiles").select("partner_tier").eq("user_id", user.id).single();
+      if (partnerProfile?.partner_tier === "senior") allowed = true;
+    }
+    if (!allowed) return json({ error: "Admin or staff role required" }, 403);
 
     // Rate limit
     const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 });
