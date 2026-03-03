@@ -199,7 +199,7 @@ export default function Reps() {
                 .from('contacts')
                 .select('id, name, email, type')
                 .is('assigned_rep_id', null)
-                .eq('type', 'customer')
+                .in('type', ['customer', 'preferred'])
                 .eq('org_id', currentProfile!.org_id!)
                 .order('name');
             if (error) throw error;
@@ -355,7 +355,7 @@ export default function Reps() {
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
                 .in('assigned_rep_id', repIds)
-                .eq('type', 'customer')
+                .in('type', ['customer', 'preferred'])
                 .order('name');
             if (error) throw error;
             // Exclude contacts who share a name with a partner (they're already shown as partners)
