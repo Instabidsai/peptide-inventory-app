@@ -1,16 +1,34 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { logger } from '@/lib/logger';
+import { storeSessionReferral } from '@/lib/link-referral';
 
 export default function Join() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token");
+    const refParam = searchParams.get("ref");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Referral link (from partner/admin referral cards) → redirect to /auth with params.
+    // Auth.tsx handles ref/role/org params and runs the linkReferral flow.
+    if (refParam) {
+        const role = searchParams.get("role") || "customer";
+        const org = searchParams.get("org");
+        // Store in sessionStorage so the referral survives through the auth flow
+        storeSessionReferral(refParam, role as 'customer' | 'partner', org);
+        // Build the redirect URL preserving all params
+        const authParams = new URLSearchParams();
+        authParams.set('ref', refParam);
+        if (role !== 'customer') authParams.set('role', role);
+        if (org) authParams.set('org', org);
+        authParams.set('mode', 'signup');
+        return <Navigate to={`/auth?${authParams.toString()}`} replace />;
+    }
 
     const handleAccess = async () => {
         if (!token) return;
@@ -45,7 +63,7 @@ export default function Join() {
                 <Card className="max-w-md w-full text-center">
                     <CardHeader>
                         <CardTitle className="text-destructive">Invalid Link</CardTitle>
-                        <CardDescription>This invite link is missing a valid token.</CardDescription>
+                        <CardDescription>This invite link is missing a valid token. Please ask for a new link.</CardDescription>
                     </CardHeader>
                 </Card>
             </div>

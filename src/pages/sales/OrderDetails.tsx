@@ -111,6 +111,7 @@ export default function OrderDetails() {
     const [editItemQty, setEditItemQty] = useState(0);
     const [editItemPrice, setEditItemPrice] = useState(0);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
     // Fetch commission records for this order
     const { data: commissionRecords } = useQuery({
@@ -124,6 +125,8 @@ export default function OrderDetails() {
             return data as { id: string; amount: number; commission_rate: number; type: string; status: string; partner_id: string; created_at: string; profiles: { full_name: string | null } }[];
         },
         enabled: !!id,
+        staleTime: 30_000,
+        retry: 2,
     });
 
     const [showCommissionDetail, setShowCommissionDetail] = useState(false);
@@ -297,50 +300,48 @@ export default function OrderDetails() {
         }
         setSaving(true);
         try {
-            // Update existing items
-            for (const item of editItems.filter(i => !i.isNew)) {
-                const { error } = await supabase
+            // Batch all item writes in parallel to avoid sequential blocking
+            const updates = editItems.filter(i => !i.isNew).map(item =>
+                supabase
                     .from('sales_order_items')
                     .update({ quantity: item.quantity, unit_price: item.unit_price })
-                    .eq('id', item.id);
-                if (error) throw error;
-            }
+                    .eq('id', item.id)
+            );
 
-            // Insert new items
-            for (const item of editItems.filter(i => i.isNew)) {
-                const { error } = await supabase
-                    .from('sales_order_items')
-                    .insert({
+            const newItems = editItems.filter(i => i.isNew);
+            const inserts = newItems.length > 0
+                ? [supabase.from('sales_order_items').insert(
+                    newItems.map(item => ({
                         sales_order_id: order.id,
                         peptide_id: item.peptide_id!,
                         quantity: item.quantity,
                         unit_price: item.unit_price,
-                    });
-                if (error) throw error;
-            }
+                    }))
+                  )]
+                : [];
 
-            // Delete removed items
             const currentIds = editItems.filter(i => !i.isNew).map(i => i.id);
             const originalIds = (order.sales_order_items || []).map(i => i.id);
             const removedIds = originalIds.filter(itemId => !currentIds.includes(itemId));
-            for (const rid of removedIds) {
-                await supabase.from('sales_order_items').delete().eq('id', rid);
-            }
+            const deletes = removedIds.length > 0
+                ? [supabase.from('sales_order_items').delete().in('id', removedIds)]
+                : [];
+
+            const results = await Promise.all([...updates, ...inserts, ...deletes]);
+            const failed = results.find(r => r.error);
+            if (failed?.error) throw failed.error;
 
             // Recalculate total
             const newTotal = editItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-
-            // Update order-level fields
-            updateOrder.mutate({
+            await updateOrder.mutateAsync({
                 id: order.id,
                 total_amount: newTotal,
                 notes: editNotes || null,
                 shipping_address: editShippingAddress || null,
                 delivery_method: editDeliveryMethod as 'ship' | 'local_pickup',
-            });
+            }).catch(() => {}); // mutation's onError already toasts
 
             setEditing(false);
-            toast({ title: 'Order updated successfully' });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Failed to save', description: (err as any)?.message || 'Unknown error' });
         } finally {
@@ -349,38 +350,46 @@ export default function OrderDetails() {
     };
 
     const deleteItem = async (itemId: string) => {
+        if (busyItemId) return;
         if ((order?.sales_order_items?.length || 0) <= 1) {
             toast({ variant: 'destructive', title: 'Cannot remove the last item' });
             return;
         }
-        const { error } = await supabase.from('sales_order_items').delete().eq('id', itemId);
-        if (error) {
-            toast({ variant: 'destructive', title: 'Failed to remove item', description: error.message });
-            return;
+        setBusyItemId(itemId);
+        try {
+            const { error } = await supabase.from('sales_order_items').delete().eq('id', itemId);
+            if (error) {
+                toast({ variant: 'destructive', title: 'Failed to remove item', description: error.message });
+                return;
+            }
+            const remaining = order!.sales_order_items?.filter(i => i.id !== itemId) || [];
+            const newTotal = remaining.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+            await updateOrder.mutateAsync({ id: order!.id, total_amount: newTotal }).catch(() => {});
+        } finally {
+            setBusyItemId(null);
         }
-        const remaining = order!.sales_order_items?.filter(i => i.id !== itemId) || [];
-        const newTotal = remaining.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-        updateOrder.mutate({ id: order!.id, total_amount: newTotal });
-        queryClient.invalidateQueries({ queryKey: ['sales_order', id] });
-        toast({ title: 'Item removed' });
     };
 
     const saveItemEdit = async (itemId: string) => {
-        const { error } = await supabase.from('sales_order_items')
-            .update({ quantity: editItemQty, unit_price: editItemPrice })
-            .eq('id', itemId);
-        if (error) {
-            toast({ variant: 'destructive', title: 'Failed to update item', description: error.message });
-            return;
+        if (busyItemId) return;
+        setBusyItemId(itemId);
+        try {
+            const { error } = await supabase.from('sales_order_items')
+                .update({ quantity: editItemQty, unit_price: editItemPrice })
+                .eq('id', itemId);
+            if (error) {
+                toast({ variant: 'destructive', title: 'Failed to update item', description: error.message });
+                return;
+            }
+            const updatedItems = (order!.sales_order_items || []).map(i =>
+                i.id === itemId ? { ...i, quantity: editItemQty, unit_price: editItemPrice } : i
+            );
+            const newTotal = updatedItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+            await updateOrder.mutateAsync({ id: order!.id, total_amount: newTotal }).catch(() => {});
+            setEditingItemId(null);
+        } finally {
+            setBusyItemId(null);
         }
-        const updatedItems = (order!.sales_order_items || []).map(i =>
-            i.id === itemId ? { ...i, quantity: editItemQty, unit_price: editItemPrice } : i
-        );
-        const newTotal = updatedItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-        updateOrder.mutate({ id: order!.id, total_amount: newTotal });
-        setEditingItemId(null);
-        queryClient.invalidateQueries({ queryKey: ['sales_order', id] });
-        toast({ title: 'Item updated' });
     };
 
     return (
@@ -524,16 +533,30 @@ export default function OrderDetails() {
                                 {editing ? (
                                     <div className="space-y-3">
                                         {editItems.map((item, idx) => (
-                                            <div key={item.id} className="flex items-center gap-3 bg-card/50 p-3 rounded-lg border border-border/40">
-                                                <div className="flex-1 min-w-0">
-                                                    <span className="font-medium">{item.name}</span>
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <span className="text-xs text-muted-foreground">$</span>
+                                            <div key={item.id} className="bg-card/50 p-3 rounded-lg border border-border/40 space-y-3">
+                                                {/* Row 1: Name + Delete */}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="font-medium text-sm truncate">{item.name}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-11 w-11 min-w-[44px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => setEditItems(editItems.filter((_, i) => i !== idx))}
+                                                    >
+                                                        <X className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Row 2: Price input + tier badges */}
+                                                <div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-sm text-muted-foreground">$</span>
                                                         <Input
                                                             type="number"
                                                             min={0}
                                                             step={0.01}
-                                                            className="w-20 h-6 text-xs px-1"
+                                                            inputMode="decimal"
+                                                            className="w-24 h-10 text-sm px-2"
                                                             value={item.unit_price}
                                                             onChange={(e) => {
                                                                 const updated = [...editItems];
@@ -541,7 +564,7 @@ export default function OrderDetails() {
                                                                 setEditItems(updated);
                                                             }}
                                                         />
-                                                        <span className="text-xs text-muted-foreground">each</span>
+                                                        <span className="text-sm text-muted-foreground">each</span>
                                                     </div>
                                                     {(() => {
                                                         const peptide = allPeptides?.find(p => p.id === item.peptide_id);
@@ -555,12 +578,12 @@ export default function OrderDetails() {
                                                             ...(peptide.retail_price ? [{ label: 'MSRP', price: peptide.retail_price }] : []),
                                                         ];
                                                         return (
-                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                            <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {tiers.map(t => (
                                                                     <Badge
                                                                         key={t.label}
                                                                         variant={item.unit_price === t.price ? 'default' : 'outline'}
-                                                                        className="cursor-pointer text-[10px] px-1.5 py-0"
+                                                                        className="cursor-pointer text-xs px-2.5 py-1 min-h-[32px]"
                                                                         onClick={() => {
                                                                             const updated = [...editItems];
                                                                             updated[idx] = { ...item, unit_price: t.price };
@@ -574,71 +597,68 @@ export default function OrderDetails() {
                                                         );
                                                     })()}
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => {
-                                                            if (item.quantity > 1) {
+
+                                                {/* Row 3: Quantity controls + line total */}
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-11 w-11 min-w-[44px]"
+                                                            onClick={() => {
+                                                                if (item.quantity > 1) {
+                                                                    const updated = [...editItems];
+                                                                    updated[idx] = { ...item, quantity: item.quantity - 1 };
+                                                                    setEditItems(updated);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Minus className="h-4 w-4" />
+                                                        </Button>
+                                                        <Input
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            min={1}
+                                                            className="w-16 text-center h-11 text-base"
+                                                            value={item.quantity}
+                                                            onChange={(e) => {
                                                                 const updated = [...editItems];
-                                                                updated[idx] = { ...item, quantity: item.quantity - 1 };
+                                                                updated[idx] = { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) };
                                                                 setEditItems(updated);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Minus className="h-3 w-3" />
-                                                    </Button>
-                                                    <Input
-                                                        type="number"
-                                                        min={1}
-                                                        className="w-16 text-center h-8"
-                                                        value={item.quantity}
-                                                        onChange={(e) => {
-                                                            const updated = [...editItems];
-                                                            updated[idx] = { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) };
-                                                            setEditItems(updated);
-                                                        }}
-                                                    />
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => {
-                                                            const updated = [...editItems];
-                                                            updated[idx] = { ...item, quantity: item.quantity + 1 };
-                                                            setEditItems(updated);
-                                                        }}
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </Button>
+                                                            }}
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="h-11 w-11 min-w-[44px]"
+                                                            onClick={() => {
+                                                                const updated = [...editItems];
+                                                                updated[idx] = { ...item, quantity: item.quantity + 1 };
+                                                                setEditItems(updated);
+                                                            }}
+                                                        >
+                                                            <Plus className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <span className="font-bold text-base">
+                                                        ${(item.quantity * item.unit_price).toFixed(2)}
+                                                    </span>
                                                 </div>
-                                                <span className="font-bold w-20 text-right">
-                                                    ${(item.quantity * item.unit_price).toFixed(2)}
-                                                </span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    onClick={() => setEditItems(editItems.filter((_, i) => i !== idx))}
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
                                             </div>
                                         ))}
 
                                         {/* Add Item Section */}
                                         {addingItem ? (
                                             <div className="border border-dashed border-blue-500/40 rounded-lg p-3 space-y-3 bg-blue-500/5">
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-3">
                                                     <div>
-                                                        <label className="text-xs">Peptide</label>
+                                                        <label className="text-sm font-medium">Peptide</label>
                                                         <Select value={newItemPeptideId} onValueChange={(val) => {
                                                             setNewItemPeptideId(val);
                                                             const p = allPeptides?.find(pp => pp.id === val);
                                                             if (p?.retail_price) setNewItemPrice(p.retail_price);
                                                         }}>
-                                                            <SelectTrigger className="h-9">
+                                                            <SelectTrigger className="h-11 text-base">
                                                                 <SelectValue placeholder="Select peptide..." />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -650,26 +670,26 @@ export default function OrderDetails() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-2 gap-3">
                                                         <div>
-                                                            <label className="text-xs">Qty</label>
-                                                            <Input type="number" min={1} className="h-9" value={newItemQty} onChange={e => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))} />
+                                                            <label className="text-sm font-medium">Qty</label>
+                                                            <Input type="number" inputMode="numeric" min={1} className="h-11 text-base" value={newItemQty} onChange={e => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))} />
                                                         </div>
                                                         <div>
-                                                            <label className="text-xs">Price</label>
-                                                            <Input type="number" min={0} step={0.01} className="h-9" value={newItemPrice} onChange={e => setNewItemPrice(parseFloat(e.target.value) || 0)} />
+                                                            <label className="text-sm font-medium">Price</label>
+                                                            <Input type="number" inputMode="decimal" min={0} step={0.01} className="h-11 text-base" value={newItemPrice} onChange={e => setNewItemPrice(parseFloat(e.target.value) || 0)} />
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <Button size="sm" className="flex-1" disabled={!newItemPeptideId} onClick={handleAddItem}>
-                                                        <Plus className="h-3 w-3 mr-1" /> Add to Order
+                                                    <Button className="flex-1 h-11" disabled={!newItemPeptideId} onClick={handleAddItem}>
+                                                        <Plus className="h-4 w-4 mr-1" /> Add to Order
                                                     </Button>
-                                                    <Button size="sm" variant="ghost" onClick={() => setAddingItem(false)}>Cancel</Button>
+                                                    <Button variant="ghost" className="h-11" onClick={() => setAddingItem(false)}>Cancel</Button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <Button variant="outline" className="w-full border-dashed" onClick={() => setAddingItem(true)}>
+                                            <Button variant="outline" className="w-full h-11 border-dashed text-base" onClick={() => setAddingItem(true)}>
                                                 <Plus className="h-4 w-4 mr-2" /> Add Item
                                             </Button>
                                         )}
@@ -714,6 +734,7 @@ export default function OrderDetails() {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 text-green-500 hover:text-green-400"
+                                                            disabled={busyItemId === item.id}
                                                             onClick={() => saveItemEdit(item.id)}
                                                         >
                                                             <Save className="h-4 w-4" />
@@ -722,6 +743,7 @@ export default function OrderDetails() {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8"
+                                                            disabled={!!busyItemId}
                                                             onClick={() => setEditingItemId(null)}
                                                         >
                                                             <X className="h-4 w-4" />
@@ -741,6 +763,7 @@ export default function OrderDetails() {
                                                             size="icon"
                                                             className="h-8 w-8 text-blue-400 hover:text-blue-300"
                                                             title="Edit item"
+                                                            disabled={!!busyItemId}
                                                             onClick={() => {
                                                                 setEditingItemId(item.id);
                                                                 setEditItemQty(item.quantity);
@@ -754,6 +777,7 @@ export default function OrderDetails() {
                                                             size="icon"
                                                             className="h-8 w-8 text-red-500 hover:text-red-400"
                                                             title="Remove item"
+                                                            disabled={!!busyItemId}
                                                             onClick={() => deleteItem(item.id)}
                                                         >
                                                             <X className="h-4 w-4" />
