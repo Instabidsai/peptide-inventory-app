@@ -154,7 +154,7 @@ BEGIN
   ELSE
     UPDATE contacts SET
       linked_user_id = p_user_id,
-      assigned_rep_id = COALESCE(assigned_rep_id, v_referrer_id),
+      assigned_rep_id = v_referrer_id,  -- referral link always assigns to the referrer
       type = v_contact_type,
       name = COALESCE(NULLIF(name, ''), NULLIF(p_full_name, ''), p_email),
       updated_at = now()
