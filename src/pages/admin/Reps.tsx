@@ -900,10 +900,10 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <CardContent>
                             <div className="flex items-center gap-3">
                                 <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-violet-300 truncate">
-                                    {`${window.location.origin}/join?ref=${adminProfileId}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    {`${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                 </code>
                                 <CopyBtn
-                                    url={`${window.location.origin}/join?ref=${adminProfileId}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    url={`${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                     copyKey="admin-partner"
                                     label="Copy Link"
                                 />
@@ -930,7 +930,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <div className="space-y-3">
                             {reps.map(rep => {
                                 const customerUrl = `${window.location.origin}/join?ref=${rep.id}${adminOrgId ? `&org=${adminOrgId}` : ''}`;
-                                const partnerUrl = `${window.location.origin}/join?ref=${rep.id}&role=partner${adminOrgId ? `&org=${adminOrgId}` : ''}`;
+                                const partnerUrl = `${window.location.origin}/join?ref=${rep.id}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`;
                                 // Per-person override → tier default fallback
                                 const canRecruit = rep.can_recruit ?? tierRecruitMap.get(rep.partner_tier || 'standard') ?? false;
                                 return (
