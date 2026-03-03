@@ -11,6 +11,7 @@ export interface PartnerNode {
     email: string | null;
     partner_tier: string;
     commission_rate: number;
+    role?: string;
     total_sales: number;
     depth: number;
     path: string[];

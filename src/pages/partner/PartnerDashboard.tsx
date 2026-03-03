@@ -71,14 +71,52 @@ export default function PartnerDashboard() {
             ? `${priceMultiplier}x cost`
             : `${Math.round((1 - priceMultiplier) * 100)}% off retail`;
 
-    // Fetch clients assigned to all reps in the org (not just downline)
+    // Separate downline into actual partners (sales_rep) vs clients
     const myProfileId = authProfile?.id as string | undefined;
     const { data: allOrgReps } = useAllOrgReps();
+
+    // Split RPC results: sales_rep nodes are "partners", all others are "clients from profiles"
+    const downlinePartners = downline?.filter(d => d.role === 'sales_rep') || [];
+    const downlineClients = downline?.filter(d => d.role !== 'sales_rep') || [];
+
+    // Also fetch contacts assigned to reps (for clients NOT in profiles tree)
     const allRepIds = allOrgReps?.map(r => r.id) || [
         ...(myProfileId ? [myProfileId] : []),
-        ...(downline?.map(d => d.id) || [])
+        ...(downlinePartners.map(d => d.id) || [])
     ];
-    const { data: clients } = useDownlineClients(allRepIds);
+    const { data: contactClients } = useDownlineClients(allRepIds);
+
+    // Merge downline clients + contact clients, deduplicate by email
+    const mergedClients = (() => {
+        const seen = new Set<string>();
+        const result: import('@/hooks/use-partner').DownlineClient[] = [];
+
+        // Add profile-based clients first (from RPC — these are the definitive source)
+        for (const dc of downlineClients) {
+            const key = dc.email?.toLowerCase() || dc.id;
+            if (!seen.has(key)) {
+                seen.add(key);
+                result.push({
+                    id: dc.id,
+                    name: dc.full_name || dc.email || 'Unknown',
+                    email: dc.email,
+                    type: 'customer',
+                    assigned_rep_id: dc.parent_rep_id,
+                });
+            }
+        }
+
+        // Add contact-based clients that aren't already included
+        for (const cc of (contactClients || [])) {
+            const key = cc.email?.toLowerCase() || cc.id;
+            if (!seen.has(key)) {
+                seen.add(key);
+                result.push(cc);
+            }
+        }
+
+        return result;
+    })();
 
     // Fetch movements for Amount Owed (simple query -- just totals)
     const { data: owedMovements } = useQuery({
@@ -283,8 +321,8 @@ export default function PartnerDashboard() {
                 creditBalance={creditBalance}
                 totalOwed={totalOwed}
                 unpaidCount={unpaidMovements.length}
-                downlineCount={downline?.length || 0}
-                clientCount={clients?.length || 0}
+                downlineCount={downlinePartners.length}
+                clientCount={mergedClients.length}
                 onOpenSheet={setActiveSheet}
             />
             </SectionErrorBoundary>
@@ -312,8 +350,8 @@ export default function PartnerDashboard() {
                     rootName={authProfile?.full_name || 'You'}
                     rootTier={tier}
                     rootProfileId={myProfileId || null}
-                    partners={downline || []}
-                    clients={clients || []}
+                    partners={downlinePartners}
+                    clients={mergedClients}
                     allOrgReps={allOrgReps}
                     isLoading={downlineLoading}
                     onAddPerson={() => setActiveSheet('add-person')}
