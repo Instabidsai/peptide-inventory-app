@@ -23,7 +23,7 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId, canR
     const orgSuffix = orgId ? `&org=${orgId}` : '';
     // Use /join? path (not /#/auth?) so links survive SMS/text apps that strip hash fragments
     const customerUrl = `${window.location.origin}/join?ref=${profileId}${orgSuffix}`;
-    const partnerUrl = `${window.location.origin}/join?ref=${profileId}&role=partner${orgSuffix}`;
+    const partnerUrl = `${window.location.origin}/join?ref=${profileId}&role=partner&tier=standard${orgSuffix}`;
     // Admin/super_admin always can recruit. Otherwise use per-person flag, with tier-based fallback (senior = true).
     const canRecruit = userRole === 'admin' || userRole === 'super_admin'
         || (canRecruitOverride !== undefined && canRecruitOverride !== null ? canRecruitOverride : partnerTier === 'senior');
@@ -63,7 +63,7 @@ export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId, canR
                 </div>
                 {canRecruit && (
                     <div className="flex items-center gap-2 pl-2">
-                        <span className="text-xs font-medium text-violet-400 w-20 shrink-0">Partner:</span>
+                        <span className="text-xs font-medium text-violet-400 w-20 shrink-0">Partner <span className="text-[10px] text-violet-300/60">(Std)</span>:</span>
                         <p className="flex-1 text-xs text-violet-300/70 truncate">{partnerUrl}</p>
                         <Button variant="outline" size="sm"
                             className={copiedType === 'partner' ? 'border-primary/30 text-primary' : 'border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300'}

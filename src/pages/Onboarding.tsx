@@ -35,7 +35,7 @@ export default function Onboarding() {
   // Check if user came from landing page with a selected plan
   const selectedPlan = localStorage.getItem('selected_plan');
 
-  const attemptLink = (ref: { refId: string; role: 'customer' | 'partner'; orgId?: string | null }) => {
+  const attemptLink = (ref: { refId: string; role: 'customer' | 'partner'; orgId?: string | null; tier?: string | null }) => {
     if (!user) return;
     setIsLinking(true);
     setLinkFailed(false);
@@ -43,7 +43,7 @@ export default function Onboarding() {
     const email = user.email || '';
     const name = profile?.full_name || user.user_metadata?.full_name || email;
 
-    linkReferral(user.id, email, name, ref.refId, ref.role, ref.orgId).then(async (result) => {
+    linkReferral(user.id, email, name, ref.refId, ref.role, ref.orgId, ref.tier).then(async (result) => {
       if (result.success) {
         await refreshProfile();
         queryClient.invalidateQueries({ queryKey: ['client-profile'] });

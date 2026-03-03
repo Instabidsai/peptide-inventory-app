@@ -19,13 +19,15 @@ export default function Join() {
     if (refParam) {
         const role = searchParams.get("role") || "customer";
         const org = searchParams.get("org");
+        const tier = searchParams.get("tier");
         // Store in sessionStorage so the referral survives through the auth flow
-        storeSessionReferral(refParam, role as 'customer' | 'partner', org);
+        storeSessionReferral(refParam, role as 'customer' | 'partner', org, tier);
         // Build the redirect URL preserving all params
         const authParams = new URLSearchParams();
         authParams.set('ref', refParam);
         if (role !== 'customer') authParams.set('role', role);
         if (org) authParams.set('org', org);
+        if (tier) authParams.set('tier', tier);
         authParams.set('mode', 'signup');
         return <Navigate to={`/auth?${authParams.toString()}`} replace />;
     }

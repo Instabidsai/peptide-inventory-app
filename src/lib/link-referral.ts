@@ -1,13 +1,13 @@
 import { supabase } from '@/integrations/sb_client/client';
 
-/** Default partner tier settings for referral signups.
+/** Default partner tier settings for partner signups.
  *  NOTE: The link_referral RPC reads actual values from partner_tier_config
  *  for the org. These are only used as display fallbacks if the DB query
  *  fails. Keep in sync with the RPC's COALESCE defaults. */
 export const REFERRAL_PARTNER_DEFAULTS = {
-  partner_tier: 'referral' as const,
-  commission_rate: 0.075,
-  price_multiplier: 0.8,
+  partner_tier: 'standard' as const,
+  commission_rate: 0.10,
+  price_multiplier: 0.75,
   pricing_mode: 'percentage' as const,
   cost_plus_markup: 2,
 };
@@ -27,6 +27,7 @@ export type LinkReferralResult =
  * @param orgId  Optional target org. When a super_admin impersonates a tenant
  *               and shares a referral link, the URL includes the target org_id.
  *               If provided, the RPC uses this org instead of the referrer's.
+ * @param tier   Partner tier key ('standard', 'senior', 'referral'). Default 'standard'.
  */
 export async function linkReferral(
   userId: string,
@@ -35,6 +36,7 @@ export async function linkReferral(
   referrerProfileId: string,
   role: 'customer' | 'partner' = 'customer',
   orgId?: string | null,
+  tier?: string | null,
 ): Promise<LinkReferralResult> {
   const params: Record<string, unknown> = {
     p_user_id: userId,
@@ -47,6 +49,11 @@ export async function linkReferral(
   // Only send p_org_id if we actually have one (keeps backward compat with older RPC)
   if (orgId) {
     params.p_org_id = orgId;
+  }
+
+  // Send tier if provided (defaults to 'standard' in the RPC)
+  if (tier) {
+    params.p_tier = tier;
   }
 
   const { data, error } = await supabase.rpc('link_referral', params);
@@ -69,6 +76,7 @@ interface ReferralData {
   refId: string;
   role: 'customer' | 'partner';
   orgId?: string | null;
+  tier?: string | null;
 }
 
 /**
@@ -81,6 +89,7 @@ export function consumeSessionReferral(): ReferralData | null {
   let refId = sessionStorage.getItem('partner_ref');
   let role = (sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner';
   let orgId = sessionStorage.getItem('partner_ref_org') || null;
+  let tier = sessionStorage.getItem('partner_ref_tier') || null;
 
   if (!refId) {
     // Fall back to localStorage (persists across tabs/windows)
@@ -92,6 +101,7 @@ export function consumeSessionReferral(): ReferralData | null {
           refId = parsed.refId;
           role = (parsed.role || 'customer') as 'customer' | 'partner';
           orgId = parsed.orgId || null;
+          tier = parsed.tier || null;
         }
       } catch { /* ignore corrupt data */ }
       localStorage.removeItem(LS_KEY);
@@ -103,9 +113,10 @@ export function consumeSessionReferral(): ReferralData | null {
   sessionStorage.removeItem('partner_ref');
   sessionStorage.removeItem('partner_ref_role');
   sessionStorage.removeItem('partner_ref_org');
+  sessionStorage.removeItem('partner_ref_tier');
   localStorage.removeItem(LS_KEY);
 
-  return { refId, role, orgId };
+  return { refId, role, orgId, tier };
 }
 
 /**
@@ -113,7 +124,7 @@ export function consumeSessionReferral(): ReferralData | null {
  * sessionStorage survives page reload / OAuth redirect within the same tab.
  * localStorage survives cross-tab navigation (email confirmation in new tab).
  */
-export function storeSessionReferral(refId: string, role: 'customer' | 'partner', orgId?: string | null) {
+export function storeSessionReferral(refId: string, role: 'customer' | 'partner', orgId?: string | null, tier?: string | null) {
   sessionStorage.setItem('partner_ref', refId);
   sessionStorage.setItem('partner_ref_role', role);
   if (orgId) {
@@ -121,8 +132,13 @@ export function storeSessionReferral(refId: string, role: 'customer' | 'partner'
   } else {
     sessionStorage.removeItem('partner_ref_org');
   }
+  if (tier) {
+    sessionStorage.setItem('partner_ref_tier', tier);
+  } else {
+    sessionStorage.removeItem('partner_ref_tier');
+  }
   // Backup to localStorage for cross-tab persistence (with TTL)
-  localStorage.setItem(LS_KEY, JSON.stringify({ refId, role, orgId: orgId || null, ts: Date.now() }));
+  localStorage.setItem(LS_KEY, JSON.stringify({ refId, role, orgId: orgId || null, tier: tier || null, ts: Date.now() }));
 }
 
 /**
@@ -153,6 +169,7 @@ export function peekPendingReferral(): ReferralData | null {
       refId: ss,
       role: (sessionStorage.getItem('partner_ref_role') || 'customer') as 'customer' | 'partner',
       orgId: sessionStorage.getItem('partner_ref_org') || null,
+      tier: sessionStorage.getItem('partner_ref_tier') || null,
     };
   }
   const backup = localStorage.getItem(LS_KEY);
@@ -164,6 +181,7 @@ export function peekPendingReferral(): ReferralData | null {
           refId: parsed.refId,
           role: (parsed.role || 'customer') as 'customer' | 'partner',
           orgId: parsed.orgId || null,
+          tier: parsed.tier || null,
         };
       }
     } catch { /* ignore */ }
