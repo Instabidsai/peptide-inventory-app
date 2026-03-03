@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { SIDEBAR_FEATURE_MAP } from '@/lib/feature-registry';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { BugReportButton } from '@/components/BugReportButton';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -82,6 +83,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { organization, userRole, user, profile: authProfile } = useAuth();
   const { isEnabled } = useOrgFeatures();
   const { brand_name, logo_url, admin_brand_name } = useTenantConfig();
+  const { isImpersonating } = useImpersonation();
   const [searchParams] = useSearchParams();
   const isVendorRoute = location.pathname.startsWith('/vendor');
   // Only admins can use preview_role to impersonate other roles
@@ -145,7 +147,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   });
 
   // Pre-filter navigation items by role and feature flags
+  const PARTNER_ONLY_ITEMS = ['Partner Portal', 'Partner Store', 'My Orders'];
   const visibleNavItems = navigation.filter(item => {
+    // Hide partner-specific items when vendor is impersonating a tenant
+    if (isImpersonating && PARTNER_ONLY_ITEMS.includes(item.name)) return false;
+
     const featureKey = SIDEBAR_FEATURE_MAP[item.name];
     if (featureKey && !isEnabled(featureKey)) return false;
 
