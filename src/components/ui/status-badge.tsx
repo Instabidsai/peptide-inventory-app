@@ -22,7 +22,7 @@ type OrderStatus =
   | "submitted"
   | "received";
 
-type PaymentStatus = "paid" | "unpaid" | "partial" | "refunded" | "commission_offset";
+type PaymentStatus = "paid" | "unpaid" | "partial" | "pending_verification" | "refunded" | "commission_offset";
 
 const ORDER_STATUS_MAP: Record<
   OrderStatus,
@@ -95,6 +95,10 @@ const PAYMENT_STATUS_MAP: Record<
   partial: {
     label: "PARTIAL",
     className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  },
+  pending_verification: {
+    label: "PENDING VERIFICATION",
+    className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   },
   refunded: {
     label: "REFUNDED",

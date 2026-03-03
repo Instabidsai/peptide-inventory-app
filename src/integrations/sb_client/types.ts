@@ -838,7 +838,7 @@ export type Database = {
       contact_type: "customer" | "partner" | "internal"
       movement_type: "sale" | "giveaway" | "internal_use" | "loss" | "return"
       price_tier: "retail" | "wholesale" | "at_cost"
-      payment_status: "paid" | "unpaid" | "partial" | "refunded"
+      payment_status: "paid" | "unpaid" | "partial" | "pending_verification" | "refunded" | "commission_offset"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -86,11 +86,22 @@ export function useOrgWholesaleTier() {
             if (!orgId) return null;
             const { data, error } = await supabase
                 .from('tenant_config')
-                .select('wholesale_tier_id, supplier_org_id')
-                .eq('org_id', orgId)
+                .select('wholesale_tier_id, supplier_org_id, wholesale_pricing_mode')
+                .eq('org_id', orgId!)
                 .maybeSingle();
             if (error) throw error;
-            if (!data?.wholesale_tier_id) return null;
+            if (!data) return null;
+
+            const pricingMode = (data.wholesale_pricing_mode || 'tier') as 'tier' | 'custom';
+
+            // If no tier assigned, still return supplier info + pricing mode
+            if (!data.wholesale_tier_id) {
+                return {
+                    tier: null as WholesaleTier | null,
+                    supplier_org_id: data.supplier_org_id as string | null,
+                    pricing_mode: pricingMode,
+                };
+            }
 
             const { data: tier, error: tierError } = await supabase
                 .from('wholesale_pricing_tiers')
@@ -98,10 +109,10 @@ export function useOrgWholesaleTier() {
                 .eq('id', data.wholesale_tier_id)
                 .maybeSingle();
             if (tierError) throw tierError;
-            if (!tier) return null;
             return {
-                tier: tier as WholesaleTier,
+                tier: (tier || null) as WholesaleTier | null,
                 supplier_org_id: data.supplier_org_id as string | null,
+                pricing_mode: pricingMode,
             };
         },
         enabled: !!orgId,

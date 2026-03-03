@@ -25,6 +25,7 @@ export interface TenantDetail {
         session_timeout_minutes: number;
         wholesale_tier_id: string | null;
         supplier_org_id: string | null;
+        wholesale_pricing_mode: 'tier' | 'custom';
     } | null;
     subscription: {
         plan_name: string;
@@ -124,6 +125,7 @@ export function useTenantDetail(orgId: string | undefined) {
                     session_timeout_minutes: config.session_timeout_minutes || 60,
                     wholesale_tier_id: config.wholesale_tier_id || null,
                     supplier_org_id: config.supplier_org_id || null,
+                    wholesale_pricing_mode: config.wholesale_pricing_mode || 'tier',
                 } : null,
                 subscription: sub ? {
                     plan_name: (sub.plan as { display_name?: string; name?: string } | null)?.display_name

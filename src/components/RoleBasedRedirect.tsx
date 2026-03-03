@@ -41,7 +41,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
     }
 
     try {
-        const previewRole = searchParams.get('preview_role');
+        const previewRoleUrl = searchParams.get('preview_role');
+        let previewRole = sessionStorage.getItem('preview_role');
+
+        if (previewRoleUrl) {
+            sessionStorage.setItem('preview_role', previewRoleUrl);
+            previewRole = previewRoleUrl;
+            searchParams.delete('preview_role');
+            return <Navigate to={{ pathname: location.pathname, search: searchParams.toString() }} replace />;
+        }
 
         // Allow staff/admin/sales_rep to preview as other roles
         let roleName = userRole.role;

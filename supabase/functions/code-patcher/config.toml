@@ -1,0 +1,2 @@
+[functions.code-patcher]
+verify_jwt = false

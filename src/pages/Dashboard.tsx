@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
-    return lazy(() => fn().catch(() => {
-        window.location.reload();
-        return new Promise(() => {});
-    }));
+  return lazy(() => fn().catch(() => {
+    window.location.reload();
+    return new Promise(() => { });
+  }));
 }
 
 const PartnerDashboard = lazyRetry(() => import('./partner/PartnerDashboard'));
@@ -22,7 +22,7 @@ const DashboardFallback = () => (
 export default function Dashboard() {
   const { userRole, profile } = useAuth();
   const [searchParams] = useSearchParams();
-  const previewRole = searchParams.get('preview_role');
+  const previewRole = searchParams.get('preview_role') || sessionStorage.getItem('preview_role');
 
   if (userRole?.role === 'sales_rep' || profile?.role === 'sales_rep' || previewRole === 'sales_rep') {
     return <Suspense fallback={<DashboardFallback />}><PartnerDashboard /></Suspense>;

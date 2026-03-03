@@ -18,7 +18,8 @@ export interface ExternalOrder {
   customer_phone?: string;
   shipping_address?: string;
   total_amount: number;
-  payment_status: "paid" | "unpaid" | "partial";
+  payment_status: "paid" | "unpaid" | "partial" | "pending_verification";
+  payment_method?: string;
   items: ExternalOrderItem[];
   discount_codes?: string[];
 }
@@ -205,7 +206,7 @@ export async function importExternalOrder(
     shipping_address: order.shipping_address || null,
     notes: `${platformLabel} Order #${order.external_id}`,
     order_source: order.platform,
-    source_user_id: adminUserId || null,
+    payment_method: order.payment_method || null,
   };
 
   if (order.platform === "woocommerce") {
@@ -262,7 +263,7 @@ export async function importExternalOrder(
         // Attribute order to partner
         await supabase
           .from("sales_orders")
-          .update({ assigned_rep_id: discountCode.partner_id })
+          .update({ rep_id: discountCode.partner_id })
           .eq("id", newOrder.id);
 
         // Increment uses count
@@ -342,13 +343,13 @@ export function mapShopifyPaymentStatus(status: string): "paid" | "unpaid" | "pa
 /**
  * Map WooCommerce status to our payment_status.
  */
-export function mapWooPaymentStatus(status: string): "paid" | "unpaid" | "partial" {
+export function mapWooPaymentStatus(status: string): "paid" | "unpaid" | "partial" | "pending_verification" {
   switch (status) {
     case "completed":
-    case "processing":
       return "paid";
+    case "processing":
     case "on-hold":
-      return "partial";
+      return "pending_verification";
     default:
       return "unpaid";
   }

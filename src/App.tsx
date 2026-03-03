@@ -25,18 +25,18 @@ import NotFound from "./pages/NotFound";
 // Retry wrapper — reloads page on stale chunk errors, with 30s cooldown to
 // prevent infinite reload loops when chunks fail for persistent reasons.
 function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
-  return lazy(() => fn().catch((err) => {
-    const key = 'chunk_reload';
-    const last = Number(sessionStorage.getItem(key) || 0);
-    if (Date.now() - last > 30_000) {
-      sessionStorage.setItem(key, String(Date.now()));
-      window.location.reload();
-      return new Promise(() => {}); // reload in progress — keep spinner showing
-    }
-    // Already reloaded recently and still failing — surface the error
-    // so ErrorBoundary can show a recovery UI instead of hanging forever
-    throw err ?? new Error('Failed to load page module');
-  }));
+    return lazy(() => fn().catch((err) => {
+        const key = 'chunk_reload';
+        const last = Number(sessionStorage.getItem(key) || 0);
+        if (Date.now() - last > 30_000) {
+            sessionStorage.setItem(key, String(Date.now()));
+            window.location.reload();
+            return new Promise(() => { }); // reload in progress — keep spinner showing
+        }
+        // Already reloaded recently and still failing — surface the error
+        // so ErrorBoundary can show a recovery UI instead of hanging forever
+        throw err ?? new Error('Failed to load page module');
+    }));
 }
 
 // Lazy loaded — only fetched when navigated to
@@ -48,7 +48,7 @@ const Bottles = lazyRetry(() => import("./pages/Bottles"));
 const Orders = lazyRetry(() => import("./pages/Orders"));
 const OrderList = lazyRetry(() => import("./pages/sales/OrderList"));
 const NewOrder = lazyRetry(() => import("./pages/sales/NewOrder"));
-const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetails"));
+const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetailsV2"));
 const Reps = lazyRetry(() => import("./pages/admin/Reps"));
 const Contacts = lazyRetry(() => import("./pages/Contacts"));
 const Protocols = lazyRetry(() => import("./pages/Protocols"));
@@ -162,138 +162,138 @@ function PageLoader() {
 
 const App = () => (
     <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <SubdomainTenantProvider>
-            <HashRouter>
-                <ImpersonationProvider>
-                <AuthProvider>
-                    <BugReportButton />
-                    <Suspense fallback={<PageLoader />}>
-                        <Routes>
-                            <Route path="/crm" element={<CrmLanding />} />
-                            <Route path="/get-started" element={<GetStarted />} />
-                            <Route path="/privacy" element={<PrivacyPolicy />} />
-                            <Route path="/terms" element={<TermsOfService />} />
-                            <Route path="/status" element={<StatusPage />} />
-                            <Route path="/pay/:orderId" element={<PayOrder />} />
-                            <Route path="/pay/:orderId/success" element={<PaySuccess />} />
-                            <Route path="/auth" element={<Auth />} />
-                            <Route path="/join" element={<Join />} />
-                            <Route path="/onboarding" element={<Onboarding />} />
-                            <Route path="/merchant-onboarding" element={<Navigate to="/onboarding" replace />} />
-                            <Route path="/update-password" element={<UpdatePassword />} />
-                            <Route element={
-                                <ProtectedRoute>
-                                    <RoleBasedRedirect allowedRoles={['client', 'customer']}>
-                                        <ErrorBoundary>
-                                            <ClientLayout />
-                                        </ErrorBoundary>
-                                    </RoleBasedRedirect>
-                                </ProtectedRoute>
-                            }>
-                                <Route path="/dashboard" element={<ClientDashboard />} />
-                                <Route path="/my-regimen" element={<ClientRegimen />} />
-                                <Route path="/messages" element={<ClientMessages />} />
-                                <Route path="/notifications" element={<ClientNotifications />} />
-                                <Route path="/resources" element={<ClientResources />} />
-                                <Route path="/account" element={<ClientSettings />} />
-                                <Route path="/macro-tracker" element={<MacroTracker />} />
-                                <Route path="/body-composition" element={<BodyComposition />} />
-                                <Route path="/community" element={<CommunityForum />} />
-                                <Route path="/store" element={<ClientStore />} />
-                                <Route path="/my-orders" element={<ClientOrders />} />
-                                <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                                <Route path="/checkout/cancel" element={<CheckoutCancel />} />
-                                <Route path="/menu" element={<ClientMenu />} />
-                                <Route path="/health" element={<HealthTracking />} />
-                            </Route>
+        <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <SubdomainTenantProvider>
+                    <HashRouter>
+                        <ImpersonationProvider>
+                            <AuthProvider>
+                                <BugReportButton />
+                                <Suspense fallback={<PageLoader />}>
+                                    <Routes>
+                                        <Route path="/crm" element={<CrmLanding />} />
+                                        <Route path="/get-started" element={<GetStarted />} />
+                                        <Route path="/privacy" element={<PrivacyPolicy />} />
+                                        <Route path="/terms" element={<TermsOfService />} />
+                                        <Route path="/status" element={<StatusPage />} />
+                                        <Route path="/pay/:orderId" element={<PayOrder />} />
+                                        <Route path="/pay/:orderId/success" element={<PaySuccess />} />
+                                        <Route path="/auth" element={<Auth />} />
+                                        <Route path="/join" element={<Join />} />
+                                        <Route path="/onboarding" element={<Onboarding />} />
+                                        <Route path="/merchant-onboarding" element={<Navigate to="/onboarding" replace />} />
+                                        <Route path="/update-password" element={<UpdatePassword />} />
+                                        <Route element={
+                                            <ProtectedRoute>
+                                                <RoleBasedRedirect allowedRoles={['client', 'customer']}>
+                                                    <ErrorBoundary>
+                                                        <ClientLayout />
+                                                    </ErrorBoundary>
+                                                </RoleBasedRedirect>
+                                            </ProtectedRoute>
+                                        }>
+                                            <Route path="/dashboard" element={<ClientDashboard />} />
+                                            <Route path="/my-regimen" element={<ClientRegimen />} />
+                                            <Route path="/messages" element={<ClientMessages />} />
+                                            <Route path="/notifications" element={<ClientNotifications />} />
+                                            <Route path="/resources" element={<ClientResources />} />
+                                            <Route path="/account" element={<ClientSettings />} />
+                                            <Route path="/macro-tracker" element={<MacroTracker />} />
+                                            <Route path="/body-composition" element={<BodyComposition />} />
+                                            <Route path="/community" element={<CommunityForum />} />
+                                            <Route path="/store" element={<ClientStore />} />
+                                            <Route path="/my-orders" element={<ClientOrders />} />
+                                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                                            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+                                            <Route path="/menu" element={<ClientMenu />} />
+                                            <Route path="/health" element={<HealthTracking />} />
+                                        </Route>
 
-                            <Route element={
-                                <ProtectedRoute>
-                                    <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin', 'viewer']}>
-                                        <ErrorBoundary>
-                                            <AppLayout />
-                                        </ErrorBoundary>
-                                    </RoleBasedRedirect>
-                                </ProtectedRoute>
-                            }>
-                                <Route path="/" element={<Dashboard />} />
-                                <Route path="/peptides" element={<Peptides />} />
-                                <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
-                                <Route path="/orders" element={<Orders />} />
+                                        <Route element={
+                                            <ProtectedRoute>
+                                                <RoleBasedRedirect allowedRoles={['admin', 'staff', 'sales_rep', 'fulfillment', 'super_admin', 'viewer']}>
+                                                    <ErrorBoundary>
+                                                        <AppLayout />
+                                                    </ErrorBoundary>
+                                                </RoleBasedRedirect>
+                                            </ProtectedRoute>
+                                        }>
+                                            <Route path="/" element={<Dashboard />} />
+                                            <Route path="/peptides" element={<Peptides />} />
+                                            <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
+                                            <Route path="/orders" element={<Orders />} />
 
-                                <Route path="/feedback" element={<RoleBasedRedirect><FeedbackHub /></RoleBasedRedirect>} />
-                                <Route path="/requests" element={<Navigate to="/feedback" replace />} />
-                                <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
+                                            <Route path="/feedback" element={<RoleBasedRedirect><FeedbackHub /></RoleBasedRedirect>} />
+                                            <Route path="/requests" element={<Navigate to="/feedback" replace />} />
+                                            <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
 
-                                <Route path="/sales" element={<OrderList />} />
-                                <Route path="/sales/new" element={<NewOrder />} />
-                                <Route path="/sales/:id" element={<OrderDetails />} />
+                                            <Route path="/sales" element={<OrderList />} />
+                                            <Route path="/sales/new" element={<NewOrder />} />
+                                            <Route path="/sales/:id" element={<OrderDetails />} />
 
-                                <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
-                                <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />
-                                <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
+                                            <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
+                                            <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />
+                                            <Route path="/admin/commissions" element={<RoleBasedRedirect allowedRoles={['admin']}><Commissions /></RoleBasedRedirect>} />
 
-                                <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
-                                <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
-                                <Route path="/admin/supplements" element={<AdminSupplements />} />
-                                <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
-                                <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
+                                            <Route path="/admin/finance" element={<RoleBasedRedirect allowedRoles={['admin']}><Finance /></RoleBasedRedirect>} />
+                                            <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
+                                            <Route path="/admin/supplements" element={<AdminSupplements />} />
+                                            <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
+                                            <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
 
-                                <Route path="/partner" element={<PartnerDashboard />} />
-                                <Route path="/partner/store" element={<PartnerStore />} />
-                                <Route path="/partner/orders" element={<PartnerOrders />} />
+                                            <Route path="/partner" element={<PartnerDashboard />} />
+                                            <Route path="/partner/store" element={<PartnerStore />} />
+                                            <Route path="/partner/orders" element={<PartnerOrders />} />
 
-                                <Route path="/vendor" element={<RoleBasedRedirect allowedRoles={['super_admin']}><VendorLayout /></RoleBasedRedirect>}>
-                                    <Route index element={<VendorDashboard />} />
-                                    <Route path="tenants" element={<VendorTenants />} />
-                                    <Route path="tenant/:orgId" element={<TenantDetail />} />
-                                    <Route path="supply-orders" element={<VendorSupplyOrders />} />
-                                    <Route path="analytics" element={<VendorAnalytics />} />
-                                    <Route path="billing" element={<VendorBilling />} />
-                                    <Route path="health" element={<VendorHealth />} />
-                                    <Route path="system-health" element={<SystemHealth />} />
-                                    <Route path="support" element={<VendorSupport />} />
-                                    <Route path="onboarding" element={<VendorOnboarding />} />
-                                    <Route path="messages" element={<VendorMessages />} />
-                                    <Route path="audit" element={<VendorAudit />} />
-                                    <Route path="settings" element={<VendorSettings />} />
-                                    <Route path="integrations" element={<VendorIntegrations />} />
-                                </Route>
+                                            <Route path="/vendor" element={<RoleBasedRedirect allowedRoles={['super_admin']}><VendorLayout /></RoleBasedRedirect>}>
+                                                <Route index element={<VendorDashboard />} />
+                                                <Route path="tenants" element={<VendorTenants />} />
+                                                <Route path="tenant/:orgId" element={<TenantDetail />} />
+                                                <Route path="supply-orders" element={<VendorSupplyOrders />} />
+                                                <Route path="analytics" element={<VendorAnalytics />} />
+                                                <Route path="billing" element={<VendorBilling />} />
+                                                <Route path="health" element={<VendorHealth />} />
+                                                <Route path="system-health" element={<SystemHealth />} />
+                                                <Route path="support" element={<VendorSupport />} />
+                                                <Route path="onboarding" element={<VendorOnboarding />} />
+                                                <Route path="messages" element={<VendorMessages />} />
+                                                <Route path="audit" element={<VendorAudit />} />
+                                                <Route path="settings" element={<VendorSettings />} />
+                                                <Route path="integrations" element={<VendorIntegrations />} />
+                                            </Route>
 
-                                <Route path="/bottles" element={<Bottles />} />
+                                            <Route path="/bottles" element={<Bottles />} />
 
-                                <Route path="/contacts" element={<Contacts />} />
-                                <Route path="/protocols" element={<Protocols />} />
-                                <Route path="/protocol-builder" element={<ProtocolBuilder />} />
-                                <Route path="/fulfillment" element={<FulfillmentCenter />} />
-                                <Route path="/contacts/:id" element={<ContactDetails />} />
+                                            <Route path="/contacts" element={<Contacts />} />
+                                            <Route path="/protocols" element={<Protocols />} />
+                                            <Route path="/protocol-builder" element={<ProtocolBuilder />} />
+                                            <Route path="/fulfillment" element={<FulfillmentCenter />} />
+                                            <Route path="/contacts/:id" element={<ContactDetails />} />
 
-                                <Route path="/movements" element={<Movements />} />
-                                <Route path="/movements/new" element={<MovementWizard />} />
-                                <Route path="/ai" element={<AIAssistant />} />
-                                <Route path="/setup-assistant" element={<RoleBasedRedirect allowedRoles={['admin']}><SetupAssistant /></RoleBasedRedirect>} />
-                                <Route path="/integrations" element={<Integrations />} />
-                                <Route path="/settings" element={<Settings />} />
-                                <Route path="/customizations" element={<Customizations />} />
-                                <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />
-                                <Route path="/reports/:reportId" element={<CustomReportView />} />
-                                <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                                <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+                                            <Route path="/movements" element={<Movements />} />
+                                            <Route path="/movements/new" element={<MovementWizard />} />
+                                            <Route path="/ai" element={<AIAssistant />} />
+                                            <Route path="/setup-assistant" element={<RoleBasedRedirect allowedRoles={['admin']}><SetupAssistant /></RoleBasedRedirect>} />
+                                            <Route path="/integrations" element={<Integrations />} />
+                                            <Route path="/settings" element={<Settings />} />
+                                            <Route path="/customizations" element={<Customizations />} />
+                                            <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />
+                                            <Route path="/reports/:reportId" element={<CustomReportView />} />
+                                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                                            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 
-                            </Route>
-                            <Route path="*" element={<NotFound />} />
-                        </Routes>
-                    </Suspense>
-                </AuthProvider>
-                </ImpersonationProvider>
-            </HashRouter>
-            </SubdomainTenantProvider>
-        </TooltipProvider>
-    </QueryClientProvider>
+                                        </Route>
+                                        <Route path="*" element={<NotFound />} />
+                                    </Routes>
+                                </Suspense>
+                            </AuthProvider>
+                        </ImpersonationProvider>
+                    </HashRouter>
+                </SubdomainTenantProvider>
+            </TooltipProvider>
+        </QueryClientProvider>
     </ErrorBoundary>
 );
 

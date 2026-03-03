@@ -5,6 +5,7 @@ import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupplierCatalog } from '@/hooks/use-supplier-catalog';
 import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice, getMarkupForQuantity, getTierForQuantity } from '@/hooks/use-wholesale-pricing';
+import { useTenantWholesalePrices, buildPriceMap } from '@/hooks/use-tenant-wholesale-prices';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -60,12 +61,17 @@ export default function SupplierOrderDialog() {
     const [open, setOpen] = useState(false);
     const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
     const { toast } = useToast();
-    const { organization } = useAuth();
+    const { organization, profile } = useAuth();
 
     const { data: supplierPeptides, isLoading: peptidesLoading } = useSupplierCatalog();
     const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
     const { data: allTiers, isLoading: tiersLoading } = useWholesaleTiers();
+    const { data: flatPrices, isLoading: flatPricesLoading } = useTenantWholesalePrices(profile?.org_id);
     const createOrder = useCreateSupplierOrder();
+
+    // Build flat price lookup: peptide_id → wholesale_price
+    const flatPriceMap = buildPriceMap(flatPrices);
+    const hasFlatPricing = tierInfo?.pricing_mode === 'custom' && flatPriceMap.size > 0;
 
     // Fetch supplier org name for display
     const { data: supplierOrg } = useQuery({
@@ -90,6 +96,14 @@ export default function SupplierOrderDialog() {
     // Supplier catalog already returns only active items with base_cost from the RPC
     const catalogPeptides = (supplierPeptides || []).filter(p => (p.base_cost ?? 0) > 0);
 
+    /** Get wholesale price for a peptide — flat price takes priority over tier */
+    const getPrice = (peptideId: string, baseCost: number, qty: number): number => {
+        const flat = flatPriceMap.get(peptideId);
+        if (flat != null) return flat;
+        const markup = getMarkupForQuantity(qty, tiers, defaultMarkup);
+        return calculateWholesalePrice(baseCost, markup);
+    };
+
     const updateQty = (peptide: typeof catalogPeptides[0], delta: number) => {
         const newCart = new Map(cart);
         const existing = newCart.get(peptide.id);
@@ -99,13 +113,12 @@ export default function SupplierOrderDialog() {
         if (newQty === 0) {
             newCart.delete(peptide.id);
         } else {
-            const markup = getMarkupForQuantity(newQty, tiers, defaultMarkup);
             newCart.set(peptide.id, {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: newQty,
                 base_cost: peptide.base_cost!,
-                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markup),
+                wholesale_price: getPrice(peptide.id, peptide.base_cost!, newQty),
             });
         }
         setCart(newCart);
@@ -118,13 +131,12 @@ export default function SupplierOrderDialog() {
         if (safeQty === 0) {
             newCart.delete(peptide.id);
         } else {
-            const markup = getMarkupForQuantity(safeQty, tiers, defaultMarkup);
             newCart.set(peptide.id, {
                 peptide_id: peptide.id,
                 name: peptide.name,
                 quantity: safeQty,
                 base_cost: peptide.base_cost!,
-                wholesale_price: calculateWholesalePrice(peptide.base_cost!, markup),
+                wholesale_price: getPrice(peptide.id, peptide.base_cost!, safeQty),
             });
         }
         setCart(newCart);
@@ -158,7 +170,7 @@ export default function SupplierOrderDialog() {
         }
     };
 
-    const isLoading = peptidesLoading || tierLoading || tiersLoading;
+    const isLoading = peptidesLoading || tierLoading || tiersLoading || flatPricesLoading;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -194,30 +206,35 @@ export default function SupplierOrderDialog() {
                     <>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Volume pricing per item:</span>
+                                <span className="text-muted-foreground">
+                                    {hasFlatPricing ? 'Custom pricing applied' : 'Volume pricing per item:'}
+                                </span>
                                 {totalItems > 0 && (
                                     <Badge>{totalItems} units in cart</Badge>
                                 )}
                             </div>
-                            <div className="flex gap-2 flex-wrap">
-                                {[...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
-                                    <Badge key={t.id} variant="outline" className="text-xs">
-                                        {t.min_monthly_units}+ vials: cost + ${t.markup_amount}
-                                    </Badge>
-                                ))}
-                                {tiers.length === 0 && (
-                                    <Badge variant="outline" className="text-xs">
-                                        Default: cost + $25
-                                    </Badge>
-                                )}
-                            </div>
+                            {/* Only show tier badges when NOT using flat pricing */}
+                            {!hasFlatPricing && (
+                                <div className="flex gap-2 flex-wrap">
+                                    {[...tiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                        <Badge key={t.id} variant="outline" className="text-xs">
+                                            {t.min_monthly_units}+ vials: cost + ${t.markup_amount}
+                                        </Badge>
+                                    ))}
+                                    {tiers.length === 0 && (
+                                        <Badge variant="outline" className="text-xs">
+                                            Default: cost + $25
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Product</TableHead>
-                                    <TableHead className="text-right">Your Cost</TableHead>
+                                    <TableHead className="text-right">Your Price</TableHead>
                                     <TableHead className="text-center">Quantity</TableHead>
                                     <TableHead className="text-right">Subtotal</TableHead>
                                 </TableRow>
@@ -232,14 +249,17 @@ export default function SupplierOrderDialog() {
                                 ) : (
                                     catalogPeptides.map(p => {
                                         const qty = cart.get(p.id)?.quantity || 0;
-                                        const itemMarkup = getMarkupForQuantity(qty || 1, tiers, defaultMarkup);
-                                        const wholesalePrice = calculateWholesalePrice(p.base_cost!, itemMarkup);
-                                        const activeTier = getTierForQuantity(qty || 1, tiers);
+                                        const flatPrice = flatPriceMap.get(p.id);
+                                        const isFlatPriced = flatPrice != null;
+                                        const wholesalePrice = isFlatPriced
+                                            ? flatPrice
+                                            : calculateWholesalePrice(p.base_cost!, getMarkupForQuantity(qty || 1, tiers, defaultMarkup));
+                                        const activeTier = !isFlatPriced ? getTierForQuantity(qty || 1, tiers) : null;
                                         return (
                                             <TableRow key={p.id} className={qty > 0 ? 'bg-primary/5' : ''}>
                                                 <TableCell>
                                                     <div className="font-medium">{p.name}</div>
-                                                    {activeTier && qty >= activeTier.min_monthly_units && (
+                                                    {!isFlatPriced && activeTier && qty >= activeTier.min_monthly_units && (
                                                         <span className="text-xs text-green-600">Volume discount applied</span>
                                                     )}
                                                 </TableCell>

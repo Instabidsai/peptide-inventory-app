@@ -639,8 +639,8 @@ export default function Orders() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'} className={order.payment_status === 'paid' ? 'bg-green-600 hover:bg-green-700' : order.payment_status === 'commission_offset' ? 'text-violet-500 border-violet-500' : ''}>
-                                                    {order.payment_status === 'commission_offset' ? 'PRODUCT OFFSET' : (order.payment_status?.toUpperCase() || 'UNPAID')}
+                                                <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'} className={order.payment_status === 'paid' ? 'bg-green-600 hover:bg-green-700' : order.payment_status === 'commission_offset' ? 'text-violet-500 border-violet-500' : order.payment_status === 'pending_verification' ? 'text-amber-500 border-amber-500' : ''}>
+                                                    {order.payment_status === 'commission_offset' ? 'PRODUCT OFFSET' : order.payment_status === 'pending_verification' ? 'PENDING VERIFICATION' : (order.payment_status?.toUpperCase() || 'UNPAID')}
                                                 </Badge>
                                             </TableCell>
                                             {canEdit && (

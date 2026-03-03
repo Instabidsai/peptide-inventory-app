@@ -24,6 +24,7 @@ import LabelShipTab from '@/components/fulfillment/LabelShipTab';
 import ReadyForPickupTab from '@/components/fulfillment/ReadyForPickupTab';
 import CompletedTab from '@/components/fulfillment/CompletedTab';
 import FulfillConfirmDialog from '@/components/fulfillment/FulfillConfirmDialog';
+import SmsNotificationCard from '@/components/fulfillment/SmsNotificationCard';
 
 export default function FulfillmentCenter() {
     usePageTitle('Fulfillment Center');
@@ -472,6 +473,8 @@ export default function FulfillmentCenter() {
                 </Select>
             </div>
             </motion.div>
+
+            {orgId && <SmsNotificationCard orgId={orgId} />}
 
             <HoursLoggingCard
                 todayHours={todayHours}

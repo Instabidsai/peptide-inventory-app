@@ -52,13 +52,13 @@ function verifyWooSignature(payload: string, signature: string, secret: string):
 function mapWooStatus(wooStatus: string): { status: string; paymentStatus: string } {
     switch (wooStatus) {
         case 'processing': return { status: 'submitted', paymentStatus: 'paid' };
-        case 'completed':  return { status: 'submitted', paymentStatus: 'paid' };
-        case 'on-hold':    return { status: 'submitted', paymentStatus: 'unpaid' };
-        case 'pending':    return { status: 'draft', paymentStatus: 'unpaid' };
-        case 'cancelled':  return { status: 'cancelled', paymentStatus: 'unpaid' };
-        case 'refunded':   return { status: 'cancelled', paymentStatus: 'unpaid' };
-        case 'failed':     return { status: 'cancelled', paymentStatus: 'unpaid' };
-        default:           return { status: 'submitted', paymentStatus: 'unpaid' };
+        case 'completed': return { status: 'submitted', paymentStatus: 'paid' };
+        case 'on-hold': return { status: 'submitted', paymentStatus: 'unpaid' };
+        case 'pending': return { status: 'draft', paymentStatus: 'unpaid' };
+        case 'cancelled': return { status: 'cancelled', paymentStatus: 'unpaid' };
+        case 'refunded': return { status: 'cancelled', paymentStatus: 'unpaid' };
+        case 'failed': return { status: 'cancelled', paymentStatus: 'unpaid' };
+        default: return { status: 'submitted', paymentStatus: 'unpaid' };
     }
 }
 
@@ -420,7 +420,7 @@ async function resolveOrg(
     req: VercelRequest,
     supabase: SupabaseClient
 ): Promise<{ orgId: string; webhookSecret: string | null }> {
-    // Multi-tenant: ?org=ORG_UUID in the webhook URL
+    // 1. Multi-tenant: ?org=ORG_UUID in the webhook URL (highest priority)
     const orgParam = req.query.org as string | undefined;
     if (orgParam && /^[0-9a-f-]{36}$/i.test(orgParam)) {
         // Verify org exists
@@ -442,9 +442,35 @@ async function resolveOrg(
         return { orgId: orgParam, webhookSecret: keyRow?.api_key || null };
     }
 
-    // Legacy single-tenant fallback
+    // 2. Multi-tenant: Look up by x-wc-webhook-source header (e.g., https://shop.example.com/)
+    const wooSourceUrl = req.headers['x-wc-webhook-source'] as string | undefined;
+    if (wooSourceUrl) {
+        // Normalize the URL by stripping trailing slashes and http(s) for robust matching
+        const normalizedSource = wooSourceUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '').toLowerCase();
+
+        // Search tenant_api_keys for woo_url mapping
+        const { data: urlMapping } = await supabase
+            .from('tenant_api_keys')
+            .select('org_id')
+            .eq('service', 'woo_url')
+            .ilike('api_key', `%${normalizedSource}%`)
+            .maybeSingle();
+
+        if (urlMapping?.org_id) {
+            const { data: keyRow } = await supabase
+                .from('tenant_api_keys')
+                .select('api_key')
+                .eq('org_id', urlMapping.org_id)
+                .eq('service', 'woo_webhook_secret')
+                .maybeSingle();
+
+            return { orgId: urlMapping.org_id, webhookSecret: keyRow?.api_key || null };
+        }
+    }
+
+    // 3. Legacy single-tenant fallback (DEFAULT_ORG_ID env var)
     const orgId = process.env.DEFAULT_ORG_ID;
-    if (!orgId) throw new Error('No org specified and DEFAULT_ORG_ID not set');
+    if (!orgId) throw new Error('No org specified, source URL not mapped, and DEFAULT_ORG_ID not set');
     return { orgId, webhookSecret: process.env.WOO_WEBHOOK_SECRET || null };
 }
 

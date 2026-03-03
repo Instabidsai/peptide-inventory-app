@@ -1,5 +1,8 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, useDeleteSalesOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
+import { useBatchUpdateOrderItems, useDeleteOrderItem, useUpdateSingleOrderItem } from '@/hooks/use-order-items';
+import { useOrderCommissions } from '@/hooks/use-commissions';
+import { useActivePeptides } from '@/hooks/use-peptides';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -72,7 +75,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
@@ -114,20 +117,7 @@ export default function OrderDetails() {
     const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
     // Fetch commission records for this order
-    const { data: commissionRecords } = useQuery({
-        queryKey: ['order_commissions', id],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('commissions')
-                .select('id, amount, commission_rate, type, status, partner_id, created_at, profiles:partner_id(full_name)')
-                .eq('sale_id', id!);
-            if (error) throw error;
-            return data as { id: string; amount: number; commission_rate: number; type: string; status: string; partner_id: string; created_at: string; profiles: { full_name: string | null } }[];
-        },
-        enabled: !!id,
-        staleTime: 30_000,
-        retry: 2,
-    });
+    const { data: commissionRecords } = useOrderCommissions(id);
 
     const [showCommissionDetail, setShowCommissionDetail] = useState(false);
     const [editingCommId, setEditingCommId] = useState<string | null>(null);
@@ -136,21 +126,18 @@ export default function OrderDetails() {
     const [editCommStatus, setEditCommStatus] = useState('pending');
     const [savingComm, setSavingComm] = useState(false);
 
+    // Unified busy flag — disables all action buttons to prevent rage clicks
+    const batchUpdateOrderItems = useBatchUpdateOrderItems();
+    const deleteOrderItem = useDeleteOrderItem();
+    const updateSingleOrderItem = useUpdateSingleOrderItem();
+
+    const isBusy = updateOrder.isPending || fulfillOrder.isPending || deleteOrder.isPending ||
+        payWithCredit.isPending || shipLabel.isPending || getRates.isPending ||
+        buyLabel.isPending || saving || savingComm || batchUpdateOrderItems.isPending ||
+        deleteOrderItem.isPending || updateSingleOrderItem.isPending;
+
     // Fetch peptides for the "Add Item" picker
-    const { data: allPeptides } = useQuery({
-        queryKey: ['peptides-for-order-edit', profile?.org_id],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('peptides')
-                .select('id, name, retail_price, avg_cost')
-                .eq('org_id', profile!.org_id!)
-                .eq('active', true)
-                .order('name');
-            if (error) throw error;
-            return data as { id: string; name: string; retail_price: number | null; avg_cost: number | null }[];
-        },
-        enabled: !!profile?.org_id && editing,
-    });
+    const { data: allPeptides } = useActivePeptides(editing);
 
     // Filter out peptides already in the order
     const availablePeptides = useMemo(() => {
@@ -166,7 +153,7 @@ export default function OrderDetails() {
             // Remove the query param so refreshing doesn't re-enter edit mode
             setSearchParams({}, { replace: true });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order, searchParams]);
 
     if (isLoading) return (
@@ -301,50 +288,28 @@ export default function OrderDetails() {
         }
         setSaving(true);
         try {
-            // Batch all item writes in parallel to avoid sequential blocking
-            const updates = editItems.filter(i => !i.isNew).map(item =>
-                supabase
-                    .from('sales_order_items')
-                    .update({ quantity: item.quantity, unit_price: item.unit_price })
-                    .eq('id', item.id)
-            );
-
-            const newItems = editItems.filter(i => i.isNew);
-            const inserts = newItems.length > 0
-                ? [supabase.from('sales_order_items').insert(
-                    newItems.map(item => ({
-                        sales_order_id: order.id,
-                        peptide_id: item.peptide_id!,
-                        quantity: item.quantity,
-                        unit_price: item.unit_price,
-                    }))
-                  )]
-                : [];
+            const updates = editItems.filter(i => !i.isNew).map(i => ({ id: i.id, quantity: i.quantity, unit_price: i.unit_price }));
+            const inserts = editItems.filter(i => i.isNew).map(i => ({ sales_order_id: order.id, peptide_id: i.peptide_id!, quantity: i.quantity, unit_price: i.unit_price }));
 
             const currentIds = editItems.filter(i => !i.isNew).map(i => i.id);
             const originalIds = (order.sales_order_items || []).map(i => i.id);
-            const removedIds = originalIds.filter(itemId => !currentIds.includes(itemId));
-            const deletes = removedIds.length > 0
-                ? [supabase.from('sales_order_items').delete().in('id', removedIds)]
-                : [];
+            const deletes = originalIds.filter(oid => !currentIds.includes(oid));
 
-            const results = await Promise.all([...updates, ...inserts, ...deletes]);
-            const failed = results.find(r => r.error);
-            if (failed?.error) throw failed.error;
-
-            // Recalculate total
             const newTotal = editItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-            await updateOrder.mutateAsync({
-                id: order.id,
-                total_amount: newTotal,
-                notes: editNotes || null,
-                shipping_address: editShippingAddress || null,
-                delivery_method: editDeliveryMethod as 'ship' | 'local_pickup',
-            }).catch(() => {}); // mutation's onError already toasts
 
+            await batchUpdateOrderItems.mutateAsync({
+                orderId: order.id,
+                newTotal,
+                notes: editNotes || null,
+                shippingAddress: editShippingAddress || null,
+                deliveryMethod: editDeliveryMethod as 'ship' | 'local_pickup',
+                updates,
+                inserts,
+                deletes,
+            });
             setEditing(false);
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Failed to save', description: (err as any)?.message || 'Unknown error' });
+            // Handled within hook onError
         } finally {
             setSaving(false);
         }
@@ -358,14 +323,11 @@ export default function OrderDetails() {
         }
         setBusyItemId(itemId);
         try {
-            const { error } = await supabase.from('sales_order_items').delete().eq('id', itemId);
-            if (error) {
-                toast({ variant: 'destructive', title: 'Failed to remove item', description: error.message });
-                return;
-            }
             const remaining = order!.sales_order_items?.filter(i => i.id !== itemId) || [];
             const newTotal = remaining.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-            await updateOrder.mutateAsync({ id: order!.id, total_amount: newTotal }).catch(() => {});
+            await deleteOrderItem.mutateAsync({ itemId, orderId: order!.id, newTotal });
+        } catch (err) {
+            // Handled within hook
         } finally {
             setBusyItemId(null);
         }
@@ -375,19 +337,14 @@ export default function OrderDetails() {
         if (busyItemId) return;
         setBusyItemId(itemId);
         try {
-            const { error } = await supabase.from('sales_order_items')
-                .update({ quantity: editItemQty, unit_price: editItemPrice })
-                .eq('id', itemId);
-            if (error) {
-                toast({ variant: 'destructive', title: 'Failed to update item', description: error.message });
-                return;
-            }
             const updatedItems = (order!.sales_order_items || []).map(i =>
                 i.id === itemId ? { ...i, quantity: editItemQty, unit_price: editItemPrice } : i
             );
             const newTotal = updatedItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-            await updateOrder.mutateAsync({ id: order!.id, total_amount: newTotal }).catch(() => {});
+            await updateSingleOrderItem.mutateAsync({ itemId, orderId: order!.id, quantity: editItemQty, unitPrice: editItemPrice, newTotal });
             setEditingItemId(null);
+        } catch (err) {
+            // Handled within hook
         } finally {
             setBusyItemId(null);
         }
@@ -451,16 +408,15 @@ export default function OrderDetails() {
                                 { label: order.payment_status === 'commission_offset' ? 'Offset' : 'Paid', done: order.payment_status === 'paid' || order.payment_status === 'commission_offset', icon: CreditCard },
                                 { label: 'Fulfilled', done: order.status === 'fulfilled', icon: Package },
                                 { label: 'Label', done: !!order.tracking_number, icon: Truck },
-                                { label: 'Printed', done: ['printed','in_transit','delivered'].includes(order.shipping_status), icon: Printer },
+                                { label: 'Printed', done: ['printed', 'in_transit', 'delivered'].includes(order.shipping_status), icon: Printer },
                                 { label: 'Delivered', done: order.shipping_status === 'delivered', icon: CheckCircle },
                             ]).map((step, i, arr) => (
                                 <div key={step.label} className="flex items-center flex-1 last:flex-none">
                                     <div className="flex flex-col items-center gap-1">
-                                        <div className={`flex items-center justify-center h-8 w-8 rounded-full border-2 transition-colors ${
-                                            step.done
-                                                ? 'bg-green-500 border-green-500 text-white'
-                                                : 'border-muted-foreground/30 text-muted-foreground/50'
-                                        }`}>
+                                        <div className={`flex items-center justify-center h-8 w-8 rounded-full border-2 transition-colors ${step.done
+                                            ? 'bg-green-500 border-green-500 text-white'
+                                            : 'border-muted-foreground/30 text-muted-foreground/50'
+                                            }`}>
                                             <step.icon className="h-4 w-4" />
                                         </div>
                                         <span className={`text-xs font-semibold ${step.done ? 'text-green-600' : 'text-muted-foreground'}`}>
@@ -908,7 +864,7 @@ export default function OrderDetails() {
                             <Button
                                 className="w-full bg-green-600 hover:bg-green-700"
                                 size="lg"
-                                disabled={order.status === 'fulfilled' || fulfillOrder.isPending || updateOrder.isPending}
+                                disabled={order.status === 'fulfilled' || isBusy}
                                 onClick={attemptFulfill}
                             >
                                 {fulfillOrder.isPending ? (
@@ -993,7 +949,7 @@ export default function OrderDetails() {
                                 variant="destructive"
                                 className="w-full"
                                 onClick={() => setShowDeleteConfirm(true)}
-                                disabled={deleteOrder.isPending}
+                                disabled={isBusy}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 {deleteOrder.isPending ? 'Deleting...' : 'Delete Order'}
@@ -1013,11 +969,11 @@ export default function OrderDetails() {
                                 <span className="text-sm">Status</span>
                                 <Badge variant="outline" className={
                                     order.shipping_status === 'label_created' ? 'bg-blue-900/20 text-blue-400 border-blue-500/40' :
-                                    order.shipping_status === 'printed' ? 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40' :
-                                    order.shipping_status === 'in_transit' ? 'bg-amber-900/20 text-amber-400 border-amber-500/40' :
-                                    order.shipping_status === 'delivered' ? 'bg-primary/20 text-primary border-primary/40' :
-                                    order.shipping_status === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/40' :
-                                    ''
+                                        order.shipping_status === 'printed' ? 'bg-indigo-900/20 text-indigo-400 border-indigo-500/40' :
+                                            order.shipping_status === 'in_transit' ? 'bg-amber-900/20 text-amber-400 border-amber-500/40' :
+                                                order.shipping_status === 'delivered' ? 'bg-primary/20 text-primary border-primary/40' :
+                                                    order.shipping_status === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/40' :
+                                                        ''
                                 }>
                                     {(order.shipping_status || 'pending').replace('_', ' ').toUpperCase()}
                                 </Badge>
@@ -1071,19 +1027,20 @@ export default function OrderDetails() {
                                     className="w-full bg-indigo-600 hover:bg-indigo-700"
                                     onClick={async () => {
                                         const labelUrl = order.label_url!;
-                                        // Try local print service (HTTPS then HTTP)
+                                        // Try local print service (HTTPS then HTTP) with 2s timeout
                                         for (const base of ['https://localhost:9111', 'http://localhost:9112']) {
                                             try {
                                                 const r = await fetch(`${base}/print`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ url: labelUrl }),
+                                                    signal: AbortSignal.timeout(2000),
                                                 });
                                                 if (r.ok) {
                                                     toast({ title: 'Sent to label printer' });
                                                     return;
                                                 }
-                                            } catch { /* service not available */ }
+                                            } catch { /* service not available or timed out */ }
                                         }
                                         // Fallback: open in new tab
                                         window.open(labelUrl, '_blank');
@@ -1100,7 +1057,7 @@ export default function OrderDetails() {
                                     variant="outline"
                                     size="sm"
                                     className="w-full border-indigo-500/40 text-indigo-400"
-                                    disabled={updateOrder.isPending}
+                                    disabled={isBusy}
                                     onClick={() => {
                                         updateOrder.mutate(
                                             { id: order.id, shipping_status: 'printed' },
@@ -1118,7 +1075,7 @@ export default function OrderDetails() {
                                     variant="outline"
                                     size="sm"
                                     className="w-full border-amber-500/40 text-amber-400"
-                                    disabled={updateOrder.isPending}
+                                    disabled={isBusy}
                                     onClick={() => {
                                         updateOrder.mutate(
                                             { id: order.id, shipping_status: 'in_transit' },
@@ -1136,7 +1093,7 @@ export default function OrderDetails() {
                                     variant="outline"
                                     size="sm"
                                     className="w-full border-primary/40 text-primary"
-                                    disabled={updateOrder.isPending}
+                                    disabled={isBusy}
                                     onClick={() => {
                                         updateOrder.mutate(
                                             { id: order.id, shipping_status: 'delivered' },
@@ -1166,7 +1123,7 @@ export default function OrderDetails() {
                                         variant="default"
                                         size="sm"
                                         className="w-full"
-                                        disabled={getRates.isPending}
+                                        disabled={isBusy}
                                         onClick={() => {
                                             getRates.mutate(order.id, {
                                                 onSuccess: (data) => {
@@ -1183,7 +1140,7 @@ export default function OrderDetails() {
                                         variant="ghost"
                                         size="sm"
                                         className="w-full text-xs text-muted-foreground"
-                                        disabled={shipLabel.isPending}
+                                        disabled={isBusy}
                                         onClick={() => shipLabel.mutate(order.id)}
                                     >
                                         {shipLabel.isPending ? 'Creating...' : 'Quick Ship (USPS Priority)'}
@@ -1197,7 +1154,7 @@ export default function OrderDetails() {
                                         variant="outline"
                                         size="sm"
                                         className="w-full border-amber-500/40 text-amber-400"
-                                        disabled={getRates.isPending}
+                                        disabled={isBusy}
                                         onClick={() => {
                                             getRates.mutate(order.id, {
                                                 onSuccess: (data) => {
@@ -1264,7 +1221,7 @@ export default function OrderDetails() {
                                                 const typeLabel = rec.type === 'direct' ? 'Direct' : rec.type === 'second_tier_override' ? '2nd Tier' : '3rd Tier';
                                                 const statusColor = rec.status === 'void' ? 'text-red-400' :
                                                     rec.status === 'paid' ? 'text-green-400' :
-                                                    rec.status === 'available' ? 'text-blue-400' : 'text-amber-400';
+                                                        rec.status === 'available' ? 'text-blue-400' : 'text-amber-400';
 
                                                 return (
                                                     <div key={rec.id} className={`rounded-lg border p-3 space-y-2 ${isEditing ? 'bg-primary/5 border-primary/30' : 'bg-muted/20 border-border/40'}`}>
@@ -1503,13 +1460,14 @@ export default function OrderDetails() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="text-xs flex-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                                                disabled={updateOrder.isPending}
+                                                disabled={isBusy}
                                                 onClick={async () => {
                                                     if (commissionRecords) {
-                                                        for (const rec of commissionRecords) {
-                                                            if (rec.status !== 'void' && rec.status !== 'paid') {
-                                                                await supabase.from('commissions').update({ amount: 0 }).eq('id', rec.id);
-                                                            }
+                                                        const idsToZero = commissionRecords
+                                                            .filter(r => r.status !== 'void' && r.status !== 'paid')
+                                                            .map(r => r.id);
+                                                        if (idsToZero.length > 0) {
+                                                            await supabase.from('commissions').update({ amount: 0 }).in('id', idsToZero);
                                                         }
                                                     }
                                                     updateOrder.mutate({ id: order.id, commission_amount: 0 });
@@ -1523,13 +1481,14 @@ export default function OrderDetails() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="text-xs flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10"
-                                                disabled={updateOrder.isPending}
+                                                disabled={isBusy}
                                                 onClick={async () => {
                                                     if (commissionRecords) {
-                                                        for (const rec of commissionRecords) {
-                                                            if (rec.status !== 'paid') {
-                                                                await supabase.from('commissions').update({ status: 'void' }).eq('id', rec.id);
-                                                            }
+                                                        const idsToVoid = commissionRecords
+                                                            .filter(r => r.status !== 'paid')
+                                                            .map(r => r.id);
+                                                        if (idsToVoid.length > 0) {
+                                                            await supabase.from('commissions').update({ status: 'void' }).in('id', idsToVoid);
                                                         }
                                                     }
                                                     updateOrder.mutate({ id: order.id, commission_amount: 0 });

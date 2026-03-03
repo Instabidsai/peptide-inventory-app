@@ -85,12 +85,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const [searchParams] = useSearchParams();
   const isVendorRoute = location.pathname.startsWith('/vendor');
   // Only admins can use preview_role to impersonate other roles
-  const rawPreviewRole = searchParams.get('preview_role');
+  const rawPreviewRole = searchParams.get('preview_role') || sessionStorage.getItem('preview_role');
   const previewRole = ((userRole?.role === 'admin' || userRole?.role === 'super_admin') && rawPreviewRole) ? rawPreviewRole : null;
 
   const effectiveRole = previewRole || (
     (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep'
-    : userRole?.role || authProfile?.role
+      : userRole?.role || authProfile?.role
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -378,16 +378,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             {/* Family Portal Switcher */}
             {effectiveRole !== 'fulfillment' && (
               <div className="mt-2 pt-2 border-t border-sidebar-border px-3">
-                <NavLink
-                  to="/dashboard?preview_role=customer"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('preview_role', 'customer');
+                    navigate('/dashboard');
+                    onClose();
+                  }}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
                 >
                   <div className="p-1 bg-primary/10 rounded-md group-hover:bg-primary/20">
                     <Users className="h-4 w-4 text-primary" />
                   </div>
                   <span>Family Portal</span>
-                </NavLink>
+                </button>
               </div>
             )}
           </>

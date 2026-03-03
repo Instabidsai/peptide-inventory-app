@@ -42,6 +42,7 @@ import React, { useMemo, useState } from 'react';
 import { vialDailyUsage } from '@/lib/supply-calculations';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { SetupChecklist } from '@/components/admin/SetupChecklist';
+import { ReferralLinkCard } from '@/components/partner/ReferralLinkCard';
 
 const staggerContainer = {
     hidden: {},
@@ -342,8 +343,8 @@ export default function AdminDashboard() {
                 </div>
             </motion.div>
 
-            {/* Merchant Onboarding Link — admin only */}
-            {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
+            {/* Merchant Onboarding Link — super_admin only (for onboarding new tenant orgs) */}
+            {profile?.role === 'super_admin' && (
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -385,6 +386,21 @@ export default function AdminDashboard() {
                             </div>
                         </CardContent>
                     </Card>
+                </motion.div>
+            )}
+
+            {/* Customer & Partner Referral Links — all admins */}
+            {(profile?.role === 'admin' || profile?.role === 'super_admin') && profile?.id && (
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.07, ease: [0.23, 1, 0.32, 1] }}
+                >
+                    <ReferralLinkCard
+                        profileId={profile.id}
+                        userRole={profile.role}
+                        orgId={orgId}
+                    />
                 </motion.div>
             )}
 

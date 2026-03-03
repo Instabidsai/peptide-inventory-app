@@ -257,9 +257,9 @@ export default function VendorDashboard() {
                     <CardTitle>Recent Tenants</CardTitle>
                     <CardDescription>Latest 5 organizations. View all in Tenants tab.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="min-h-[280px]">
                     {isLoading ? (
-                        <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+                        <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[52px] w-full rounded-lg" />)}</div>
                     ) : !tenants?.length ? (
                         <div className="text-center py-8 text-muted-foreground">
                             <Building2 className="h-10 w-10 mx-auto mb-2 opacity-40" />

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check, X } from 'lucide-react';
+import { Loader2, CreditCard, CheckCircle2, Package, Copy, Check, X, Clock } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function PayOrder() {
@@ -62,7 +62,11 @@ export default function PayOrder() {
         enabled: !!order?.org_id,
     });
 
+    const [selectedManualMethod, setSelectedManualMethod] = useState<string | null>(null);
+    const [confirmingManual, setConfirmingManual] = useState(false);
+
     const isPaid = order?.payment_status === 'paid';
+    const isPendingVerification = order?.payment_status === 'pending_verification';
     const isCancelled = order?.status === 'cancelled';
     const total = Number(order?.total_amount || 0);
     const CARD_FEE_RATE = 0.03;
@@ -219,6 +223,26 @@ export default function PayOrder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order, processorParam, autoTriggered]);
 
+    const handleManualPaymentSelected = async (method: string) => {
+        if (!orderId) return;
+        setSelectedManualMethod(method);
+        setConfirmingManual(true);
+        try {
+            await supabase
+                .from('sales_orders')
+                .update({
+                    payment_status: 'pending_verification',
+                    payment_method: method,
+                })
+                .eq('id', orderId);
+            queryClient.invalidateQueries({ queryKey: ['public_pay_order', orderId] });
+        } catch {
+            // Non-critical — the status will still show in admin
+        } finally {
+            setConfirmingManual(false);
+        }
+    };
+
     const copyOrderId = () => {
         if (orderId) {
             navigator.clipboard.writeText(orderId);
@@ -267,6 +291,34 @@ export default function PayOrder() {
                         <div className="text-sm text-muted-foreground">
                             Total: <span className="font-semibold text-foreground">${total.toFixed(2)}</span>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (isPendingVerification) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background px-4">
+                <Card className="max-w-md w-full overflow-hidden">
+                    <div className="h-2 bg-amber-500" />
+                    <CardContent className="pt-8 pb-6 text-center space-y-4">
+                        <div className="h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+                            <Clock className="h-10 w-10 text-amber-500" />
+                        </div>
+                        <h1 className="text-2xl font-bold">Payment Pending Verification</h1>
+                        <p className="text-muted-foreground">
+                            {order?.payment_method
+                                ? `Your ${order.payment_method} payment is being verified.`
+                                : 'Your payment is being verified.'}
+                            {' '}Your order will be processed once payment is confirmed.
+                        </p>
+                        <div className="text-sm text-muted-foreground">
+                            Total: <span className="font-semibold text-foreground">${total.toFixed(2)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Reference Order #{order?.id?.slice(0, 8)} in your payment.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -443,34 +495,27 @@ export default function PayOrder() {
 
                             {/* Manual Payment Methods */}
                             <div className="space-y-3 text-sm">
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Zelle</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Zelle, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Cash App</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Cash App, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Venmo</p>
-                                    <p className="text-muted-foreground">
-                                        Send payment via Venmo, then notify your sales rep to confirm.
-                                    </p>
-                                </div>
-                                <div className="p-3 rounded-lg border space-y-1">
-                                    <p className="font-medium">Wire Transfer</p>
-                                    <p className="text-muted-foreground">
-                                        Contact your sales rep for wire transfer details.
-                                    </p>
-                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Select your payment method below, then send payment. Your order will be marked as pending until verified.
+                                </p>
+                                {['Zelle', 'Cash App', 'Venmo', 'Wire Transfer'].map((method) => (
+                                    <button
+                                        key={method}
+                                        onClick={() => handleManualPaymentSelected(method)}
+                                        disabled={confirmingManual}
+                                        className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-1 disabled:opacity-50"
+                                    >
+                                        <p className="font-medium">{method}</p>
+                                        <p className="text-muted-foreground text-xs">
+                                            {method === 'Wire Transfer'
+                                                ? 'Contact your sales rep for wire transfer details.'
+                                                : `I'll pay via ${method} — mark as pending verification.`}
+                                        </p>
+                                    </button>
+                                ))}
                             </div>
 
                             <p className="text-xs text-center text-muted-foreground pt-2">
-                                For manual payments, your rep will confirm receipt and update the order.
                                 Reference Order #{order.id.slice(0, 8)} in your payment.
                             </p>
                         </CardContent>

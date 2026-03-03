@@ -128,6 +128,8 @@ function PaymentBadge({ status }: { status: string }) {
             return <Badge className="bg-red-500/15 text-red-500 border-red-500/30">Unpaid</Badge>;
         case 'partial':
             return <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30">Partial</Badge>;
+        case 'pending_verification':
+            return <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30">Pending Verification</Badge>;
         default:
             return <Badge variant="outline">{status}</Badge>;
     }

@@ -9,8 +9,8 @@ export function StatCard({ label, value, icon: Icon, subtitle }: { label: string
                 <div className="rounded-lg bg-primary/10 p-2.5">
                     <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                    <p className="text-2xl font-bold">{value}</p>
+                <div className="min-w-0">
+                    <p className="text-2xl font-bold leading-8 min-h-[2rem]">{value}</p>
                     <p className="text-sm text-muted-foreground">{label}</p>
                     {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
                 </div>

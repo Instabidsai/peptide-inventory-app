@@ -141,6 +141,25 @@ export function usePeptide(id: string) {
   });
 }
 
+export function useActivePeptides(enabled: boolean = true) {
+  const { user, profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['active-peptides', profile?.org_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('peptides')
+        .select('id, name, retail_price, avg_cost')
+        .eq('org_id', profile!.org_id!)
+        .eq('active', true)
+        .order('name');
+      if (error) throw error;
+      return data as { id: string; name: string; retail_price: number | null; avg_cost: number | null }[];
+    },
+    enabled: !!user && !!profile?.org_id && enabled,
+  });
+}
+
 export function useCreatePeptide() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

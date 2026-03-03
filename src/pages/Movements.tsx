@@ -65,6 +65,7 @@ const paymentStatusColors: Record<string, 'default' | 'secondary' | 'destructive
   paid: 'success',
   unpaid: 'destructive',
   partial: 'secondary',
+  pending_verification: 'secondary',
   refunded: 'outline',
   commission_offset: 'secondary',
 };
@@ -73,6 +74,7 @@ const paymentStatusLabel: Record<string, string> = {
   paid: 'Paid',
   unpaid: 'Unpaid',
   partial: 'Partial',
+  pending_verification: 'Pending Verification',
   refunded: 'Refunded',
   commission_offset: 'Product Offset',
 };

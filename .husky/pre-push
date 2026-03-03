@@ -1,0 +1,4 @@
+# Disabled: preflight runs typecheck+lint+cycles+build which spawns
+# hundreds of black CMD windows on Windows. Vercel handles build
+# validation on deploy. Pre-commit lint-staged handles lint.
+# Re-enable with: npm run preflight
