@@ -915,30 +915,6 @@ export default function OrderDetails() {
                                         <><Link2 className="mr-2 h-4 w-4" /> Copy Link (All Options)</>
                                     )}
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={() => {
-                                        const base = window.location.origin + window.location.pathname;
-                                        const link = `${base}#/pay/${order.id}?processor=psifi`;
-                                        navigator.clipboard.writeText(link);
-                                        toast({ title: 'PsiFi payment link copied' });
-                                    }}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" /> Copy PsiFi Link
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={() => {
-                                        const base = window.location.origin + window.location.pathname;
-                                        const link = `${base}#/pay/${order.id}?processor=paygate365`;
-                                        navigator.clipboard.writeText(link);
-                                        toast({ title: 'PayGate365 payment link copied' });
-                                    }}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" /> Copy PayGate365 Link
-                                </Button>
                             </div>
 
                             <Separator />

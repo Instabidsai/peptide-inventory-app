@@ -32,14 +32,14 @@ interface CartSummaryProps {
     orderPlaced: boolean;
     onOrderPlacedReset: () => void;
     placingOrder: boolean;
-    checkoutPending: boolean;
+    checkoutPending?: boolean;
     zelleEmail: string;
     venmoHandle: string;
     cashappHandle: string;
     copiedZelle: boolean;
     onCopyZelle: () => void;
     onCheckout: () => void;
-    onShowCheckoutConfirm: () => void;
+    onShowCheckoutConfirm?: () => void;
     updateQuantity: (peptideId: string, delta: number) => void;
     cartRef: React.RefObject<HTMLDivElement>;
     highlight?: boolean;
@@ -269,9 +269,9 @@ export function CartSummary({
                                 className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                 size="lg"
                                 onClick={onCheckout}
-                                disabled={checkoutPending || placingOrder || cart.length === 0}
+                                disabled={placingOrder || cart.length === 0}
                             >
-                                {(checkoutPending || placingOrder) ? (
+                                {placingOrder ? (
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 ) : (
                                     <ExternalLink className="h-4 w-4 mr-2" />

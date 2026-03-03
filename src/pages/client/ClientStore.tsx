@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/use-client-profile';
-import { useValidatedCheckout } from '@/hooks/use-checkout';
 import { useCreateValidatedOrder } from '@/hooks/use-sales-orders';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
@@ -22,7 +21,6 @@ import {
     ProductGrid,
     CartSummary,
     FloatingCartPill,
-    CheckoutConfirmDialog,
     ProtocolDetailSheet,
     ProductDetailSheet,
     type CartItem,
@@ -37,7 +35,6 @@ import { trackStorePageView, trackAddToCart, trackCartUpdate, trackRemoveFromCar
 export default function ClientStore() {
     const { user, userRole, profile: authProfile } = useAuth();
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
-    const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
     const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE } = useTenantConfig();
@@ -50,7 +47,6 @@ export default function ClientStore() {
     const [notes, setNotes] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
     const [selectedPeptide, setSelectedPeptide] = useState<any>(null);
     const [selectedProtocol, setSelectedProtocol] = useState<SelectedProtocol | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('zelle');
@@ -311,8 +307,7 @@ export default function ClientStore() {
         setTimeout(() => setCopiedZelle(false), 2000);
     };
 
-    // Card checkout -- validated server-side pricing + PsiFi payment redirect
-    // Checkout — server-validated pricing, creates order as awaiting payment
+    // Checkout — server-validated pricing, creates order as awaiting manual payment
     const handleAlternativeCheckout = async () => {
         if (!user?.id) {
             toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
@@ -480,14 +475,14 @@ export default function ClientStore() {
                     setNotes('');
                 }}
                 placingOrder={placingOrder}
-                checkoutPending={checkout.isPending}
+                checkoutPending={false}
                 zelleEmail={ZELLE_EMAIL}
                 venmoHandle={VENMO_HANDLE}
                 cashappHandle={CASHAPP_HANDLE}
                 copiedZelle={copiedZelle}
                 onCopyZelle={copyZelleEmail}
                 onCheckout={handleCheckout}
-                onShowCheckoutConfirm={() => setShowCheckoutConfirm(true)}
+                onShowCheckoutConfirm={() => {}}
                 updateQuantity={updateQuantity}
                 cartRef={cartRef as React.RefObject<HTMLDivElement>}
                 highlight={cartHighlight}
@@ -499,19 +494,10 @@ export default function ClientStore() {
                     <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
                 </div>
                 <p className="text-xs text-muted-foreground/40 leading-relaxed">
-                    You'll be redirected to our secure payment processor to complete your order.
+                    Place your order and send payment via Zelle, Venmo, or Cash App.
                     Once payment is confirmed, your order will be processed and shipped.
                 </p>
             </div>
-
-            {/* Checkout confirmation dialog */}
-            <CheckoutConfirmDialog
-                open={showCheckoutConfirm}
-                onOpenChange={setShowCheckoutConfirm}
-                itemCount={itemCount}
-                cartTotal={cartTotal}
-                onConfirm={handleCheckout}
-            />
 
             {/* Floating cart pill */}
             <FloatingCartPill

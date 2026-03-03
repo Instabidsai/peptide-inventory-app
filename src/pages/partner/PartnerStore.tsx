@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useValidatedCheckout } from '@/hooks/use-checkout';
 import { useCreateValidatedOrder } from '@/hooks/use-sales-orders';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +53,6 @@ type PaymentMethod = 'zelle' | 'cashapp' | 'venmo';
 
 export default function PartnerStore() {
     const { user, profile } = useAuth();
-    const checkout = useValidatedCheckout();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
     const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
@@ -613,9 +611,9 @@ export default function PartnerStore() {
                                                 className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                                 size="lg"
                                                 onClick={handleCheckout}
-                                                disabled={checkout.isPending || placingOrder || cart.length === 0}
+                                                disabled={placingOrder || cart.length === 0}
                                             >
-                                                {(checkout.isPending || placingOrder) ? (
+                                                {placingOrder ? (
                                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                 ) : (
                                                     <ExternalLink className="h-4 w-4 mr-2" />
