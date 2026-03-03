@@ -73,16 +73,6 @@ export default function SupplierOrderDialog() {
     const flatPriceMap = buildPriceMap(flatPrices);
     const hasFlatPricing = tierInfo?.pricing_mode === 'custom' && flatPriceMap.size > 0;
 
-    // DEBUG: remove after confirming custom pricing works
-    console.log('[WholesaleDebug]', {
-        orgId: profile?.org_id,
-        tierInfo,
-        pricingMode: tierInfo?.pricing_mode,
-        flatPricesCount: flatPrices?.length,
-        flatPriceMapSize: flatPriceMap.size,
-        hasFlatPricing,
-    });
-
     // Fetch supplier org name for display
     const { data: supplierOrg } = useQuery({
         queryKey: ['supplier_org_name', tierInfo?.supplier_org_id],

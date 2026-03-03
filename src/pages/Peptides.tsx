@@ -45,6 +45,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { useOrgWholesaleTier, useWholesaleTiers, calculateWholesalePrice } from '@/hooks/use-wholesale-pricing';
+import { useTenantWholesalePrices, buildPriceMap } from '@/hooks/use-tenant-wholesale-prices';
 import { useSupplierCatalog, type SupplierPeptide } from '@/hooks/use-supplier-catalog';
 import {
   Select,
@@ -79,6 +80,9 @@ export default function Peptides() {
   const { data: allTiers } = useWholesaleTiers();
   const showWholesaleTab = isEnabled('wholesale_catalog') && !!tenantConfig?.supplier_org_id;
   const { data: supplierCatalog, isLoading: supplierLoading } = useSupplierCatalog(showWholesaleTab);
+  const { data: flatPrices } = useTenantWholesalePrices(profile?.org_id);
+  const flatPriceMap = buildPriceMap(flatPrices);
+  const isCustomPricing = orgTier?.pricing_mode === 'custom' && flatPriceMap.size > 0;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -140,9 +144,11 @@ export default function Peptides() {
   const myCatalogPeptides = peptides?.filter(p => p.catalog_source !== 'supplier') || [];
 
   // Wholesale view: filter supplier catalog; My Catalog view: filter own peptides
+  // In custom pricing mode, only show peptides that have flat prices assigned
   const filteredSupplierCatalog = (supplierCatalog || []).filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    if (isCustomPricing && !flatPriceMap.has(p.id)) return false;
     return matchesSearch;
   });
 
@@ -435,8 +441,12 @@ export default function Peptides() {
               />
             ) : (
               <>
-                {/* Volume pricing legend */}
-                {allTiers && allTiers.length > 0 && (
+                {/* Pricing mode legend */}
+                {isCustomPricing ? (
+                  <div className="mb-4 flex flex-wrap gap-2 items-center">
+                    <Badge variant="default" className="text-xs">Custom pricing applied</Badge>
+                  </div>
+                ) : allTiers && allTiers.length > 0 ? (
                   <div className="mb-4 flex flex-wrap gap-2 items-center">
                     <span className="text-xs text-muted-foreground font-medium">Volume pricing:</span>
                     {[...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
@@ -445,11 +455,17 @@ export default function Peptides() {
                       </Badge>
                     ))}
                   </div>
-                )}
+                ) : null}
 
                 {isMobile ? (
                   <div className="space-y-3">
-                    {filteredSupplierCatalog.map((peptide, index) => (
+                    {filteredSupplierCatalog.map((peptide, index) => {
+                      const flatPrice = flatPriceMap.get(peptide.id);
+                      const yourCost = isCustomPricing && flatPrice != null
+                        ? flatPrice
+                        : calculateWholesalePrice(peptide.base_cost, orgTier?.markup_amount || allTiers?.[0]?.markup_amount || 25);
+                      const margin = (peptide.retail_price || 0) - yourCost;
+                      return (
                       <motion.div key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.04 }}>
                         <Card>
                           <CardContent className="p-4">
@@ -461,11 +477,17 @@ export default function Peptides() {
                               <Badge variant="outline" className="text-xs">MSRP ${(peptide.retail_price || 0).toFixed(2)}</Badge>
                             </div>
                             <div className="flex flex-wrap gap-1.5 text-xs mb-2">
-                              {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
-                                <Badge key={t.id} variant={orgTier?.id === t.id ? 'default' : 'secondary'} className="text-[10px]">
-                                  {t.min_monthly_units}+: ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                              {isCustomPricing ? (
+                                <Badge variant="default" className="text-[10px]">
+                                  Your Price: ${yourCost.toFixed(2)}
                                 </Badge>
-                              ))}
+                              ) : (
+                                allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                  <Badge key={t.id} variant={orgTier?.id === t.id ? 'default' : 'secondary'} className="text-[10px]">
+                                    {t.min_monthly_units}+: ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                                  </Badge>
+                                ))
+                              )}
                             </div>
                             {canEdit && (
                               <div className="mt-2">
@@ -484,7 +506,8 @@ export default function Peptides() {
                           </CardContent>
                         </Card>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="overflow-x-auto" role="region" aria-label="Wholesale catalog table" tabIndex={0}>
@@ -493,11 +516,15 @@ export default function Peptides() {
                         <TableRow>
                           <TableHead>Product</TableHead>
                           <TableHead>SKU</TableHead>
-                          {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
-                            <TableHead key={t.id} className="text-right">
-                              {t.min_monthly_units}+ units
-                            </TableHead>
-                          ))}
+                          {isCustomPricing ? (
+                            <TableHead className="text-right">Your Price</TableHead>
+                          ) : (
+                            allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                              <TableHead key={t.id} className="text-right">
+                                {t.min_monthly_units}+ units
+                              </TableHead>
+                            ))
+                          )}
                           <TableHead className="text-right">MSRP</TableHead>
                           <TableHead className="text-right">Your Margin</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -505,18 +532,27 @@ export default function Peptides() {
                       </TableHeader>
                       <TableBody>
                         {filteredSupplierCatalog.map((peptide, index) => {
-                          const yourCost = calculateWholesalePrice(peptide.base_cost, orgTier?.markup_amount || allTiers?.[0]?.markup_amount || 25);
+                          const flatPrice = flatPriceMap.get(peptide.id);
+                          const yourCost = isCustomPricing && flatPrice != null
+                            ? flatPrice
+                            : calculateWholesalePrice(peptide.base_cost, orgTier?.markup_amount || allTiers?.[0]?.markup_amount || 25);
                           const margin = (peptide.retail_price || 0) - yourCost;
                           const pct = peptide.retail_price ? (margin / peptide.retail_price * 100) : 0;
                           return (
                             <motion.tr key={peptide.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50">
                               <TableCell className="font-medium">{peptide.name}</TableCell>
                               <TableCell className="text-muted-foreground">{peptide.sku || '-'}</TableCell>
-                              {allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
-                                <TableCell key={t.id} className={`text-right tabular-nums ${orgTier?.id === t.id ? 'font-semibold text-primary' : ''}`}>
-                                  ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                              {isCustomPricing ? (
+                                <TableCell className="text-right tabular-nums font-semibold text-green-600">
+                                  ${yourCost.toFixed(2)}
                                 </TableCell>
-                              ))}
+                              ) : (
+                                allTiers && [...allTiers].sort((a, b) => a.min_monthly_units - b.min_monthly_units).map(t => (
+                                  <TableCell key={t.id} className={`text-right tabular-nums ${orgTier?.id === t.id ? 'font-semibold text-primary' : ''}`}>
+                                    ${calculateWholesalePrice(peptide.base_cost, t.markup_amount).toFixed(2)}
+                                  </TableCell>
+                                ))
+                              )}
                               <TableCell className="text-right tabular-nums">${(peptide.retail_price || 0).toFixed(2)}</TableCell>
                               <TableCell className="text-right tabular-nums">
                                 <span className={margin > 0 ? 'text-green-600' : 'text-red-500'}>
