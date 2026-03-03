@@ -16,6 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/store/AddressAutocomplete';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -411,7 +412,10 @@ export default function Contacts() {
                       <FormItem>
                         <FormLabel>Shipping Address (optional)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="123 Main St, City, State ZIP" rows={2} {...field} />
+                          <AddressAutocomplete
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -806,7 +810,10 @@ export default function Contacts() {
                   <FormItem>
                     <FormLabel>Shipping Address</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="123 Main St, City, State ZIP" rows={2} {...field} />
+                      <AddressAutocomplete
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

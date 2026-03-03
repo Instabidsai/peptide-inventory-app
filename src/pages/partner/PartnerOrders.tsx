@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/store/AddressAutocomplete';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -466,12 +467,9 @@ function OrderDetailSheet({ order, onClose, onUpdated }: { order: SalesOrder; on
                             <label htmlFor="partner-order-shipping-address" className="text-sm font-semibold flex items-center gap-1.5">
                                 <MapPin className="h-3.5 w-3.5" /> Shipping Address
                             </label>
-                            <Textarea
-                                id="partner-order-shipping-address"
+                            <AddressAutocomplete
                                 value={editShipping}
-                                onChange={e => setEditShipping(e.target.value)}
-                                rows={2}
-                                placeholder="Enter shipping address..."
+                                onChange={setEditShipping}
                             />
                         </div>
                     ) : order.shipping_address ? (

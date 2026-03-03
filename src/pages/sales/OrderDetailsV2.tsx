@@ -3,6 +3,11 @@ import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, useDeleteSalesOrde
 import { useBatchUpdateOrderItems, useDeleteOrderItem, useUpdateSingleOrderItem } from '@/hooks/use-order-items';
 import { useOrderCommissions } from '@/hooks/use-commissions';
 import { useActivePeptides } from '@/hooks/use-peptides';
+import { PaymentDialog } from './components/PaymentDialog';
+import { ProfitBreakdownCard } from './components/ProfitBreakdownCard';
+import { CommissionCard } from './components/CommissionCard';
+import { CustomerInfoCard } from './components/CustomerInfoCard';
+import { OrderProgressTimeline } from './components/OrderProgressTimeline';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -76,7 +81,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export default function OrderDetails() {
     const { id } = useParams<{ id: string }>();
@@ -116,16 +121,10 @@ export default function OrderDetails() {
     const [editItemPrice, setEditItemPrice] = useState(0);
     const [linkCopied, setLinkCopied] = useState(false);
     const [busyItemId, setBusyItemId] = useState<string | null>(null);
-
-    // Fetch commission records for this order
-    const { data: commissionRecords } = useOrderCommissions(id);
-
     const [showCommissionDetail, setShowCommissionDetail] = useState(false);
     const [editingCommId, setEditingCommId] = useState<string | null>(null);
-    const [editCommAmount, setEditCommAmount] = useState(0);
-    const [editCommRate, setEditCommRate] = useState(0);
-    const [editCommStatus, setEditCommStatus] = useState('pending');
-    const [savingComm, setSavingComm] = useState(false);
+
+    // Commission logic fully extracted to CommissionCard
 
     // Unified busy flag — disables all action buttons to prevent rage clicks
     const batchUpdateOrderItems = useBatchUpdateOrderItems();
@@ -134,7 +133,7 @@ export default function OrderDetails() {
 
     const isBusy = updateOrder.isPending || fulfillOrder.isPending || deleteOrder.isPending ||
         payWithCredit.isPending || shipLabel.isPending || getRates.isPending ||
-        buyLabel.isPending || saving || savingComm || batchUpdateOrderItems.isPending ||
+        buyLabel.isPending || saving || batchUpdateOrderItems.isPending ||
         deleteOrderItem.isPending || updateSingleOrderItem.isPending;
 
     // Fetch peptides for the "Add Item" picker
@@ -1598,49 +1597,14 @@ export default function OrderDetails() {
             </AlertDialog>
 
             {/* Payment Method Dialog */}
-            <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Mark as Paid</DialogTitle>
-                        <DialogDescription>
-                            Select how this ${order.total_amount.toFixed(2)} payment was received.
-                            A 5% merchant fee applies for processor payments.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        {/* Payment methods:
-                            'card'/'processor' -> 5% merchant fee
-                            'zelle', 'cashapp', 'venmo', 'wire', 'cash' -> NO merchant fee
-                            'credit' -> store credit, no fee */}
-                        <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Payment method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="processor">Payment Processor (5% fee)</SelectItem>
-                                <SelectItem value="zelle">Zelle (no fee)</SelectItem>
-                                <SelectItem value="cashapp">Cash App (no fee)</SelectItem>
-                                <SelectItem value="venmo">Venmo (no fee)</SelectItem>
-                                <SelectItem value="cash">Cash (no fee)</SelectItem>
-                                <SelectItem value="wire">Wire Transfer (no fee)</SelectItem>
-                                <SelectItem value="credit">Store Credit (no fee)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {selectedPaymentMethod === 'processor' && (
-                            <p className="text-xs text-amber-500 flex items-center gap-1">
-                                <Banknote className="h-3 w-3" />
-                                Merchant fee: ${(order.total_amount * 0.05).toFixed(2)}
-                            </p>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
-                        <Button onClick={handleMarkAsPaid} className="bg-green-600 hover:bg-green-700">
-                            Confirm Payment
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PaymentDialog
+                open={showPaymentDialog}
+                onOpenChange={setShowPaymentDialog}
+                totalAmount={order.total_amount}
+                selectedPaymentMethod={selectedPaymentMethod}
+                setSelectedPaymentMethod={setSelectedPaymentMethod}
+                onConfirm={handleMarkAsPaid}
+            />
         </div>
     );
 }

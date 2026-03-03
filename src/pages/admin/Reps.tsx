@@ -1056,6 +1056,7 @@ function AddRepDialog({ open, onOpenChange, allReps }: { open: boolean, onOpenCh
                 p_contact_id: contact.id,
                 p_parent_rep_id: parentRepId || null,
                 p_redirect_origin: window.location.origin,
+                p_target_org_id: profile?.org_id || null,
             });
 
             if (error) {
