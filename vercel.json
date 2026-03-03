@@ -43,7 +43,7 @@
         },
         {
             "source": "/r/:slug",
-            "destination": "/api/r/:slug"
+            "destination": "/api/ref?s=:slug"
         },
         {
             "source": "/(.*)",

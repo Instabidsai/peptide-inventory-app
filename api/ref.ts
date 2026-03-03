@@ -3,17 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * Short Referral URL Resolver
- * GET /r/:slug  →  302 redirect to /join?ref=ID&org=ORG
- * GET /r/:slug?p  →  302 redirect to /join?ref=ID&role=partner&tier=standard&org=ORG
+ * Vercel rewrite: /r/:slug → /api/ref?s=:slug
  *
- * Resolves a human-readable slug (e.g. "diego-feroni") to the full referral URL.
+ * GET /r/diego-feroni   → 302 redirect to /join?ref=ID&org=ORG
+ * GET /r/diego-feroni?p → 302 redirect to /join?ref=ID&role=partner&tier=standard&org=ORG
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const slug = req.query.slug;
+    const slug = req.query.s;
     if (!slug || typeof slug !== 'string') {
         return res.status(400).send(notFoundPage());
     }
