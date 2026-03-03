@@ -1,6 +1,7 @@
 -- Server-side tenant deletion that bypasses RLS.
--- The client-side cascade was failing because RLS policies use get_user_org_id(auth.uid())
--- which returns the CALLER's org, not the TARGET org. So all deletes matched 0 rows.
+-- Built from actual FK constraints queried from information_schema (2026-03-03).
+-- 16 tables have NO ACTION FK to organizations — these BLOCK org deletion if not pre-deleted.
+-- 2 tables have RESTRICT FKs to org-scoped tables (movement_items→bottles, lots→peptides).
 
 CREATE OR REPLACE FUNCTION public.delete_tenant_cascade(target_org_id uuid)
 RETURNS jsonb
@@ -22,16 +23,19 @@ BEGIN
     RAISE EXCEPTION 'Organization not found';
   END IF;
 
-  -- ── Deep children first (tables that reference org-scoped tables) ──
+  -- ═══════════════════════════════════════════════════════════════════
+  -- PHASE 1: Deep children — tables that reference org-scoped tables
+  --          via RESTRICT or NO ACTION FKs (would block parent deletion)
+  -- ═══════════════════════════════════════════════════════════════════
 
-  -- protocol_logs → protocol_items → protocols
+  -- protocol_logs → protocol_items (SET NULL) → protocols (org_id)
   DELETE FROM protocol_logs WHERE protocol_item_id IN (
     SELECT pi.id FROM protocol_items pi
     JOIN protocols p ON pi.protocol_id = p.id
     WHERE p.org_id = target_org_id
   );
 
-  -- client_inventory → peptides / movements / protocol_items (no CASCADE)
+  -- client_inventory → peptides (NO ACTION), movements (NO ACTION)
   DELETE FROM client_inventory WHERE peptide_id IN (
     SELECT id FROM peptides WHERE org_id = target_org_id
   );
@@ -41,28 +45,16 @@ BEGIN
     SELECT id FROM protocols WHERE org_id = target_org_id
   );
 
-  -- movement_items → bottles (ON DELETE RESTRICT!) / movements
+  -- movement_items → bottles (RESTRICT!) — has org_id column but NO FK to organizations
   DELETE FROM movement_items WHERE bottle_id IN (
     SELECT id FROM bottles WHERE org_id = target_org_id
   );
 
-  -- order_items → orders
-  DELETE FROM order_items WHERE order_id IN (
-    SELECT id FROM orders WHERE org_id = target_org_id
-  );
+  -- lots → peptides (RESTRICT!) — must delete before peptides can be cascade-deleted
+  DELETE FROM lots WHERE org_id = target_org_id;
 
-  -- sales_order_items → sales_orders
+  -- sales_order_items → sales_orders (assumed CASCADE), peptides (NO ACTION)
   DELETE FROM sales_order_items WHERE sales_order_id IN (
-    SELECT id FROM sales_orders WHERE org_id = target_org_id
-  );
-
-  -- commissions → sales_orders / profiles
-  DELETE FROM commissions WHERE sale_id IN (
-    SELECT id FROM sales_orders WHERE org_id = target_org_id
-  );
-
-  -- expenses → sales_orders (no CASCADE)
-  DELETE FROM expenses WHERE related_sales_order_id IN (
     SELECT id FROM sales_orders WHERE org_id = target_org_id
   );
 
@@ -71,19 +63,64 @@ BEGIN
     SELECT id FROM client_requests WHERE org_id = target_org_id
   );
 
-  -- ── Tables with org_id FK but NO ON DELETE CASCADE ──
+  -- discussion_messages → discussion_topics (org_id NO ACTION)
+  DELETE FROM discussion_messages WHERE topic_id IN (
+    SELECT id FROM discussion_topics WHERE org_id = target_org_id
+  );
 
+  -- resource_comments / resource_metrics / resource_views → resources (org_id NO ACTION)
+  DELETE FROM resource_comments WHERE resource_id IN (
+    SELECT id FROM resources WHERE org_id = target_org_id
+  );
+  DELETE FROM resource_metrics WHERE resource_id IN (
+    SELECT id FROM resources WHERE org_id = target_org_id
+  );
+  DELETE FROM resource_views WHERE resource_id IN (
+    SELECT id FROM resources WHERE org_id = target_org_id
+  );
+
+  -- scraped_peptides.imported_peptide_id → peptides (NO ACTION)
+  -- scraped_peptides is CASCADE from org, but imported_peptide_id is NO ACTION
+  -- NULL it out so the peptide CASCADE doesn't trip over it
+  UPDATE scraped_peptides SET imported_peptide_id = NULL WHERE org_id = target_org_id;
+
+  -- ═══════════════════════════════════════════════════════════════════
+  -- PHASE 2: All 16 tables with NO ACTION FK on org_id
+  --          (these block DELETE FROM organizations if rows exist)
+  -- ═══════════════════════════════════════════════════════════════════
+
+  DELETE FROM admin_chat_messages WHERE org_id = target_org_id;
+  DELETE FROM agent_audit_log WHERE org_id = target_org_id;
+  DELETE FROM billing_events WHERE org_id = target_org_id;
+  DELETE FROM commissions WHERE org_id = target_org_id;
   DELETE FROM contact_notes WHERE org_id = target_org_id;
-  DELETE FROM protocols WHERE org_id = target_org_id;
   DELETE FROM daily_hours WHERE org_id = target_org_id;
+  DELETE FROM discussion_topics WHERE org_id = target_org_id;
+  DELETE FROM expenses WHERE org_id = target_org_id;
+  DELETE FROM partner_discount_codes WHERE org_id = target_org_id;
+  DELETE FROM protocols WHERE org_id = target_org_id;
+  DELETE FROM resource_themes WHERE org_id = target_org_id;
+  DELETE FROM resources WHERE org_id = target_org_id;
+  DELETE FROM sent_emails WHERE org_id = target_org_id;
 
-  -- ── Delete the organization — ON DELETE CASCADE handles all remaining tables ──
-  -- (profiles, user_roles, tenant_config, audit_log, automation_modules,
-  --  peptides, contacts, lots, bottles, movements, sales_orders, orders,
-  --  client_requests, partner_chat_messages, partner_suggestions,
-  --  payment_email_queue, sender_aliases, org_features, notifications,
-  --  pricing_tiers, partner_tier_config, partner_discount_codes,
-  --  tenant_connections, subscription_plans)
+  -- Cross-org FK columns (not org_id but still reference organizations)
+  UPDATE sales_orders SET source_org_id = NULL WHERE source_org_id = target_org_id;
+  UPDATE tenant_config SET supplier_org_id = NULL WHERE supplier_org_id = target_org_id;
+  DELETE FROM vendor_messages WHERE to_org_id = target_org_id;
+
+  -- ═══════════════════════════════════════════════════════════════════
+  -- PHASE 3: Tables with org_id column but NO FK constraint (orphan cleanup)
+  -- ═══════════════════════════════════════════════════════════════════
+
+  DELETE FROM bug_reports WHERE org_id = target_org_id;
+  DELETE FROM circuit_breaker_events WHERE org_id = target_org_id;
+  DELETE FROM edge_function_logs WHERE org_id = target_org_id;
+  DELETE FROM notifications WHERE org_id = target_org_id;
+
+  -- ═══════════════════════════════════════════════════════════════════
+  -- PHASE 4: Delete the organization
+  --          ON DELETE CASCADE handles remaining 34 tables automatically
+  -- ═══════════════════════════════════════════════════════════════════
 
   DELETE FROM organizations WHERE id = target_org_id;
 

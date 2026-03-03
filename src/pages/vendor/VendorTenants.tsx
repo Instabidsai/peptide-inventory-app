@@ -95,7 +95,7 @@ function TenantRow({ tenant, onDelete }: { tenant: TenantSummary; onDelete: (t: 
                     {tenant.order_count > 0 ? 'Active' : 'New'}
                 </Badge>
             </TableCell>
-            <TableCell>
+            <TableCell className="sticky right-0 bg-background z-10">
                 <div className="flex items-center gap-1">
                     <Button size="sm" variant="outline" onClick={enterTenant} className="h-7 px-2 text-xs gap-1 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-600">
                         <Eye className="h-3 w-3" /> Enter
@@ -181,7 +181,7 @@ export default function VendorTenants() {
                                         <TableHead>Support</TableHead>
                                         <TableHead>Created</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead className="w-[100px]"></TableHead>
+                                        <TableHead className="w-[100px] sticky right-0 bg-background z-10"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
