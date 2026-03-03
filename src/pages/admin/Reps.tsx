@@ -858,6 +858,7 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
     // Admin's own invite links
     const adminProfileId = authProfile?.id;
     const adminOrgId = authProfile?.org_id;
+    const adminSlug = authProfile?.referral_slug;
 
     return (
         <div className="space-y-4">
@@ -877,10 +878,10 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <CardContent>
                             <div className="flex items-center gap-3">
                                 <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-emerald-300 truncate">
-                                    {`${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    {adminSlug ? `${window.location.origin}/r/${adminSlug}` : `${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                 </code>
                                 <CopyBtn
-                                    url={`${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    url={adminSlug ? `${window.location.origin}/r/${adminSlug}` : `${window.location.origin}/join?ref=${adminProfileId}${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                     copyKey="admin-customer"
                                     label="Copy Link"
                                 />
@@ -900,10 +901,10 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                         <CardContent>
                             <div className="flex items-center gap-3">
                                 <code className="flex-1 text-xs bg-black/20 rounded-lg px-3 py-2.5 text-violet-300 truncate">
-                                    {`${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    {adminSlug ? `${window.location.origin}/r/${adminSlug}?p` : `${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                 </code>
                                 <CopyBtn
-                                    url={`${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
+                                    url={adminSlug ? `${window.location.origin}/r/${adminSlug}?p` : `${window.location.origin}/join?ref=${adminProfileId}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`}
                                     copyKey="admin-partner"
                                     label="Copy Link"
                                 />
@@ -929,8 +930,12 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                     ) : (
                         <div className="space-y-3">
                             {reps.map(rep => {
-                                const customerUrl = `${window.location.origin}/join?ref=${rep.id}${adminOrgId ? `&org=${adminOrgId}` : ''}`;
-                                const partnerUrl = `${window.location.origin}/join?ref=${rep.id}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`;
+                                const customerUrl = rep.referral_slug
+                                    ? `${window.location.origin}/r/${rep.referral_slug}`
+                                    : `${window.location.origin}/join?ref=${rep.id}${adminOrgId ? `&org=${adminOrgId}` : ''}`;
+                                const partnerUrl = rep.referral_slug
+                                    ? `${window.location.origin}/r/${rep.referral_slug}?p`
+                                    : `${window.location.origin}/join?ref=${rep.id}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`;
                                 // Per-person override → tier default fallback
                                 const canRecruit = rep.can_recruit ?? tierRecruitMap.get(rep.partner_tier || 'standard') ?? false;
                                 return (

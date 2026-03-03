@@ -41,7 +41,9 @@ export function TeamReferralLinks({ downline, orgId }: TeamReferralLinksProps) {
                     Team Referral Links
                 </p>
                 {partners.map(p => {
-                    const custUrl = `${window.location.origin}/join?ref=${p.id}${orgSuffix}`;
+                    const custUrl = p.referral_slug
+                        ? `${window.location.origin}/r/${p.referral_slug}`
+                        : `${window.location.origin}/join?ref=${p.id}${orgSuffix}`;
                     return (
                         <div key={p.id} className="pl-4 space-y-1.5 border-l-2 border-violet-500/20">
                             <p className="text-sm font-medium">{p.full_name}</p>

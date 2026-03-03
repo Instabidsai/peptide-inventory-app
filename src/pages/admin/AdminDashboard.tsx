@@ -400,6 +400,7 @@ export default function AdminDashboard() {
                         profileId={profile.id}
                         userRole={profile.role}
                         orgId={orgId}
+                        referralSlug={profile.referral_slug}
                     />
                 </motion.div>
             )}
@@ -697,6 +698,11 @@ export default function AdminDashboard() {
                                                 ${(financials?.commissionsApplied ?? 0).toFixed(2)} applied
                                             </span>
                                         )}
+                                        {(financials?.commissionsInProduct ?? 0) > 0 && (
+                                            <span className="text-xs text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">
+                                                ${(financials?.commissionsInProduct ?? 0).toFixed(2)} in product
+                                            </span>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -778,6 +784,49 @@ export default function AdminDashboard() {
             </Link>
             </motion.div>
             </SectionErrorBoundary>
+
+            {/* Partner Product Orders — commission_offset orders (2x cost) */}
+            {(financials?.commissionsInProduct ?? 0) > 0 && (
+            <SectionErrorBoundary section="Partner Product Orders">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18, ease: [0.23, 1, 0.32, 1] }}>
+            <Link to="/admin/finance">
+                <Card className="bg-card/80 border-l-4 border-l-violet-500 border-border/50 hover:border-violet-500/40 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Users className="h-4 w-4 text-violet-500" />
+                            Partner Product Orders
+                        </CardTitle>
+                        <CardDescription>Partners buying at 2x cost — offset against commissions, not real sales revenue</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {financialsLoading ? <Skeleton className="h-8 w-full" /> : (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <p className="text-muted-foreground">Billed to Partners</p>
+                                    <p className="text-lg font-semibold text-violet-500">
+                                        ${(financials?.commissionsInProduct ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Actual Product Cost</p>
+                                    <p className="text-lg font-semibold text-red-500">
+                                        ${(financials?.commissionProductCost ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground">Markup Savings</p>
+                                    <p className={`text-lg font-semibold ${(financials?.commissionProductMarkup ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        ${(financials?.commissionProductMarkup ?? 0).toFixed(2)}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </Link>
+            </motion.div>
+            </SectionErrorBoundary>
+            )}
 
             {/* Inventory Overview */}
             <SectionErrorBoundary section="Inventory & Activity">

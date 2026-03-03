@@ -18,6 +18,7 @@ export interface PartnerNode {
     parent_rep_id: string | null;
     isClient?: boolean;
     contactType?: string;
+    referral_slug?: string | null;
 }
 
 export interface Commission {
@@ -171,7 +172,7 @@ export function useFullNetwork() {
             // 1. Fetch all partner profiles scoped to org
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
+                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id, referral_slug')
                 .eq('role', 'sales_rep')
                 .eq('org_id', profile!.org_id!)
                 .order('full_name');
@@ -219,6 +220,7 @@ export function useFullNetwork() {
                 depth: getDepth(p.id),
                 path: getPath(p.id),
                 parent_rep_id: p.parent_rep_id,
+                referral_slug: p.referral_slug,
             })) as PartnerNode[];
 
             // Build client nodes as children of their assigned rep
@@ -262,13 +264,13 @@ export function useAllOrgReps() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id')
+                .select('id, full_name, email, partner_tier, commission_rate, parent_rep_id, referral_slug')
                 .eq('role', 'sales_rep')
                 .eq('org_id', profile!.org_id!)
                 .order('full_name');
 
             if (error) throw error;
-            return data as { id: string; full_name: string | null; email: string | null; partner_tier: string; commission_rate: number; parent_rep_id: string | null }[];
+            return data as { id: string; full_name: string | null; email: string | null; partner_tier: string; commission_rate: number; parent_rep_id: string | null; referral_slug: string | null }[];
         },
         enabled: !!user && !!profile?.org_id,
     });

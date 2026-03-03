@@ -13,17 +13,24 @@ interface ReferralLinkCardProps {
     orgId?: string | null;
     /** Per-person can_recruit flag from profile. null = use tier default */
     canRecruitOverride?: boolean | null;
+    /** Short vanity slug for pretty URLs (e.g. "diego-feroni") */
+    referralSlug?: string | null;
 }
 
-export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId, canRecruitOverride }: ReferralLinkCardProps) {
+export function ReferralLinkCard({ profileId, partnerTier, userRole, orgId, canRecruitOverride, referralSlug }: ReferralLinkCardProps) {
     const [copiedType, setCopiedType] = useState<string | null>(null);
 
     if (!profileId) return null;
 
+    const origin = window.location.origin;
     const orgSuffix = orgId ? `&org=${orgId}` : '';
-    // Use /join? path (not /#/auth?) so links survive SMS/text apps that strip hash fragments
-    const customerUrl = `${window.location.origin}/join?ref=${profileId}${orgSuffix}`;
-    const partnerUrl = `${window.location.origin}/join?ref=${profileId}&role=partner&tier=standard${orgSuffix}`;
+    // Short URLs when slug available, fallback to full /join? URLs
+    const customerUrl = referralSlug
+        ? `${origin}/r/${referralSlug}`
+        : `${origin}/join?ref=${profileId}${orgSuffix}`;
+    const partnerUrl = referralSlug
+        ? `${origin}/r/${referralSlug}?p`
+        : `${origin}/join?ref=${profileId}&role=partner&tier=standard${orgSuffix}`;
     // Admin/super_admin always can recruit. Otherwise use per-person flag, with tier-based fallback (senior = true).
     const canRecruit = userRole === 'admin' || userRole === 'super_admin'
         || (canRecruitOverride !== undefined && canRecruitOverride !== null ? canRecruitOverride : partnerTier === 'senior');
