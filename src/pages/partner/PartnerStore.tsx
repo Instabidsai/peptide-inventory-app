@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/store/AddressAutocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { useTierMap, tierToInfo } from '@/hooks/use-tier-config';
@@ -544,16 +545,10 @@ export default function PartnerStore() {
                                                 )}
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <label htmlFor="partner-store-shipping-address" className="text-sm font-medium">Shipping Address</label>
-                                                <Textarea
-                                                    id="partner-store-shipping-address"
-                                                    placeholder="Enter shipping address..."
-                                                    value={shippingAddress}
-                                                    onChange={e => setShippingAddress(e.target.value)}
-                                                    rows={2}
-                                                />
-                                            </div>
+                                            <AddressAutocomplete
+                                                value={shippingAddress}
+                                                onChange={setShippingAddress}
+                                            />
 
                                             <div className="space-y-2">
                                                 <label htmlFor="partner-store-notes" className="text-sm font-medium">Notes (optional)</label>

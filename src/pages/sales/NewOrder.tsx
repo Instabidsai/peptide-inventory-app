@@ -8,6 +8,7 @@ import { useProfile, useRepProfile } from '@/hooks/use-profiles'; // Updated imp
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/store/AddressAutocomplete';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Select,
@@ -765,16 +766,10 @@ export default function NewOrder() {
                             </div>
                         </div>
                         {deliveryMethod === 'ship' && (
-                            <div className="space-y-1">
-                                <label htmlFor="new-order-shipping-address" className="text-sm font-semibold">Shipping Address</label>
-                                <Textarea
-                                    id="new-order-shipping-address"
-                                    placeholder="Enter shipping address if different..."
-                                    value={shippingAddress}
-                                    onChange={e => setShippingAddress(e.target.value)}
-                                    className="min-h-[60px]"
-                                />
-                            </div>
+                            <AddressAutocomplete
+                                value={shippingAddress}
+                                onChange={setShippingAddress}
+                            />
                         )}
                         <div className="space-y-1">
                             <label htmlFor="new-order-notes" className="text-sm font-semibold">Notes</label>

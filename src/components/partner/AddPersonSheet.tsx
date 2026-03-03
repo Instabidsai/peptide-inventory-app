@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/store/AddressAutocomplete';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { TIER_INFO, EMPTY_PERSON, type PartnerNode } from './types';
 
@@ -89,16 +90,10 @@ export function AddPersonSheet({
                             onChange={e => onPersonChange(p => ({ ...p, phone: e.target.value }))}
                         />
                     </div>
-                    <div className="space-y-2">
-                        <label htmlFor="add-person-address" className="text-sm font-medium">Shipping Address</label>
-                        <Textarea
-                            id="add-person-address"
-                            placeholder="Street, City, State, ZIP"
-                            value={newPerson.address}
-                            onChange={e => onPersonChange(p => ({ ...p, address: e.target.value }))}
-                            rows={2}
-                        />
-                    </div>
+                    <AddressAutocomplete
+                        value={newPerson.address}
+                        onChange={(addr) => onPersonChange(p => ({ ...p, address: addr }))}
+                    />
                     <div className="space-y-2">
                         <label htmlFor="add-person-assign" className="text-sm font-semibold">Assign To</label>
                         <select
