@@ -45,7 +45,8 @@ export default function TenantWholesaleEditor({ orgId, config }: { orgId: string
     const { toast } = useToast();
     const { profile } = useAuth();
 
-    const supplierOrgId = profile?.org_id;
+    const supplierOrgId = config?.supplier_org_id;
+    const vendorOrgId = profile?.org_id;
 
     // Fetch wholesale pricing tiers
     const { data: tiers = [] } = useQuery({
@@ -147,7 +148,7 @@ export default function TenantWholesaleEditor({ orgId, config }: { orgId: string
         setSaving(true);
         try {
             const updates: Record<string, string | null> = enabled
-                ? { supplier_org_id: supplierOrgId || null }
+                ? { supplier_org_id: vendorOrgId || null }
                 : { supplier_org_id: null, wholesale_tier_id: null };
 
             if (enabled && !currentTierId) {
