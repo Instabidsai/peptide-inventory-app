@@ -33,6 +33,9 @@ import {
     Plus,
     Trash2,
     Phone,
+    Eye,
+    EyeOff,
+    Wallet,
 } from 'lucide-react';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -366,6 +369,13 @@ function ShippingConfigSection({ orgId }: { orgId: string }) {
 }
 
 // ─── Payment Methods Tab ───
+
+const CARD_PROCESSOR_SERVICES = [
+  { service: 'psifi_api_key', label: 'PsiFi API Key', placeholder: 'psifi_...', group: 'psifi' },
+  { service: 'psifi_webhook_secret', label: 'PsiFi Webhook Secret', placeholder: 'whsec_...', group: 'psifi' },
+  { service: 'paygate365_wallet_address', label: 'PayGate365 Wallet Address', placeholder: '0x...', group: 'paygate365' },
+] as const;
+
 function PaymentMethodsTab({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -375,6 +385,11 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
     venmo_handle: '',
     cashapp_handle: '',
   });
+
+  // Card processor API keys
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [keyVisible, setKeyVisible] = useState<Record<string, boolean>>({});
+  const [savingKeys, setSavingKeys] = useState(false);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ['tenant-config-payment', orgId],
@@ -389,6 +404,23 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
     },
     enabled: !!orgId,
   });
+
+  const { data: savedKeys } = useQuery({
+    queryKey: ['tenant-api-keys', orgId, 'payment'],
+    queryFn: async () => {
+      const services = CARD_PROCESSOR_SERVICES.map(s => s.service);
+      const { data, error } = await supabase
+        .from('tenant_api_keys')
+        .select('service, api_key_masked, updated_at')
+        .eq('org_id', orgId)
+        .in('service', services);
+      if (error && error.code !== 'PGRST116') throw error;
+      return (data || []) as { service: string; api_key_masked: string; updated_at: string }[];
+    },
+    enabled: !!orgId,
+  });
+
+  const savedMap = new Map(savedKeys?.map(k => [k.service, k]) || []);
 
   useEffect(() => {
     if (config) setPayment(prev => ({ ...prev, ...config }));
@@ -412,50 +444,191 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
     }
   };
 
+  const handleSaveKeys = async () => {
+    const entries = Object.entries(apiKeys).filter(([, v]) => v.trim());
+    if (entries.length === 0) return;
+    setSavingKeys(true);
+    try {
+      for (const [service, rawKey] of entries) {
+        const trimmed = rawKey.trim();
+        const masked = trimmed.length > 11
+          ? trimmed.slice(0, 7) + '...' + trimmed.slice(-4)
+          : trimmed.slice(0, 4) + '...';
+        const { error } = await supabase
+          .from('tenant_api_keys')
+          .upsert({ org_id: orgId, service, api_key: trimmed, api_key_masked: masked }, { onConflict: 'org_id,service' });
+        if (error) throw error;
+      }
+      queryClient.invalidateQueries({ queryKey: ['tenant-api-keys'] });
+      setApiKeys({});
+      toast({ title: 'Card processor keys saved' });
+    } catch (err) {
+      toast({ title: 'Failed to save keys', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSavingKeys(false);
+    }
+  };
+
+  const hasKeyEdits = Object.values(apiKeys).some(v => v.trim());
+
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <CreditCard className="h-5 w-5" /> Payment Methods
-        </CardTitle>
-        <CardDescription>
-          Payment handles shown to customers on checkout. Customers send payments to these accounts.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Zelle Email / Phone</Label>
-          <Input
-            value={payment.zelle_email}
-            onChange={e => setPayment(p => ({ ...p, zelle_email: e.target.value }))}
-            placeholder="email@example.com or (555) 123-4567"
-          />
-          <p className="text-xs text-muted-foreground">Customers will see this on checkout when paying via Zelle</p>
-        </div>
-        <div className="space-y-2">
-          <Label>Venmo Handle</Label>
-          <Input
-            value={payment.venmo_handle}
-            onChange={e => setPayment(p => ({ ...p, venmo_handle: e.target.value }))}
-            placeholder="@YourVenmoHandle"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>CashApp Handle</Label>
-          <Input
-            value={payment.cashapp_handle}
-            onChange={e => setPayment(p => ({ ...p, cashapp_handle: e.target.value }))}
-            placeholder="$YourCashTag"
-          />
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Save Payment Methods
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      {/* Manual Payment Methods */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CreditCard className="h-5 w-5" /> Manual Payment Methods
+          </CardTitle>
+          <CardDescription>
+            Zelle, Venmo, and CashApp handles shown to customers at checkout.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Zelle Email / Phone</Label>
+            <Input
+              value={payment.zelle_email}
+              onChange={e => setPayment(p => ({ ...p, zelle_email: e.target.value }))}
+              placeholder="email@example.com or (555) 123-4567"
+            />
+            <p className="text-xs text-muted-foreground">Customers will see this on checkout when paying via Zelle</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Venmo Handle</Label>
+            <Input
+              value={payment.venmo_handle}
+              onChange={e => setPayment(p => ({ ...p, venmo_handle: e.target.value }))}
+              placeholder="@YourVenmoHandle"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>CashApp Handle</Label>
+            <Input
+              value={payment.cashapp_handle}
+              onChange={e => setPayment(p => ({ ...p, cashapp_handle: e.target.value }))}
+              placeholder="$YourCashTag"
+            />
+          </div>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Payment Methods
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Card Processor Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="h-5 w-5" /> Card Payment Processors
+          </CardTitle>
+          <CardDescription>
+            Connect a card processor so customers can pay by debit/credit card. Card checkout will appear once configured.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* PsiFi */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              PsiFi (Card Payments)
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Debit/credit card checkout.{' '}
+              <a href="https://dashboard.psifi.app" target="_blank" rel="noopener noreferrer" className="underline">
+                Get API keys from PsiFi
+              </a>
+            </p>
+            {CARD_PROCESSOR_SERVICES.filter(s => s.group === 'psifi').map(svc => {
+              const saved = savedMap.get(svc.service);
+              return (
+                <div key={svc.service} className="space-y-1">
+                  <Label className="text-xs">{svc.label}</Label>
+                  <div className="relative">
+                    <Input
+                      type={keyVisible[svc.service] ? 'text' : 'password'}
+                      placeholder={saved ? `Current: ${saved.api_key_masked}` : svc.placeholder}
+                      value={apiKeys[svc.service] || ''}
+                      onChange={e => setApiKeys(prev => ({ ...prev, [svc.service]: e.target.value }))}
+                      className="pr-10 font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setKeyVisible(prev => ({ ...prev, [svc.service]: !prev[svc.service] }))}
+                    >
+                      {keyVisible[svc.service] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {saved && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Updated {format(new Date(saved.updated_at), 'MMM d, yyyy h:mm a')}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="border-t" />
+
+          {/* PayGate365 */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              PayGate365 (Alt Card Processor)
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Card payments settled as USDC. Enter your Polygon wallet address.
+            </p>
+            {CARD_PROCESSOR_SERVICES.filter(s => s.group === 'paygate365').map(svc => {
+              const saved = savedMap.get(svc.service);
+              return (
+                <div key={svc.service} className="space-y-1">
+                  <Label className="text-xs">{svc.label}</Label>
+                  <div className="relative">
+                    <Input
+                      type={keyVisible[svc.service] ? 'text' : 'password'}
+                      placeholder={saved ? `Current: ${saved.api_key_masked}` : svc.placeholder}
+                      value={apiKeys[svc.service] || ''}
+                      onChange={e => setApiKeys(prev => ({ ...prev, [svc.service]: e.target.value }))}
+                      className="pr-10 font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setKeyVisible(prev => ({ ...prev, [svc.service]: !prev[svc.service] }))}
+                    >
+                      {keyVisible[svc.service] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {saved && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Updated {format(new Date(saved.updated_at), 'MMM d, yyyy h:mm a')}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {hasKeyEdits && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleSaveKeys} disabled={savingKeys}>
+                {savingKeys ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Card Processor Keys
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
