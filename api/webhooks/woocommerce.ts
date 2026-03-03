@@ -51,9 +51,9 @@ function verifyWooSignature(payload: string, signature: string, secret: string):
 
 function mapWooStatus(wooStatus: string): { status: string; paymentStatus: string } {
     switch (wooStatus) {
-        case 'processing': return { status: 'submitted', paymentStatus: 'paid' };
         case 'completed': return { status: 'submitted', paymentStatus: 'paid' };
-        case 'on-hold': return { status: 'submitted', paymentStatus: 'unpaid' };
+        case 'processing': return { status: 'submitted', paymentStatus: 'pending_verification' };
+        case 'on-hold': return { status: 'submitted', paymentStatus: 'pending_verification' };
         case 'pending': return { status: 'draft', paymentStatus: 'unpaid' };
         case 'cancelled': return { status: 'cancelled', paymentStatus: 'unpaid' };
         case 'refunded': return { status: 'cancelled', paymentStatus: 'unpaid' };
