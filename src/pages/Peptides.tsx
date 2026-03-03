@@ -4,7 +4,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { usePeptides, useCreatePeptide, useUpdatePeptide, useDeletePeptide, type Peptide } from '@/hooks/use-peptides';
 import { usePendingOrdersByPeptide } from '@/hooks/use-orders';
-import { useCreateLot } from '@/hooks/use-lots';
+import { useCreateLot, useDeleteLot } from '@/hooks/use-lots';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check, PackagePlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, FlaskConical, Search, Calendar, History, Download, Globe, Warehouse, ShoppingCart, Check, PackagePlus, Undo2, Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { exportToCSV } from '@/utils/export-csv';
 import { format } from 'date-fns';
@@ -89,11 +89,13 @@ export default function Peptides() {
   const [historyPeptide, setHistoryPeptide] = useState<Peptide | null>(null);
   const [addingToCatalog, setAddingToCatalog] = useState<Set<string>>(new Set());
 
-  // Quick Stock Add
+  // Quick Stock Add / Delete
   const [quickStockPeptide, setQuickStockPeptide] = useState<Peptide | null>(null);
   const [quickStockQty, setQuickStockQty] = useState('');
   const [quickStockCost, setQuickStockCost] = useState('');
+  const [lastAddedLot, setLastAddedLot] = useState<{ id: string; qty: number; cost: number; peptideName: string } | null>(null);
   const createLot = useCreateLot();
+  const deleteLot = useDeleteLot();
 
   const handleQuickStock = async () => {
     if (!quickStockPeptide) return;
@@ -102,16 +104,25 @@ export default function Peptides() {
     if (!qty || qty <= 0 || !cost || cost <= 0) return;
     const lotNum = `QS-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     try {
-      await createLot.mutateAsync({
+      const lot = await createLot.mutateAsync({
         peptide_id: quickStockPeptide.id,
         lot_number: lotNum,
         quantity_received: qty,
         cost_per_unit: cost,
         payment_status: 'paid',
       });
-      setQuickStockPeptide(null);
+      setLastAddedLot({ id: lot.id, qty, cost, peptideName: quickStockPeptide.name });
       setQuickStockQty('');
       setQuickStockCost('');
+    } catch { /* toast from hook */ }
+  };
+
+  const handleUndoQuickStock = async () => {
+    if (!lastAddedLot) return;
+    try {
+      await deleteLot.mutateAsync(lastAddedLot.id);
+      setLastAddedLot(null);
+      setQuickStockPeptide(null);
     } catch { /* toast from hook */ }
   };
 
@@ -893,60 +904,110 @@ export default function Peptides() {
       />
 
       {/* Quick Stock Add Dialog */}
-      <Dialog open={!!quickStockPeptide} onOpenChange={(open) => { if (!open) setQuickStockPeptide(null); }}>
+      <Dialog open={!!quickStockPeptide} onOpenChange={(open) => { if (!open) { setQuickStockPeptide(null); setLastAddedLot(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PackagePlus className="h-5 w-5 text-primary" />
-              Add Stock
+              {lastAddedLot ? 'Stock Added' : 'Add Stock'}
             </DialogTitle>
             <DialogDescription>
-              {quickStockPeptide?.name} — record a purchase
+              {quickStockPeptide?.name}{lastAddedLot ? '' : ' — record a purchase'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label htmlFor="qs-qty" className="text-sm font-medium">Quantity Purchased</label>
-              <Input
-                id="qs-qty"
-                type="number"
-                min="1"
-                placeholder="e.g. 10"
-                value={quickStockQty}
-                onChange={(e) => setQuickStockQty(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="qs-cost" className="text-sm font-medium">Cost Per Unit ($)</label>
-              <Input
-                id="qs-cost"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="e.g. 12.50"
-                value={quickStockCost}
-                onChange={(e) => setQuickStockCost(e.target.value)}
-              />
-            </div>
-            {quickStockQty && quickStockCost && parseFloat(quickStockQty) > 0 && parseFloat(quickStockCost) > 0 && (
-              <div className="rounded-lg bg-muted/50 border p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Cost</span>
-                  <span className="font-semibold">${(parseFloat(quickStockQty) * parseFloat(quickStockCost)).toFixed(2)}</span>
+
+          {lastAddedLot ? (
+            /* ── Success state with Undo ── */
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-4 text-center space-y-2">
+                <div className="h-10 w-10 rounded-full bg-green-500/15 flex items-center justify-center mx-auto">
+                  <Check className="h-5 w-5 text-green-600" />
                 </div>
+                <p className="font-medium text-green-600">
+                  {lastAddedLot.qty} vial{lastAddedLot.qty !== 1 ? 's' : ''} added
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  ${lastAddedLot.cost.toFixed(2)}/unit — ${(lastAddedLot.qty * lastAddedLot.cost).toFixed(2)} total
+                </p>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuickStockPeptide(null)}>Cancel</Button>
-            <Button
-              onClick={handleQuickStock}
-              disabled={createLot.isPending || !quickStockQty || !quickStockCost || parseFloat(quickStockQty) <= 0 || parseFloat(quickStockCost) <= 0}
-            >
-              {createLot.isPending ? 'Adding...' : 'Add Stock'}
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="flex-col gap-2 sm:flex-col">
+                <Button
+                  variant="destructive"
+                  className="w-full gap-2"
+                  onClick={handleUndoQuickStock}
+                  disabled={deleteLot.isPending}
+                >
+                  {deleteLot.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Undo2 className="h-4 w-4" />
+                  )}
+                  {deleteLot.isPending ? 'Removing...' : 'Undo — Delete This Stock'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => { setLastAddedLot(null); }}
+                >
+                  Add More Stock
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => { setQuickStockPeptide(null); setLastAddedLot(null); }}
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            /* ── Input state ── */
+            <>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <label htmlFor="qs-qty" className="text-sm font-medium">Quantity Purchased</label>
+                  <Input
+                    id="qs-qty"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 10"
+                    value={quickStockQty}
+                    onChange={(e) => setQuickStockQty(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="qs-cost" className="text-sm font-medium">Cost Per Unit ($)</label>
+                  <Input
+                    id="qs-cost"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="e.g. 12.50"
+                    value={quickStockCost}
+                    onChange={(e) => setQuickStockCost(e.target.value)}
+                  />
+                </div>
+                {quickStockQty && quickStockCost && parseFloat(quickStockQty) > 0 && parseFloat(quickStockCost) > 0 && (
+                  <div className="rounded-lg bg-muted/50 border p-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Cost</span>
+                      <span className="font-semibold">${(parseFloat(quickStockQty) * parseFloat(quickStockCost)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setQuickStockPeptide(null)}>Cancel</Button>
+                <Button
+                  onClick={handleQuickStock}
+                  disabled={createLot.isPending || !quickStockQty || !quickStockCost || parseFloat(quickStockQty) <= 0 || parseFloat(quickStockCost) <= 0}
+                >
+                  {createLot.isPending ? 'Adding...' : 'Add Stock'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
