@@ -1047,8 +1047,8 @@ export default function Peptides() {
         </DialogContent>
       </Dialog>
 
-      {/* Wholesale Margin Calculator — visible in wholesale tab */}
-      {isWholesaleView && canEdit && <MarginCalculator />}
+      {/* Wholesale Margin Calculator — visible in wholesale tab, hidden for custom pricing */}
+      {isWholesaleView && canEdit && !isCustomPricing && <MarginCalculator />}
     </div >
   );
 }
