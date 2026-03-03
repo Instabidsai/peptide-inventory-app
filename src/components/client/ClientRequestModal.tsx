@@ -194,6 +194,33 @@ export function ClientRequestModal({
 
             if (error) throw error;
 
+            // Notify org admins about the new client request (best-effort)
+            try {
+                const { data: admins } = await supabase
+                    .from('profiles')
+                    .select('user_id')
+                    .eq('org_id', profile.org_id)
+                    .in('role', ['admin', 'staff'])
+                    .neq('user_id', user.id);
+
+                if (admins && admins.length > 0) {
+                    const preview = data.message.length > 100
+                        ? data.message.substring(0, 100) + '...'
+                        : data.message;
+                    await supabase.from('notifications').insert(
+                        admins.map(a => ({
+                            user_id: a.user_id,
+                            type: 'info',
+                            title: `New Request: ${data.subject}`,
+                            message: preview,
+                            link: '/feedback',
+                        }))
+                    );
+                }
+            } catch {
+                // Non-critical — don't fail the request if notification fails
+            }
+
             toast.success("Request sent successfully!");
             reset();
             setFiles([]);

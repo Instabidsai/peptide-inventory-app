@@ -11,6 +11,8 @@ import {
     CheckCircle,
     XCircle,
     ShoppingCart,
+    MessageSquare,
+    ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -156,28 +158,33 @@ export default function ClientNotifications() {
                                         {notification.message}
                                     </p>
                                     <div className="flex items-center gap-2 mt-2">
-                                        {notification.link && (
-                                            <Button
-                                                size="sm"
-                                                variant="default"
-                                                className="h-7 text-xs gap-1.5"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    markOneRead(notification.id);
-                                                    // Navigate to reorder link (strip origin if it's a full URL)
-                                                    const url = notification.link;
-                                                    try {
-                                                        const parsed = new URL(url);
-                                                        navigate(parsed.pathname + parsed.search);
-                                                    } catch {
-                                                        navigate(url);
-                                                    }
-                                                }}
-                                            >
-                                                <ShoppingCart className="h-3 w-3" />
-                                                Reorder Now
-                                            </Button>
-                                        )}
+                                        {notification.link && (() => {
+                                            const link = notification.link;
+                                            const isMessages = link.includes('/messages');
+                                            const isStore = link.includes('/store');
+                                            const ActionIcon = isMessages ? MessageSquare : isStore ? ShoppingCart : ExternalLink;
+                                            const actionLabel = isMessages ? 'View Message' : isStore ? 'Reorder Now' : 'View';
+                                            return (
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    className="h-7 text-xs gap-1.5"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        markOneRead(notification.id);
+                                                        try {
+                                                            const parsed = new URL(link);
+                                                            navigate(parsed.pathname + parsed.search);
+                                                        } catch {
+                                                            navigate(link);
+                                                        }
+                                                    }}
+                                                >
+                                                    <ActionIcon className="h-3 w-3" />
+                                                    {actionLabel}
+                                                </Button>
+                                            );
+                                        })()}
                                         {!notification.is_read && !notification.link && (
                                             <Badge variant="secondary" className="text-[10px] h-5">Tap to dismiss</Badge>
                                         )}

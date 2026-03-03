@@ -75,7 +75,7 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
     const { data: requestContext } = useQuery({
         queryKey: ['request-details', requestId],
         queryFn: async () => {
-            const { data } = await supabase.from('client_requests').select('user_id, context_type, context_id').eq('id', requestId).maybeSingle();
+            const { data } = await supabase.from('client_requests').select('user_id, org_id, context_type, context_id').eq('id', requestId).maybeSingle();
             return data;
         },
         enabled: !!requestId
@@ -117,6 +117,44 @@ export function MessageThread({ requestId, userRole, className }: MessageThreadP
             });
 
             if (error) throw error;
+
+            // Notify the other party about the new reply (best-effort)
+            if (!isInternal && requestContext?.user_id) {
+                const preview = (newMessage || '').length > 100
+                    ? newMessage.substring(0, 100) + '...'
+                    : newMessage || 'You received a voice message.';
+
+                if (userRole === 'admin' && requestContext.user_id !== user.id) {
+                    // Admin replying → notify the client
+                    await supabase.from('notifications').insert({
+                        user_id: requestContext.user_id,
+                        type: 'info',
+                        title: 'New Reply from Admin',
+                        message: preview,
+                        link: '/messages',
+                    }).catch(e => logger.warn('Notification insert failed:', e));
+                } else if (userRole === 'client' && requestContext.org_id) {
+                    // Client replying → notify org admins
+                    const { data: admins } = await supabase
+                        .from('profiles')
+                        .select('user_id')
+                        .eq('org_id', requestContext.org_id)
+                        .in('role', ['admin', 'staff'])
+                        .neq('user_id', user.id);
+
+                    if (admins && admins.length > 0) {
+                        await supabase.from('notifications').insert(
+                            admins.map(a => ({
+                                user_id: a.user_id,
+                                type: 'info',
+                                title: 'Client Reply',
+                                message: preview,
+                                link: '/feedback',
+                            }))
+                        ).catch(e => logger.warn('Admin notification insert failed:', e));
+                    }
+                }
+            }
         },
         onSuccess: () => {
             setNewMessage("");
