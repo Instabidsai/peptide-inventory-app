@@ -73,6 +73,11 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             return <Navigate to="/fulfillment" replace />;
         }
 
+        // Sales reps land on /partner by default
+        if (roleName === 'sales_rep' && location.pathname === '/') {
+            return <Navigate to="/partner" replace />;
+        }
+
         // Enforce strict allowedRoles if provided
         // super_admin inherits admin access everywhere
         // admin/staff can view client portal (ClientLayout shows an "Admin" button to return)

@@ -15,6 +15,7 @@ import {
     Repeat,
 } from 'lucide-react';
 import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
+import { useProtocolKnowledge, useDatabaseProtocolTemplates } from '@/hooks/use-protocol-knowledge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import { getPeptideDescription, getRelatedStacks } from './utils';
@@ -46,6 +47,10 @@ export function ProductDetailSheet({
     updateQuantity,
     onSelectProtocol,
 }: ProductDetailSheetProps) {
+    const { data: knowledgeMap } = useProtocolKnowledge();
+    const { data: dbTemplates } = useDatabaseProtocolTemplates();
+    const currentTemplates = dbTemplates || PROTOCOL_TEMPLATES;
+
     return (
         <Sheet open={!!selectedPeptide} onOpenChange={(open) => { if (!open) onClose(); }}>
             <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-border/60">
@@ -54,9 +59,9 @@ export function ProductDetailSheet({
                     const retail = Number(selectedPeptide.retail_price || 0);
                     const hasDiscount = price < retail;
                     const inCart = cart.find(i => i.peptide_id === selectedPeptide.id);
-                    const detailDesc = getPeptideDescription(selectedPeptide.name) || selectedPeptide.description;
-                    const dk = lookupKnowledge(selectedPeptide.name);
-                    const relatedStacks = getRelatedStacks(selectedPeptide.name, allPeptides || []);
+                    const detailDesc = getPeptideDescription(selectedPeptide.name, knowledgeMap) || selectedPeptide.description;
+                    const dk = lookupKnowledge(selectedPeptide.name, knowledgeMap);
+                    const relatedStacks = getRelatedStacks(selectedPeptide.name, allPeptides || [], currentTemplates);
 
                     return (
                         <>
@@ -271,7 +276,7 @@ export function ProductDetailSheet({
                                                         className="p-3.5 rounded-xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
                                                         onClick={() => {
                                                             // Find and open this protocol template
-                                                            const template = PROTOCOL_TEMPLATES.find(t => t.name === stack.templateName);
+                                                            const template = currentTemplates.find(t => t.name === stack.templateName);
                                                             if (template && allPeptides) {
                                                                 const matched = template.peptideNames
                                                                     .map(n => allPeptides.find(p => p.name?.toLowerCase().startsWith(n.toLowerCase())))

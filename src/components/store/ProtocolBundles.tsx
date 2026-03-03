@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Package, Plus, Check } from 'lucide-react';
 import { PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
+import { useDatabaseProtocolTemplates } from '@/hooks/use-protocol-knowledge';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import type { CartItem, SelectedProtocol } from './types';
 import type { Peptide } from '@/hooks/use-peptides';
@@ -29,6 +30,9 @@ export function ProtocolBundles({
     addToCart,
     onSelectProtocol,
 }: ProtocolBundlesProps) {
+    const { data: dbTemplates } = useDatabaseProtocolTemplates();
+    const currentTemplates = dbTemplates || PROTOCOL_TEMPLATES;
+
     return (
         <div>
             <motion.div
@@ -37,7 +41,7 @@ export function ProtocolBundles({
                 animate="show"
                 variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
             >
-                {PROTOCOL_TEMPLATES
+                {currentTemplates
                     .filter(t => t.category !== 'full')
                     .filter(t => !t.defaultTierId)
                     .map(template => {

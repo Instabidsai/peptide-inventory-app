@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Package, Plus, Check } from 'lucide-react';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
+import { useProtocolKnowledge } from '@/hooks/use-protocol-knowledge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import type { CartItem, SelectedProtocol } from './types';
@@ -26,6 +27,8 @@ export function ProtocolDetailSheet({
     getClientPrice,
     addToCart,
 }: ProtocolDetailSheetProps) {
+    const { data: knowledgeMap } = useProtocolKnowledge();
+
     return (
         <Sheet open={!!selectedProtocol} onOpenChange={(open) => { if (!open) onClose(); }}>
             <SheetContent side="bottom" className="rounded-t-3xl max-h-[85dvh] overflow-y-auto border-t border-border/60">
@@ -66,7 +69,7 @@ export function ProtocolDetailSheet({
                                     {uniqueMatched.map((p, idx) => {
                                         const qty = qtyMap[p.id] || 1;
                                         const price = getClientPrice(p) * qty;
-                                        const knowledge = lookupKnowledge(p.name);
+                                        const knowledge = lookupKnowledge(p.name, knowledgeMap);
                                         return (
                                             <motion.div
                                                 key={p.id}

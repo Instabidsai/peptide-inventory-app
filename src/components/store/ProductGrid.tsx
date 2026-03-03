@@ -4,8 +4,9 @@ import { CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Minus, Search, Dna } from 'lucide-react';
+import { Plus, Minus, Search, Dna, Package } from 'lucide-react';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
+import { useProtocolKnowledge } from '@/hooks/use-protocol-knowledge';
 import { getPeptideDescription } from './utils';
 import type { CartItem } from './types';
 import type { Peptide } from '@/hooks/use-peptides';
@@ -38,6 +39,8 @@ export function ProductGrid({
     updateQuantity,
     onSelectPeptide,
 }: ProductGridProps) {
+    const { data: knowledgeMap } = useProtocolKnowledge();
+
     return (
         <div>
             {isLoading ? (
@@ -97,8 +100,8 @@ export function ProductGrid({
                                     : null // cost_multiplier or percentage -- just show "X% off"
                             : null;
                         const inCart = cart.find(i => i.peptide_id === peptide.id);
-                        const description = getPeptideDescription(peptide.name) || peptide.description;
-                        const knowledge = lookupKnowledge(peptide.name);
+                        const description = getPeptideDescription(peptide.name, knowledgeMap) || peptide.description;
+                        const knowledge = lookupKnowledge(peptide.name, knowledgeMap);
 
                         if (price <= 0 && retail <= 0) return null;
 
@@ -109,125 +112,125 @@ export function ProductGrid({
                                 whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
                                 whileTap={{ scale: 0.97 }}
                             >
-                            <GlassCard
-                                className="group cursor-pointer hover:bg-muted/60 hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
-                                onClick={() => onSelectPeptide(peptide)}
-                            >
-                                {/* Top accent bar */}
-                                <div className="h-[2px] bg-gradient-brand-r opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
-                                {/* Shimmer overlay on hover */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-cyan-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
-                                <CardContent className="p-5 relative space-y-3">
-                                    {/* Header row: icon + name + badge */}
-                                    <div className="flex items-start gap-3.5">
-                                        <div className="relative shrink-0">
-                                            <div className="absolute inset-0 rounded-xl bg-gradient-brand blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
-                                            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/60 flex items-center justify-center group-hover:border-primary/20 transition-colors">
-                                                <Dna className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors" />
+                                <GlassCard
+                                    className="group cursor-pointer hover:bg-muted/60 hover:border-primary/20 hover:shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.25),0_24px_60px_-12px_rgba(0,0,0,0.3)] transition-all duration-300"
+                                    onClick={() => onSelectPeptide(peptide)}
+                                >
+                                    {/* Top accent bar */}
+                                    <div className="h-[2px] bg-gradient-brand-r opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+                                    {/* Shimmer overlay on hover */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-cyan-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+                                    <CardContent className="p-5 relative space-y-3">
+                                        {/* Header row: icon + name + badge */}
+                                        <div className="flex items-start gap-3.5">
+                                            <div className="relative shrink-0">
+                                                <div className="absolute inset-0 rounded-xl bg-gradient-brand blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                                                <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/60 flex items-center justify-center group-hover:border-primary/20 transition-colors">
+                                                    <Dna className="h-5 w-5 text-primary/70 group-hover:text-primary transition-colors" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-[15px] tracking-tight truncate group-hover:text-white transition-colors duration-200">{peptide.name}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)]" />
+                                                    <span className="text-[10px] text-primary/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
+                                                    {knowledge?.administrationRoute && (
+                                                        <>
+                                                            <span className="text-white/10">|</span>
+                                                            <span className="text-[10px] text-muted-foreground/40 font-medium capitalize">{knowledge.administrationRoute}</span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-[15px] tracking-tight truncate group-hover:text-white transition-colors duration-200">{peptide.name}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)]" />
-                                                <span className="text-[10px] text-primary/70 font-semibold uppercase tracking-[0.1em]">Research Grade</span>
-                                                {knowledge?.administrationRoute && (
-                                                    <>
-                                                        <span className="text-white/10">|</span>
-                                                        <span className="text-[10px] text-muted-foreground/40 font-medium capitalize">{knowledge.administrationRoute}</span>
-                                                    </>
+
+                                        {/* Description */}
+                                        {description && (
+                                            <p className="text-xs text-muted-foreground/55 leading-relaxed line-clamp-3">
+                                                {description}
+                                            </p>
+                                        )}
+
+                                        {/* Dosing hint tags */}
+                                        {knowledge && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}
+                                                </span>
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultFrequency}
+                                                </span>
+                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
+                                                    {knowledge.defaultTiming}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Price + actions row */}
+                                        <div className="flex items-end justify-between pt-2 border-t border-border/50">
+                                            <div>
+                                                {hasDiscount && (
+                                                    <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25">
+                                                        <span className="text-sm font-extrabold text-primary">
+                                                            {discountPct}% off
+                                                        </span>
+                                                        {discountLabel && (
+                                                            <span className="text-xs font-semibold text-primary/70 ml-1.5">
+                                                                · {discountLabel}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Description */}
-                                    {description && (
-                                        <p className="text-xs text-muted-foreground/55 leading-relaxed line-clamp-3">
-                                            {description}
-                                        </p>
-                                    )}
-
-                                    {/* Dosing hint tags */}
-                                    {knowledge && (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
-                                                {knowledge.defaultDoseAmount} {knowledge.defaultDoseUnit}
-                                            </span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
-                                                {knowledge.defaultFrequency}
-                                            </span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground/45 font-medium">
-                                                {knowledge.defaultTiming}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Price + actions row */}
-                                    <div className="flex items-end justify-between pt-2 border-t border-border/50">
-                                        <div>
-                                            {hasDiscount && (
-                                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/25">
-                                                    <span className="text-sm font-extrabold text-primary">
-                                                        {discountPct}% off
-                                                    </span>
-                                                    {discountLabel && (
-                                                        <span className="text-xs font-semibold text-primary/70 ml-1.5">
-                                                            · {discountLabel}
+                                                <div className="flex items-baseline gap-2">
+                                                    <p className="text-2xl font-extrabold text-gradient-primary">
+                                                        ${price.toFixed(2)}
+                                                    </p>
+                                                    {hasDiscount && (
+                                                        <span className="text-sm text-muted-foreground/40 line-through">
+                                                            ${retail.toFixed(2)}
                                                         </span>
                                                     )}
                                                 </div>
-                                            )}
-                                            <div className="flex items-baseline gap-2">
-                                                <p className="text-2xl font-extrabold text-gradient-primary">
-                                                    ${price.toFixed(2)}
-                                                </p>
-                                                {hasDiscount && (
-                                                    <span className="text-sm text-muted-foreground/40 line-through">
-                                                        ${retail.toFixed(2)}
-                                                    </span>
+                                            </div>
+                                            <div className="flex flex-col items-end" onClick={e => e.stopPropagation()}>
+                                                {inCart ? (
+                                                    <div className="flex items-center gap-0.5 bg-muted/50 rounded-xl p-1 border border-border/60">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-9 w-9 rounded-lg hover:bg-muted/60"
+                                                            onClick={() => updateQuantity(peptide.id, -1)}
+                                                            aria-label={`Decrease quantity of ${peptide.name}`}
+                                                        >
+                                                            <Minus className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <span className="w-8 text-center text-sm font-extrabold">
+                                                            {inCart.quantity}
+                                                        </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-9 w-9 rounded-lg hover:bg-muted/60"
+                                                            onClick={() => updateQuantity(peptide.id, 1)}
+                                                            aria-label={`Increase quantity of ${peptide.name}`}
+                                                        >
+                                                            <Plus className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        className="rounded-xl px-5 h-11 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] transition-all"
+                                                        onClick={() => addToCart(peptide)}
+                                                    >
+                                                        <Plus className="h-4 w-4 mr-1" />
+                                                        Add
+                                                    </Button>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end" onClick={e => e.stopPropagation()}>
-                                            {inCart ? (
-                                                <div className="flex items-center gap-0.5 bg-muted/50 rounded-xl p-1 border border-border/60">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-9 w-9 rounded-lg hover:bg-muted/60"
-                                                        onClick={() => updateQuantity(peptide.id, -1)}
-                                                        aria-label={`Decrease quantity of ${peptide.name}`}
-                                                    >
-                                                        <Minus className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <span className="w-8 text-center text-sm font-extrabold">
-                                                        {inCart.quantity}
-                                                    </span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-9 w-9 rounded-lg hover:bg-muted/60"
-                                                        onClick={() => updateQuantity(peptide.id, 1)}
-                                                        aria-label={`Increase quantity of ${peptide.name}`}
-                                                    >
-                                                        <Plus className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Button
-                                                    size="sm"
-                                                    className="rounded-xl px-5 h-11 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] transition-all"
-                                                    onClick={() => addToCart(peptide)}
-                                                >
-                                                    <Plus className="h-4 w-4 mr-1" />
-                                                    Add
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </GlassCard>
+                                    </CardContent>
+                                </GlassCard>
                             </motion.div>
                         );
                     })}

@@ -37,7 +37,9 @@ export function AppLayout() {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md">
         Skip to main content
       </a>
-      <CommandPalette />
+      <ErrorBoundary fallback={null}>
+        <CommandPalette />
+      </ErrorBoundary>
 
       {/* Impersonation banner */}
       {isImpersonating && (
@@ -60,12 +62,24 @@ export function AppLayout() {
         />
       )}
 
-      {/* Sidebar */}
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Sidebar — wrapped in ErrorBoundary so a crash doesn't kill the whole layout */}
+      <ErrorBoundary fallback={
+        <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/30 hidden lg:flex flex-col items-center justify-center p-6">
+          <p className="text-sm text-muted-foreground text-center">Menu unavailable — please reload the page.</p>
+        </aside>
+      }>
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </ErrorBoundary>
 
       {/* Main content */}
       <div className="lg:pl-64">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <ErrorBoundary fallback={
+          <header className="sticky top-0 z-30 flex h-20 items-center border-b border-primary/10 bg-background/40 px-6">
+            <p className="text-sm text-muted-foreground">Navigation error — please reload the page.</p>
+          </header>
+        }>
+          <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        </ErrorBoundary>
         <main id="main-content" className={cn(
           "p-4 md:p-6 lg:p-8",
           isPartnerRoute && "pb-24 lg:pb-8" // extra bottom padding for mobile nav
@@ -83,10 +97,14 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* Admin AI Chat (admin/staff only) */}
-      <AdminAIChat />
+      {/* Admin AI Chat (admin/staff only) — wrapped so a crash doesn't kill layout */}
+      <ErrorBoundary fallback={null}>
+        <AdminAIChat />
+      </ErrorBoundary>
       {/* Partner AI Chat (sales_rep only) */}
-      <PartnerAIChat />
+      <ErrorBoundary fallback={null}>
+        <PartnerAIChat />
+      </ErrorBoundary>
 
       {/* Partner mobile bottom navigation */}
       {isPartnerRoute && (

@@ -5,6 +5,7 @@
 
 import { supabase } from '@/integrations/sb_client/client';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
+import { fetchProtocolKnowledgeMap } from '@/hooks/use-protocol-knowledge';
 
 interface AutoProtocolInput {
     contactId: string;
@@ -29,6 +30,9 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
     if (items.length === 0) {
         throw new Error('Cannot create protocol with no items');
     }
+
+    // Load protocol knowledge map dynamically from the organzation
+    const knowledgeMap = await fetchProtocolKnowledgeMap(orgId);
 
     // ── Idempotency Check ───────────────────────────────────────
     // Look for an existing protocol for this contact that contains
@@ -73,10 +77,11 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
         .maybeSingle();
 
     if (protoErr) throw protoErr;
+    if (!protocol) throw new Error('Protocol creation returned no data');
 
     // ── Create Protocol Items ───────────────────────────────────
     const protocolItems = items.map(({ peptideId, peptideName }) => {
-        const knowledge = lookupKnowledge(peptideName);
+        const knowledge = lookupKnowledge(peptideName, knowledgeMap);
         // Use standard tier if available, otherwise defaults
         const standardTier = knowledge?.dosingTiers?.find(t => t.id === 'standard')
             ?? knowledge?.dosingTiers?.[0];
@@ -111,7 +116,7 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
     // Match knowledge base supplement names against the supplements table
     const allSupplementNames = new Set<string>();
     for (const { peptideName } of items) {
-        const knowledge = lookupKnowledge(peptideName);
+        const knowledge = lookupKnowledge(peptideName, knowledgeMap);
         if (knowledge?.supplementNotes) {
             for (const supp of knowledge.supplementNotes) {
                 allSupplementNames.add(supp.name.toLowerCase());
@@ -121,7 +126,7 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
 
     if (allSupplementNames.size > 0) {
         // Fetch all supplements to match by name
-        const { data: dbSupplements } = await supabase
+        const { data: dbSupplements } = await (supabase as any)
             .from('supplements')
             .select('id, name');
 
@@ -141,7 +146,7 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
 
             const seenSupplementIds = new Set<string>();
             for (const { peptideName } of items) {
-                const knowledge = lookupKnowledge(peptideName);
+                const knowledge = lookupKnowledge(peptideName, knowledgeMap);
                 if (!knowledge?.supplementNotes) continue;
                 for (const supp of knowledge.supplementNotes) {
                     const supplementId = nameToId.get(supp.name.toLowerCase());
@@ -159,7 +164,7 @@ export async function autoGenerateProtocol(input: AutoProtocolInput): Promise<Au
             }
 
             if (supplementInserts.length > 0) {
-                await supabase.from('protocol_supplements').insert(supplementInserts);
+                await (supabase as any).from('protocol_supplements').insert(supplementInserts);
             }
         }
     }

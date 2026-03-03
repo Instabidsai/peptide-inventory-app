@@ -28,6 +28,7 @@ import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, TIME_OF_DAY_OPTIONS, isDoseDay, getSch
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { lookupKnowledge, type PeptideKnowledge, type DosingTier } from '@/data/protocol-knowledge';
+import { useProtocolKnowledge } from '@/hooks/use-protocol-knowledge';
 import { calculateDoseUnits } from '@/utils/dose-utils';
 import { vialDailyUsage, getSupplyStatusColor, getSupplyStatusLabel } from '@/lib/supply-calculations';
 
@@ -760,7 +761,6 @@ function ActiveCard({ vial, isDueToday, isLow, actions, knowledge }: {
                         onClick={() => {
                             actions.logDose.mutate({
                                 vialId: vial.id,
-                                currentQty: vial.current_quantity_mg,
                                 doseMg,
                             });
                         }}
@@ -826,6 +826,7 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
     const actions = useVialActions(contactId);
     const todayAbbr = format(new Date(), 'EEE');
     const [storageOpen, setStorageOpen] = useState(false);
+    const { data: dbKnowledgeMap } = useProtocolKnowledge();
 
     const activeVials = inventory.filter(
         (v) => v.status === 'active' && v.vial_size_mg > 0
@@ -840,11 +841,11 @@ export function SimpleVials({ inventory, contactId }: SimpleVialsProps) {
         for (const vial of activeVials) {
             const name = vial.peptide?.name;
             if (name && !map.has(name)) {
-                map.set(name, lookupKnowledge(name));
+                map.set(name, lookupKnowledge(name, dbKnowledgeMap) as PeptideKnowledge | null);
             }
         }
         return map;
-    }, [activeVials]);
+    }, [activeVials, dbKnowledgeMap]);
 
     const getKnowledge = (vial: ClientInventoryItem) => knowledgeMap.get(vial.peptide?.name || '') ?? null;
 

@@ -168,6 +168,7 @@ Deno.serve(withErrorReporting("notify-order", async (req) => {
 
         let notified = 0;
         const errors: string[] = [];
+        const textbeltResponses: object[] = [];
 
         for (const entry of activePhones) {
             try {
@@ -181,6 +182,7 @@ Deno.serve(withErrorReporting("notify-order", async (req) => {
                     }),
                 });
                 const result = await resp.json();
+                textbeltResponses.push({ phone: entry.label || entry.phone, ...result });
                 if (result.success) {
                     notified++;
                 } else {
@@ -196,6 +198,7 @@ Deno.serve(withErrorReporting("notify-order", async (req) => {
             notified,
             total_phones: activePhones.length,
             errors: errors.length > 0 ? errors : undefined,
+            textbelt_debug: textbeltResponses,
         }, 200, corsHeaders);
 
     } catch (err) {

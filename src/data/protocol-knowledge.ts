@@ -1699,7 +1699,10 @@ const KNOWLEDGE_ALIASES: Record<string, string> = {
     'foxo4dri': 'foxo4dri',
 };
 
-export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
+export function lookupKnowledge(
+    peptideName: string,
+    knowledgeMap: Record<string, PeptideKnowledge> = PROTOCOL_KNOWLEDGE
+): PeptideKnowledge | null {
     // Normalize: strip mg suffix, hyphens, extra spaces, lowercase
     const normalize = (s: string) =>
         s.replace(/\s*\d+\s*mg\s*$/i, '').replace(/[-\s]+/g, '').toLowerCase().trim();
@@ -1707,18 +1710,18 @@ export function lookupKnowledge(peptideName: string): PeptideKnowledge | null {
     const input = normalize(peptideName);
 
     // Exact normalized match first
-    for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
+    for (const [key, value] of Object.entries(knowledgeMap)) {
         if (normalize(key) === input) return value;
     }
     // Alias match — check if abbreviated name maps to a knowledge key
     const aliasTarget = KNOWLEDGE_ALIASES[input];
     if (aliasTarget) {
-        for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
+        for (const [key, value] of Object.entries(knowledgeMap)) {
             if (normalize(key) === aliasTarget) return value;
         }
     }
     // Partial match (normalized)
-    for (const [key, value] of Object.entries(PROTOCOL_KNOWLEDGE)) {
+    for (const [key, value] of Object.entries(knowledgeMap)) {
         const nKey = normalize(key);
         if (nKey.includes(input) || input.includes(nKey)) {
             return value;

@@ -13,9 +13,7 @@ import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubdomainTenantProvider } from "@/hooks/use-subdomain-tenant";
 import { BugReportButton } from "@/components/BugReportButton";
-import { Loader2 } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
-
 // Eagerly loaded — needed on first render
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -48,7 +46,7 @@ const Bottles = lazyRetry(() => import("./pages/Bottles"));
 const Orders = lazyRetry(() => import("./pages/Orders"));
 const OrderList = lazyRetry(() => import("./pages/sales/OrderList"));
 const NewOrder = lazyRetry(() => import("./pages/sales/NewOrder"));
-const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetails"));
+const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetailsV2"));
 const Reps = lazyRetry(() => import("./pages/admin/Reps"));
 const Contacts = lazyRetry(() => import("./pages/Contacts"));
 const Protocols = lazyRetry(() => import("./pages/Protocols"));

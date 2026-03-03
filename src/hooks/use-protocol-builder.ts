@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePeptides, type Peptide } from '@/hooks/use-peptides';
 import { lookupKnowledge, type ProtocolTemplate } from '@/data/protocol-knowledge';
+import { useProtocolKnowledge, useDatabaseProtocolTemplates } from '@/hooks/use-protocol-knowledge';
 import {
     type EnrichedProtocolItem,
     type IncludeSections,
@@ -33,6 +34,10 @@ export function useProtocolBuilder() {
     const { profile, organization } = useAuth();
     const { data: peptides } = usePeptides();
     const [searchParams] = useSearchParams();
+
+    // DB-backed async protocol knowledge and templates
+    const { data: knowledgeMap, isLoading: isLoadingKnowledge } = useProtocolKnowledge();
+    const { data: dbTemplates, isLoading: isLoadingTemplates } = useDatabaseProtocolTemplates();
 
     // State
     const [selectedContactId, setSelectedContactId] = useState('');
@@ -63,7 +68,6 @@ export function useProtocolBuilder() {
     });
 
     // Saved protocols (for "Load Saved" dropdown)
-    const queryClient = useQueryClient();
     const { data: savedProtocols } = useQuery({
         queryKey: ['saved-protocols-list', profile?.org_id],
         queryFn: async () => {
@@ -95,10 +99,10 @@ export function useProtocolBuilder() {
     const { data: supplementCatalog } = useQuery({
         queryKey: ['supplement-catalog'],
         queryFn: async () => {
-            const { data } = await supabase
+            const { data } = await (supabase as any)
                 .from('supplements')
                 .select('name, image_url, purchase_link');
-            return data || [];
+            return (data || []) as { name: string; image_url: string; purchase_link: string }[];
         },
         staleTime: 1000 * 60 * 30, // cache 30 min
     });
@@ -106,7 +110,7 @@ export function useProtocolBuilder() {
     // ── Enrichment: peptide → EnrichedProtocolItem ─────────────
 
     const enrichPeptide = useCallback((peptide: Peptide, preferredTierId?: string): EnrichedProtocolItem => {
-        const knowledge = lookupKnowledge(peptide.name);
+        const knowledge = lookupKnowledge(peptide.name, knowledgeMap);
         const tiers = knowledge?.dosingTiers ?? [];
 
         // Extract vial size from product name (e.g., "BPC-157 20mg" → 20)
@@ -178,7 +182,7 @@ export function useProtocolBuilder() {
                 dosageSchedule: true,
             },
         };
-    }, [supplementCatalog]);
+    }, [supplementCatalog, knowledgeMap]);
 
     // ── Actions ────────────────────────────────────────────────
 
@@ -294,7 +298,7 @@ export function useProtocolBuilder() {
     const loadFromOrder = useCallback(async (orderId: string) => {
         if (!peptides) return;
 
-        const { data: orderItems, error } = await supabase
+        const { data: orderItems, error } = await (supabase as any)
             .from('sales_order_items')
             .select('peptide_id, quantity')
             .eq('sales_order_id', orderId);
@@ -305,7 +309,7 @@ export function useProtocolBuilder() {
         }
 
         const newItems: EnrichedProtocolItem[] = [];
-        for (const oi of (orderItems || [])) {
+        for (const oi of (orderItems as any[] || [])) {
             const peptide = peptides.find(p => p.id === oi.peptide_id);
             if (peptide) {
                 newItems.push(enrichPeptide(peptide));
@@ -317,7 +321,7 @@ export function useProtocolBuilder() {
     const loadFromOrders = useCallback(async (orderIds: string[]) => {
         if (!peptides || orderIds.length === 0) return;
 
-        const { data: orderItems, error } = await supabase
+        const { data: orderItems, error } = await (supabase as any)
             .from('sales_order_items')
             .select('peptide_id, quantity')
             .in('sales_order_id', orderIds);
@@ -330,7 +334,7 @@ export function useProtocolBuilder() {
         // Deduplicate by peptide_id
         const seen = new Set<string>();
         const newItems: EnrichedProtocolItem[] = [];
-        for (const oi of (orderItems || [])) {
+        for (const oi of (orderItems as any[] || [])) {
             if (seen.has(oi.peptide_id)) continue;
             seen.add(oi.peptide_id);
             const peptide = peptides.find(p => p.id === oi.peptide_id);
@@ -346,13 +350,13 @@ export function useProtocolBuilder() {
     const loadSavedProtocol = useCallback(async (protocolId: string) => {
         if (!peptides) return;
 
-        const { data: protocol, error: pErr } = await supabase
+        const { data: protocol, error: pErr } = await (supabase as any)
             .from('protocols')
             .select('name, contact_id')
             .eq('id', protocolId)
             .maybeSingle();
 
-        const { data: savedItems, error } = await supabase
+        const { data: savedItems, error } = await (supabase as any)
             .from('protocol_items')
             .select('peptide_id, dosage_amount, dosage_unit, frequency, notes')
             .eq('protocol_id', protocolId);
@@ -371,7 +375,7 @@ export function useProtocolBuilder() {
         }
 
         const newItems: EnrichedProtocolItem[] = [];
-        for (const si of (savedItems || [])) {
+        for (const si of (savedItems as any[] || [])) {
             const peptide = peptides.find(p => p.id === si.peptide_id);
             if (peptide) {
                 const item = enrichPeptide(peptide);
@@ -390,7 +394,7 @@ export function useProtocolBuilder() {
     // ── URL Search Params ──────────────────────────────────────
 
     useEffect(() => {
-        if (initialized || !peptides?.length) return;
+        if (initialized || !peptides?.length || isLoadingKnowledge || isLoadingTemplates) return;
         setInitialized(true);
 
         const contactParam = searchParams.get('contact');
@@ -411,9 +415,9 @@ export function useProtocolBuilder() {
         } else if (orderParam) {
             loadFromOrder(orderParam);
         } else if (templateParam) {
-            loadTemplate(templateParam);
+            loadTemplate(templateParam, dbTemplates);
         }
-    }, [initialized, peptides, searchParams, loadFromOrder, loadFromOrders, loadTemplate, loadSavedProtocol]);
+    }, [initialized, peptides, searchParams, loadFromOrder, loadFromOrders, loadTemplate, loadSavedProtocol, isLoadingKnowledge, isLoadingTemplates, dbTemplates]);
 
     // ── Auto-generate Protocol Name ─────────────────────────────
     useEffect(() => {
@@ -421,7 +425,7 @@ export function useProtocolBuilder() {
             const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             setProtocolName(clientName ? `${clientName}'s Protocol - ${today}` : `Protocol - ${today}`);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [clientName]);
 
     // ── Available peptides (not yet added) ─────────────────────

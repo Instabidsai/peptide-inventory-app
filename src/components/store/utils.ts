@@ -19,7 +19,7 @@ export function matchPeptide(peptides: Peptide[], name: string): Peptide | undef
     });
 }
 
-export function getPeptideDescription(peptideName: string): string | null {
+export function getPeptideDescription(peptideName: string, knowledgeMap?: any): string | null {
     // Check our curated short descriptions first (strip dosage for lookup)
     const baseName = peptideName.replace(/\s+\d+mg(\/\d+mg)?$/i, '');
     if (PEPTIDE_CARD_DESCRIPTIONS[baseName]) return PEPTIDE_CARD_DESCRIPTIONS[baseName];
@@ -29,7 +29,7 @@ export function getPeptideDescription(peptideName: string): string | null {
         if (peptideName.toLowerCase().startsWith(key.toLowerCase())) return desc;
     }
     // Fall back to knowledge base
-    const knowledge = lookupKnowledge(peptideName);
+    const knowledge = lookupKnowledge(peptideName, knowledgeMap);
     if (knowledge?.description) return knowledge.description;
     return null;
 }
@@ -43,17 +43,17 @@ export function canSeePeptide(peptide: { visible_to_user_ids?: string[] | null }
 }
 
 // Find protocol templates that include a given peptide, and return the other peptides in those stacks
-export function getRelatedStacks(peptideName: string, allPeptides: Peptide[]): { templateName: string; category: string; icon: string; otherPeptides: string[] }[] {
+export function getRelatedStacks(peptideName: string, allPeptides: Peptide[], templates: any[] = PROTOCOL_TEMPLATES): { templateName: string; category: string; icon: string; otherPeptides: string[] }[] {
     const baseName = peptideName.replace(/\s+\d+mg(\/\d+mg)?$/i, '').toLowerCase();
     const stacks: { templateName: string; category: string; icon: string; otherPeptides: string[] }[] = [];
-    for (const template of PROTOCOL_TEMPLATES) {
+    for (const template of templates) {
         if (template.category === 'full') continue; // skip the mega-protocol
         if (template.defaultTierId) continue; // skip variant templates
-        const matchIdx = template.peptideNames.findIndex(n => n.toLowerCase().startsWith(baseName) || baseName.startsWith(n.toLowerCase()));
+        const matchIdx = template.peptideNames.findIndex((n: string) => n.toLowerCase().startsWith(baseName) || baseName.startsWith(n.toLowerCase()));
         if (matchIdx === -1) continue;
-        const others = [...new Set(template.peptideNames.filter((_, i) => i !== matchIdx))];
+        const others = [...new Set(template.peptideNames.filter((_: unknown, i: number) => i !== matchIdx))] as string[];
         // Map template names back to display names from allPeptides
-        const otherDisplayNames = others.map(n => {
+        const otherDisplayNames = others.map((n: string) => {
             const match = allPeptides?.find(p => p.name?.toLowerCase().startsWith(n.toLowerCase()));
             return match?.name || n;
         });
