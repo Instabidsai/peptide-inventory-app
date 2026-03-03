@@ -358,9 +358,9 @@ export default function Reps() {
                 .in('type', ['customer', 'preferred'])
                 .order('name');
             if (error) throw error;
-            // Exclude contacts who share a name with a partner (they're already shown as partners)
-            const partnerNames = new Set(reps.map(r => r.full_name?.toLowerCase()));
-            return (data || []).filter(c => !partnerNames.has(c.name?.toLowerCase()));
+            // Exclude contacts whose linked_user_id matches a partner profile (they're already shown as partners)
+            const partnerEmails = new Set(reps.map(r => r.email?.toLowerCase()));
+            return (data || []).filter(c => !partnerEmails.has(c.email?.toLowerCase()));
         },
         enabled: !!reps && reps.length > 0,
     });
