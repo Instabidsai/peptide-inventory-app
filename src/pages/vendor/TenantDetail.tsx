@@ -125,7 +125,7 @@ export default function TenantDetail() {
                 <TenantConfigEditor orgId={orgId!} config={tenant.config} />
 
                 {/* Wholesale / Supplier Controls */}
-                <TenantWholesaleEditor orgId={orgId!} config={tenant.config} />
+                <TenantWholesaleEditor orgId={orgId!} config={tenant.config} tenantName={tenant.config?.brand_name || tenant.org_name} />
 
                 {/* User Management */}
                 <TenantUserList orgId={orgId!} />

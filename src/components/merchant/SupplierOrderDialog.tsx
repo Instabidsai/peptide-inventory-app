@@ -31,6 +31,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Package, Minus, Plus, ShoppingCart, Loader2, ArrowRight } from 'lucide-react';
 
+interface SupplierOrderDialogProps {
+    /** When set, place the order on behalf of this tenant org (vendor context) */
+    targetOrgId?: string;
+    /** Display name of the target tenant org */
+    targetOrgName?: string;
+}
+
 interface CartItem {
     peptide_id: string;
     name: string;
@@ -44,7 +51,7 @@ function useCreateSupplierOrder() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (payload: { items: { peptide_id: string; quantity: number; unit_price: number }[] }) => {
+        mutationFn: async (payload: { items: { peptide_id: string; quantity: number; unit_price: number }[]; on_behalf_of_org_id?: string }) => {
             const { data, error } = await invokeEdgeFunction<{ success: boolean; error?: string }>('create-supplier-order', payload as unknown as Record<string, unknown>);
             if (error) throw new Error(error.message);
             if (!data?.success) throw new Error(data?.error || 'Order creation failed');
@@ -57,16 +64,18 @@ function useCreateSupplierOrder() {
     });
 }
 
-export default function SupplierOrderDialog() {
+export default function SupplierOrderDialog({ targetOrgId, targetOrgName }: SupplierOrderDialogProps = {}) {
     const [open, setOpen] = useState(false);
     const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
     const { toast } = useToast();
     const { organization, profile } = useAuth();
 
-    const { data: supplierPeptides, isLoading: peptidesLoading } = useSupplierCatalog();
-    const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier();
+    // When targetOrgId is set (vendor context), fetch catalog/pricing for that tenant
+    const effectiveOrgId = targetOrgId || profile?.org_id;
+    const { data: supplierPeptides, isLoading: peptidesLoading } = useSupplierCatalog(targetOrgId || null);
+    const { data: tierInfo, isLoading: tierLoading } = useOrgWholesaleTier(targetOrgId || null);
     const { data: allTiers, isLoading: tiersLoading } = useWholesaleTiers();
-    const { data: flatPrices, isLoading: flatPricesLoading } = useTenantWholesalePrices(profile?.org_id);
+    const { data: flatPrices, isLoading: flatPricesLoading } = useTenantWholesalePrices(effectiveOrgId);
     const createOrder = useCreateSupplierOrder();
 
     // Build flat price lookup: peptide_id → wholesale_price
@@ -160,6 +169,7 @@ export default function SupplierOrderDialog() {
                     quantity: i.quantity,
                     unit_price: i.wholesale_price,
                 })),
+                ...(targetOrgId ? { on_behalf_of_org_id: targetOrgId } : {}),
             });
 
             toast({ title: 'Order placed!', description: `${totalItems} units ordered for $${totalCost.toFixed(2)}` });
@@ -190,9 +200,12 @@ export default function SupplierOrderDialog() {
                         Wholesale Order Form
                     </DialogTitle>
                     <DialogDescription className="flex items-center gap-1.5 text-xs">
-                        <span className="font-medium text-foreground">{organization?.name || 'Your Company'}</span>
+                        <span className="font-medium text-foreground">{targetOrgName || organization?.name || 'Your Company'}</span>
                         <ArrowRight className="h-3 w-3" />
                         <span className="font-medium text-foreground">{supplierOrg?.name || 'Supplier'}</span>
+                        {targetOrgId && (
+                            <Badge variant="outline" className="ml-1 text-[10px]">on behalf of</Badge>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 

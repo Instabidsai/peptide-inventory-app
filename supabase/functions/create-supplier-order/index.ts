@@ -74,16 +74,29 @@ Deno.serve(withErrorReporting("create-supplier-order", async (req) => {
             .single();
 
         if (!callerRole?.org_id) throw new Error('No organization found');
-        if (!['admin', 'staff', 'super_admin'].includes(callerRole.role)) {
+        if (!['admin', 'staff', 'super_admin', 'vendor'].includes(callerRole.role)) {
             throw new Error('Only admin or staff can place supplier orders');
         }
 
-        const merchantOrgId = callerRole.org_id;
+        // Parse request body early so on_behalf_of_org_id is available
+        const body = await req.json() as { items: OrderItem[]; on_behalf_of_org_id?: string };
+
+        // Support "order on behalf of" — vendor placing order for a tenant
+        const on_behalf_of_org_id = body.on_behalf_of_org_id;
+        let merchantOrgId = callerRole.org_id;
+
+        if (on_behalf_of_org_id) {
+            // Only vendor/super_admin can place orders on behalf of another org
+            if (!['vendor', 'super_admin'].includes(callerRole.role)) {
+                throw new Error('Only vendor admins can place orders on behalf of a tenant');
+            }
+            merchantOrgId = on_behalf_of_org_id;
+        }
 
         // Check merchant has a supplier configured
         const { data: config } = await supabase
             .from('tenant_config')
-            .select('supplier_org_id, wholesale_tier_id')
+            .select('supplier_org_id, wholesale_tier_id, wholesale_pricing_mode')
             .eq('org_id', merchantOrgId)
             .single();
 
@@ -110,25 +123,37 @@ Deno.serve(withErrorReporting("create-supplier-order", async (req) => {
             return defaultMarkup;
         }
 
-        const body: { items: OrderItem[] } = await req.json();
         if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
             throw new Error('At least one item is required');
         }
 
-        // Validate items: all peptides must belong to merchant's catalog
+        // Validate items: all peptides must belong to SUPPLIER's catalog
         const peptideIds = body.items.map(i => i.peptide_id);
         const { data: validPeptides } = await supabase
             .from('peptides')
             .select('id, name, retail_price, base_cost')
-            .eq('org_id', merchantOrgId)
+            .eq('org_id', config.supplier_org_id)
             .in('id', peptideIds);
 
         if (!validPeptides || validPeptides.length !== peptideIds.length) {
-            throw new Error('Some products are not in your catalog');
+            throw new Error('Some products are not in the supplier catalog');
         }
 
         // Build lookup for server-side price enforcement
         const peptideLookup = new Map(validPeptides.map(p => [p.id, p]));
+
+        // Fetch flat prices for this merchant (custom pricing mode)
+        const pricingMode = (config as any).wholesale_pricing_mode || 'tier';
+        let flatPriceMap = new Map<string, number>();
+        if (pricingMode === 'custom') {
+            const { data: flatPrices } = await supabase
+                .from('tenant_wholesale_prices')
+                .select('peptide_id, wholesale_price')
+                .eq('org_id', merchantOrgId);
+            if (flatPrices) {
+                flatPriceMap = new Map(flatPrices.map(p => [p.peptide_id, p.wholesale_price]));
+            }
+        }
 
         // Validate quantities and enforce server-side pricing
         const pricedItems: typeof body.items = [];
@@ -140,9 +165,11 @@ Deno.serve(withErrorReporting("create-supplier-order", async (req) => {
             if (!peptide?.base_cost || peptide.base_cost <= 0) {
                 throw new Error(`Product "${peptide?.name || item.peptide_id}" has no base cost set`);
             }
-            // Server-calculated wholesale price — per-item quantity determines tier markup
-            const itemMarkup = getMarkupForQty(item.quantity);
-            const serverPrice = +(peptide.base_cost + itemMarkup).toFixed(2);
+            // Server-calculated wholesale price — flat price takes priority over tier
+            const flatPrice = flatPriceMap.get(item.peptide_id);
+            const serverPrice = flatPrice != null
+                ? flatPrice
+                : +(peptide.base_cost + getMarkupForQty(item.quantity)).toFixed(2);
             pricedItems.push({ ...item, unit_price: serverPrice });
         }
 
@@ -166,27 +193,54 @@ Deno.serve(withErrorReporting("create-supplier-order", async (req) => {
         const supplierName = supplierOrg?.name || 'Supplier';
 
         // Upsert a "partner" contact in the supplier's org to represent this merchant
-        const { data: existingContact } = await supabase
-            .from('contacts')
-            .select('id')
-            .eq('org_id', config.supplier_org_id)
-            .eq('linked_user_id', user.id)
-            .eq('source', 'wholesale')
-            .maybeSingle();
+        let existingContact;
+        if (on_behalf_of_org_id) {
+            // For on-behalf orders, find by company name in supplier's org
+            const { data } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('org_id', config.supplier_org_id)
+                .eq('company', merchantName)
+                .eq('source', 'wholesale')
+                .maybeSingle();
+            existingContact = data;
+        } else {
+            const { data } = await supabase
+                .from('contacts')
+                .select('id')
+                .eq('org_id', config.supplier_org_id)
+                .eq('linked_user_id', user.id)
+                .eq('source', 'wholesale')
+                .maybeSingle();
+            existingContact = data;
+        }
 
         let contactId: string;
         if (existingContact) {
             contactId = existingContact.id;
         } else {
+            // Get merchant admin email for contact record
+            let contactEmail = user.email;
+            if (on_behalf_of_org_id) {
+                const { data: merchantAdmin } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('org_id', merchantOrgId)
+                    .eq('role', 'admin')
+                    .limit(1)
+                    .maybeSingle();
+                if (merchantAdmin?.email) contactEmail = merchantAdmin.email;
+            }
+
             const { data: newContact, error: contactErr } = await supabase
                 .from('contacts')
                 .insert({
                     org_id: config.supplier_org_id,
                     name: merchantName,
-                    email: user.email,
+                    email: contactEmail,
                     company: merchantName,
                     type: 'partner',
-                    linked_user_id: user.id,
+                    linked_user_id: on_behalf_of_org_id ? null : user.id,
                     source: 'wholesale',
                     notes: `Wholesale merchant account (${merchantName})`,
                 })

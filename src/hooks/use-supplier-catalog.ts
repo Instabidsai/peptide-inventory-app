@@ -16,10 +16,13 @@ export interface SupplierPeptide {
  * Fetches the supplier's live peptide catalog via the get_supplier_catalog RPC.
  * Passes the effective org_id so impersonation works correctly
  * (auth.uid() in the RPC is always the real user, not the impersonated one).
+ *
+ * @param overrideOrgId - Optional org_id to fetch catalog for (used by vendor "order on behalf of")
+ * @param enabled - Whether the query should run
  */
-export function useSupplierCatalog(enabled = true) {
+export function useSupplierCatalog(overrideOrgId?: string | null, enabled = true) {
   const { profile } = useAuth();
-  const orgId = profile?.org_id;
+  const orgId = overrideOrgId || profile?.org_id;
 
   return useQuery({
     queryKey: ['supplier-catalog', orgId],

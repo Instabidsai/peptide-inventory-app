@@ -79,7 +79,7 @@ export default function Peptides() {
   const { data: orgTier } = useOrgWholesaleTier();
   const { data: allTiers } = useWholesaleTiers();
   const showWholesaleTab = isEnabled('wholesale_catalog') && !!tenantConfig?.supplier_org_id;
-  const { data: supplierCatalog, isLoading: supplierLoading } = useSupplierCatalog(showWholesaleTab);
+  const { data: supplierCatalog, isLoading: supplierLoading } = useSupplierCatalog(null, showWholesaleTab);
   const { data: flatPrices } = useTenantWholesalePrices(profile?.org_id);
   const flatPriceMap = buildPriceMap(flatPrices);
   const isCustomPricing = orgTier?.pricing_mode === 'custom' && flatPriceMap.size > 0;

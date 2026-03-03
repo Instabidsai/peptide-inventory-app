@@ -75,10 +75,13 @@ export function useWholesaleTiers() {
     });
 }
 
-/** Fetch this org's assigned wholesale tier from tenant_config */
-export function useOrgWholesaleTier() {
+/**
+ * Fetch this org's assigned wholesale tier from tenant_config.
+ * @param overrideOrgId - Optional org_id override (used by vendor "order on behalf of")
+ */
+export function useOrgWholesaleTier(overrideOrgId?: string | null) {
     const { profile } = useAuth();
-    const orgId = profile?.org_id;
+    const orgId = overrideOrgId || profile?.org_id;
 
     return useQuery({
         queryKey: ['org_wholesale_tier', orgId],

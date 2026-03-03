@@ -20,6 +20,7 @@ import { Loader2, Truck, DollarSign, Save } from 'lucide-react';
 import type { TenantDetail } from '@/hooks/use-tenant-detail';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenantWholesalePrices, useUpsertTenantWholesalePrices, buildPriceMap } from '@/hooks/use-tenant-wholesale-prices';
+import SupplierOrderDialog from '@/components/merchant/SupplierOrderDialog';
 
 type Config = NonNullable<TenantDetail['config']>;
 
@@ -39,7 +40,7 @@ interface SupplierPeptide {
     sku: string | null;
 }
 
-export default function TenantWholesaleEditor({ orgId, config }: { orgId: string; config: Config | null }) {
+export default function TenantWholesaleEditor({ orgId, config, tenantName }: { orgId: string; config: Config | null; tenantName?: string }) {
     const [saving, setSaving] = useState(false);
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -231,7 +232,12 @@ export default function TenantWholesaleEditor({ orgId, config }: { orgId: string
                     <Truck className="h-4 w-4" />
                     Wholesale / Supplier
                 </CardTitle>
-                <CardDescription>Link your wholesale catalog to this tenant</CardDescription>
+                <CardDescription className="flex items-center justify-between">
+                    <span>Link your wholesale catalog to this tenant</span>
+                    {isLinked && (
+                        <SupplierOrderDialog targetOrgId={orgId} targetOrgName={tenantName} />
+                    )}
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Toggle supplier link */}

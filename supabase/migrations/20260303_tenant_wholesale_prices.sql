@@ -15,15 +15,17 @@ CREATE TABLE IF NOT EXISTS tenant_wholesale_prices (
 -- RLS: vendor (super-admin) can read/write, tenant admin can read their own prices
 ALTER TABLE tenant_wholesale_prices ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "vendor_full_access" ON tenant_wholesale_prices
-    FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM profiles
-            WHERE profiles.id = auth.uid()
-            AND profiles.role = 'vendor'
-        )
-    );
+CREATE POLICY "super_admin_read" ON tenant_wholesale_prices
+    FOR SELECT USING (is_super_admin());
+
+CREATE POLICY "super_admin_write" ON tenant_wholesale_prices
+    FOR INSERT WITH CHECK (is_super_admin());
+
+CREATE POLICY "super_admin_update" ON tenant_wholesale_prices
+    FOR UPDATE USING (is_super_admin()) WITH CHECK (is_super_admin());
+
+CREATE POLICY "super_admin_delete" ON tenant_wholesale_prices
+    FOR DELETE USING (is_super_admin());
 
 CREATE POLICY "tenant_read_own" ON tenant_wholesale_prices
     FOR SELECT
