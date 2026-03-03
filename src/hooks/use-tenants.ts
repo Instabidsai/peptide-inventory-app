@@ -76,66 +76,19 @@ export function useTenants() {
     });
 }
 
-/** Delete an entire tenant org and all its data. DESTRUCTIVE. */
+/** Delete an entire tenant org and all its data. DESTRUCTIVE.
+ *  Uses server-side RPC (SECURITY DEFINER) to bypass RLS —
+ *  client-side deletes fail because RLS scopes to the caller's org, not the target. */
 export function useDeleteTenant() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
     return useMutation({
         mutationFn: async (orgId: string) => {
-            // Delete org-scoped data in reverse dependency order.
-            // Tables with FK children must be cleaned first.
-            const tables = [
-                'movement_items',    // depends on bottles
-                'order_items',       // depends on orders
-                'commissions',       // depends on orders/profiles
-                'bottles',           // depends on lots
-                'lots',              // depends on peptides
-                'inventory_movements', // depends on org
-                'movements',         // depends on org
-                'sales_orders',      // depends on org
-                'orders',            // depends on org
-                'protocols',         // depends on org
-                'contacts',          // depends on org
-                'peptides',          // depends on org
-                'pricing_tiers',     // depends on org
-                'partner_tier_config', // depends on org
-                'partner_discount_codes', // depends on org
-                'partner_chat_messages', // depends on org
-                'partner_suggestions', // depends on org
-                'automation_modules', // depends on org
-                'client_requests',   // depends on org
-                'payment_email_queue', // depends on org
-                'sender_aliases',    // depends on org
-                'daily_hours',       // depends on org
-                'notifications',     // depends on org
-                'org_features',      // depends on org
-                'user_roles',        // depends on org
-                'tenant_connections', // depends on org
-                'subscription_plans', // depends on org (link table)
-                'tenant_config',     // depends on org
-                'profiles',          // depends on org
-            ];
-
-            for (const table of tables) {
-                const { error } = await supabase
-                    .from(table)
-                    .delete()
-                    .eq('org_id', orgId);
-                // Ignore "relation does not exist" or "column not found" errors
-                // Some tables may not exist in all environments
-                if (error && !error.message.includes('does not exist') && !error.message.includes('column')) {
-                    logger.warn(`Delete from ${table} failed:`, error.message);
-                }
-            }
-
-            // Finally delete the organization itself
-            const { error: orgError } = await supabase
-                .from('organizations')
-                .delete()
-                .eq('id', orgId);
-            if (orgError) throw orgError;
-
+            const { data, error } = await supabase.rpc('delete_tenant_cascade', {
+                target_org_id: orgId,
+            });
+            if (error) throw new Error(error.message);
             return orgId;
         },
         onSuccess: () => {
