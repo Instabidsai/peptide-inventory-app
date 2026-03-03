@@ -130,6 +130,8 @@ function isNoise(record) {
   if (record.action === "bug_report" && /^(hey|help|hi|hello)\b/i.test(msg.trim())) return true;
   // Suppress sentinel's own health probe noise
   if (/sentinel_heartbeat|health_probe/.test(msg)) return true;
+  // Dead clicks and rage clicks — false positives from click-tracker (tabs, nav, quantity buttons)
+  if (/\[AUTO\] (dead_click|rage_click):/.test(msg)) return true;
   return false;
 }
 

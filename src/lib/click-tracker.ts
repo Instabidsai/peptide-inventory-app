@@ -51,6 +51,51 @@ function describeElement(el: Element): Record<string, unknown> {
   };
 }
 
+/**
+ * Elements that are expected to produce no fetch/navigation on click.
+ * These are NOT bugs — they change local UI state (tabs, accordions, toggles)
+ * or are normal interaction patterns (quantity buttons, nav links that use hash routing).
+ */
+function isBenignClick(el: Element): boolean {
+  // Tabs (Radix UI, shadcn) — they change data-state, not fetch
+  if (el.getAttribute('role') === 'tab') return true;
+  if (el.classList.contains('tab-trigger') || el.hasAttribute('data-radix-collection-item')) return true;
+
+  // Accordion triggers — expand/collapse, no fetch
+  if (el.hasAttribute('data-state') && el.closest('[data-radix-accordion-item]')) return true;
+
+  // Sidebar/nav links — hash routing handled by React Router, may not trigger fetch
+  if (el.closest('nav') || el.closest('[role="navigation"]') || el.closest('.sidebar')) return true;
+
+  // Quantity increment/decrement buttons — they update local state
+  const text = (el.textContent || '').trim();
+  if ((text === '+' || text === '-' || text === '−') && el.tagName.toLowerCase() === 'button') return true;
+
+  // Dialog/sheet/popover triggers — they toggle visibility via data-state
+  if (el.hasAttribute('data-state') && (el.closest('[role="dialog"]') || el.closest('[data-radix-popper-content-wrapper]'))) return true;
+
+  // Toggle/switch elements
+  if (el.getAttribute('role') === 'switch' || el.getAttribute('role') === 'checkbox') return true;
+
+  // Dropdown menu triggers
+  if (el.getAttribute('role') === 'combobox' || el.getAttribute('role') === 'menuitem') return true;
+  if (el.hasAttribute('data-radix-dropdown-menu-trigger')) return true;
+
+  // Tooltip triggers — hover-based, click does nothing
+  if (el.hasAttribute('data-radix-tooltip-trigger')) return true;
+
+  // Copy-to-clipboard buttons — they write to clipboard, no fetch
+  if (el.getAttribute('data-action') === 'copy' || el.classList.contains('copy-button')) return true;
+
+  // File input labels — they open the file picker
+  if (el.tagName.toLowerCase() === 'label' && el.querySelector('input[type="file"]')) return true;
+
+  // Informational cards without explicit click handlers (data display)
+  if (el.classList.contains('card') && !el.getAttribute('onclick') && !el.hasAttribute('data-action')) return true;
+
+  return false;
+}
+
 /** Check if an element is interactive (button, link, input, etc.) */
 function isInteractive(el: Element): boolean {
   const tag = el.tagName.toLowerCase();
@@ -192,6 +237,9 @@ export function installClickTracker() {
     if ((interactive as HTMLButtonElement).disabled) return;
 
     const now = Date.now();
+
+    // ── Skip benign elements entirely (tabs, nav, quantity buttons, etc.) ──
+    if (isBenignClick(interactive)) return;
 
     // ── Rage click detection ──
     recentClicks.push({ el: interactive, time: now });

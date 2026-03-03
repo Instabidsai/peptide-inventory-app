@@ -146,6 +146,7 @@ const flags = new Set(process.argv.slice(2));
 const DETECT_ONLY = flags.has("--detect-only");
 const AUTO_PUSH = flags.has("--auto-push");
 const SKIP_CC = flags.has("--skip-cc");
+const SEND_EMAIL = flags.has("--send-email"); // Email is now OPT-IN to prevent spam
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PHASE 1 — DETECTION
@@ -354,6 +355,8 @@ async function checkBugReports() {
     if (/\[hmr\] Failed to reload/.test(msg)) return false;
     // Vague user "need help" reports without actual bug info
     if (r.type === "bug_report" && /^(hey|help|hi|hello)\b/i.test(r.error?.trim())) return false;
+    // Dead clicks and rage clicks — false positives from click-tracker (tabs, nav, quantity buttons)
+    if (/\[AUTO\] (dead_click|rage_click):/.test(msg)) return false;
     return true;
   });
 
@@ -763,6 +766,11 @@ function buildReport(issues, ccResult, verification, pushed) {
 }
 
 async function sendEmail(report, issueCount) {
+  if (!SEND_EMAIL) {
+    console.log("  Email skipped (use --send-email flag to enable)");
+    return false;
+  }
+
   if (!HEAL_EMAIL) {
     console.log("  No HEAL_EMAIL set — skipping email");
     return false;
@@ -856,12 +864,7 @@ async function main() {
 
   if (allIssues.length === 0) {
     console.log("\n  All systems healthy. No issues found.\n");
-    // Still send a "healthy" email if configured
-    const report = buildReport([], null, null, false);
-    mkdirSync(REPORTS_DIR, { recursive: true });
-    writeFileSync(join(REPORTS_DIR, report.filename), report.markdown);
-    await sendEmail(report, 0);
-    await saveToDb([], report);
+    // Do NOT send email for healthy runs — this was generating hundreds of spam emails
     return;
   }
 

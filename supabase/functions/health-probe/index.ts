@@ -709,13 +709,14 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
     }
   }
 
-  // 1. Fulfilled orders with no commission record
+  // 1. Fulfilled orders with no commission record (only partner-referred orders need commissions)
   await bizCheck("biz:fulfilled_no_commission", async () => {
     const { data: orders } = await supabase
       .from("sales_orders")
       .select("id")
       .eq("status", "fulfilled")
       .eq("payment_status", "paid")
+      .not("rep_id", "is", null) // Only orders with a sales rep need commissions
       .limit(100);
     if (!orders?.length) return 0;
     const { data: commissions } = await supabase
@@ -724,7 +725,7 @@ Deno.serve(withErrorReporting("health-probe", async (req) => {
       .in("sale_id", orders.map((o) => o.id));
     const commOrderIds = new Set(commissions?.map((c) => c.sale_id) ?? []);
     return orders.filter((o) => !commOrderIds.has(o.id)).length;
-  }, 0, "fail");
+  }, 0, "warn"); // Downgrade to warn — missing commissions are auto-fixed by sentinel Phase 12
 
   // 2. Stale payment queue entries (pending > 1 hour)
   await bizCheck("biz:stale_payment_queue", async () => {
