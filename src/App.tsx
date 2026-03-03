@@ -48,7 +48,7 @@ const Bottles = lazyRetry(() => import("./pages/Bottles"));
 const Orders = lazyRetry(() => import("./pages/Orders"));
 const OrderList = lazyRetry(() => import("./pages/sales/OrderList"));
 const NewOrder = lazyRetry(() => import("./pages/sales/NewOrder"));
-const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetailsV2"));
+const OrderDetails = lazyRetry(() => import("./pages/sales/OrderDetails"));
 const Reps = lazyRetry(() => import("./pages/admin/Reps"));
 const Contacts = lazyRetry(() => import("./pages/Contacts"));
 const Protocols = lazyRetry(() => import("./pages/Protocols"));
