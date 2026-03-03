@@ -26,18 +26,22 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         return <Navigate to="/auth" replace />;
     }
 
-    // No role yet (new user, profile still being set up) â let ProtectedRoute
-    // handle the onboarding redirect; don't fight it with a redirect loop.
+    // No role from user_roles table yet — but profile.role may still be available
+    // as a fallback (e.g. RLS timing issue where user_roles query returns null).
+    // If profile has a role, fall through to the main redirect logic below.
     if (!userRole?.role) {
         // If allowedRoles includes client/customer, allow through (new client scenario)
         if (allowedRoles?.some(r => ['client', 'customer'].includes(r))) {
             return <>{children}</>;
         }
-        // Otherwise show loading briefly â profile data may still be arriving
         if (!profile?.org_id) {
             return <Navigate to="/onboarding" replace />;
         }
-        return <>{children}</>;
+        // If profile has a role we can use as fallback, fall through
+        // to the redirect logic below instead of rendering children blindly
+        if (!profile?.role) {
+            return <>{children}</>;
+        }
     }
 
     try {
@@ -51,8 +55,8 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
             return <Navigate to={{ pathname: location.pathname, search: searchParams.toString() }} replace />;
         }
 
-        // Allow staff/admin/sales_rep to preview as other roles
-        let roleName = userRole.role;
+        // Use userRole.role if available, otherwise fall back to profile.role
+        let roleName = userRole?.role || profile?.role || '';
         if (previewRole && ['admin', 'staff', 'sales_rep', 'super_admin'].includes(roleName)) {
             roleName = previewRole;
         }
@@ -60,10 +64,9 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         // super_admin lands on their normal admin dashboard (not auto-redirected)
         // They can switch to /vendor via the sidebar mode switcher
 
-        // Block clients/customers from admin areas â send to store or dashboard
+        // Block clients/customers from admin areas - send to store or dashboard
         if (roleName === 'client' || roleName === 'customer') {
             if (!allowedRoles || !allowedRoles.includes(roleName)) {
-                // All customers get at least 20% off â always route to store
                 return <Navigate to="/store" replace />;
             }
         }
