@@ -61,9 +61,15 @@ export default function PartnerDashboard() {
     const commRate = Number(authProfile?.commission_rate || 0) * 100;
     const creditBalance = Number(authProfile?.credit_balance || 0);
 
-    // Compute actual discount % from price_multiplier
+    // Compute discount label based on pricing mode
     const priceMultiplier = Number(authProfile?.price_multiplier || 1);
-    const discountPct = Math.round((1 - priceMultiplier) * 100);
+    const pricingMode = authProfile?.pricing_mode || 'cost_multiplier';
+    const costPlusMarkup = Number(authProfile?.cost_plus_markup || 0);
+    const discountLabel = pricingMode === 'cost_plus'
+        ? `Cost + $${costPlusMarkup}`
+        : pricingMode === 'cost_multiplier'
+            ? `${priceMultiplier}x cost`
+            : `${Math.round((1 - priceMultiplier) * 100)}% off retail`;
 
     // Fetch clients assigned to all reps in the org (not just downline)
     const myProfileId = authProfile?.id as string | undefined;
@@ -256,10 +262,7 @@ export default function PartnerDashboard() {
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
                         <Percent className="h-3 w-3 mr-1" />
-                        {authProfile?.pricing_mode === 'cost_plus'
-                            ? `Cost + $${Number(authProfile?.cost_plus_markup || 0)}`
-                            : `${discountPct}% off retail`
-                        } · {commRate.toFixed(1)}% commission
+                        {discountLabel} · {commRate.toFixed(1)}% commission
                     </Badge>
                 </div>
             </motion.div>

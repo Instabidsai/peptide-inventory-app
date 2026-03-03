@@ -141,6 +141,11 @@ export default function NewOrder() {
             tiers.push({ label: 'MSRP', price: retail, commRate: 0.10, variant: 'default' });
         }
 
+        // Fallback: if no tiers were generated (e.g. retail=0, non-partner), add one based on cost
+        if (tiers.length === 0) {
+            tiers.push({ label: 'Cost', price: Math.round(baseCost * 100) / 100 || 1, commRate: 0, variant: 'outline' });
+        }
+
         return tiers;
     };
 
@@ -306,6 +311,11 @@ export default function NewOrder() {
         const defaultTier = isPartnerOrder
             ? (tiers.find(t => t.label === 'Partner Cost') || tiers[0])
             : (tiers.find(t => t.label === 'MSRP') || tiers[tiers.length - 1]);
+
+        if (!defaultTier) {
+            toast.error(`Cannot add ${peptide.name} — no pricing available`);
+            return;
+        }
 
         setCart(prev => {
             const existing = prev.find(item => item.peptide.id === peptide.id);
@@ -481,8 +491,8 @@ export default function NewOrder() {
                         const baseCost = getBaseCost(peptide, activeProfile);
                         const tiers = getPricingTiers(peptide, baseCost, isPartnerOrder);
                         const defaultPrice = isPartnerOrder
-                            ? (tiers.find(t => t.label === 'Partner')?.price || tiers[0].price)
-                            : (tiers.find(t => t.label === 'MSRP')?.price || tiers[tiers.length - 1].price);
+                            ? (tiers.find(t => t.label === 'Partner Cost')?.price ?? tiers[0]?.price ?? 0)
+                            : (tiers.find(t => t.label === 'MSRP')?.price ?? tiers[tiers.length - 1]?.price ?? 0);
 
                         return (
                             <Card key={peptide.id} className={`cursor-pointer transition-all hover:border-primary ${inCart ? 'border-primary bg-primary/5' : ''}`} onClick={() => addToCart(peptide)}>

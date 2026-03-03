@@ -1,8 +1,9 @@
 import { supabase } from '@/integrations/sb_client/client';
 
 /** Default partner tier settings for referral signups.
- *  NOTE: The actual pricing is set by the link_referral RPC.
- *  These defaults should match the RPC values. */
+ *  NOTE: The link_referral RPC reads actual values from partner_tier_config
+ *  for the org. These are only used as display fallbacks if the DB query
+ *  fails. Keep in sync with the RPC's COALESCE defaults. */
 export const REFERRAL_PARTNER_DEFAULTS = {
   partner_tier: 'referral' as const,
   commission_rate: 0.075,

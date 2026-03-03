@@ -134,6 +134,7 @@ export default function OrderDetails() {
     const [editCommAmount, setEditCommAmount] = useState(0);
     const [editCommRate, setEditCommRate] = useState(0);
     const [editCommStatus, setEditCommStatus] = useState('pending');
+    const [savingComm, setSavingComm] = useState(false);
 
     // Fetch peptides for the "Add Item" picker
     const { data: allPeptides } = useQuery({
@@ -1339,27 +1340,33 @@ export default function OrderDetails() {
                                                                         <Button
                                                                             size="sm"
                                                                             className="h-7 px-3 text-xs"
+                                                                            disabled={savingComm}
                                                                             onClick={async () => {
-                                                                                await supabase
-                                                                                    .from('commissions')
-                                                                                    .update({
-                                                                                        amount: Math.round(editCommAmount * 100) / 100,
-                                                                                        commission_rate: editCommRate,
-                                                                                        status: editCommStatus,
-                                                                                    })
-                                                                                    .eq('id', rec.id);
-                                                                                const updatedRecords = (commissionRecords || []).map(r =>
-                                                                                    r.id === rec.id
-                                                                                        ? { ...r, amount: editCommAmount, status: editCommStatus }
-                                                                                        : r
-                                                                                );
-                                                                                const newTotal = updatedRecords
-                                                                                    .filter(r => r.status !== 'void')
-                                                                                    .reduce((s, r) => s + r.amount, 0);
-                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
-                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
-                                                                                setEditingCommId(null);
-                                                                                toast({ title: 'Commission updated' });
+                                                                                if (savingComm) return;
+                                                                                setSavingComm(true);
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('commissions')
+                                                                                        .update({
+                                                                                            amount: Math.round(editCommAmount * 100) / 100,
+                                                                                            commission_rate: editCommRate,
+                                                                                            status: editCommStatus,
+                                                                                        })
+                                                                                        .eq('id', rec.id);
+                                                                                    if (error) { toast({ variant: 'destructive', title: 'Failed to update commission', description: error.message }); return; }
+                                                                                    const updatedRecords = (commissionRecords || []).map(r =>
+                                                                                        r.id === rec.id
+                                                                                            ? { ...r, amount: editCommAmount, status: editCommStatus }
+                                                                                            : r
+                                                                                    );
+                                                                                    const commTotal = updatedRecords
+                                                                                        .filter(r => r.status !== 'void')
+                                                                                        .reduce((s, r) => s + r.amount, 0);
+                                                                                    await updateOrder.mutateAsync({ id: order.id, commission_amount: Math.round(commTotal * 100) / 100 });
+                                                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                    setEditingCommId(null);
+                                                                                    toast({ title: 'Commission updated' });
+                                                                                } catch { toast({ variant: 'destructive', title: 'Failed to save commission' }); } finally { setSavingComm(false); }
                                                                             }}
                                                                         >
                                                                             <Save className="h-3 w-3 mr-1" /> Save
@@ -1390,20 +1397,26 @@ export default function OrderDetails() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300"
+                                                                            disabled={savingComm}
                                                                             onClick={async () => {
-                                                                                await supabase
-                                                                                    .from('commissions')
-                                                                                    .update({ amount: 0 })
-                                                                                    .eq('id', rec.id);
-                                                                                const remaining = (commissionRecords || []).map(r =>
-                                                                                    r.id === rec.id ? { ...r, amount: 0 } : r
-                                                                                );
-                                                                                const newTotal = remaining
-                                                                                    .filter(r => r.status !== 'void')
-                                                                                    .reduce((s, r) => s + r.amount, 0);
-                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
-                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
-                                                                                toast({ title: 'Commission set to $0' });
+                                                                                if (savingComm) return;
+                                                                                setSavingComm(true);
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('commissions')
+                                                                                        .update({ amount: 0 })
+                                                                                        .eq('id', rec.id);
+                                                                                    if (error) { toast({ variant: 'destructive', title: 'Failed to zero commission', description: error.message }); return; }
+                                                                                    const remaining = (commissionRecords || []).map(r =>
+                                                                                        r.id === rec.id ? { ...r, amount: 0 } : r
+                                                                                    );
+                                                                                    const commTotal = remaining
+                                                                                        .filter(r => r.status !== 'void')
+                                                                                        .reduce((s, r) => s + r.amount, 0);
+                                                                                    await updateOrder.mutateAsync({ id: order.id, commission_amount: Math.round(commTotal * 100) / 100 });
+                                                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                    toast({ title: 'Commission set to $0' });
+                                                                                } catch { toast({ variant: 'destructive', title: 'Failed to update commission' }); } finally { setSavingComm(false); }
                                                                             }}
                                                                         >
                                                                             $0
@@ -1412,17 +1425,23 @@ export default function OrderDetails() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
+                                                                            disabled={savingComm}
                                                                             onClick={async () => {
-                                                                                await supabase
-                                                                                    .from('commissions')
-                                                                                    .update({ status: 'void' })
-                                                                                    .eq('id', rec.id);
-                                                                                const remaining = (commissionRecords || [])
-                                                                                    .filter(r => r.id !== rec.id && r.status !== 'void');
-                                                                                const newTotal = remaining.reduce((s, r) => s + r.amount, 0);
-                                                                                updateOrder.mutate({ id: order.id, commission_amount: Math.round(newTotal * 100) / 100 });
-                                                                                queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
-                                                                                toast({ title: 'Commission voided' });
+                                                                                if (savingComm) return;
+                                                                                setSavingComm(true);
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('commissions')
+                                                                                        .update({ status: 'void' })
+                                                                                        .eq('id', rec.id);
+                                                                                    if (error) { toast({ variant: 'destructive', title: 'Failed to void commission', description: error.message }); return; }
+                                                                                    const remaining = (commissionRecords || [])
+                                                                                        .filter(r => r.id !== rec.id && r.status !== 'void');
+                                                                                    const commTotal = remaining.reduce((s, r) => s + r.amount, 0);
+                                                                                    await updateOrder.mutateAsync({ id: order.id, commission_amount: Math.round(commTotal * 100) / 100 });
+                                                                                    queryClient.invalidateQueries({ queryKey: ['order_commissions', id] });
+                                                                                    toast({ title: 'Commission voided' });
+                                                                                } catch { toast({ variant: 'destructive', title: 'Failed to void commission' }); } finally { setSavingComm(false); }
                                                                             }}
                                                                         >
                                                                             Void
