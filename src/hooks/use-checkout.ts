@@ -76,6 +76,12 @@ export function useCheckout() {
                 throw new Error(`Failed to create order items: ${itemsError.message}`);
             }
 
+            // 2b. Process commission chain via SECURITY DEFINER RPC
+            // Client-side inserts to commissions are silently dropped by RLS.
+            if (input.rep_id) {
+                await supabase.rpc('process_sale_commission', { p_sale_id: order.id }).catch(() => {});
+            }
+
             // 3. Get the user's session token for auth
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) {
@@ -177,6 +183,11 @@ export function useValidatedCheckout() {
                 .from('sales_orders')
                 .update({ status: 'submitted', psifi_status: 'none' })
                 .eq('id', orderId);
+
+            // 2b. Process commission chain via SECURITY DEFINER RPC (belt-and-suspenders:
+            // create_validated_order now calls this internally, but we call it again here
+            // as a safety net — the RPC is idempotent and skips if records already exist).
+            await supabase.rpc('process_sale_commission', { p_sale_id: orderId }).catch(() => {});
 
             // 3. Get the user's session token for auth
             const { data: { session } } = await supabase.auth.getSession();

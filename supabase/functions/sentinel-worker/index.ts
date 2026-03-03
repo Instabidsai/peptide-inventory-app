@@ -152,6 +152,10 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       await healSchemaErrors(supabase, stats, runErrors);
       // Phase 14 runs always — monitors page error density
       await monitorPageAvailability(supabase, stats, runErrors);
+      // Phase 15+16 MUST run even with no new bugs — they process previously-created
+      // fix plans and stale incidents that are waiting for action.
+      await executeFixPlans(supabase, stats, runErrors);
+      await rediagnoseStaleIncidents(supabase, stats, runErrors);
       await finishRun(supabase, runId, stats, runErrors, "completed");
       return jsonResponse({ ok: true, message: "No unprocessed bugs", ...stats }, 200, corsHeaders);
     }
@@ -281,14 +285,11 @@ Deno.serve(withErrorReporting("sentinel-worker", async (req) => {
       }
     }
 
-    // Mark remaining unmatched bugs as processed
-    const remainingIds = unmatchedBugs.slice(AI_DIAGNOSIS_BATCH).map((b) => b.id);
-    if (remainingIds.length > 0) {
-      await supabase
-        .from("bug_reports")
-        .update({ sentinel_processed_at: new Date().toISOString(), sentinel_diagnosis: "Unmatched — queued for next AI batch" })
-        .in("id", remainingIds);
-    }
+    // Overflow bugs beyond AI_DIAGNOSIS_BATCH are left UNPROCESSED so Phase 1
+    // picks them up in the next run. Previously these were stamped as "processed"
+    // with "queued for next AI batch" but never actually re-queued — a black hole.
+    // They'll naturally be collected by Phase 1's `sentinel_processed_at IS NULL`
+    // query when capacity frees up.
 
     // ═══════════════════════════════════════════════════════════
     // PHASE 5: Execute auto-fix actions
@@ -1399,12 +1400,26 @@ async function checkAggregateCircuitBreakers(
 async function doHousekeeping(supabase: ReturnType<typeof createClient>): Promise<void> {
   const now = new Date().toISOString();
 
+  // Only auto-resolve stale incidents that ALREADY have a fix_plan_id (meaning
+  // they went through AI diagnosis). Incidents WITHOUT fix_plan_id are candidates
+  // for Phase 16 re-diagnosis — don't resolve them prematurely.
   await supabase
     .from("incidents")
-    .update({ status: "resolved", resolved_at: now, auto_healed: true })
+    .update({ status: "resolved", resolved_at: now, auto_healed: true, resolution_method: "housekeeping_stale" })
     .eq("source", "sentinel")
     .in("status", ["detected", "diagnosing"])
+    .not("fix_plan_id", "is", null)
     .lt("detected_at", new Date(Date.now() - 2 * 60 * 60_000).toISOString());
+
+  // For incidents WITHOUT fix_plan_id that are very old (24h+), resolve as stale
+  // to prevent infinite accumulation. Phase 16 has had many chances by then.
+  await supabase
+    .from("incidents")
+    .update({ status: "resolved", resolved_at: now, auto_healed: false, resolution_method: "housekeeping_abandoned" })
+    .eq("source", "sentinel")
+    .in("status", ["detected", "diagnosing"])
+    .is("fix_plan_id", null)
+    .lt("detected_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString());
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
   await supabase.from("sentinel_runs").delete().lt("started_at", thirtyDaysAgo);
@@ -1465,7 +1480,7 @@ async function repairBusinessLogicViolations(
             const commSet = new Set(comms?.map((c) => c.sale_id) ?? []);
             const missing = orders.filter((o) => !commSet.has(o.id));
             for (const order of missing.slice(0, 5)) {
-              await supabase.rpc("process_sale_commission", { p_order_id: order.id }).catch(() => {});
+              await supabase.rpc("process_sale_commission", { p_sale_id: order.id }).catch(() => {});
               stats.fixes_applied++;
             }
             await logHealAction(supabase, "biz:fulfilled_no_commission", `Triggered commission for ${missing.length} orders`);
@@ -2365,7 +2380,7 @@ async function executeFixPlans(
 // Phase 16: Stale Incident Re-Diagnosis
 // ═══════════════════════════════════════════════════════════════
 const STALE_INCIDENT_HOURS = 2;
-const MAX_REDIAGNOSE_PER_RUN = 5;
+const MAX_REDIAGNOSE_PER_RUN = 10;
 
 async function rediagnoseStaleIncidents(
   supabase: ReturnType<typeof createClient>,

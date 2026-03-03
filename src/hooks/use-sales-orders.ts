@@ -372,6 +372,14 @@ export function useCreateSalesOrder() {
             // Auto-fulfill: deduct inventory + create movement (only when explicitly requested)
             let fulfilled = false;
             if (input.auto_fulfill) try {
+                // Fetch peptide names upfront for protocol generation
+                const peptideIds = [...new Set(input.items.map(i => i.peptide_id))];
+                const { data: peptideLookup } = await supabase
+                    .from('peptides')
+                    .select('id, name')
+                    .in('id', peptideIds);
+                const peptideNameMap = new Map((peptideLookup || []).map(p => [p.id, p.name]));
+
                 // Create movement record (created_by FK targets profiles.id, not auth user id)
                 const { data: movement, error: movError } = await supabase
                     .from('movements')
@@ -393,10 +401,11 @@ export function useCreateSalesOrder() {
                 if (!movement) throw new Error('Failed to create fulfillment movement');
 
                 // FIFO bottle allocation for each item
+                const allocatedBottles: Array<{ peptideId: string; peptideName: string; lotNumber: string | null }> = [];
                 for (const item of input.items) {
                     const { data: bottles, error: bError } = await supabase
                         .from('bottles')
-                        .select('*, lots!inner(peptide_id)')
+                        .select('*, lots!inner(peptide_id, lot_number)')
                         .eq('status', 'in_stock')
                         .eq('lots.peptide_id', item.peptide_id)
                         .order('created_at', { ascending: true })
@@ -408,6 +417,15 @@ export function useCreateSalesOrder() {
                     }
 
                     const bottleIds = bottles.map(b => b.id);
+
+                    // Track allocations for client_inventory
+                    for (const b of bottles) {
+                        allocatedBottles.push({
+                            peptideId: item.peptide_id,
+                            peptideName: peptideNameMap.get(item.peptide_id) || '',
+                            lotNumber: b.lots?.lot_number || null,
+                        });
+                    }
 
                     // Create movement items
                     const moveItems = bottleIds.map(bid => ({
@@ -431,6 +449,48 @@ export function useCreateSalesOrder() {
                     .from('sales_orders')
                     .update({ status: 'fulfilled' })
                     .eq('id', order.id);
+
+                // Auto-generate protocol + client_inventory (same as useFulfillOrder)
+                if (input.client_id && allocatedBottles.length > 0) {
+                    try {
+                        const uniquePeptides = [...new Map(
+                            allocatedBottles.map(b => [b.peptideId, { peptideId: b.peptideId, peptideName: b.peptideName }])
+                        ).values()];
+
+                        const { protocolItemMap } = await autoGenerateProtocol({
+                            contactId: input.client_id,
+                            orgId: profile.org_id,
+                            items: uniquePeptides,
+                        });
+
+                        const inventoryEntries = allocatedBottles.map(b => {
+                            const vialSizeMg = parseVialSize(b.peptideName) || 5;
+                            return {
+                                contact_id: input.client_id,
+                                movement_id: movement.id,
+                                peptide_id: b.peptideId,
+                                batch_number: b.lotNumber,
+                                vial_size_mg: vialSizeMg,
+                                water_added_ml: null,
+                                current_quantity_mg: vialSizeMg,
+                                initial_quantity_mg: vialSizeMg,
+                                concentration_mg_ml: null,
+                                status: 'active',
+                                protocol_item_id: protocolItemMap.get(b.peptideId) || null,
+                            };
+                        });
+
+                        const { error: invError } = await supabase
+                            .from('client_inventory')
+                            .insert(inventoryEntries);
+
+                        if (invError) {
+                            logger.error('Failed to populate client_inventory:', invError);
+                        }
+                    } catch (autoErr) {
+                        logger.error('Auto-protocol generation failed (non-blocking):', autoErr);
+                    }
+                }
 
                 fulfilled = true;
             } catch (fulfillErr) {
