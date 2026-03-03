@@ -29,6 +29,10 @@ import {
     Globe,
     Wand2,
     Settings2,
+    Bell,
+    Plus,
+    Trash2,
+    Phone,
 } from 'lucide-react';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -36,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const profileSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -455,6 +460,168 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
 }
 
 
+// ─── Notifications Tab (SMS alerts for new orders) ───
+interface SmsPhoneEntry {
+  phone: string;
+  label: string;
+  enabled: boolean;
+}
+
+function NotificationsTab({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [phones, setPhones] = useState<SmsPhoneEntry[]>([]);
+  const [newPhone, setNewPhone] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ['tenant-config-notifications', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('order_sms_enabled, order_sms_phones')
+        .eq('org_id', orgId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (config) {
+      setSmsEnabled(config.order_sms_enabled ?? false);
+      setPhones(config.order_sms_phones ?? []);
+    }
+  }, [config]);
+
+  const handleAddPhone = () => {
+    const cleaned = newPhone.replace(/[^\d+]/g, '');
+    if (!cleaned || cleaned.length < 10) {
+      toast({ title: 'Invalid phone number', description: 'Enter a valid phone number with area code', variant: 'destructive' });
+      return;
+    }
+    if (phones.some(p => p.phone === cleaned)) {
+      toast({ title: 'Duplicate', description: 'This number is already in the list', variant: 'destructive' });
+      return;
+    }
+    setPhones(prev => [...prev, { phone: cleaned, label: newLabel || 'Unlabeled', enabled: true }]);
+    setNewPhone('');
+    setNewLabel('');
+  };
+
+  const handleRemovePhone = (index: number) => {
+    setPhones(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleTogglePhone = (index: number) => {
+    setPhones(prev => prev.map((p, i) => i === index ? { ...p, enabled: !p.enabled } : p));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({ order_sms_enabled: smsEnabled, order_sms_phones: phones })
+        .eq('org_id', orgId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['tenant-config-notifications'] });
+      invalidateTenantConfigCache();
+      toast({ title: 'Notification settings saved' });
+    } catch (err) {
+      toast({ title: 'Failed to save', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-5 w-5" /> Order SMS Notifications
+          </CardTitle>
+          <CardDescription>
+            Get a text message whenever a new order arrives in your fulfillment queue — from WooCommerce, Shopify, or manual orders.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Master toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Enable SMS notifications</Label>
+              <p className="text-xs text-muted-foreground">Send a text to the numbers below when new orders come in</p>
+            </div>
+            <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
+          </div>
+
+          {/* Phone list */}
+          {phones.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Notification Numbers</Label>
+              {phones.map((entry, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border p-3 bg-secondary/30">
+                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{entry.label}</p>
+                    <p className="text-xs text-muted-foreground">{entry.phone}</p>
+                  </div>
+                  <Switch
+                    checked={entry.enabled}
+                    onCheckedChange={() => handleTogglePhone(i)}
+                    aria-label={`Toggle ${entry.label}`}
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => handleRemovePhone(i)} className="shrink-0 text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new phone */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Add a phone number</Label>
+            <div className="flex gap-2">
+              <Input
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                placeholder="Label (e.g. Justin's cell)"
+                className="flex-1"
+              />
+              <Input
+                value={newPhone}
+                onChange={e => setNewPhone(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+                className="flex-1"
+                onKeyDown={e => e.key === 'Enter' && handleAddPhone()}
+              />
+              <Button variant="outline" onClick={handleAddPhone} disabled={!newPhone.trim()}>
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Each number receives a text when a new order enters the fulfillment queue. Standard SMS rates apply via Textbelt.
+            </p>
+          </div>
+
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Notification Settings
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
 export default function Settings() {
   usePageTitle('Settings');
   const { profile, organization, userRole, refreshProfile } = useAuth();
@@ -604,6 +771,10 @@ export default function Settings() {
                     <CreditCard className="h-4 w-4" />
                     Payments
                   </TabsTrigger>
+                  <TabsTrigger value="notifications" className="gap-2">
+                    <Bell className="h-4 w-4" />
+                    Notifications
+                  </TabsTrigger>
                 </>
               )}
               <TabsTrigger value="team" className="gap-2">
@@ -708,6 +879,12 @@ export default function Settings() {
         {isAdmin && organization?.id && (
           <TabsContent value="payments">
             <PaymentMethodsTab orgId={organization.id} />
+          </TabsContent>
+        )}
+
+        {isAdmin && organization?.id && (
+          <TabsContent value="notifications">
+            <NotificationsTab orgId={organization.id} />
           </TabsContent>
         )}
 

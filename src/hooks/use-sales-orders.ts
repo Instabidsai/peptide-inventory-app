@@ -10,7 +10,7 @@ import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination'
 import { logger } from '@/lib/logger';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'refunded' | 'commission_offset';
+export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'pending_verification' | 'refunded' | 'commission_offset';
 
 export interface ShippingRate {
     object_id: string;

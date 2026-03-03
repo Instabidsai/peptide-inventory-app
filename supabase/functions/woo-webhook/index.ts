@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
       shipping_address: formatWooAddress(shipping.address_1 ? shipping : billing),
       total_amount: parseFloat(wooOrder.total) || 0,
       payment_status: mapWooPaymentStatus(wooOrder.status || "pending"),
+      payment_method: wooOrder.payment_method_title || wooOrder.payment_method || null,
       items,
       discount_codes: discountCodes,
     }, adminProfile?.user_id);
@@ -182,6 +183,7 @@ Deno.serve(async (req) => {
         title: `WooCommerce Order #${wooOrder.id} imported`,
         message: `${result.matchedItems} item(s) synced to fulfillment queue.${result.skippedItems > 0 ? ` ${result.skippedItems} item(s) could not be matched.` : ""}`,
       }).catch(() => {});
+
 
     } else if (result.error === "Order already imported") {
       console.log(`[woo-webhook] WC order #${wooOrder.id} already exists, skipping`);

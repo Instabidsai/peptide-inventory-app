@@ -170,6 +170,7 @@ Deno.serve(async (req) => {
         message: `${result.matchedItems} item(s) synced to fulfillment queue.${result.skippedItems > 0 ? ` ${result.skippedItems} item(s) could not be matched.` : ""}`,
       }).catch(() => {});
 
+
     } else if (result.error === "Order already imported") {
       console.log(`[shopify-webhook] Order #${shopifyOrder.id} already exists, skipping`);
     } else {
