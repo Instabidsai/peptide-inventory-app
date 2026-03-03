@@ -35,7 +35,8 @@ export default function FulfillmentCenter() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const navigate = useNavigate();
-    const { user, organization } = useAuth();
+    const { user, organization, profile } = useAuth();
+    const orgId = profile?.org_id;
 
     // Fulfillment type filter: 'all' | 'standard' | 'dropship'
     const [fulfillmentFilter, setFulfillmentFilter] = useState<string>('all');
@@ -133,14 +134,15 @@ export default function FulfillmentCenter() {
         enabled: dropshipOrgIds.length > 0,
     });
 
-    // Get stock counts per peptide for pick list
+    // Get stock counts per peptide for pick list — MUST be org-scoped (multi-tenancy)
     const { data: stockCounts } = useQuery({
-        queryKey: ['fulfillment_stock'],
+        queryKey: ['fulfillment_stock', orgId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('bottles')
                 .select('id, lots!inner(peptide_id, peptides!inner(id, name))')
-                .eq('status', 'in_stock');
+                .eq('status', 'in_stock')
+                .eq('org_id', orgId!);
             if (error) throw error;
 
             type BottleWithLot = { id: string; lots: { peptide_id: string; peptides: { id: string; name: string } } };
@@ -156,6 +158,7 @@ export default function FulfillmentCenter() {
             }
             return counts;
         },
+        enabled: !!orgId,
         refetchInterval: 30000,
     });
 

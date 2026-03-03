@@ -59,6 +59,7 @@ export default function ClientStore() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
     const [cartInView, setCartInView] = useState(false);
+    const [cartHighlight, setCartHighlight] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Track store page view
@@ -254,9 +255,11 @@ export default function ClientStore() {
         } catch { /* ignore malformed param */ }
     }, [searchParams, peptides]);
 
-    // Fetch sales counts for popularity sorting
+    // Fetch sales counts for popularity sorting — org-scoped via RLS (sales_order_items
+    // has no org_id column; RLS filters through sales_orders.org_id join).
+    // We still guard with enabled + include orgId in the cache key for isolation.
     const { data: salesCounts } = useQuery({
-        queryKey: ['peptide-sales-counts'],
+        queryKey: ['peptide-sales-counts', orgId],
         queryFn: async () => {
             const { data } = await supabase
                 .from('sales_order_items')
@@ -268,6 +271,7 @@ export default function ClientStore() {
             }
             return counts;
         },
+        enabled: !!orgId,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -521,6 +525,7 @@ export default function ClientStore() {
                 onShowCheckoutConfirm={() => setShowCheckoutConfirm(true)}
                 updateQuantity={updateQuantity}
                 cartRef={cartRef as React.RefObject<HTMLDivElement>}
+                highlight={cartHighlight}
             />
 
             {/* Info card */}
@@ -548,7 +553,11 @@ export default function ClientStore() {
                 itemCount={itemCount}
                 cartTotal={cartTotal}
                 visible={cart.length > 0 && !cartInView}
-                onScrollToCart={() => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onScrollToCart={() => {
+                    cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setCartHighlight(true);
+                    setTimeout(() => setCartHighlight(false), 1200);
+                }}
             />
 
             {/* Protocol detail Sheet */}

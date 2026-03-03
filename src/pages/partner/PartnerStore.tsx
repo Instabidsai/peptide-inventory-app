@@ -219,12 +219,14 @@ export default function PartnerStore() {
                     toast({ title: 'Quantity limit reached', description: `Maximum ${MAX_ITEM_QTY} per item.` });
                     return prev;
                 }
+                toast({ title: `${peptide.name} qty updated to ${existing.quantity + 1}` });
                 return prev.map(i =>
                     i.peptide_id === peptide.id
                         ? { ...i, quantity: i.quantity + 1 }
                         : i
                 );
             }
+            toast({ title: `${peptide.name} added to cart` });
             return [...prev, {
                 peptide_id: peptide.id,
                 name: peptide.name,

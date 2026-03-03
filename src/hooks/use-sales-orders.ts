@@ -178,6 +178,8 @@ export function useSalesOrder(orderId?: string) {
             return data as SalesOrder | null;
         },
         enabled: !!orderId,
+        staleTime: 30_000,
+        retry: 1,
     });
 }
 

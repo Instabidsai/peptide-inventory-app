@@ -63,37 +63,40 @@ const actions = [
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { userRole, profile } = useAuth();
   const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin';
+  const orgId = profile?.org_id;
 
-  // Search peptides for live results
+  // Search peptides for live results — MUST be org-scoped (multi-tenancy)
   const { data: peptides } = useQuery({
-    queryKey: ['cmd_peptides'],
+    queryKey: ['cmd_peptides', orgId],
     queryFn: async () => {
       const { data } = await supabase
         .from('peptides')
         .select('id, name, sku')
         .eq('active', true)
+        .eq('org_id', orgId!)
         .order('name')
         .limit(50);
       return data || [];
     },
-    enabled: open,
+    enabled: open && !!orgId,
     staleTime: 30000,
   });
 
-  // Search contacts for live results
+  // Search contacts for live results — MUST be org-scoped (multi-tenancy)
   const { data: contacts } = useQuery({
-    queryKey: ['cmd_contacts'],
+    queryKey: ['cmd_contacts', orgId],
     queryFn: async () => {
       const { data } = await supabase
         .from('contacts')
         .select('id, name, email')
+        .eq('org_id', orgId!)
         .order('name')
         .limit(50);
       return data || [];
     },
-    enabled: open,
+    enabled: open && !!orgId,
     staleTime: 30000,
   });
 

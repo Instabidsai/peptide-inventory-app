@@ -17,6 +17,7 @@ import {
     Banknote,
     Smartphone,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { CartItem, PaymentMethod } from './types';
 
 interface CartSummaryProps {
@@ -42,6 +43,7 @@ interface CartSummaryProps {
     onShowCheckoutConfirm: () => void;
     updateQuantity: (peptideId: string, delta: number) => void;
     cartRef: React.RefObject<HTMLDivElement>;
+    highlight?: boolean;
 }
 
 export function CartSummary({
@@ -67,7 +69,30 @@ export function CartSummary({
     onShowCheckoutConfirm,
     updateQuantity,
     cartRef,
+    highlight,
 }: CartSummaryProps) {
+    const { toast } = useToast();
+    const [venmoOpening, setVenmoOpening] = React.useState(false);
+
+    const openVenmo = () => {
+        if (venmoOpening) return;
+        setVenmoOpening(true);
+        setTimeout(() => setVenmoOpening(false), 3000);
+        const handle = (venmoHandle || '').replace(/^@/, '');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            window.location.href = `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle)}&amount=${cartTotal.toFixed(2)}&note=Order`;
+        } else {
+            const url = `https://venmo.com/${encodeURIComponent(handle)}`;
+            const w = window.open(url, '_blank');
+            if (!w) window.location.href = url;
+        }
+        toast({
+            title: 'Opening Venmo...',
+            description: `Send $${cartTotal.toFixed(2)} to @${venmoHandle}.`,
+        });
+    };
+
     // Auto-reset cart 8 seconds after order is placed
     React.useEffect(() => {
         if (!orderPlaced) return;
@@ -85,7 +110,7 @@ export function CartSummary({
                 exit={{ opacity: 0, y: 24, scale: 0.97 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             >
-            <GlassCard className="border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden">
+            <GlassCard className={`border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden transition-shadow duration-500 ${highlight ? 'ring-2 ring-primary/40 shadow-primary/30' : ''}`}>
                 {/* Gradient accent at top */}
                 <div className="h-[2px] bg-gradient-brand-r" />
                 <CardHeader className="pb-2 pt-5">
@@ -227,13 +252,15 @@ export function CartSummary({
                             {paymentMethod === 'venmo' && (
                                 <div className="bg-blue-950/30 border border-blue-800 rounded-lg p-3 space-y-2">
                                     <p className="text-xs font-medium text-blue-300">Pay via Venmo to @{venmoHandle}</p>
-                                    <a
-                                        href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((venmoHandle || '').replace(/^@/, ''))}&amount=${cartTotal.toFixed(2)}&note=Order`}
-                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:underline"
+                                    <button
+                                        type="button"
+                                        onClick={openVenmo}
+                                        disabled={venmoOpening}
+                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-400 hover:underline disabled:opacity-50"
                                     >
-                                        <ExternalLink className="h-3 w-3" />
-                                        Open Venmo App — ${cartTotal.toFixed(2)}
-                                    </a>
+                                        {venmoOpening ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
+                                        {venmoOpening ? 'Opening Venmo...' : `Open Venmo App — $${cartTotal.toFixed(2)}`}
+                                    </button>
                                     <p className="text-xs text-muted-foreground">
                                         Tap above to open the Venmo app. If it doesn't open, search <strong>@{venmoHandle}</strong> in Venmo and send <strong>${cartTotal.toFixed(2)}</strong>.
                                     </p>
@@ -294,14 +321,15 @@ export function CartSummary({
                                 </Button>
                             )}
                             {paymentMethod === 'venmo' && (
-                                <a
-                                    href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((venmoHandle || '').replace(/^@/, ''))}&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={openVenmo}
+                                    disabled={venmoOpening}
                                 >
-                                    <Button variant="outline" size="sm">
-                                        <ExternalLink className="h-3 w-3 mr-1" />
-                                        Open Venmo App to Pay
-                                    </Button>
-                                </a>
+                                    {venmoOpening ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <ExternalLink className="h-3 w-3 mr-1" />}
+                                    {venmoOpening ? 'Opening...' : 'Open Venmo App to Pay'}
+                                </Button>
                             )}
                             {paymentMethod === 'cashapp' && (
                                 <a

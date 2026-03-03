@@ -553,7 +553,8 @@ export default function AdminDashboard() {
                 </Link></motion.div>
 
                 {/* Card 3: Overhead / Total Investment */}
-                <motion.div variants={staggerItem}><Card className="group bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+                <motion.div variants={staggerItem}><Link to="/admin/finance">
+                    <Card className="group bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20 hover:border-orange-500/40 hover:shadow-lg hover:shadow-orange-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-semibold">
                             {isOps ? 'Operational Overhead' : 'Total Investment'}
@@ -576,10 +577,11 @@ export default function AdminDashboard() {
                             {isOps ? 'Incl. commissions owed' : 'Overhead + Inventory + Owed'}
                         </p>
                     </CardContent>
-                </Card></motion.div>
+                </Card></Link></motion.div>
 
                 {/* Card 4: Operating Profit / Net Position */}
-                <motion.div variants={staggerItem}><Card className="group bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+                <motion.div variants={staggerItem}><Link to="/admin/finance">
+                    <Card className="group bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-semibold">
                             {isOps ? 'Operating Profit' : 'Net Position'}
@@ -604,7 +606,7 @@ export default function AdminDashboard() {
                             {isOps ? 'Revenue - (COGS + Overhead + Commissions)' : 'Revenue - All Costs (Paid & Owed)'}
                         </p>
                     </CardContent>
-                </Card></motion.div>
+                </Card></Link></motion.div>
             </motion.div>
             </SectionErrorBoundary>
 

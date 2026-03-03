@@ -310,12 +310,14 @@ export default function NewOrder() {
         setCart(prev => {
             const existing = prev.find(item => item.peptide.id === peptide.id);
             if (existing) {
+                toast.success(`${peptide.name} qty updated to ${existing.quantity + 1}`);
                 return prev.map(item =>
                     item.peptide.id === peptide.id
                         ? { ...item, quantity: item.quantity + 1 }
                         : item
                 );
             }
+            toast.success(`${peptide.name} added to cart`);
             return [...prev, {
                 peptide,
                 quantity: 1,
@@ -500,7 +502,7 @@ export default function NewOrder() {
                                         <span className="text-muted-foreground">{peptide.sku}</span>
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-green-700">${defaultPrice.toFixed(0)}</span>
-                                            <Button size="sm" variant="secondary" className="h-8">
+                                            <Button size="sm" variant="secondary" className="h-8" onClick={(e) => { e.stopPropagation(); addToCart(peptide); }}>
                                                 Add <Plus className="ml-1 h-3 w-3" />
                                             </Button>
                                         </div>

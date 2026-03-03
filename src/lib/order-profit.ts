@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger';
 
 interface OrderWithItems {
     id: string;
+    org_id?: string;
     total_amount?: number;
     shipping_cost?: number;
     commission_amount?: number;
@@ -34,11 +35,11 @@ export const MERCHANT_FEE_RATE = 0.05; // 5%
 const FEE_EXEMPT_METHODS = ['credit', 'cash', 'wire', 'store_credit', 'commission_offset'];
 
 export async function recalculateOrderProfit(orderId: string): Promise<void> {
-    // 1. Fetch the order
+    // 1. Fetch the order (include org_id for scoped lot lookup)
     const { data: order, error: orderErr } = await supabase
         .from('sales_orders')
         .select(`
-            id, total_amount, shipping_cost, commission_amount,
+            id, org_id, total_amount, shipping_cost, commission_amount,
             payment_status, payment_method,
             sales_order_items (peptide_id, quantity)
         `)
@@ -57,10 +58,11 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
 
     let cogsAmount = 0;
 
-    if (peptideIds.length > 0) {
+    if (peptideIds.length > 0 && typedOrder.org_id) {
         const { data: lots } = await supabase
             .from('lots')
             .select('peptide_id, cost_per_unit, quantity_received')
+            .eq('org_id', typedOrder.org_id)
             .in('peptide_id', peptideIds);
 
         // Build weighted-average cost per peptide: SUM(cost × qty) / SUM(qty)

@@ -638,7 +638,7 @@ export default function Settings() {
                   />
                   <div className="space-y-2">
                     <FormLabel>Email</FormLabel>
-                    <Input value={profile?.email || ''} disabled className="opacity-50" />
+                    <Input value={profile?.email || ''} readOnly className="bg-muted/50 opacity-70 focus-visible:ring-0 cursor-not-allowed" />
                     <p className="text-xs text-muted-foreground">
                       Email cannot be changed
                     </p>

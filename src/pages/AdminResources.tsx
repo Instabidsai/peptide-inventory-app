@@ -281,7 +281,7 @@ export default function AdminResources() {
     const syncThemes = useMutation({
         mutationFn: async () => {
             // Fetch all active peptides
-            const { data: peptides, error: pError } = await supabase.from('peptides').select('name').eq('active', true);
+            const { data: peptides, error: pError } = await supabase.from('peptides').select('name').eq('active', true).eq('org_id', orgId!);
             if (pError) throw pError;
             if (!peptides || peptides.length === 0) return { created: 0 };
 

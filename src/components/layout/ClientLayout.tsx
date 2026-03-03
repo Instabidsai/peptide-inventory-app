@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut, Loader2 } from 'lucide-react';
+import { Home, BookOpen, Bell, LayoutDashboard, ShoppingBag, Package, Briefcase, Menu, LogOut, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/sb_client/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,10 +25,23 @@ export function ClientLayout() {
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
 
+    const queryClient = useQueryClient();
+
     // Guard: new customers may not have a contact record yet (created async by linkReferral).
-    // useClientProfile polls every 2s while null, so this auto-resolves.
+    // useClientProfile polls every 2s while null and auto-heals after 8s.
     const { data: contact, isLoading: isContactLoading } = useClientProfile();
     const contactPending = !isAdmin && !isSalesRep && !isContactLoading && contact === null;
+
+    // Timeout: after 15s of contactPending, show retry UI instead of infinite spinner
+    const [pendingTooLong, setPendingTooLong] = useState(false);
+    useEffect(() => {
+        if (!contactPending) {
+            setPendingTooLong(false);
+            return;
+        }
+        const timer = setTimeout(() => setPendingTooLong(true), 15000);
+        return () => clearTimeout(timer);
+    }, [contactPending]);
 
     const { data: unreadFeedback } = useQuery({
         queryKey: ['unread-feedback', user?.id],
@@ -131,14 +145,47 @@ export function ClientLayout() {
                 <ErrorBoundary>
                     {contactPending ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                            <div className="relative">
-                                <div className="h-12 w-12 rounded-full border-2 border-primary/20" />
-                                <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-transparent border-t-primary animate-spin" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-lg font-semibold">Setting up your account...</h2>
-                                <p className="text-sm text-muted-foreground max-w-xs">We're getting everything ready for you. This usually takes just a moment.</p>
-                            </div>
+                            {pendingTooLong ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <h2 className="text-lg font-semibold">Almost there...</h2>
+                                        <p className="text-sm text-muted-foreground max-w-xs">
+                                            Account setup is taking longer than expected. Tap retry or refresh the page.
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-3 mt-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setPendingTooLong(false);
+                                                queryClient.invalidateQueries({ queryKey: ['client-profile'] });
+                                            }}
+                                        >
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Retry
+                                        </Button>
+                                        <Button
+                                            variant="default"
+                                            size="sm"
+                                            onClick={() => window.location.reload()}
+                                        >
+                                            Refresh Page
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="relative">
+                                        <div className="h-12 w-12 rounded-full border-2 border-primary/20" />
+                                        <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h2 className="text-lg font-semibold">Setting up your account...</h2>
+                                        <p className="text-sm text-muted-foreground max-w-xs">We're getting everything ready for you. This usually takes just a moment.</p>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <AnimatePresence mode="wait">

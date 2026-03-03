@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/sb_client/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useBottles, type Bottle } from '@/hooks/use-bottles';
 import { useContacts } from '@/hooks/use-contacts';
 import { useCreateMovement, type MovementType } from '@/hooks/use-movements';
@@ -38,6 +39,8 @@ interface SelectedBottle {
 
 export default function MovementWizard() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const orgId = profile?.org_id;
   const { data: bottles } = useBottles({ status: 'in_stock' });
   const { data: contacts } = useContacts();
   const createMovement = useCreateMovement();
@@ -99,9 +102,9 @@ export default function MovementWizard() {
     }
   }, [location.state, bottles, contacts]);
 
-  // NEW: Fetch contact's protocols and protocol items
+  // NEW: Fetch contact's protocols and protocol items — org-scoped (multi-tenancy)
   const { data: contactProtocols } = useQuery({
-    queryKey: ['contact-protocols', contactId],
+    queryKey: ['contact-protocols', contactId, orgId],
     queryFn: async () => {
       if (!contactId) return [];
       const { data, error } = await supabase
@@ -114,11 +117,12 @@ export default function MovementWizard() {
             peptides(id, name)
           )
         `)
-        .eq('contact_id', contactId);
+        .eq('contact_id', contactId)
+        .eq('org_id', orgId!);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!contactId
+    enabled: !!contactId && !!orgId
   });
 
   const filteredBottles = bottles?.filter((b) =>

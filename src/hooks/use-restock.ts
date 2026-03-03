@@ -1,11 +1,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/sb_client/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { logger } from '@/lib/logger';
 
 export function useRestockInventory() {
     const queryClient = useQueryClient();
+    const { profile } = useAuth();
+    const orgId = profile?.org_id;
 
     const returnToStock = useMutation({
         mutationFn: async (item: {
@@ -30,13 +33,14 @@ export function useRestockInventory() {
                 if (target) bottleId = target.bottle_id;
             }
 
-            if (!bottleId && item.batch_number) {
-                // ... same fallback ...
+            if (!bottleId && item.batch_number && orgId) {
+                // Fallback: find lot by batch number, scoped to org
                 const { data: lots } = await supabase
                     .from('lots')
                     .select('id')
                     .eq('lot_number', item.batch_number)
                     .eq('peptide_id', item.peptide_id)
+                    .eq('org_id', orgId)
                     .limit(1);
 
                 if (lots?.[0]) {
