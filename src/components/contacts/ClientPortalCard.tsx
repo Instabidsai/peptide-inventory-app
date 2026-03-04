@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw, Mail, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/sb_client/client';
 import { useUpdateContact, type Contact } from '@/hooks/use-contacts';
 import { toast } from '@/hooks/use-toast';
@@ -21,12 +21,48 @@ interface ClientPortalCardProps {
     contact: Contact;
 }
 
+function buildWelcomeEmailHtml(brandName: string, inviteLink: string, customerName?: string): string {
+    const greeting = customerName ? `Hi ${customerName},` : 'Welcome!';
+    return `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #1a1a2e;">
+  <div style="text-align: center; margin-bottom: 24px;">
+    <h2 style="margin: 0; color: #7c3aed;">${brandName}</h2>
+  </div>
+  <p style="font-size: 16px; line-height: 1.6;">${greeting}</p>
+  <p style="font-size: 16px; line-height: 1.6;">
+    Your personalized peptide regimen portal is ready. Track your doses, view your protocol calendar, monitor supply levels, and reorder when you're running low — all in one place.
+  </p>
+  <div style="text-align: center; margin: 32px 0;">
+    <a href="${inviteLink}" style="display: inline-block; padding: 14px 32px; background: #7c3aed; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+      Access Your Portal
+    </a>
+  </div>
+  <div style="background: #f3f0ff; border-radius: 8px; padding: 16px; margin: 24px 0;">
+    <p style="font-size: 14px; color: #555; margin: 0 0 8px 0; font-weight: 600;">What you can do:</p>
+    <ul style="font-size: 14px; color: #555; margin: 0; padding-left: 20px; line-height: 1.8;">
+      <li>View your dosing calendar &amp; protocol</li>
+      <li>Track daily doses with one tap</li>
+      <li>Monitor your supply levels</li>
+      <li>Reorder when running low</li>
+    </ul>
+  </div>
+  <p style="font-size: 12px; color: #999; text-align: center;">
+    This link expires in 7 days. If you need a new link, contact your provider.
+  </p>
+</body>
+</html>`.trim();
+}
+
 export function ClientPortalCard({ contact }: ClientPortalCardProps) {
     const updateContact = useUpdateContact();
     const [inviteTier, setInviteTier] = useState<'family' | 'network' | 'public'>('family');
     const [inviteLink, setInviteLink] = useState<string>('');
     const [isGeneratingLink, setIsGeneratingLink] = useState(false);
     const [linkEmail, setLinkEmail] = useState('');
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
 
     const copyToClipboard = async (text: string) => {
         try {
@@ -58,6 +94,7 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
 
             if (data.action_link) {
                 setInviteLink(data.action_link);
+                setEmailSent(false);
                 toast({ title: 'Invite Link Generated', description: 'Copy and send this link to the client.' });
                 updateContact.mutate({ id: contact!.id, tier: inviteTier });
             } else {
@@ -84,6 +121,45 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
             setIsGeneratingLink(false);
         }
     };
+
+    const handleSendWelcomeEmail = async () => {
+        const link = inviteLink || contact.invite_link;
+        if (!link || !contact.email) return;
+
+        setIsSendingEmail(true);
+        try {
+            const html = buildWelcomeEmailHtml(
+                'Your Peptide Portal',
+                link,
+                contact.name || undefined,
+            );
+
+            const { error } = await supabase.functions.invoke('send-email', {
+                body: {
+                    to: contact.email,
+                    subject: 'Your Peptide Regimen Portal is Ready',
+                    html,
+                },
+            });
+
+            if (error) throw error;
+
+            setEmailSent(true);
+            toast({ title: 'Welcome Email Sent', description: `Email sent to ${contact.email}` });
+        } catch (err) {
+            logger.error('Welcome email failed:', err);
+            toast({
+                variant: 'destructive',
+                title: 'Email Failed',
+                description: (err as any)?.message || 'Could not send welcome email. Try again.',
+            });
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
+
+    const activeLink = inviteLink || contact.invite_link;
+    const canSendEmail = !!activeLink && !!contact.email;
 
     return (
         <Card>
@@ -146,25 +222,53 @@ export function ClientPortalCard({ contact }: ClientPortalCardProps) {
                             ) : (
                                 <>
                                     <RefreshCcw className="mr-2 h-4 w-4" />
-                                    Re-generate Public Invite Link
+                                    {contact.invite_link ? 'Re-generate Invite Link' : 'Generate Invite Link'}
                                 </>
                             )}
                         </Button>
 
-                        {(inviteLink || contact.invite_link) && (
+                        {activeLink && (
                             <div className="col-span-full mt-2">
                                 <Label>Invite Link {contact.invite_link ? '(Saved)' : '(New)'}</Label>
                                 <div className="flex gap-2 mt-1">
                                     <code className="flex-1 p-2.5 bg-muted/50 rounded-lg border border-border/40 text-xs break-all font-mono">
-                                        {inviteLink || contact.invite_link}
+                                        {activeLink}
                                     </code>
-                                    <Button variant="secondary" size="sm" onClick={() => copyToClipboard(inviteLink || contact.invite_link!)}>
+                                    <Button variant="secondary" size="sm" onClick={() => copyToClipboard(activeLink)}>
                                         Copy
                                     </Button>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     This link is saved. You can copy and send it to the client anytime.
                                 </p>
+                            </div>
+                        )}
+
+                        {canSendEmail && (
+                            <div className="col-span-full">
+                                <Button
+                                    onClick={handleSendWelcomeEmail}
+                                    disabled={isSendingEmail}
+                                    variant={emailSent ? "outline" : "default"}
+                                    className="w-full"
+                                >
+                                    {isSendingEmail ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Sending...
+                                        </>
+                                    ) : emailSent ? (
+                                        <>
+                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                            Welcome Email Sent
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            Send Welcome Email to {contact.email}
+                                        </>
+                                    )}
+                                </Button>
                             </div>
                         )}
                     </div>

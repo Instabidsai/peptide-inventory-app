@@ -1,7 +1,13 @@
 /**
  * Shared logic for creating sales orders from external platforms (Shopify, WooCommerce).
  * Used by shopify-webhook, woo-webhook, and AI sync tools.
+ *
+ * After order creation, automatically:
+ * - Creates customer auth account + portal invite link
+ * - Generates protocol + client_inventory entries (fridge items)
  */
+
+import { autoCreateCustomer, serverAutoGenerateProtocol } from "./auto-customer.ts";
 
 export interface ExternalOrderItem {
   name: string;
@@ -122,16 +128,17 @@ export async function importExternalOrder(
   }
 
   // ── 3. Match line items to peptides ─────────────────────────
-  const matchedItems: { peptide_id: string; quantity: number; unit_price: number }[] = [];
+  const matchedItems: { peptide_id: string; peptide_name: string; quantity: number; unit_price: number }[] = [];
   let skippedItems = 0;
 
   for (const item of order.items) {
     let peptideId: string | null = null;
+    let peptideName: string = item.name;
 
     // Try exact name match (case-insensitive)
     const { data: nameMatch } = await supabase
       .from("peptides")
-      .select("id")
+      .select("id, name")
       .eq("org_id", orgId)
       .ilike("name", item.name)
       .limit(1)
@@ -139,13 +146,14 @@ export async function importExternalOrder(
 
     if (nameMatch) {
       peptideId = nameMatch.id;
+      peptideName = nameMatch.name;
     }
 
     // Try SKU match if name didn't work
     if (!peptideId && item.sku) {
       const { data: skuMatch } = await supabase
         .from("peptides")
-        .select("id")
+        .select("id, name")
         .eq("org_id", orgId)
         .ilike("sku", item.sku)
         .limit(1)
@@ -153,6 +161,7 @@ export async function importExternalOrder(
 
       if (skuMatch) {
         peptideId = skuMatch.id;
+        peptideName = skuMatch.name;
       }
     }
 
@@ -162,7 +171,7 @@ export async function importExternalOrder(
       if (firstWord && firstWord.length >= 3) {
         const { data: fuzzyMatch } = await supabase
           .from("peptides")
-          .select("id")
+          .select("id, name")
           .eq("org_id", orgId)
           .ilike("name", `%${firstWord}%`)
           .limit(1)
@@ -170,6 +179,7 @@ export async function importExternalOrder(
 
         if (fuzzyMatch) {
           peptideId = fuzzyMatch.id;
+          peptideName = fuzzyMatch.name;
         }
       }
     }
@@ -177,6 +187,7 @@ export async function importExternalOrder(
     if (peptideId) {
       matchedItems.push({
         peptide_id: peptideId,
+        peptide_name: peptideName,
         quantity: item.quantity,
         unit_price: item.unit_price,
       });
@@ -283,6 +294,59 @@ export async function importExternalOrder(
   }
 
   console.log(`[platform-order-sync] Imported ${platformLabel} order #${order.external_id} → ${newOrder.id} (${matchedItems.length} items, ${skippedItems} skipped)`);
+
+  // ── 7. Auto-create customer account ─────────────────────────
+  // Non-blocking: creates auth user + profile + invite link
+  if (contactId && order.customer_email) {
+    try {
+      const result = await autoCreateCustomer(
+        supabase, orgId, contactId, order.customer_email, order.customer_name,
+      );
+      if (!result.alreadyLinked) {
+        console.log(`[platform-order-sync] Auto-created customer for ${order.customer_email} → invite: ${result.inviteLink}`);
+      }
+    } catch (e) {
+      console.warn("[platform-order-sync] Auto-customer creation failed (non-blocking):", (e as Error).message);
+    }
+  }
+
+  // ── 8. Auto-generate protocol + fridge entries ──────────────
+  // Non-blocking: creates protocol items + client_inventory (virtual vials)
+  if (contactId && matchedItems.length > 0) {
+    try {
+      const protocolItems = matchedItems.map((item) => ({
+        peptide_id: item.peptide_id,
+        peptide_name: item.peptide_name,
+      }));
+
+      const { protocolItemMap } = await serverAutoGenerateProtocol(
+        supabase, contactId, orgId, protocolItems,
+      );
+
+      // Create client_inventory entries (virtual vials — no physical bottle allocation)
+      const inventoryEntries = matchedItems.map((item) => ({
+        contact_id: contactId,
+        peptide_id: item.peptide_id,
+        vial_size_mg: 5,
+        current_quantity_mg: 5,
+        initial_quantity_mg: 5,
+        status: "active",
+        protocol_item_id: protocolItemMap?.get(item.peptide_id) || null,
+      }));
+
+      const { error: invError } = await supabase
+        .from("client_inventory")
+        .insert(inventoryEntries);
+
+      if (invError) {
+        console.warn("[platform-order-sync] client_inventory insert warning:", invError.message);
+      } else {
+        console.log(`[platform-order-sync] Auto-created ${inventoryEntries.length} fridge entries for contact ${contactId}`);
+      }
+    } catch (e) {
+      console.warn("[platform-order-sync] Auto-protocol/inventory failed (non-blocking):", (e as Error).message);
+    }
+  }
 
   return {
     success: true,
