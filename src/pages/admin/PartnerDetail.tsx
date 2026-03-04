@@ -1041,6 +1041,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 .from('profiles')
                 .select('parent_rep_id')
                 .eq('id', currentId)
+                .eq('org_id', currentProfile?.org_id)
                 .maybeSingle();
 
             if (profile?.parent_rep_id) {
@@ -1133,7 +1134,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                 p_contact_id: selectedContact.id,
                 p_parent_rep_id: repId,
                 p_redirect_origin: window.location.origin,
-                p_target_org_id: partner.org_id || null,
+                p_target_org_id: currentProfile?.org_id || null,
             });
 
             if (error) throw error;

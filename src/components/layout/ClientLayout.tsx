@@ -22,7 +22,8 @@ export function ClientLayout() {
     const { userRole, user, profile, signOut } = useAuth();
     const { brand_name: brandName, logo_url } = useTenantConfig();
     useTenantTheme();
-    const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff';
+    const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff'
+        || profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'staff' || profile?.role === 'vendor';
     const isSalesRep = profile?.role === 'sales_rep' || userRole?.role === 'sales_rep';
 
     // Guard: new customers may not have a contact record yet (created async by linkReferral).
@@ -212,7 +213,7 @@ export function ClientLayout() {
                 <nav aria-label="Tab navigation" className="flex justify-around items-center h-16">
                     {navItems.map((item) => {
                         const isActive = item.path === '/menu'
-                            ? ['/menu', '/account', '/health', '/messages', '/community', '/my-regimen', '/macro-tracker', '/body-composition', '/notifications'].includes(location.pathname)
+                            ? ['/menu', '/account', '/health', '/messages', '/community', '/macro-tracker', '/body-composition', '/notifications'].includes(location.pathname)
                             : location.pathname === item.path;
                         return (
                             <button
