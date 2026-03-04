@@ -1,9 +1,8 @@
 import { useState, useEffect, lazy, Suspense, startTransition } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield } from "lucide-react";
+import { ArrowRight, ChevronRight, Lock, FlaskConical, TrendingUp, Shield, Calendar, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fadeInUp, shimmerStyle, shimmerKeyframes, scrollTo } from "./constants";
+import { shimmerStyle, shimmerKeyframes, scrollTo, PLATFORM } from "./constants";
 
 
 function tryReload(): boolean {
@@ -23,7 +22,7 @@ function retryImport<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 const AiDemoChat = lazy(() => retryImport(() => import("@/components/crm/AiDemoChat").then(m => ({ default: m.AiDemoChat }))));
-const LiveBuildPreview = lazy(() => retryImport(() => import("@/components/crm/LiveBuildPreview").then(m => ({ default: m.LiveBuildPreview }))));
+const LiveBuildPreviewLazy = lazy(() => retryImport(() => import("@/components/crm/LiveBuildPreviewLazy").then(m => ({ default: m.LiveBuildPreviewLazy }))));
 
 const ROTATING_WORDS = ["Inventory", "Orders", "Fulfillment", "Commissions", "Client Health", "Compliance"];
 
@@ -131,6 +130,9 @@ export function Hero() {
       <style>{shimmerKeyframes}{`
         @keyframes orb-drift-right { 0%,100%{transform:translateX(0)} 50%{transform:translateX(30px)} }
         @keyframes orb-drift-left  { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-20px)} }
+        @keyframes hero-fade-up { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes hero-fade-right { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes word-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
       {/* Animated gradient background orbs — parallax on scroll */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
@@ -144,7 +146,7 @@ export function Hero() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left — copy */}
-          <motion.div {...fadeInUp}>
+          <div style={{ animation: "hero-fade-up 0.6s ease-out both" }}>
             {/* Industry badge */}
             <div className="flex items-center gap-2 mb-6">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
@@ -163,18 +165,13 @@ export function Hero() {
               One AI that{" "}
               <strong className="text-foreground">runs your entire business</strong> —{" "}
               <span className="inline-block w-[130px] text-left align-bottom">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={ROTATING_WORDS[wordIdx]}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.25 }}
-                    className="inline-block text-primary font-semibold"
-                  >
-                    {ROTATING_WORDS[wordIdx]}
-                  </motion.span>
-                </AnimatePresence>
+                <span
+                  key={ROTATING_WORDS[wordIdx]}
+                  className="inline-block text-primary font-semibold"
+                  style={{ animation: "word-in 0.25s ease-out both" }}
+                >
+                  {ROTATING_WORDS[wordIdx]}
+                </span>
               </span>{" "}
               and more — and{" "}
               <strong className="text-foreground">builds new features on demand</strong>.
@@ -203,6 +200,26 @@ export function Hero() {
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => window.open(PLATFORM.calUrl, "_blank")}
+                className="text-base px-6 py-3 h-auto border-primary/40 hover:border-primary hover:bg-primary/5"
+              >
+                <Calendar className="w-4 h-4 mr-2 text-primary" />
+                Book a Meeting
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => window.open(`sms:${PLATFORM.phone}`, "_self")}
+                className="text-base px-6 py-3 h-auto border-border/60 hover:border-primary/50"
+              >
+                <Phone className="w-4 h-4 mr-2 text-primary" />
+                Text Us {PLATFORM.phoneDisplay}
+              </Button>
+            </div>
             <p className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3" />
               Built for peptide businesses. $799/mo — 7-day free trial.
@@ -221,15 +238,12 @@ export function Hero() {
                 100% data isolation
               </span>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right — animated chat */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+          <div
             className="h-[400px] overflow-hidden"
+            style={{ animation: "hero-fade-right 0.6s ease-out 0.2s both" }}
           >
             {showDemo ? (
               <Suspense fallback={<div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />}>
@@ -244,13 +258,13 @@ export function Hero() {
                     "Connecting live data feeds...",
                     "Deploying to your CRM...",
                   ]}
-                  buildPreview={(phase) => <LiveBuildPreview phase={phase} variant="dashboard" />}
+                  buildPreview={(phase) => <LiveBuildPreviewLazy phase={phase} variant="dashboard" />}
                 />
               </Suspense>
             ) : (
               <div className="h-[400px] rounded-xl bg-card/80 animate-pulse" />
             )}
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

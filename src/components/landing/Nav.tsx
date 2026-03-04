@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Menu, ArrowRight } from "lucide-react";
+import { Menu, ArrowRight, Calendar, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PLATFORM, scrollTo } from "./constants";
@@ -88,7 +88,26 @@ export function Nav() {
           </div>
 
           {/* Desktop CTAs */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(PLATFORM.calUrl, "_blank")}
+              className="text-muted-foreground hover:text-primary"
+            >
+              <Calendar className="w-3.5 h-3.5 mr-1.5" />
+              Book a Meeting
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(`sms:${PLATFORM.phone}`, "_self")}
+              className="text-muted-foreground hover:text-primary"
+            >
+              <Phone className="w-3.5 h-3.5 mr-1.5" />
+              {PLATFORM.phoneDisplay}
+            </Button>
+            <div className="w-px h-5 bg-border/40 mx-1" />
             <Button
               variant="ghost"
               size="sm"
@@ -131,6 +150,23 @@ export function Nav() {
                       {l.label}
                     </button>
                   ))}
+                  <hr className="border-border/40 my-2" />
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2"
+                    onClick={() => { setMobileOpen(false); window.open(PLATFORM.calUrl, "_blank"); }}
+                  >
+                    <Calendar className="w-4 h-4 text-primary" />
+                    Book a Meeting
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2"
+                    onClick={() => { setMobileOpen(false); window.open(`sms:${PLATFORM.phone}`, "_self"); }}
+                  >
+                    <Phone className="w-4 h-4 text-primary" />
+                    Text Us {PLATFORM.phoneDisplay}
+                  </Button>
                   <hr className="border-border/40 my-2" />
                   <Button
                     variant="ghost"
