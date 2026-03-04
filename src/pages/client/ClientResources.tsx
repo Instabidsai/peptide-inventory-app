@@ -564,7 +564,7 @@ export default function ClientResources() {
                                         </div>
                                         <div className="px-6 py-5">
                                             <div
-                                                className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-primary prose-headings:font-semibold prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-gray-300 prose-p:leading-relaxed prose-li:text-gray-300 prose-strong:text-white prose-ul:my-2 prose-li:my-0.5"
+                                                className="article-content max-w-none"
                                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content!) }}
                                             />
                                         </div>
@@ -747,7 +747,7 @@ function ResourceDetailView({ resource, userId }: { resource: Resource, userId?:
                                 <iframe src={`https://www.youtube.com/embed/${resource.url.match(/(?:youtu.be\/|v=)([^#&?]*)/)?.[1]}`} className="w-full h-full" allowFullScreen />
                             </div>
                         ) : resource.content ? (
-                            <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.content) }} />
+                            <div className="article-content max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resource.content) }} />
                         ) : (
                             <div className="flex flex-col gap-4">
                                 <p className="text-muted-foreground/70">This resource is available externally.</p>

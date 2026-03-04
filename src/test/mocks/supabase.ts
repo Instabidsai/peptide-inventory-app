@@ -81,6 +81,15 @@ export function resetMockResponses() {
   functionResponses = {};
 }
 
+// Realtime channel mock — chainable .on().subscribe() pattern
+function createChannelMock() {
+  const ch: Record<string, any> = {};
+  ch.on = vi.fn().mockReturnValue(ch);
+  ch.subscribe = vi.fn().mockReturnValue(ch);
+  ch.unsubscribe = vi.fn().mockReturnValue(ch);
+  return ch;
+}
+
 // The mock supabase client
 export const supabase = {
   from: vi.fn((table: string) => {
@@ -106,6 +115,8 @@ export const supabase = {
     signOut: vi.fn().mockResolvedValue({ error: null }),
     onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
   },
+  channel: vi.fn(() => createChannelMock()),
+  removeChannel: vi.fn(),
 };
 
 // Auto-mock the supabase client module

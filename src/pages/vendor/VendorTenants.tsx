@@ -57,9 +57,9 @@ function TenantRow({ tenant, onDelete }: { tenant: TenantSummary; onDelete: (t: 
             <TableCell>
                 <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
                     {tenant.org_id.slice(0, 8)}...
-                    <button onClick={copyId} className="hover:text-foreground">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={copyId}>
                         <Copy className="h-3 w-3" />
-                    </button>
+                    </Button>
                 </div>
             </TableCell>
             <TableCell>

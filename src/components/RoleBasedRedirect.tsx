@@ -37,10 +37,10 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         if (!profile?.org_id) {
             return <Navigate to="/onboarding" replace />;
         }
-        // If profile has a role we can use as fallback, fall through
-        // to the redirect logic below instead of rendering children blindly
+        // No role from user_roles table AND no role on profile — send to auth
+        // (rendering children here would bypass all role checks)
         if (!profile?.role) {
-            return <>{children}</>;
+            return <Navigate to="/auth" replace />;
         }
     }
 
@@ -104,6 +104,6 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
         return <>{children}</>;
     } catch (err) {
         logger.error("RoleBasedRedirect error:", err);
-        return <Navigate to="/error" replace />;
+        return <Navigate to="/auth" replace />;
     }
 }

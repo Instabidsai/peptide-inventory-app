@@ -100,10 +100,12 @@ export function useDeleteEntityRecord(entityId: string) {
 
   return useMutation({
     mutationFn: async (recordId: string) => {
+      if (!profile?.org_id) throw new Error('No org');
       const { error } = await supabase
         .from('custom_entity_records')
         .delete()
-        .eq('id', recordId);
+        .eq('id', recordId)
+        .eq('org_id', profile.org_id);
       if (error) throw error;
     },
     onSuccess: () => {

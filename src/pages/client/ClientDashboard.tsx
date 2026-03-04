@@ -22,6 +22,7 @@ import {
     Bell,
     Scale,
     DollarSign,
+    Eye,
 } from "lucide-react";
 import { Progress } from '@/components/ui/progress';
 import { format, isSameDay, subDays } from 'date-fns';
@@ -61,13 +62,20 @@ function getCurrentTimeWindow(): TimeWindow {
     return 'evening';
 }
 
-function ClientDashboardContent() {
-    usePageTitle('My Dashboard');
+// ── Shared rendering component (used by both customer and admin preview) ──
+interface ClientDashboardSharedProps {
+    contact: any;
+    isAdminPreview?: boolean;
+}
+
+function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashboardSharedProps) {
     const { brand_name: brandName } = useTenantConfig();
-    const { data: contact, isLoading: isLoadingContact, isError: isContactError, refetch: refetchContact } = useClientProfile();
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
     const { user } = useAuth();
+
+    // In admin preview, use the customer's linked auth user ID for Quick Glance queries
+    const effectiveUserId = isAdminPreview ? contact?.linked_user_id : user?.id;
 
     // ── Household support ─────────────────────────────────────────
     const inventoryOwnerId = useInventoryOwnerId(contact);
@@ -124,48 +132,48 @@ function ClientDashboardContent() {
 
     // ── Quick Glance data (messages, notifications, weight, balance) ──
     const { data: unreadNotifications } = useQuery({
-        queryKey: ['dashboard-unread-notifications', user?.id],
+        queryKey: ['dashboard-unread-notifications', effectiveUserId],
         queryFn: async () => {
-            if (!user?.id) return 0;
+            if (!effectiveUserId) return 0;
             const { count } = await supabase
                 .from('notifications')
                 .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id)
+                .eq('user_id', effectiveUserId)
                 .eq('is_read', false);
             return count || 0;
         },
-        enabled: !!user?.id,
+        enabled: !!effectiveUserId,
     });
 
     const { data: unreadMessages } = useQuery({
-        queryKey: ['dashboard-unread-messages', user?.id],
+        queryKey: ['dashboard-unread-messages', effectiveUserId],
         queryFn: async () => {
-            if (!user?.id) return 0;
+            if (!effectiveUserId) return 0;
             const { count } = await supabase
                 .from('client_requests')
                 .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id)
+                .eq('user_id', effectiveUserId)
                 .not('admin_notes', 'is', null)
                 .eq('status', 'pending');
             return count || 0;
         },
-        enabled: !!user?.id,
+        enabled: !!effectiveUserId,
     });
 
     const { data: latestWeight } = useQuery({
-        queryKey: ['dashboard-latest-weight', user?.id],
+        queryKey: ['dashboard-latest-weight', effectiveUserId],
         queryFn: async () => {
-            if (!user?.id) return null;
+            if (!effectiveUserId) return null;
             const { data } = await supabase
                 .from('body_composition_logs')
                 .select('weight, date')
-                .eq('user_id', user.id)
+                .eq('user_id', effectiveUserId)
                 .order('date', { ascending: false })
                 .limit(1)
                 .maybeSingle();
             return data as { weight: number; date: string } | null;
         },
-        enabled: !!user?.id,
+        enabled: !!effectiveUserId,
     });
 
     const { data: outstandingBalance } = useQuery({
@@ -404,98 +412,6 @@ function ClientDashboardContent() {
         });
     };
 
-    if (isLoadingContact) return (
-        <motion.div
-            className="space-y-6 pb-20"
-            initial="hidden"
-            animate="show"
-            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-        >
-            <motion.div className="space-y-1" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-7 w-52" />
-            </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-                <Skeleton className="h-11 w-full rounded-xl" />
-            </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-                <GlassCard><CardContent className="pt-6 pb-5 flex justify-center"><Skeleton className="h-28 w-28 rounded-full" /></CardContent></GlassCard>
-            </motion.div>
-            <motion.div className="grid grid-cols-2 gap-3" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-                <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
-                <GlassCard><CardContent className="pt-5 pb-4 flex flex-col items-center gap-2"><Skeleton className="h-8 w-8 rounded-xl" /><Skeleton className="h-6 w-10" /><Skeleton className="h-3 w-16" /></CardContent></GlassCard>
-            </motion.div>
-            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
-                <GlassCard><CardContent className="pt-5 pb-4 space-y-3">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-14 w-full rounded-2xl" />
-                    <Skeleton className="h-14 w-full rounded-2xl" />
-                </CardContent></GlassCard>
-            </motion.div>
-        </motion.div>
-    );
-
-    if (isContactError) return <QueryError message="Failed to load your profile." onRetry={refetchContact} />;
-
-    if (!contact && !isLoadingContact) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] space-y-5 p-8">
-                <motion.div
-                    className="p-5 bg-gradient-to-br from-primary/15 to-primary/5 rounded-2xl ring-1 ring-primary/15"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                >
-                    <Sparkles className="h-10 w-10 text-primary" />
-                </motion.div>
-                <motion.div
-                    className="text-center space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                >
-                    <h2 className="text-2xl font-bold tracking-tight">Welcome to <span className="text-gradient-primary">{brandName}</span></h2>
-                    <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
-                        Your account is ready! Your personalized protocol is being prepared by your provider. In the meantime, explore or chat with our AI assistant.
-                    </p>
-                </motion.div>
-                <motion.div
-                    className="flex gap-3 mt-1"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                >
-                    <button
-                        onClick={() => navigate('/store')}
-                        className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all hover-lift"
-                    >
-                        Browse Store
-                    </button>
-                    <button
-                        onClick={() => navigate('/messages')}
-                        className="px-5 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-all hover-lift"
-                    >
-                        Contact Support
-                    </button>
-                </motion.div>
-                <motion.div
-                    className="w-full max-w-md border border-border/50 rounded-xl p-4 mt-6 bg-muted/20"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35 }}
-                >
-                    <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        Peptide AI Assistant
-                    </h3>
-                    <div className="h-[min(400px,calc(100dvh-14rem))] overflow-hidden">
-                        <AIChatInterface />
-                    </div>
-                </motion.div>
-            </div>
-        );
-    }
-
     const hasDosesToday = gamified.todayDoses.length > 0;
     const hasScheduledVials = (inventory || []).some(
         v => v.in_fridge && v.status === 'active' && v.concentration_mg_ml && v.dose_frequency
@@ -549,8 +465,18 @@ function ClientDashboardContent() {
                 </CardContent>
             </GlassCard>
 
-            {/* ── Family Discovery Banner (non-household users) ─── */}
-            {!contact?.household_id && !bannerDismissed && (
+            {/* ── Admin Preview Banner ─── */}
+            {isAdminPreview && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/5 border border-purple-500/15">
+                    <Eye className="h-4 w-4 text-purple-500" />
+                    <span className="text-xs text-purple-600 dark:text-purple-400">
+                        Previewing this client's full dashboard — exactly what they see when they log in
+                    </span>
+                </div>
+            )}
+
+            {/* ── Family Discovery Banner (non-household users, customer only) ─── */}
+            {!isAdminPreview && !contact?.household_id && !bannerDismissed && (
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -593,8 +519,8 @@ function ClientDashboardContent() {
                 >
                     {(unreadMessages ?? 0) > 0 && (
                         <button
-                            onClick={() => navigate('/messages')}
-                            className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/15 hover:bg-blue-500/[0.1] transition-colors text-left"
+                            onClick={() => !isAdminPreview && navigate('/messages')}
+                            className={cn("flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/15 transition-colors text-left", !isAdminPreview && "hover:bg-blue-500/[0.1] cursor-pointer", isAdminPreview && "cursor-default")}
                         >
                             <div className="p-1.5 rounded-lg bg-blue-500/10 shrink-0 relative">
                                 <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
@@ -611,8 +537,8 @@ function ClientDashboardContent() {
 
                     {(unreadNotifications ?? 0) > 0 && (
                         <button
-                            onClick={() => navigate('/notifications')}
-                            className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/15 hover:bg-amber-500/[0.1] transition-colors text-left"
+                            onClick={() => !isAdminPreview && navigate('/notifications')}
+                            className={cn("flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/15 transition-colors text-left", !isAdminPreview && "hover:bg-amber-500/[0.1] cursor-pointer", isAdminPreview && "cursor-default")}
                         >
                             <div className="p-1.5 rounded-lg bg-amber-500/10 shrink-0 relative">
                                 <Bell className="h-3.5 w-3.5 text-amber-400" />
@@ -629,8 +555,8 @@ function ClientDashboardContent() {
 
                     {latestWeight && (
                         <button
-                            onClick={() => navigate('/body-composition')}
-                            className="flex items-center gap-2.5 p-3 rounded-xl bg-primary/[0.06] border border-primary/15 hover:bg-primary/[0.1] transition-colors text-left"
+                            onClick={() => !isAdminPreview && navigate('/body-composition')}
+                            className={cn("flex items-center gap-2.5 p-3 rounded-xl bg-primary/[0.06] border border-primary/15 transition-colors text-left", !isAdminPreview && "hover:bg-primary/[0.1] cursor-pointer", isAdminPreview && "cursor-default")}
                         >
                             <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
                                 <Scale className="h-3.5 w-3.5 text-primary" />
@@ -644,8 +570,8 @@ function ClientDashboardContent() {
 
                     {(outstandingBalance ?? 0) > 0 && (
                         <button
-                            onClick={() => navigate('/my-regimen')}
-                            className="flex items-center gap-2.5 p-3 rounded-xl bg-red-500/[0.06] border border-red-500/15 hover:bg-red-500/[0.1] transition-colors text-left"
+                            onClick={() => !isAdminPreview && navigate('/my-regimen')}
+                            className={cn("flex items-center gap-2.5 p-3 rounded-xl bg-red-500/[0.06] border border-red-500/15 transition-colors text-left", !isAdminPreview && "hover:bg-red-500/[0.1] cursor-pointer", isAdminPreview && "cursor-default")}
                         >
                             <div className="p-1.5 rounded-lg bg-red-500/10 shrink-0">
                                 <DollarSign className="h-3.5 w-3.5 text-red-400" />
@@ -661,6 +587,7 @@ function ClientDashboardContent() {
             </SectionErrorBoundary>
 
             <Tabs defaultValue="protocol" className="w-full">
+                {!isAdminPreview && (
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-muted/40 p-1">
                     <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-muted/50 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         My Protocol
@@ -670,6 +597,7 @@ function ClientDashboardContent() {
                         Peptide AI
                     </TabsTrigger>
                 </TabsList>
+                )}
 
                 <TabsContent value="protocol" className="space-y-5">
                     {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
@@ -798,7 +726,9 @@ function ClientDashboardContent() {
                     </div>
                     </SectionErrorBoundary>
 
-                    {/* ─── Request Protocol Change ─── */}
+                    {/* ─── Request Protocol Change (customer only) ─── */}
+                    {!isAdminPreview && (
+                    <>
                     <div className="flex justify-center">
                         <button
                             onClick={() => setChangeRequestOpen(true)}
@@ -814,6 +744,8 @@ function ClientDashboardContent() {
                         defaultType="protocol_change"
                         context={contact ? { type: 'protocol', id: contact.id, title: 'My Protocol' } : undefined}
                     />
+                    </>
+                    )}
 
                     {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
                     <SectionErrorBoundary section="My Progress">
@@ -863,7 +795,8 @@ function ClientDashboardContent() {
                     </GlassCard>
                     </SectionErrorBoundary>
 
-                    {/* ─── Full Regimen Link ─── */}
+                    {/* ─── Full Regimen Link (customer only) ─── */}
+                    {!isAdminPreview && (
                     <motion.button
                         onClick={() => navigate('/my-regimen')}
                         className="w-full flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40 hover:bg-muted/40 hover:border-primary/10 transition-all duration-300 group"
@@ -880,14 +813,90 @@ function ClientDashboardContent() {
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
                     </motion.button>
+                    )}
                 </TabsContent>
 
+                {!isAdminPreview && (
                 <TabsContent value="ai-coach" className="h-[calc(100dvh-14rem)] md:h-[600px]">
                     <AIChatInterface />
                 </TabsContent>
+                )}
             </Tabs>
         </div>
     );
+}
+
+// ── Admin preview wrapper (loads contact by ID, exported for use in DigitalFridgeSection) ──
+export function ClientDashboardInner({ contactId, isAdminPreview = true }: { contactId: string; isAdminPreview?: boolean }) {
+    const { data: contact, isLoading } = useQuery({
+        queryKey: ['admin-contact-preview', contactId],
+        queryFn: async () => {
+            const { data } = await supabase.from('contacts').select('*').eq('id', contactId).single();
+            return data;
+        },
+        enabled: !!contactId,
+    });
+
+    if (isLoading) return <div className="space-y-4 p-4"><Skeleton className="h-24 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-xl" /><Skeleton className="h-48 w-full rounded-xl" /></div>;
+    if (!contact) return <div className="text-center text-sm text-muted-foreground py-12">Contact not found</div>;
+
+    return <ClientDashboardShared contact={contact} isAdminPreview={isAdminPreview} />;
+}
+
+// ── Customer wrapper (uses useClientProfile with self-healing + polling) ──
+function ClientDashboardContent() {
+    usePageTitle('My Dashboard');
+    const { contact, isLoading, error, isWelcome, completeWelcome } = useClientProfile();
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background p-4 space-y-4">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-64 w-full rounded-xl" />
+                <Skeleton className="h-48 w-full rounded-xl" />
+            </div>
+        );
+    }
+
+    if (error || !contact) {
+        return <QueryError error={error} title="Dashboard" message="Could not load your dashboard. Please try refreshing." />;
+    }
+
+    if (isWelcome) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <GlassCard className="max-w-md w-full text-center">
+                    <CardContent className="py-12 space-y-6">
+                        <motion.div
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                        >
+                            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Sparkles className="h-8 w-8 text-primary" />
+                            </div>
+                            <h1 className="text-2xl font-bold tracking-tight">Welcome to Your Portal!</h1>
+                            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                                Your personalized peptide dashboard is ready. Track doses, monitor supply, and manage your protocols — all in one place.
+                            </p>
+                        </motion.div>
+                        <motion.button
+                            onClick={completeWelcome}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <Sparkles className="h-4 w-4" />
+                            Get Started
+                        </motion.button>
+                    </CardContent>
+                </GlassCard>
+            </div>
+        );
+    }
+
+    return <ClientDashboardShared contact={contact} />;
 }
 
 export default function ClientDashboard() {

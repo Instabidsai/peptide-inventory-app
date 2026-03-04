@@ -50,6 +50,21 @@ export default function PayOrder() {
         enabled: !!order?.org_id,
     });
 
+    // Fetch tenant payment config (Zelle email, Venmo handle, etc.)
+    const { data: tenantConfig } = useQuery({
+        queryKey: ['public_tenant_config', order?.org_id],
+        queryFn: async () => {
+            if (!order?.org_id) return null;
+            const { data } = await supabase
+                .from('tenant_config')
+                .select('zelle_email, venmo_handle, cashapp_tag')
+                .eq('org_id', order.org_id)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!order?.org_id,
+    });
+
     const [selectedManualMethod, setSelectedManualMethod] = useState<string | null>(null);
     const [confirmingManual, setConfirmingManual] = useState(false);
 
@@ -243,20 +258,31 @@ export default function PayOrder() {
                                 <p className="text-xs text-muted-foreground">
                                     Select your payment method below, then send payment. Your order will be marked as pending until verified.
                                 </p>
-                                {['Zelle', 'Cash App', 'Venmo', 'Wire Transfer'].map((method) => (
-                                    <button
-                                        key={method}
-                                        onClick={() => handleManualPaymentSelected(method)}
-                                        disabled={confirmingManual}
-                                        className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-1 disabled:opacity-50"
-                                    >
-                                        <p className="font-medium">{method}</p>
-                                        <p className="text-muted-foreground text-xs">
-                                            {method === 'Wire Transfer'
-                                                ? 'Contact your sales rep for wire transfer details.'
-                                                : `I'll pay via ${method} — mark as pending verification.`}
-                                        </p>
-                                    </button>
+                                {([
+                                    ...(tenantConfig?.zelle_email ? [{ method: 'Zelle' as const, destination: tenantConfig.zelle_email }] : []),
+                                    ...(tenantConfig?.cashapp_tag ? [{ method: 'Cash App' as const, destination: tenantConfig.cashapp_tag }] : []),
+                                    ...(tenantConfig?.venmo_handle ? [{ method: 'Venmo' as const, destination: tenantConfig.venmo_handle }] : []),
+                                    { method: 'Wire Transfer' as const, destination: null as string | null },
+                                ]).map(({ method, destination }) => (
+                                        <button
+                                            key={method}
+                                            onClick={() => handleManualPaymentSelected(method)}
+                                            disabled={confirmingManual}
+                                            className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-1 disabled:opacity-50"
+                                        >
+                                            <p className="font-medium">{method}</p>
+                                            {destination ? (
+                                                <p className="text-muted-foreground text-xs">
+                                                    Send to: <span className="font-medium text-foreground">{destination}</span>
+                                                </p>
+                                            ) : (
+                                                <p className="text-muted-foreground text-xs">
+                                                    {method === 'Wire Transfer'
+                                                        ? 'Contact your sales rep for wire transfer details.'
+                                                        : `I'll pay via ${method} — mark as pending verification.`}
+                                                </p>
+                                            )}
+                                        </button>
                                 ))}
                             </div>
 

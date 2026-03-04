@@ -39,7 +39,6 @@ interface CartSummaryProps {
     copiedZelle: boolean;
     onCopyZelle: () => void;
     onCheckout: () => void;
-    onShowCheckoutConfirm?: () => void;
     updateQuantity: (peptideId: string, delta: number) => void;
     cartRef: React.RefObject<HTMLDivElement>;
     highlight?: boolean;
@@ -65,7 +64,6 @@ export function CartSummary({
     copiedZelle,
     onCopyZelle,
     onCheckout,
-    onShowCheckoutConfirm,
     updateQuantity,
     cartRef,
     highlight,

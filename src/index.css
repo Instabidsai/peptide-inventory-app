@@ -312,3 +312,175 @@
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.8; }
 }
+
+/* ===== Article Content — Dark-Theme Overrides ===== */
+/* Generated articles have inline styles for light backgrounds.
+   These rules force readable contrast on our dark UI. */
+
+.article-content {
+  color: hsl(210 20% 88%);
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+
+.article-content h2 {
+  color: hsl(var(--primary));
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--primary) / 0.2);
+  letter-spacing: -0.01em;
+}
+
+.article-content h3 {
+  color: hsl(210 40% 96%);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.article-content p {
+  color: hsl(210 15% 78%);
+  margin-bottom: 0.75rem;
+}
+
+.article-content strong {
+  color: hsl(210 40% 96%);
+  font-weight: 600;
+}
+
+.article-content em {
+  color: hsl(210 15% 82%);
+}
+
+/* Lists */
+.article-content ul,
+.article-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.article-content li {
+  color: hsl(210 15% 78%);
+  margin-bottom: 0.35rem;
+  line-height: 1.6;
+}
+
+.article-content li strong {
+  color: hsl(var(--primary));
+}
+
+/* ---- Tables ---- */
+.article-content table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 1.25rem 0 !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
+  border: 1px solid hsl(var(--primary) / 0.2) !important;
+  font-size: 0.875rem !important;
+}
+
+.article-content thead {
+  background: hsl(var(--primary) / 0.15) !important;
+}
+
+.article-content th {
+  color: hsl(var(--primary)) !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem 1rem !important;
+  border: none !important;
+  border-bottom: 1px solid hsl(var(--primary) / 0.25) !important;
+  text-align: left !important;
+  background: transparent !important;
+}
+
+.article-content tbody tr {
+  background: hsl(222 40% 10%) !important;
+  transition: background 0.15s ease;
+}
+
+.article-content tbody tr:nth-child(even) {
+  background: hsl(222 40% 12%) !important;
+}
+
+.article-content tbody tr:hover {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+
+.article-content td {
+  color: hsl(210 15% 82%) !important;
+  padding: 0.65rem 1rem !important;
+  border: none !important;
+  border-bottom: 1px solid hsl(217 25% 20%) !important;
+  vertical-align: top !important;
+  line-height: 1.5 !important;
+  background: transparent !important;
+}
+
+.article-content td:first-child {
+  color: hsl(210 40% 96%) !important;
+  font-weight: 500 !important;
+}
+
+/* ---- Warning / Important Banners ---- */
+.article-content div[style*="background:#fff3cd"],
+.article-content div[style*="background: #fff3cd"],
+.article-content div[style*="#ffc107"] {
+  background: hsl(38 80% 50% / 0.12) !important;
+  border: 1px solid hsl(38 80% 50% / 0.35) !important;
+  border-left: 4px solid hsl(38 80% 50%) !important;
+  border-radius: 0.75rem !important;
+  padding: 1rem 1.25rem !important;
+  margin: 1rem 0 !important;
+  color: hsl(38 60% 80%) !important;
+}
+
+.article-content div[style*="background:#fff3cd"] strong,
+.article-content div[style*="background: #fff3cd"] strong,
+.article-content div[style*="#ffc107"] strong {
+  color: hsl(38 92% 65%) !important;
+}
+
+/* ---- Links ---- */
+.article-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-content a:hover {
+  color: hsl(var(--primary) / 0.8);
+}
+
+/* ---- Blockquotes ---- */
+.article-content blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.4);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: hsl(210 15% 72%);
+  font-style: italic;
+}
+
+/* ---- Code ---- */
+.article-content code {
+  background: hsl(222 40% 14%);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  color: hsl(var(--primary));
+}
+
+/* ---- Horizontal Rules ---- */
+.article-content hr {
+  border: none;
+  border-top: 1px solid hsl(217 25% 22%);
+  margin: 1.5rem 0;
+}

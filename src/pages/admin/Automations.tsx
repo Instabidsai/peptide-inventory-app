@@ -46,7 +46,7 @@ import {
     useReassignContact,
     useAcceptAiSuggestion,
     useTriggerScan,
-    useToggleAutomation,
+    useToggleAutomationModule,
     type PaymentQueueItem,
 } from '@/hooks/use-payment-queue';
 
@@ -79,7 +79,7 @@ export default function Automations() {
     const { data: modules, isLoading: modulesLoading } = useAutomationModules();
     const { data: pendingCount } = usePendingPaymentCount();
     const triggerScan = useTriggerScan();
-    const toggleAutomation = useToggleAutomation();
+    const toggleAutomation = useToggleAutomationModule();
 
     const [historyFilter, setHistoryFilter] = useState<string>('all');
     const [showHistory, setShowHistory] = useState(false);

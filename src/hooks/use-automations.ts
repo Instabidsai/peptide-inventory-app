@@ -37,17 +37,19 @@ export function useAutomations() {
   });
 }
 
-export function useToggleAutomation() {
+export function useToggleCustomAutomation() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { error } = await supabase
         .from('custom_automations')
         .update({ active })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', profile.org_id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -66,10 +68,12 @@ export function useDeleteAutomation() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { error } = await supabase
         .from('custom_automations')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', profile.org_id);
       if (error) throw error;
     },
     onSuccess: () => {

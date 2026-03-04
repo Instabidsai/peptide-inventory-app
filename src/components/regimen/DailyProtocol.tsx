@@ -80,9 +80,10 @@ export function DailyProtocol({ tasks, onToggle, hydration, onAddWater }: DailyP
                         onClick={onAddWater}
                         variant="secondary"
                         size="sm"
-                        className="w-full text-xs h-8 bg-blue-900/20 hover:bg-blue-900/40 text-blue-200"
+                        className="w-full text-xs h-8 bg-blue-900/20 hover:bg-blue-900/40 text-blue-200 opacity-60"
+                        title="Coming soon"
                     >
-                        + Add 8 oz
+                        + Add 8 oz (Coming Soon)
                     </Button>
                 </div>
 

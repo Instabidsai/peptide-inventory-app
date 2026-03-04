@@ -49,6 +49,10 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
             toast({ title: 'Missing fields', description: 'Organization name, admin email, and admin name are required.', variant: 'destructive' });
             return;
         }
+        if (form.admin_password && form.admin_password.length < 8) {
+            toast({ title: 'Weak password', description: 'Password must be at least 8 characters.', variant: 'destructive' });
+            return;
+        }
 
         try {
             const result = await provision.mutateAsync({
@@ -105,7 +109,10 @@ function ProvisionDialog({ onSuccess }: { onSuccess: () => void }) {
                     </div>
                     <div className="space-y-2">
                         <Label>Admin Password (optional — sends magic link if blank)</Label>
-                        <Input type="password" value={form.admin_password} onChange={e => setForm(f => ({ ...f, admin_password: e.target.value }))} placeholder="Leave blank for magic link" />
+                        <Input type="password" minLength={8} value={form.admin_password} onChange={e => setForm(f => ({ ...f, admin_password: e.target.value }))} placeholder="Leave blank for magic link" />
+                        {form.admin_password.length > 0 && form.admin_password.length < 8 && (
+                            <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                        )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">

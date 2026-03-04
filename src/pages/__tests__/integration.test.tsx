@@ -65,7 +65,7 @@ describe('Flow 1: Partner Referral Sign-Up', () => {
     const { consumeSessionReferral } = await import('@/lib/link-referral');
     const result = consumeSessionReferral();
 
-    expect(result).toEqual({ refId: 'ref-xyz', role: 'partner', orgId: null });
+    expect(result).toEqual({ refId: 'ref-xyz', role: 'partner', orgId: null, tier: null });
     // Should have cleared
     expect(sessionStorage.getItem('partner_ref')).toBeNull();
     expect(sessionStorage.getItem('partner_ref_role')).toBeNull();
@@ -282,42 +282,6 @@ describe('Flow 4: Client Checkout', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess || result.current.isError).toBe(true), { timeout: 3000 });
-  });
-
-  it('useValidatedCheckout creates order then redirects to checkout', async () => {
-    // Mock the validated order RPC
-    setRpcResponse('create_validated_order', {
-      success: true,
-      order_id: 'order-card-001',
-      total_amount: 150,
-    });
-
-    // Mock the order status update
-    setMockResponse('sales_orders', [{ id: 'order-card-001', status: 'submitted' }]);
-
-    // Mock the checkout session API call
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.psifi.com/session-123' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    const { useValidatedCheckout } = await import('@/hooks/use-checkout');
-    const { result } = renderHook(() => useValidatedCheckout(), { wrapper: createWrapper() });
-
-    await act(async () => {
-      result.current.mutate({
-        items: [{ peptide_id: 'pep-1', quantity: 1 }],
-        shipping_address: '123 Main St, Austin TX 78701',
-        notes: '',
-        delivery_method: 'ship',
-      });
-    });
-
-    await waitFor(() => expect(result.current.isSuccess || result.current.isError).toBe(true), { timeout: 3000 });
-
-    fetchSpy.mockRestore();
   });
 
   it('useCreateValidatedOrder rejects when RPC returns success=false', async () => {

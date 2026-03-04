@@ -134,6 +134,8 @@ export function useApprovePayment() {
             paymentMethod: string;
             paymentDate: string;
         }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+
             // 1. Update the movement as paid
             const { error: movErr } = await supabase
                 .from('movements')
@@ -143,7 +145,8 @@ export function useApprovePayment() {
                     amount_paid: amount,
                     payment_date: paymentDate,
                 })
-                .eq('id', movementId);
+                .eq('id', movementId)
+                .eq('org_id', profile.org_id);
 
             if (movErr) throw movErr;
 
@@ -223,7 +226,7 @@ export function useTriggerScan() {
     });
 }
 
-export function useToggleAutomation() {
+export function useToggleAutomationModule() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const { organization } = useAuth();
@@ -323,11 +326,12 @@ export function useReassignContact() {
 
             if (aliasErr) throw aliasErr;
 
-            // 3. Find an unpaid movement for this contact
+            // 3. Find an unpaid movement for this contact (scoped to org)
             const { data: movements } = await supabase
                 .from('movements')
                 .select('id, movement_date')
                 .eq('contact_id', contactId)
+                .eq('org_id', orgId)
                 .neq('payment_status', 'paid')
                 .order('movement_date', { ascending: false })
                 .limit(1);
@@ -399,11 +403,12 @@ export function useAcceptAiSuggestion() {
 
             if (aliasErr) throw aliasErr;
 
-            // 3. Find unpaid movement for this contact
+            // 3. Find unpaid movement for this contact (scoped to org)
             const { data: movements } = await supabase
                 .from('movements')
                 .select('id, movement_date')
                 .eq('contact_id', aiContactId)
+                .eq('org_id', orgId)
                 .neq('payment_status', 'paid')
                 .order('movement_date', { ascending: false })
                 .limit(1);

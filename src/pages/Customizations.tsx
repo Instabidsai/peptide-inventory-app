@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useCustomFields } from '@/hooks/use-custom-fields';
 import { useCustomEntities } from '@/hooks/use-custom-entities';
-import { useAutomations, useToggleAutomation, useDeleteAutomation } from '@/hooks/use-automations';
+import { useAutomations, useToggleCustomAutomation, useDeleteAutomation } from '@/hooks/use-automations';
 import { AiBuilderChat } from '@/components/custom/AiBuilderChat';
 import { CustomDashboard } from '@/components/custom/CustomDashboard';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +108,7 @@ function EntitiesList() {
 
 function AutomationsList() {
   const { data: automations = [], isLoading } = useAutomations();
-  const toggleMutation = useToggleAutomation();
+  const toggleMutation = useToggleCustomAutomation();
   const deleteMutation = useDeleteAutomation();
   const { toast } = useToast();
 

@@ -467,90 +467,130 @@ function buildPrompt(issues) {
     grouped[issue.type].push(issue);
   }
 
-  let prompt = `You are an auto-heal agent for the Peptide Inventory App.
-The project is at the current working directory.
-Supabase import: @/integrations/sb_client/client (NOT supabase/client).
+  // Classify issues by domain for agent routing
+  const dbIssues = [...(grouped.rpc_missing || []), ...(grouped.rpc_error || [])];
+  const codeIssues = [...(grouped.typescript || []), ...(grouped.test_failure || []), ...(grouped.bug_report || []), ...(grouped.auto_error || [])];
+  const edgeIssues = [...(grouped.edge_missing || []), ...(grouped.edge_error || [])];
 
-The following ${issues.length} issues were detected by the automated health check.
-Fix each one. After fixing, run \`npx tsc --noEmit\` and \`npx vitest run\` to verify.
+  let prompt = `Create an Agent Team to act as the self-healing repair system for the Peptide Inventory App.
+The project is at the current working directory.
+The automated sentinel system detected ${issues.length} issues that need fixing.
+
+Spawn the following teammates:
+
+1. @code-fixer (use agent: "code-fixer"): Senior TypeScript/React engineer.
+   - Fix logic flaws in src/ files (React components, hooks, lib utilities)
+   - Supabase import: ALWAYS \`@/integrations/sb_client/client\` — NEVER any other path
+   - Every DB query MUST be scoped by org_id (this is multi-tenant)
+   - After every fix, run \`npx tsc --noEmit\` to verify no type regression
+   - Keep changes minimal — only touch what's broken
+   - If @db-architect messages you about a schema change, update TypeScript types to match
+
+2. @db-architect (use agent: "db-architect"): Supabase database administrator.
+   - Use the Supabase MCP tools (mcp__supabase__execute_sql, mcp__supabase__list_tables) to inspect live schema
+   - Fix missing columns, type mismatches, broken RLS policies, missing RPC functions directly via SQL
+   - Every table has org_id. Every RLS policy MUST enforce org_id isolation
+   - After ANY schema change, IMMEDIATELY message @code-fixer with the exact change
+   - Prefer ALTER TABLE over DROP+CREATE. Use IF NOT EXISTS patterns.
+
+3. @qa-reviewer (use agent: "qa-reviewer"): Verification gatekeeper.
+   - You BLOCK final approval
+   - After @code-fixer and @db-architect finish:
+     a) Run \`npx tsc --noEmit\` — must pass with 0 errors
+     b) Run \`npx vitest run\` — all tests must pass
+     c) Verify the original error condition is resolved
+   - If verification fails, send failures back to the responsible agent
+   - Max 3 retry cycles. Only approve when ALL checks pass.
+
+## Detected Issues
 
 `;
 
-  if (grouped.rpc_missing) {
-    prompt += `## Missing RPC Functions\n`;
-    prompt += `These functions are called in the code but don't exist in the database.\n`;
-    prompt += `Create them as Supabase migrations in supabase/migrations/ OR use the supabase CLI.\n\n`;
-    for (const i of grouped.rpc_missing) {
-      prompt += `- \`${i.name}\`: ${i.error}\n`;
+  if (dbIssues.length > 0) {
+    prompt += `### Database Issues (for @db-architect)\n\n`;
+    if (grouped.rpc_missing) {
+      prompt += `**Missing RPC Functions** — these are called in code but don't exist in the database:\n`;
+      for (const i of grouped.rpc_missing) {
+        prompt += `- \`${i.name}\`: ${i.error}\n`;
+      }
+      prompt += `Hint: Look at existing RPC calls in src/hooks/ to understand expected params and return types.\n\n`;
     }
-    prompt += `\nHint: Look at existing RPC calls in src/hooks/ to understand expected params and return types.\n\n`;
+    if (grouped.rpc_error) {
+      prompt += `**RPC Errors:**\n`;
+      for (const i of grouped.rpc_error) {
+        prompt += `- \`${i.name}\`: ${i.error}\n`;
+      }
+      prompt += `\n`;
+    }
   }
 
-  if (grouped.edge_missing) {
-    prompt += `## Missing/Broken Edge Functions\n`;
-    for (const i of grouped.edge_missing) {
-      prompt += `- \`${i.name}\`: ${i.error}\n`;
+  if (codeIssues.length > 0) {
+    prompt += `### Code Issues (for @code-fixer)\n\n`;
+    if (grouped.typescript) {
+      prompt += `**TypeScript Errors:**\n`;
+      for (const i of grouped.typescript) {
+        prompt += `- ${i.error}\n`;
+      }
+      prompt += `\n`;
     }
-    prompt += `\n`;
-  }
-
-  if (grouped.typescript) {
-    prompt += `## TypeScript Errors\nFix these compilation errors:\n\n`;
-    for (const i of grouped.typescript) {
-      prompt += `- ${i.error}\n`;
+    if (grouped.test_failure) {
+      prompt += `**Test Failures:**\n`;
+      for (const i of grouped.test_failure) {
+        prompt += `- ${i.error}\n`;
+      }
+      prompt += `\n`;
     }
-    prompt += `\n`;
-  }
-
-  if (grouped.test_failure) {
-    prompt += `## Test Failures\nFix these failing tests:\n\n`;
-    for (const i of grouped.test_failure) {
-      prompt += `- ${i.error}\n`;
-    }
-    prompt += `\n`;
-  }
-
-  if (grouped.bug_report) {
-    prompt += `## User Bug Reports (last 24h)\nInvestigate and fix these user-reported bugs:\n\n`;
-    for (const i of grouped.bug_report) {
-      prompt += `- Page: ${i.page} — "${i.error}"\n`;
-      if (i.consoleErrors?.length > 0) {
-        prompt += `  Console errors at time of report:\n`;
-        for (const ce of i.consoleErrors.slice(0, 5)) {
-          prompt += `    - ${ce.slice(0, 200)}\n`;
+    if (grouped.bug_report) {
+      prompt += `**User Bug Reports (last 24h):**\n`;
+      for (const i of grouped.bug_report) {
+        prompt += `- Page: ${i.page} — "${i.error}"\n`;
+        if (i.consoleErrors?.length > 0) {
+          prompt += `  Console errors:\n`;
+          for (const ce of i.consoleErrors.slice(0, 5)) {
+            prompt += `    - ${ce.slice(0, 200)}\n`;
+          }
         }
       }
+      prompt += `\n`;
     }
-    prompt += `\n`;
+    if (grouped.auto_error) {
+      prompt += `**Auto-Captured Runtime Errors (last 24h):**\n`;
+      for (const i of grouped.auto_error) {
+        prompt += `- **${i.name}**\n`;
+        prompt += `  Page: ${i.page || 'unknown'}\n`;
+        prompt += `  Error: ${(i.error || '').slice(0, 300)}\n`;
+        if (i.stack) prompt += `  Stack: ${i.stack.split('\n')[0]}\n`;
+        if (i.source) prompt += `  Source: ${i.source}\n`;
+      }
+      prompt += `\n`;
+    }
   }
 
-  if (grouped.auto_error) {
-    prompt += `## Auto-Captured Runtime Errors (last 24h)\nThese errors were automatically captured from the browser. Investigate the source code and fix the root cause:\n\n`;
-    for (const i of grouped.auto_error) {
-      prompt += `- **${i.name}**\n`;
-      prompt += `  Page: ${i.page || 'unknown'}\n`;
-      prompt += `  Error: ${(i.error || '').slice(0, 300)}\n`;
-      if (i.stack) prompt += `  Stack: ${i.stack.split('\n')[0]}\n`;
-      if (i.source) prompt += `  Source: ${i.source}\n`;
+  if (edgeIssues.length > 0) {
+    prompt += `### Edge Function Issues (for @db-architect to inspect, @code-fixer if client-side)\n\n`;
+    if (grouped.edge_missing) {
+      prompt += `**Missing/Broken Edge Functions:**\n`;
+      for (const i of grouped.edge_missing) {
+        prompt += `- \`${i.name}\`: ${i.error}\n`;
+      }
+      prompt += `\n`;
     }
-    prompt += `\n`;
+    if (grouped.edge_error) {
+      prompt += `**Edge Function Errors:**\n`;
+      for (const i of grouped.edge_error) {
+        prompt += `- \`${i.name}\`: ${i.error}\n`;
+      }
+      prompt += `\n`;
+    }
   }
 
-  if (grouped.edge_error) {
-    prompt += `## Edge Function Errors\nThese edge functions returned errors during health check:\n\n`;
-    for (const i of grouped.edge_error) {
-      prompt += `- \`${i.name}\`: ${i.error}\n`;
-    }
-    prompt += `\n`;
-  }
-
-  prompt += `\n## Rules
-1. Fix the root cause, not symptoms
-2. Do NOT add unnecessary abstractions or comments
-3. Run tsc --noEmit after fixing to verify no type errors
-4. Run npx vitest run to verify tests pass
-5. If you cannot fix something, explain why in a comment
-6. Keep changes minimal — only touch what's broken
+  prompt += `## Team Rules
+1. @code-fixer and @db-architect MUST communicate directly to agree on data contracts
+2. Full autonomy — do not ask for permission to explore files or query the database
+3. Fix the root cause, not symptoms
+4. Keep changes minimal — only touch what's broken
+5. End ONLY when @qa-reviewer confirms all checks pass
+6. Edge function config: every function needs config.toml with verify_jwt = false
 `;
 
   return prompt;
@@ -561,28 +601,52 @@ function spawnClaudeCode(issues) {
   const promptFile = join(os.tmpdir(), "auto-heal-prompt.txt");
   writeFileSync(promptFile, prompt, "utf-8");
 
-  console.log("\n  Spawning Claude Code session...");
+  // Agent definitions for the 3-agent team
+  const agentDefs = JSON.stringify({
+    "code-fixer": {
+      description: "Senior TypeScript/React engineer for fixing application code",
+      prompt: "You are a senior TypeScript/React engineer. Fix application code bugs. Import supabase from @/integrations/sb_client/client. Scope all queries by org_id. Run npx tsc --noEmit after fixes. Keep changes minimal."
+    },
+    "db-architect": {
+      description: "Supabase DBA for schema, RLS, and RPC fixes via MCP",
+      prompt: "You are a Supabase database administrator. Use mcp__supabase__execute_sql and mcp__supabase__list_tables to inspect and fix the live database. Every table has org_id. Every RLS policy enforces org_id. Use ALTER TABLE, never DROP+CREATE. After any change, message @code-fixer with the exact change."
+    },
+    "qa-reviewer": {
+      description: "QA gatekeeper that blocks until tsc + tests pass",
+      prompt: "You are the QA reviewer. After fixes are done: run npx tsc --noEmit (must pass), run npx vitest run (must pass), verify original errors are resolved. If any check fails, send failures back to the responsible agent. Max 3 retry cycles. Only approve when ALL pass."
+    }
+  });
+
+  // Write agents JSON to temp file to avoid shell escaping issues
+  const agentsFile = join(os.tmpdir(), "auto-heal-agents.json");
+  writeFileSync(agentsFile, agentDefs, "utf-8");
+
+  // Convert Windows paths to forward slashes for bash
+  const promptPath = promptFile.replace(/\\/g, "/");
+  const agentsPath = agentsFile.replace(/\\/g, "/");
+
+  console.log("\n  Spawning Claude Code Agent Team...");
   console.log(`  Prompt: ${promptFile} (${prompt.length} chars)`);
+  console.log(`  Agents: @code-fixer, @db-architect, @qa-reviewer`);
+  console.log(`  Agents JSON: ${agentsFile}`);
 
   try {
-    // On Windows, use 'type' to pipe file contents; on Unix, use 'cat'
-    const catCmd = process.platform === "win32" ? "type" : "cat";
-    const promptPath =
-      process.platform === "win32"
-        ? promptFile.replace(/\//g, "\\")
-        : promptFile;
-
+    // Use bash shell to avoid cmd.exe quoting issues with JSON
+    // $(cat ...) reads the agents JSON from file as a single argument
     const output = execSync(
-      `${catCmd} "${promptPath}" | claude --dangerously-skip-permissions -p`,
+      `cat "${promptPath}" | claude --dangerously-skip-permissions --permission-mode bypassPermissions --agents "$(cat "${agentsPath}")" -p`,
       {
         cwd: ROOT,
-        timeout: 600_000, // 10 minutes
+        timeout: 900_000, // 15 minutes (team coordination takes longer)
         encoding: "utf-8",
-        shell: true,
+        shell: "bash",
         maxBuffer: 10 * 1024 * 1024,
         env: (() => {
           const { CLAUDECODE: _, CLAUDE_CODE_ENTRYPOINT: _b, ...clean } = process.env;
-          return { ...clean, FORCE_COLOR: "0" };
+          return {
+            ...clean,
+            FORCE_COLOR: "0",
+          };
         })(),
       }
     );

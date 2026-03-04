@@ -51,11 +51,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(403).json({ error: 'Only admin/sales_rep can purchase labels' });
         }
 
-        // Validate order exists and is ready for labeling
+        // Get caller's org_id for tenant scoping
+        const { data: callerProfile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (!callerProfile?.org_id) {
+            return res.status(403).json({ error: 'No organization found for user' });
+        }
+
+        // Validate order exists, belongs to caller's org, and is ready for labeling
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')
             .select('id, status, tracking_number')
             .eq('id', orderId)
+            .eq('org_id', callerProfile.org_id)
             .single();
 
         if (orderError || !order) {

@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/sb_client/client";
-import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/sb_client/client";
+import { useAuth } from '@/contexts/AuthContext';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History, Barcode } from "lucide-react";
+import { Loader2, Camera, Upload, Plus, Trash2, CheckCircle2, History, Barcode, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FoodItem } from '@/utils/nutrition-utils';
@@ -31,13 +32,13 @@ interface AnalysisResult {
 }
 
 export default function MacroTracker() {
+    const navigate = useNavigate();
+    const { user } = useAuth();
     const [image, setImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
     const queryClient = useQueryClient();
-    const navigate = useNavigate(); // Ensuring navigate is safe to use if unrelated logic
-
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -167,7 +168,7 @@ export default function MacroTracker() {
 
     // Calculate Daily Totals
     const { data: dailyTotals } = useQuery({
-        queryKey: ['daily-macros'],
+        queryKey: ['daily-macros', user?.id],
         queryFn: async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
@@ -331,7 +332,6 @@ export default function MacroTracker() {
 
             setImage(null);
             setResult(null);
-            // navigate('/dashboard'); // Optional
         } catch (error) {
             logger.error("Error logging meal:", error);
             toast.error("Failed to log meal.");
@@ -343,7 +343,12 @@ export default function MacroTracker() {
     return (
         <div className="container mx-auto p-4 max-w-2xl relative">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold tracking-tight text-gradient-primary">Snap & Track Macros</h1>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/health')}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h1 className="text-3xl font-bold tracking-tight text-gradient-primary">Snap & Track Macros</h1>
+                </div>
                 <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
                     {showSettings ? "Close" : "Goals"}
                 </Button>

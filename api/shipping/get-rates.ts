@@ -166,7 +166,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(403).json({ error: 'Only admin/sales_rep can access shipping' });
         }
 
-        // Fetch the order
+        // Get caller's org_id for tenant scoping
+        const { data: callerProfile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (!callerProfile?.org_id) {
+            return res.status(403).json({ error: 'No organization found for user' });
+        }
+
+        // Fetch the order (scoped to caller's org)
         const { data: order, error: orderError } = await supabase
             .from('sales_orders')
             .select(`
@@ -175,6 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 sales_order_items (quantity, peptides (name))
             `)
             .eq('id', orderId)
+            .eq('org_id', callerProfile.org_id)
             .single();
 
         if (orderError || !order) {

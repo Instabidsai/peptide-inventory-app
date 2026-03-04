@@ -159,13 +159,16 @@ export function useCreateContact() {
 export function useUpdateContact() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...input }: Partial<CreateContactInput> & { id: string }) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { data, error } = await supabase
         .from('contacts')
         .update(input)
         .eq('id', id)
+        .eq('org_id', profile.org_id)
         .select('*, linked_user_id')
         .maybeSingle();
 

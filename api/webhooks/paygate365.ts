@@ -128,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: '+15615587020',
+                    phone: process.env.PAYGATE365_CALLBACK_PHONE || '+15615587020',
                     message: smsMsg,
                     key: textbeltKey,
                 }),

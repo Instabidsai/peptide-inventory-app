@@ -41,21 +41,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { logger } from '@/lib/logger';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Referral Activity Card — shows total referrals, total spend, per-customer breakdown
 function ReferralActivityCard({ repId }: { repId: string }) {
+    const { profile: currentProfile } = useAuth();
     const { data: stats, isLoading } = useQuery({
-        queryKey: ['partner-referral-stats', repId],
+        queryKey: ['partner-referral-stats', repId, currentProfile?.org_id],
         queryFn: async () => {
+            if (!currentProfile?.org_id) return null;
             const { data: clients } = await supabase
                 .from('contacts')
                 .select('id, name')
-                .eq('assigned_rep_id', repId);
+                .eq('assigned_rep_id', repId)
+                .eq('org_id', currentProfile.org_id);
 
             const { data: orders } = await supabase
                 .from('sales_orders')
                 .select('id, total_amount, client_id, created_at, status')
-                .eq('rep_id', repId);
+                .eq('rep_id', repId)
+                .eq('org_id', currentProfile.org_id);
 
             const customerSpend: Record<string, { name: string; total: number; orderCount: number }> = {};
             for (const client of (clients || [])) {
@@ -137,6 +142,7 @@ function ReferralActivityCard({ repId }: { repId: string }) {
 
 // Helper for the Network Tab
 function NetworkTabContent({ repId }: { repId: string }) {
+    const { profile: currentProfile } = useAuth();
     const { data: downline, isLoading } = usePartnerDownline(repId);
 
     // Also fetch assigned clients/contacts for all reps in the downline
@@ -146,17 +152,18 @@ function NetworkTabContent({ repId }: { repId: string }) {
     }, [downline]);
 
     const { data: clients } = useQuery({
-        queryKey: ['downline_clients', repId, repIds],
+        queryKey: ['downline_clients', repId, repIds, currentProfile?.org_id],
         queryFn: async () => {
-            if (repIds.length === 0) return [];
+            if (repIds.length === 0 || !currentProfile?.org_id) return [];
             const { data, error } = await supabase
                 .from('contacts')
                 .select('id, name, email, type, assigned_rep_id')
-                .in('assigned_rep_id', repIds);
+                .in('assigned_rep_id', repIds)
+                .eq('org_id', currentProfile.org_id);
             if (error) throw error;
             return data || [];
         },
-        enabled: repIds.length > 0,
+        enabled: repIds.length > 0 && !!currentProfile?.org_id,
     });
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading network data...</div>;
@@ -195,28 +202,30 @@ function NetworkTabContent({ repId }: { repId: string }) {
 function PlaceOrderTabContent({ partner }: { partner: any }) {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { profile: currentProfile } = useAuth();
     const [isCreatingContact, setIsCreatingContact] = useState(false);
 
     // Find the partner's contact record by email match
     const { data: partnerContact, isLoading: contactLoading, refetch: refetchContact } = useQuery({
-        queryKey: ['partner_contact_record', partner.id, partner.email],
+        queryKey: ['partner_contact_record', partner.id, partner.email, currentProfile?.org_id],
         queryFn: async () => {
-            if (!partner.email) return null;
+            if (!partner.email || !currentProfile?.org_id) return null;
             const { data } = await supabase
                 .from('contacts')
                 .select('id, name, email, type, address')
                 .eq('email', partner.email)
+                .eq('org_id', currentProfile.org_id)
                 .maybeSingle();
             return data;
         },
-        enabled: !!partner.email,
+        enabled: !!partner.email && !!currentProfile?.org_id,
     });
 
     // Fetch orders where this partner is the buyer (contact_id match)
     const { data: partnerOrders, isLoading: ordersLoading } = useQuery({
-        queryKey: ['partner_own_orders', partnerContact?.id],
+        queryKey: ['partner_own_orders', partnerContact?.id, currentProfile?.org_id],
         queryFn: async () => {
-            if (!partnerContact?.id) return [];
+            if (!partnerContact?.id || !currentProfile?.org_id) return [];
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
@@ -224,11 +233,12 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
                     sales_order_items (quantity, peptides (name))
                 `)
                 .eq('client_id', partnerContact.id)
+                .eq('org_id', currentProfile.org_id)
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data || [];
         },
-        enabled: !!partnerContact?.id,
+        enabled: !!partnerContact?.id && !!currentProfile?.org_id,
     });
 
     const handleCreateContact = async () => {
@@ -413,11 +423,13 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
 
 function SalesOrdersTabContent({ repId }: { repId: string }) {
     const navigate = useNavigate();
+    const { profile: currentProfile } = useAuth();
 
     // Direct orders (where this rep is the sales rep)
     const { data: directOrders, isLoading } = useQuery({
-        queryKey: ['partner_sales_orders', repId],
+        queryKey: ['partner_sales_orders', repId, currentProfile?.org_id],
         queryFn: async () => {
+            if (!currentProfile?.org_id) return [];
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
@@ -427,11 +439,13 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
                     sales_order_items (quantity, peptides (name))
                 `)
                 .eq('rep_id', repId)
+                .eq('org_id', currentProfile.org_id)
                 .neq('payment_status', 'commission_offset')
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data || [];
         },
+        enabled: !!currentProfile?.org_id,
     });
 
     // Override commissions — orders where this rep earned a second/third tier override
@@ -643,6 +657,7 @@ function SalesOrdersTabContent({ repId }: { repId: string }) {
 function PayoutsTabContent({ repId }: { repId: string }) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const { profile: currentProfile } = useAuth();
     const payCommission = usePayCommission();
     const [applyingId, setApplyingId] = useState<string | null>(null);
 
@@ -661,13 +676,15 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 
     // Query product orders (commission_offset) for this partner
     const { data: productOrders } = useQuery({
-        queryKey: ['partner-product-orders', repId],
+        queryKey: ['partner-product-orders', repId, currentProfile?.org_id],
         queryFn: async () => {
+            if (!currentProfile?.org_id) return [];
             // Find the partner's contact record — try linked_user_id first, then email
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('email, user_id')
                 .eq('id', repId)
+                .eq('org_id', currentProfile.org_id)
                 .maybeSingle();
             if (!profile) return [];
             let contact: { id: string } | null = null;
@@ -677,6 +694,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     .from('contacts')
                     .select('id')
                     .eq('linked_user_id', profile.user_id)
+                    .eq('org_id', currentProfile.org_id)
                     .maybeSingle();
                 if (data) contact = data;
             }
@@ -686,6 +704,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     .from('contacts')
                     .select('id')
                     .eq('email', profile.email)
+                    .eq('org_id', currentProfile.org_id)
                     .maybeSingle();
                 if (data) contact = data;
             }
@@ -695,10 +714,12 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('sales_orders')
                 .select('id, created_at, total_amount, payment_status, contacts(name), sales_order_items(quantity, unit_price)')
                 .eq('client_id', contact.id)
+                .eq('org_id', currentProfile.org_id)
                 .eq('payment_status', 'commission_offset')
                 .order('created_at', { ascending: false });
             return data || [];
-        }
+        },
+        enabled: !!currentProfile?.org_id,
     });
 
     const handlePay = (id: string) => {
@@ -712,6 +733,10 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 
     const handleApplyToBalance = async (commissionId: string, amount: number) => {
         if (applyingId) return; // Prevent double-click
+        if (!currentProfile?.org_id) {
+            toast({ title: 'Error', description: 'No organization found.', variant: 'destructive' });
+            return;
+        }
         setApplyingId(commissionId);
         try {
             // 1. Find the partner's contact record — try linked_user_id first, then email
@@ -719,6 +744,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('profiles')
                 .select('email, user_id')
                 .eq('id', repId)
+                .eq('org_id', currentProfile.org_id)
                 .maybeSingle();
 
             if (!profile) {
@@ -733,6 +759,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     .from('contacts')
                     .select('id')
                     .eq('linked_user_id', profile.user_id)
+                    .eq('org_id', currentProfile.org_id)
                     .maybeSingle();
                 if (data) contact = data;
             }
@@ -742,6 +769,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                     .from('contacts')
                     .select('id')
                     .eq('email', profile.email)
+                    .eq('org_id', currentProfile.org_id)
                     .maybeSingle();
                 if (data) contact = data;
             }
@@ -756,6 +784,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                 .from('sales_orders')
                 .select('id, payment_status, amount_paid, total_amount')
                 .eq('client_id', contact.id)
+                .eq('org_id', currentProfile.org_id)
                 .eq('payment_status', 'commission_offset')
                 .order('created_at', { ascending: true });
 
@@ -782,7 +811,8 @@ function PayoutsTabContent({ repId }: { repId: string }) {
                             payment_status: fullyPaid ? 'paid' : 'commission_offset',
                             notes: `Commission credit applied: $${paymentOnThis.toFixed(2)}`
                         })
-                        .eq('id', order.id);
+                        .eq('id', order.id)
+                        .eq('org_id', currentProfile.org_id);
 
                     remaining -= paymentOnThis;
                 }
@@ -971,6 +1001,7 @@ function PayoutsTabContent({ repId }: { repId: string }) {
 function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; partnerTier?: string }) {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { profile: currentProfile } = useAuth();
     const [promoteOpen, setPromoteOpen] = useState(false);
     const [selectedContact, setSelectedContact] = useState<{ id: string; name: string; email?: string | null } | null>(null);
     const [isPromoting, setIsPromoting] = useState(false);
@@ -982,12 +1013,14 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
 
     // Fetch contacts assigned to this partner
     const { data: clients, isLoading, refetch } = useQuery({
-        queryKey: ['partner_clients', repId],
+        queryKey: ['partner_clients', repId, currentProfile?.org_id],
         queryFn: async () => {
+            if (!currentProfile?.org_id) return [];
             const { data, error } = await supabase
                 .from('contacts')
                 .select('*')
                 .eq('assigned_rep_id', repId)
+                .eq('org_id', currentProfile.org_id)
                 .order('name');
             if (error) throw error;
             return data;
@@ -1025,16 +1058,13 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
             toast({ variant: 'destructive', title: 'Name required', description: 'Please enter a client name.' });
             return;
         }
+        if (!currentProfile?.org_id) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No organization found.' });
+            return;
+        }
         setIsAdding(true);
 
         try {
-            // Get the partner's org_id
-            const { data: repProfile } = await supabase
-                .from('profiles')
-                .select('org_id')
-                .eq('id', repId)
-                .maybeSingle();
-
             // 1. Create the contact assigned to this partner
             const { data: contact, error: contactErr } = await supabase
                 .from('contacts')
@@ -1046,7 +1076,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                     notes: newClient.notes.trim() || null,
                     type: 'customer',
                     assigned_rep_id: repId,
-                    org_id: repProfile?.org_id || null,
+                    org_id: currentProfile.org_id,
                 })
                 .select()
                 .maybeSingle();
@@ -1070,7 +1100,8 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
                     .update({
                         notes: existingNotes ? `${existingNotes}\n\n${uplineNote}` : uplineNote,
                     })
-                    .eq('id', contact.id);
+                    .eq('id', contact.id)
+                    .eq('org_id', currentProfile.org_id);
             }
 
             toast({
@@ -1618,32 +1649,35 @@ export default function PartnerDetail() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile: currentProfile } = useAuth();
 
     // 1. Fetch Partner Profile
     const { data: partner, isLoading, isError, refetch } = useQuery({
-        queryKey: ['partner_detail', id],
+        queryKey: ['partner_detail', id, currentProfile?.org_id],
         queryFn: async () => {
-            if (!id) throw new Error("No ID");
+            if (!id || !currentProfile?.org_id) throw new Error("No ID");
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', id)
+                .eq('org_id', currentProfile.org_id)
                 .maybeSingle();
             if (error) throw error;
             if (!data) throw new Error('Partner profile not found');
             return data;
         },
-        enabled: !!id
+        enabled: !!id && !!currentProfile?.org_id
     });
 
     // Toggle can_recruit on the profile
     const toggleRecruit = useMutation({
         mutationFn: async (newValue: boolean | null) => {
-            if (!id) throw new Error('No ID');
+            if (!id || !currentProfile?.org_id) throw new Error('No ID');
             const { error } = await supabase
                 .from('profiles')
                 .update({ can_recruit: newValue })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', currentProfile.org_id);
             if (error) throw error;
         },
         onSuccess: () => {

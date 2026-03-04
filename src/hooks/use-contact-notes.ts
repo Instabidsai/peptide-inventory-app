@@ -13,19 +13,23 @@ export interface ContactNote {
 }
 
 export function useContactNotes(contactId?: string) {
+    const { profile } = useAuth();
+
     return useQuery({
-        queryKey: ['contact_notes', contactId],
+        queryKey: ['contact_notes', contactId, profile?.org_id],
         queryFn: async () => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const { data, error } = await supabase
                 .from('contact_notes')
                 .select('*')
                 .eq('contact_id', contactId as string)
+                .eq('org_id', profile.org_id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             return data as ContactNote[];
         },
-        enabled: !!contactId,
+        enabled: !!contactId && !!profile?.org_id,
     });
 }
 
@@ -69,13 +73,16 @@ export function useCreateContactNote() {
 export function useDeleteContactNote() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ id, contact_id }: { id: string; contact_id: string }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const { error } = await supabase
                 .from('contact_notes')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .eq('org_id', profile.org_id);
 
             if (error) throw error;
             return { contact_id };

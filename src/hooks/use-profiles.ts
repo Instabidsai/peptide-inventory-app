@@ -114,13 +114,16 @@ export function useTeamMembers() {
 export function useUpdateProfile() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<UserProfile> & { id: string }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
             const { data, error } = await supabase
                 .from('profiles')
                 .update(updates)
                 .eq('id', id)
+                .eq('org_id', profile.org_id)
                 .select();
 
             if (error) {

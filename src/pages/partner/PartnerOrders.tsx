@@ -44,7 +44,7 @@ import { StatusBadge, PaymentBadge } from '@/components/ui/status-badge';
 
 export default function PartnerOrders() {
     const { user } = useAuth();
-    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [selectedOrder, setSelectedOrder] = useState<OrderCardOrder | null>(null);
 
     // Single self-contained query: fetches profile, downline, then orders
     const { data: orderData, isLoading, isError, refetch } = useQuery({

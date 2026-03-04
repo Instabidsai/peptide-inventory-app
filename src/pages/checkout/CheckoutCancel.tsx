@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { XCircle, ArrowLeft, RefreshCw, ShieldCheck, Copy, Check, CreditCard, Globe, HelpCircle } from 'lucide-react';
+import { XCircle, ArrowLeft, RefreshCw, ShieldCheck, Copy, Check, HelpCircle, DollarSign, MessageSquare } from 'lucide-react';
 import { trackCheckoutCancelled } from '@/lib/funnel-tracker';
 
 export default function CheckoutCancel() {
@@ -64,16 +64,16 @@ export default function CheckoutCancel() {
                     </h2>
                     <div className="space-y-2.5 text-xs text-muted-foreground">
                         <div className="flex items-start gap-2.5">
-                            <CreditCard className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            <span>Check that your card details are correct and the card isn't expired</span>
+                            <DollarSign className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>Double-check the payment amount and include your Order ID as the reference</span>
                         </div>
                         <div className="flex items-start gap-2.5">
-                            <Globe className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            <span>Try disabling your ad blocker or using a different browser</span>
+                            <RefreshCw className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>Return to the store and try placing your order again</span>
                         </div>
                         <div className="flex items-start gap-2.5">
-                            <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            <span>Your bank may have blocked the transaction — try contacting them</span>
+                            <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>Contact your sales rep if you need help completing your payment</span>
                         </div>
                     </div>
                 </CardContent>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useDeferredValue } from 'react';
+import { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,6 +10,7 @@ import {
     type Contact,
     type ContactType,
 } from '@/hooks/use-contacts';
+import { usePagination } from '@/hooks/use-pagination';
 import { useReps } from '@/hooks/use-profiles'; // NEW: Import useReps
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -30,7 +31,7 @@ import { QueryError } from '@/components/ui/query-error';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Search, Filter, Briefcase, Download, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { format } from 'date-fns';
 import {
@@ -77,7 +78,8 @@ export default function Contacts() {
   const { userRole, profile: authProfile } = useAuth();
   const isMobile = useIsMobile();
   const [typeFilter, setTypeFilter] = useState<ContactType | undefined>();
-  const { data: contacts, isLoading, isError, refetch } = useContacts(typeFilter);
+  const pagination = usePagination(100);
+  const { data: contacts, isLoading, isError, refetch } = useContacts(typeFilter, pagination);
   const { data: reps } = useReps(); // Fetch reps
 
   const createContact = useCreateContact();
@@ -93,6 +95,13 @@ export default function Contacts() {
   const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
   const [upgradingContact, setUpgradingContact] = useState<Contact | null>(null);
   const [upgradeDiscount, setUpgradeDiscount] = useState('10');
+
+  // Track whether there may be more pages of data
+  useEffect(() => {
+    if (contacts) {
+      pagination.setHasMore(contacts.length >= pagination.pageSize);
+    }
+  }, [contacts, pagination.pageSize]);
 
   const isSalesRep = userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep';
   const isAdmin = userRole?.role === 'admin' || userRole?.role === 'staff' || userRole?.role === 'super_admin';
@@ -682,6 +691,30 @@ export default function Contacts() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+          )}
+          {/* Pagination controls */}
+          {!isLoading && !isError && (pagination.page > 0 || pagination.hasMore) && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page === 0}
+                onClick={pagination.prevPage}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page + 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasMore}
+                onClick={pagination.nextPage}
+              >
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           )}
         </CardContent>

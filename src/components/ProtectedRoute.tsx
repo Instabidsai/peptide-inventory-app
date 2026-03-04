@@ -24,7 +24,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // User exists but no org — check for pending referral or merchant signup first
-  if (!profile?.org_id && location.pathname !== '/onboarding' && location.pathname !== '/merchant-onboarding') {
+  if (!profile?.org_id && location.pathname !== '/onboarding' && location.pathname !== '/merchant-onboarding' && location.pathname !== '/setup-assistant') {
     // If there's a referral waiting, send to /auth to process it (not onboarding)
     // peekPendingReferral checks both sessionStorage AND localStorage (cross-tab persistence)
     const pending = peekPendingReferral();

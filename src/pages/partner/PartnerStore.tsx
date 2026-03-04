@@ -543,7 +543,7 @@ export default function PartnerStore() {
                                     {!orderPlaced ? (
                                         <div className="space-y-3">
                                             <span className="text-sm font-medium">Payment Method</span>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex flex-wrap gap-2">
                                                 {([
                                                     ...(ZELLE_EMAIL ? [{ id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote }] : []),
                                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
@@ -648,7 +648,7 @@ export default function PartnerStore() {
                                             )}
                                             {paymentMethod === 'venmo' && (
                                                 <a
-                                                    href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((VENMO_HANDLE || '').replace(/^@/, ''))}&amount=${cartTotal.toFixed(2)}&note=Order`}
+                                                    href={`venmo://paycharge?txn=pay&recipients=${encodeURIComponent((VENMO_HANDLE || '').replace(/^@/, ''))}&amount=${orderTotal.toFixed(2)}&note=Order`}
                                                 >
                                                     <Button variant="outline" size="sm">
                                                         <ExternalLink className="h-3 w-3 mr-1" />

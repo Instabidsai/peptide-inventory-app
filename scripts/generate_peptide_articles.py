@@ -38,6 +38,9 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 SUPABASE_URL = os.environ["VITE_SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+# NextGen Research Labs org — all themes and resources belong here
+ORG_ID = "33a18316-b0a4-4d85-a770-d1ceb762bd4f"
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 HEADERS = {
@@ -1101,6 +1104,7 @@ def main():
                 "url": f"#article-{name.lower().replace(' ', '-').replace('/', '-')}",
                 "content": html,
                 "theme_id": tid,
+                "org_id": ORG_ID,
                 "is_featured": False,
                 "link_button_text": "Read Article",
             }

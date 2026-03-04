@@ -137,7 +137,7 @@ export default function AdminResources() {
     const upsertTheme = useMutation({
         mutationFn: async (data: { name: string; description: string }) => {
             if (editingTheme) {
-                const { error } = await supabase.from('resource_themes').update(data).eq('id', editingTheme.id);
+                const { error } = await supabase.from('resource_themes').update(data).eq('id', editingTheme.id).eq('org_id', orgId!);
                 if (error) throw error;
             } else {
                 const { error } = await supabase.from('resource_themes').insert([{ ...data, org_id: orgId }]);
@@ -156,7 +156,7 @@ export default function AdminResources() {
 
     const deleteTheme = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from('resource_themes').delete().eq('id', id);
+            const { error } = await supabase.from('resource_themes').delete().eq('id', id).eq('org_id', orgId!);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -178,7 +178,7 @@ export default function AdminResources() {
                 org_id: orgId
             };
             if (editingResource) {
-                const { error } = await supabase.from('resources').update(payload).eq('id', editingResource.id);
+                const { error } = await supabase.from('resources').update(payload).eq('id', editingResource.id).eq('org_id', orgId!);
                 if (error) throw error;
             } else {
                 const { error } = await supabase.from('resources').insert([payload]);
@@ -199,7 +199,7 @@ export default function AdminResources() {
 
     const deleteResource = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from('resources').delete().eq('id', id);
+            const { error } = await supabase.from('resources').delete().eq('id', id).eq('org_id', orgId!);
             if (error) throw error;
         },
         onSuccess: () => {

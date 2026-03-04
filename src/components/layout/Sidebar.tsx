@@ -44,6 +44,7 @@ const navigation = [
   { name: 'Movements', href: '/movements', icon: ArrowLeftRight, roles: ['admin', 'staff'] },
   { name: 'Customizations', href: '/customizations', icon: Wand2, roles: ['admin'] },
   { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
+  { name: 'Billing', href: '/admin/billing', icon: CreditCard, roles: ['admin'] },
   { name: 'Integrations', href: '/integrations', icon: Plug, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
@@ -74,7 +75,7 @@ const NAV_GROUPS = [
   { label: 'People', names: ['Customers', 'Partners', 'Commissions'] },
   { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Feedback Hub'] },
   { label: 'Partner', names: ['Partner Portal', 'Partner Store', 'My Orders'] },
-  { label: 'Admin', names: ['Financials', 'Automations', 'Customizations', 'Features', 'Integrations', 'Settings'] },
+  { label: 'Admin', names: ['Financials', 'Billing', 'Automations', 'Customizations', 'Features', 'Integrations', 'Settings'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {

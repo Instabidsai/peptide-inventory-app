@@ -212,7 +212,7 @@ export default function ClientOrders() {
                                                 onClick={() => navigate('/store')}
                                             >
                                                 <RotateCcw className="h-3 w-3 mr-1" />
-                                                Reorder
+                                                Go to Store
                                             </Button>
                                         </div>
                                     )}

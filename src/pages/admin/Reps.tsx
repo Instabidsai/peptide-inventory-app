@@ -74,10 +74,12 @@ export default function Reps() {
     // Unlink a customer from their assigned rep
     const unlinkCustomer = useMutation({
         mutationFn: async (contactId: string) => {
+            if (!currentProfile?.org_id) throw new Error('No organization found');
             const { error } = await supabase
                 .from('contacts')
                 .update({ assigned_rep_id: null })
-                .eq('id', contactId);
+                .eq('id', contactId)
+                .eq('org_id', currentProfile.org_id);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -160,10 +162,12 @@ export default function Reps() {
     // Remove a pending partner (contact promoted but no auth account yet) — revert to customer
     const removePendingPartner = useMutation({
         mutationFn: async (contactId: string) => {
+            if (!currentProfile?.org_id) throw new Error('No organization found');
             const { error } = await supabase
                 .from('contacts')
                 .update({ type: 'customer', invite_link: null })
-                .eq('id', contactId);
+                .eq('id', contactId)
+                .eq('org_id', currentProfile.org_id);
             if (error) throw error;
         },
         onSuccess: () => {

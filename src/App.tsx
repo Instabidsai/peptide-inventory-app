@@ -70,6 +70,7 @@ const AIAssistant = lazyRetry(() => import("./pages/AIAssistant"));
 const FeatureManagement = lazyRetry(() => import("./pages/admin/FeatureManagement"));
 const Integrations = lazyRetry(() => import("./pages/Integrations"));
 const SystemHealth = lazyRetry(() => import("./pages/admin/SystemHealth"));
+const BillingHistory = lazyRetry(() => import("./pages/admin/BillingHistory"));
 
 // Vendor (super-admin)
 const VendorLayout = lazyRetry(() => import("./pages/vendor/VendorLayout"));
@@ -240,6 +241,7 @@ const App = () => (
                                             <Route path="/admin/supplements" element={<AdminSupplements />} />
                                             <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
                                             <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
+                                            <Route path="/admin/billing" element={<RoleBasedRedirect allowedRoles={['admin']}><BillingHistory /></RoleBasedRedirect>} />
 
                                             <Route path="/partner" element={<PartnerDashboard />} />
                                             <Route path="/partner/store" element={<PartnerStore />} />
@@ -279,8 +281,6 @@ const App = () => (
                                             <Route path="/customizations" element={<Customizations />} />
                                             <Route path="/custom/:entitySlug" element={<CustomEntityPage />} />
                                             <Route path="/reports/:reportId" element={<CustomReportView />} />
-                                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                                            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 
                                         </Route>
                                         <Route path="*" element={<NotFound />} />

@@ -118,13 +118,16 @@ export function useCreateLot() {
 export function useUpdateLot() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...input }: Partial<CreateLotInput> & { id: string }) => {
+      if (!profile?.org_id) throw new Error('No organization found');
       const { data, error } = await supabase
         .from('lots')
         .update(input)
         .eq('id', id)
+        .eq('org_id', profile.org_id)
         .select()
         .maybeSingle();
 
@@ -144,14 +147,18 @@ export function useUpdateLot() {
 export function useDeleteLot() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!profile?.org_id) throw new Error('No organization found');
+
       // Get bottle IDs for this lot (needed to clean up FK references)
       const { data: bottles } = await supabase
         .from('bottles')
         .select('id')
-        .eq('lot_id', id);
+        .eq('lot_id', id)
+        .eq('org_id', profile.org_id);
 
       const bottleIds = (bottles || []).map(b => b.id);
 
@@ -168,14 +175,16 @@ export function useDeleteLot() {
       const { error: bottlesError } = await supabase
         .from('bottles')
         .delete()
-        .eq('lot_id', id);
+        .eq('lot_id', id)
+        .eq('org_id', profile.org_id);
       if (bottlesError) throw bottlesError;
 
       // Delete the lot
       const { error } = await supabase
         .from('lots')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', profile.org_id);
       if (error) throw error;
     },
     onSuccess: () => {

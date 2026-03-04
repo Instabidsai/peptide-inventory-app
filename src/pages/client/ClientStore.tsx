@@ -259,7 +259,8 @@ export default function ClientStore() {
         queryFn: async () => {
             const { data } = await supabase
                 .from('sales_order_items')
-                .select('peptide_id, quantity');
+                .select('peptide_id, quantity, sales_orders!inner(org_id)')
+                .eq('sales_orders.org_id', orgId);
             if (!data) return new Map<string, number>();
             const counts = new Map<string, number>();
             for (const row of data) {
@@ -482,7 +483,6 @@ export default function ClientStore() {
                 copiedZelle={copiedZelle}
                 onCopyZelle={copyZelleEmail}
                 onCheckout={handleCheckout}
-                onShowCheckoutConfirm={() => {}}
                 updateQuantity={updateQuantity}
                 cartRef={cartRef as React.RefObject<HTMLDivElement>}
                 highlight={cartHighlight}

@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/sb_client/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, Plus, History, Camera } from "lucide-react";
+import { Loader2, Plus, History, Camera, ArrowLeft } from "lucide-react";
 import {
     Line,
     AreaChart,
@@ -39,6 +40,7 @@ interface BodyLog {
 }
 
 export default function BodyComposition() {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [isLogging, setIsLogging] = useState(false);
@@ -51,7 +53,8 @@ export default function BodyComposition() {
         visceral_fat: "",
         water_pct: "",
         bmi: "",
-        bmr: ""
+        bmr: "",
+        notes: ""
     });
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -136,6 +139,7 @@ export default function BodyComposition() {
                 water_percentage: parseNum(formData.water_pct),
                 bmi: parseNum(formData.bmi),
                 bmr: parseNum(formData.bmr),
+                notes: formData.notes.trim() || null,
                 photo_url: photoUrl
             });
 
@@ -145,7 +149,7 @@ export default function BodyComposition() {
             toast.success("Logged successfully!");
             queryClient.invalidateQueries({ queryKey: ['body-logs'] });
             setIsLogging(false);
-            setFormData({ weight: "", body_fat: "", muscle_mass: "", visceral_fat: "", water_pct: "", bmi: "", bmr: "" });
+            setFormData({ weight: "", body_fat: "", muscle_mass: "", visceral_fat: "", water_pct: "", bmi: "", bmr: "", notes: "" });
             setSelectedImage(null);
             setImagePreview(null);
         },
@@ -168,7 +172,12 @@ export default function BodyComposition() {
     return (
         <div className="container mx-auto p-4 max-w-2xl space-y-6 pb-20">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary">Body Composition</h1>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/health')}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary">Body Composition</h1>
+                </div>
                 <Button onClick={() => setIsLogging(!isLogging)} variant={isLogging ? "secondary" : "default"}>
                     {isLogging ? "Cancel" : <><Plus className="mr-2 h-4 w-4" /> Log New</>}
                 </Button>
@@ -227,6 +236,15 @@ export default function BodyComposition() {
                                 <Input type="number" value={formData.bmi} onChange={e => setFormData({ ...formData, bmi: e.target.value })} />
                             </div>
                         </div>
+                        <div className="space-y-2">
+                            <Label>Notes (optional)</Label>
+                            <textarea
+                                className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                value={formData.notes}
+                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                placeholder="How are you feeling today?"
+                            />
+                        </div>
                         <Button className="w-full" onClick={() => addLog.mutate()} disabled={addLog.isPending}>
                             {addLog.isPending ? <Loader2 className="animate-spin mr-2" /> : "Save Entry"}
                         </Button>
@@ -280,6 +298,13 @@ export default function BodyComposition() {
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Chart hint for single entry */}
+            {logs && logs.length === 1 && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                    Log one more entry to see your trend charts.
+                </p>
             )}
 
             {/* Charts */}

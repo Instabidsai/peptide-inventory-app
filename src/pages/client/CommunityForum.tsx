@@ -62,7 +62,7 @@ export default function CommunityForum() {
                 .order('last_activity_at', { ascending: false });
 
             // Scope to org if the column exists (migration may or may not be applied)
-            if (orgId) query.eq('org_id', orgId);
+            if (orgId) query = query.eq('org_id', orgId);
 
             const { data, error } = await query;
             if (error) throw error;

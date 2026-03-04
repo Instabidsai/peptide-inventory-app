@@ -1,0 +1,88 @@
+# ThePeptideAI — Runbook (Symptom → Cause → Fix)
+
+## Dependency Map — What Breaks What
+
+```
+organizations
+  └── profiles (org_id FK) — DON'T delete org without cascading
+  └── tenant_config (org_id PK) — one row per org, always UPDATE not INSERT
+  └── org_features (org_id FK) — 19 features seeded at signup
+
+peptides
+  └── lots (peptide_id FK) — can't delete peptide with lots
+  └── scraped_peptides (imported_peptide_id FK)
+  └── pricing_tiers — pricing from tiers, not stored on peptide
+
+lots
+  └── bottles (lot_id FK) — inventory counts come from bottles, not lots
+
+contacts
+  └── orders (contact_id FK) — can't create order without contact
+  └── commissions (partner_id FK via profiles)
+  └── households (household_id FK)
+
+orders
+  └── commissions (TRIGGER on insert/update) — status change fires commission calc
+  └── bottles (status updated on fulfillment)
+  └── order_items (cascade delete safe)
+
+profiles
+  └── commissions (partner_id FK) — sales_rep role only
+  └── upline_id self-reference — multi-level commission tree
+```
+
+## High-Risk Operations
+
+| Operation | Risk | Mitigation |
+|-----------|------|------------|
+| Change `orders.status` | Fires commission trigger | Test with non-production order first |
+| Modify RLS policies | Cross-org data leak | Always include `org_id = auth.jwt()->>'org_id'` |
+| Delete from `tenant_config` | Breaks entire tenant | NEVER delete — only UPDATE |
+| Edit `_shared/auth.ts` | Affects all 35+ edge functions | Test with health-probe after deploy |
+| Change `org_features` seeding | Affects all new signups | Update provision-tenant edge function |
+| Delete a sales_rep profile | Orphans their commissions | Handle commission records first |
+| Modify `order_items` after creation | May cause commission recalc | Check trigger behavior |
+
+## Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "Row not found" on tenant_config | Tried INSERT instead of UPDATE | Use UPDATE — row created at provisioning |
+| Commission not created | Order has no contact with assigned rep | Ensure contact_id links to profile with sales_rep role |
+| Cross-org data visible | Missing org_id filter in query | Add `.eq('org_id', orgId)` to every query |
+| Edge function 401 | verify_jwt = true in config.toml | Set to `false`, use `_shared/auth.ts` |
+| Edge function write blocked | Missing set_config in same SQL call | Prepend `SELECT set_config('app.agent_org_id', orgId, true)` |
+| Feature toggle breaks UI | Dependent feature still expects it | Check feature dependency chain (see specs/admin-portal.md) |
+| DownlineVisualizer slow | >100 nodes in recursive CTE | Add depth limit to CTE query |
+| Commission double-counted | Order status changed multiple times | Check trigger idempotency — should upsert, not insert |
+| Build fails on Vercel | Import from wrong supabase path | Use `@/integrations/sb_client/client` |
+| Self-healing not processing | Sentinel-worker cron stopped | Check pg_cron: `SELECT * FROM cron.job WHERE jobname LIKE 'sentinel%'` |
+
+## Debugging Commands
+
+```bash
+# Check edge function logs
+supabase functions logs sentinel-worker --tail
+supabase functions logs health-probe --tail
+
+# Check self-healing status
+# Via Supabase SQL:
+SELECT * FROM sentinel_runs ORDER BY created_at DESC LIMIT 5;
+SELECT * FROM bug_reports WHERE sentinel_processed_at IS NULL;
+SELECT * FROM incidents WHERE status NOT IN ('resolved', 'healed') ORDER BY created_at DESC;
+
+# Check commission state
+SELECT c.*, p.first_name, p.last_name
+FROM commissions c JOIN profiles p ON c.partner_id = p.id
+WHERE c.org_id = '<ORG_ID>' ORDER BY c.created_at DESC;
+
+# Check feature flags for an org
+SELECT * FROM org_features WHERE org_id = '<ORG_ID>' ORDER BY feature_key;
+
+# Deploy single edge function
+supabase functions deploy <function-name>
+
+# Run full build check
+bun run build
+bun run test
+```

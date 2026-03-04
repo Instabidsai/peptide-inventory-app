@@ -36,12 +36,11 @@ interface DigitalFridgeProps {
     inventory: ClientInventoryItem[];
     protocols?: Protocol[];
     onAddVial: (data: Partial<ClientInventoryItem>) => void;
-    onReconstitute: (id: string, waterMl: number) => void;
     onDelete: (id: string) => void;
     onRequestRefill?: (peptide: { id: string, name: string }) => void;
     onRefresh?: () => void;
 }
-export function DigitalFridge({ inventory, protocols, onAddVial, onReconstitute, onDelete, onRequestRefill, onRefresh }: DigitalFridgeProps) {
+export function DigitalFridge({ inventory, protocols, onAddVial, onDelete, onRequestRefill, onRefresh }: DigitalFridgeProps) {
     const [vialToDelete, setVialToDelete] = useState<string | null>(null);
 
     // Define activeVials (missing previously causing ReferenceError)

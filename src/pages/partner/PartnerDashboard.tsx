@@ -240,7 +240,7 @@ export default function PartnerDashboard() {
         return <QueryError message="Failed to load partner data." onRetry={() => { downlineRefetch(); commissionsRefetch(); }} />;
     }
 
-    if (downlineLoading && commissionsLoading) {
+    if (downlineLoading || commissionsLoading) {
         return (
             <motion.div
                 initial={{ opacity: 0 }}

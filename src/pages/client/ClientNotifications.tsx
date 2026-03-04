@@ -138,8 +138,18 @@ export default function ClientNotifications() {
                     {notifications?.map((notification) => (
                         <motion.div key={notification.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
                         <Card
-                            className={`transition-colors cursor-pointer hover:border-primary/20 ${!notification.is_read ? 'bg-primary/[0.04] border-primary/15' : ''}`}
-                            onClick={() => !notification.is_read && markOneRead(notification.id)}
+                            className={`transition-colors ${notification.link || !notification.is_read ? 'cursor-pointer' : ''} hover:border-primary/20 ${!notification.is_read ? 'bg-primary/[0.04] border-primary/15' : ''}`}
+                            onClick={() => {
+                                if (!notification.is_read) markOneRead(notification.id);
+                                if (notification.link) {
+                                    try {
+                                        const parsed = new URL(notification.link);
+                                        navigate(parsed.pathname + parsed.search);
+                                    } catch {
+                                        navigate(notification.link);
+                                    }
+                                }
+                            }}
                         >
                             <CardContent className="p-4 flex gap-4 items-start">
                                 <div className="mt-1">

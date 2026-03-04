@@ -382,7 +382,6 @@ export default function ClientRegimen() {
                         inventory={inventory}
                         protocols={protocols}
                         onAddVial={handleAddVial}
-                        onReconstitute={() => toast({ title: 'Reconstitution guide coming soon' })}
                         onDelete={(id) => setVialToDelete(id)}
                         onRequestRefill={(peptide) => {
                             setSelectedRefillPeptide({ id: peptide.id, name: peptide.name });
