@@ -1,9 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState, startTransition } from "react";
-import { ScrollProgress } from "@/components/landing/ScrollProgress";
-import { Nav } from "@/components/landing/Nav";
-import { Hero } from "@/components/landing/Hero";
-import { BackToTop } from "@/components/landing/BackToTop";
-import { StickyMobileCta } from "@/components/landing/StickyMobileCta";
+
+// Hero is eagerly loaded (above the fold), but Nav/ScrollProgress/BackToTop/StickyMobileCta
+// are deferred so the large framer-motion bundle doesn't block the initial render.
+const Hero = lazy(() => import("@/components/landing/Hero").then(m => ({ default: m.Hero })));
+const Nav = lazy(() => import("@/components/landing/Nav").then(m => ({ default: m.Nav })));
+const ScrollProgress = lazy(() => import("@/components/landing/ScrollProgress").then(m => ({ default: m.ScrollProgress })));
+const BackToTop = lazy(() => import("@/components/landing/BackToTop").then(m => ({ default: m.BackToTop })));
+const StickyMobileCta = lazy(() => import("@/components/landing/StickyMobileCta").then(m => ({ default: m.StickyMobileCta })));
 
 // Lazy-load everything below the hero to avoid blocking the main thread
 const BusinessLogin = lazy(() => import("@/components/landing/BusinessLogin").then(m => ({ default: m.BusinessLogin })));
@@ -20,6 +23,7 @@ const TwoAiBrains = lazy(() => import("@/components/landing/TwoAiBrains").then(m
 const Testimonials = lazy(() => import("@/components/landing/Testimonials").then(m => ({ default: m.Testimonials })));
 const Pricing = lazy(() => import("@/components/landing/Pricing").then(m => ({ default: m.Pricing })));
 const Faq = lazy(() => import("@/components/landing/Faq").then(m => ({ default: m.Faq })));
+const ContactSection = lazy(() => import("@/components/landing/ContactSection").then(m => ({ default: m.ContactSection })));
 const FinalCta = lazy(() => import("@/components/landing/FinalCta").then(m => ({ default: m.FinalCta })));
 const IntegrationsBanner = lazy(() => import("@/components/landing/IntegrationsBanner").then(m => ({ default: m.IntegrationsBanner })));
 const Footer = lazy(() => import("@/components/landing/Footer").then(m => ({ default: m.Footer })));
@@ -50,21 +54,27 @@ export default function CrmLanding() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    // Load only the first batch on a short delay; remaining batches
-    // load on-demand via IntersectionObserver to avoid multi-second long tasks.
-    const t1 = setTimeout(() => startTransition(() => setShowBatch1(true)), 150);
+    // Load first batch after hero is painted; delay gives the browser time
+    // to finish parsing framer-motion before mounting more components.
+    const t1 = setTimeout(() => startTransition(() => setShowBatch1(true)), 400);
     return () => clearTimeout(t1);
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <ScrollProgress />
-      <Nav />
-      <Hero />
+      <Suspense fallback={null}>
+        <ScrollProgress />
+        <Nav />
+        <Hero />
+      </Suspense>
       {showBatch1 && (
         <Suspense fallback={null}>
           <BusinessLogin />
           <TwoPathFork />
+        </Suspense>
+      )}
+      {showBatch1 && (
+        <Suspense fallback={null}>
           <TrustBar />
           <PainPoints />
         </Suspense>
@@ -85,11 +95,14 @@ export default function CrmLanding() {
         <Testimonials />
         <Pricing />
         <Faq />
+        <ContactSection />
         <FinalCta />
         <Footer />
       </LazyBatch>
-      <BackToTop />
-      <StickyMobileCta />
+      <Suspense fallback={null}>
+        <BackToTop />
+        <StickyMobileCta />
+      </Suspense>
     </div>
   );
 }

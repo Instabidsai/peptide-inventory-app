@@ -20,7 +20,7 @@ export function Nav() {
 
   // Track active section via IntersectionObserver
   useEffect(() => {
-    const ids = ["features", "ai-showcase", "pricing", "faq"];
+    const ids = ["features", "ai-showcase", "pricing", "faq", "contact"];
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -41,6 +41,7 @@ export function Nav() {
     { label: "AI", id: "ai-showcase" },
     { label: "Pricing", id: "pricing" },
     { label: "FAQ", id: "faq" },
+    { label: "Contact", id: "contact" },
   ];
 
   return (

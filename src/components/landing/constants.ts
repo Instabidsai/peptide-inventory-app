@@ -5,6 +5,9 @@ export const PLATFORM = {
   name: "ThePeptideAI",
   supportEmail: "admin@thepeptideai.com",
   legalEmail: "legal@thepeptideai.com",
+  phone: "+15615587020",
+  phoneDisplay: "(561) 558-7020",
+  calUrl: "https://cal.com/the-peptide-ai/30min",
 } as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────

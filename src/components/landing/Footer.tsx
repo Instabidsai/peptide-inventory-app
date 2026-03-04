@@ -17,7 +17,8 @@ export function Footer() {
       links: [
         { label: "How It Works", action: () => scrollTo("ai-showcase") },
         { label: "Partnerships", action: () => scrollTo("final-cta") },
-        { label: "Contact Us", action: () => window.open(`mailto:${PLATFORM.supportEmail}`, "_blank") },
+        { label: "Book a Meeting", action: () => window.open(PLATFORM.calUrl, "_blank") },
+        { label: "Contact Us", action: () => scrollTo("contact") },
       ],
     },
     {
@@ -87,12 +88,21 @@ export function Footer() {
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} {PLATFORM.name}. All rights reserved.
           </p>
-          <a
-            href={`mailto:${PLATFORM.supportEmail}`}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            {PLATFORM.supportEmail}
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href={`tel:${PLATFORM.phone}`}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {PLATFORM.phoneDisplay}
+            </a>
+            <span className="text-border">|</span>
+            <a
+              href={`mailto:${PLATFORM.supportEmail}`}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {PLATFORM.supportEmail}
+            </a>
+          </div>
         </div>
       </div>
     </footer>

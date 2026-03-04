@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Rocket, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Building2, Rocket, Sparkles, ArrowRight, CheckCircle2, Calendar, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/sb_client/client";
-import { fadeInUp } from "./constants";
+import { fadeInUp, PLATFORM } from "./constants";
 
 export function FinalCta() {
   const [name, setName] = useState("");
@@ -38,8 +38,8 @@ export function FinalCta() {
       ];
       const body = `Hi, I'd like to apply to join ThePeptideAI.\n\n${lines.join("\n")}`;
       window.open(
-        `mailto:admin@thepeptideai.com?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
-        "_self",
+        `mailto:${PLATFORM.supportEmail}?subject=${encodeURIComponent("Application to Join — ThePeptideAI")}&body=${encodeURIComponent(body)}`,
+        "_blank",
       );
     } finally {
       setSubmitting(false);
@@ -152,15 +152,19 @@ export function FinalCta() {
               variant="ghost"
               size="sm"
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                window.open(
-                  "mailto:admin@thepeptideai.com?subject=" + encodeURIComponent("Demo Request — ThePeptideAI"),
-                  "_self",
-                );
-              }}
+              onClick={() => window.open(PLATFORM.calUrl, "_blank")}
             >
-              Or schedule a call instead
-              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              <Calendar className="w-3.5 h-3.5 mr-1.5" />
+              Book a Meeting
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => window.open(`sms:${PLATFORM.phone}`, "_self")}
+            >
+              <Phone className="w-3.5 h-3.5 mr-1.5" />
+              Text us at {PLATFORM.phoneDisplay}
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground relative">
