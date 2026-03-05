@@ -96,3 +96,6 @@ verify_jwt = false
 
 [functions.textbelt-webhook]
 verify_jwt = false
+
+[functions.fulfill-order]
+verify_jwt = false
