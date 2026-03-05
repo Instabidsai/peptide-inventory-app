@@ -368,7 +368,7 @@ Deno.serve(withErrorReporting("partner-ai-chat", async (req) => {
     ] = await Promise.all([
       supabase.from("partner_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30),
       supabase.from("peptides").select("id, name, active").eq("org_id", profile.org_id).eq("active", true).order("name"),
-      supabase.from("bottles").select("lot_id, lots!inner(peptide_id)").eq("status", "in_stock"),
+      supabase.from("bottles").select("lot_id, lots!inner(peptide_id, org_id)").eq("status", "in_stock").eq("lots.org_id", profile.org_id),
       supabase.from("contacts").select("id, name").eq("assigned_rep_id", profileId).limit(5),
       supabase.from("commissions").select("amount, status").eq("partner_id", profileId),
     ]);

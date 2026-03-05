@@ -67,6 +67,10 @@ export function useContacts(type?: ContactType, pagination?: PaginationState) {
           assigned_rep:assigned_rep_id (
             id,
             full_name
+          ),
+          sales_orders!client_id (
+            id,
+            created_at
           )
         `)
         .eq('org_id', profile.org_id)
@@ -92,7 +96,20 @@ export function useContacts(type?: ContactType, pagination?: PaginationState) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Contact[];
+
+      // Compute order_count and last_order_date from joined sales_orders
+      const enriched = (data || []).map((c: any) => {
+        const orders = c.sales_orders || [];
+        return {
+          ...c,
+          order_count: orders.length,
+          last_order_date: orders.length > 0
+            ? orders.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
+            : null,
+        };
+      });
+
+      return enriched as Contact[];
     },
     enabled: !!user && !!profile?.org_id,
     staleTime: 30_000, // 30s — contacts list tolerable staleness

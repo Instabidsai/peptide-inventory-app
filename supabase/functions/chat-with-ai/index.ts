@@ -25,9 +25,10 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide AI';
+const DEFAULT_BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide AI';
 
-const SYSTEM_PROMPT = `You are ${BRAND_NAME} — an expert peptide protocol consultant and personal health assistant.
+function buildSystemPrompt(brandName: string) {
+  return `You are ${brandName} — an expert peptide protocol consultant and personal health assistant.
 
 ## Who You Are
 You are a knowledgeable, proactive research partner who helps users optimize their peptide protocols. You actively cross-reference symptoms, bloodwork, and side effects against what they're running. You search for studies, mechanisms of action, and interactions when you need deeper information. You remember everything they tell you.
@@ -54,6 +55,7 @@ ALWAYS use the appropriate tool when the user's intent matches — don't just de
 
 ## Escalation
 Only flag genuinely concerning health markers — severely elevated blood pressure, signs of serious adverse reactions, symptoms suggesting emergency medical attention. For routine protocol questions, dosing adjustments, and general health optimization, you ARE the consultant. Help them directly.`;
+}
 
 const CLIENT_TOOLS: any[] = [
     {
@@ -245,6 +247,7 @@ async function executeTool(
                     const { data: peptide } = await supabase
                         .from('peptides')
                         .select('id')
+                        .eq('org_id', orgId)
                         .ilike('name', `%${peptide_name}%`)
                         .limit(1)
                         .single();
@@ -424,12 +427,26 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
         });
         const embedding = embeddingResponse.data[0].embedding;
 
-        // 5. Search knowledge base
-        const { data: documents } = await supabase.rpc('match_documents', {
-            query_embedding: embedding,
-            match_threshold: 0.5,
-            match_count: 5,
-        });
+        // 5. Search knowledge base (global content — org-specific embeddings use metadata.org_id filter)
+        const orgId = userContact?.org_id || '';
+        // Search global knowledge + org-specific content in parallel
+        const [{ data: globalDocs }, { data: orgDocs }] = await Promise.all([
+            supabase.rpc('match_documents', {
+                query_embedding: embedding,
+                match_threshold: 0.5,
+                match_count: 4,
+                filter: { type: 'global' },
+            }),
+            orgId ? supabase.rpc('match_documents', {
+                query_embedding: embedding,
+                match_threshold: 0.5,
+                match_count: 3,
+                filter: { org_id: orgId },
+            }) : Promise.resolve({ data: [] }),
+        ]);
+        const documents = [...(globalDocs || []), ...(orgDocs || [])]
+            .sort((a: any, b: any) => b.similarity - a.similarity)
+            .slice(0, 5);
 
         const ragContext = documents?.map((doc: any) => {
             const meta = doc.metadata;
@@ -497,9 +514,26 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
             console.error('Health context error:', e);
         }
 
+        // 8b. Load tenant branding + peptide catalog (org-scoped)
+        let brandName = DEFAULT_BRAND_NAME;
+        let catalogContext = '';
+        if (orgId) {
+            const [{ data: tenantCfg }, { data: orgPeptides }] = await Promise.all([
+                supabase.from('tenant_config').select('brand_name').eq('org_id', orgId).single(),
+                supabase.from('peptides').select('name, retail_price, active').eq('org_id', orgId).eq('active', true).order('name'),
+            ]);
+            if (tenantCfg?.brand_name) brandName = tenantCfg.brand_name;
+            if (orgPeptides?.length) {
+                catalogContext = '\n## Available Products\n' + orgPeptides.map((p: any) =>
+                    `- ${p.name} ($${Number(p.retail_price || 0).toFixed(2)})`
+                ).join('\n');
+            }
+        }
+
         // 9. Assemble system prompt
         const fullSystemPrompt = [
-            SYSTEM_PROMPT,
+            buildSystemPrompt(brandName),
+            catalogContext,
             healthProfileText && `\n## What You Know About This User\n${healthProfileText}`,
             insightsText && `\n## Research & Insights You've Accumulated\n${insightsText}`,
             healthContext && `\n## Their Current Protocol & Data\n${healthContext}`,
