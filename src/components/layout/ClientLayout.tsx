@@ -134,7 +134,10 @@ export function ClientLayout() {
                         </Button>
                     )}
                     {isSalesRep && !isAdmin && (
-                        <Button variant="outline" size="sm" onClick={() => navigate('/partner')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
+                        <Button variant="outline" size="sm" onClick={() => {
+                            sessionStorage.removeItem('preview_role');
+                            navigate('/partner');
+                        }} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                             <Briefcase className="mr-2 h-4 w-4" />
                             Partner Portal
                         </Button>

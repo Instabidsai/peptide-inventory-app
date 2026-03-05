@@ -285,7 +285,8 @@ export default function PartnerDashboard() {
                                 Order Peptides
                             </Button>
                         </Link>
-                        {(userRole?.role === 'admin' || userRole?.role === 'super_admin') && (
+                        {(userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff'
+                            || authProfile?.role === 'admin' || authProfile?.role === 'super_admin' || authProfile?.role === 'staff' || authProfile?.role === 'vendor') && (
                             <Button variant="outline" size="sm" onClick={() => navigate('/')} className="border-primary/20 hover:bg-primary/10 hover:text-primary">
                                 <DollarSign className="mr-2 h-4 w-4" />
                                 Return to Admin
