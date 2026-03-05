@@ -7,20 +7,19 @@
  * Auth: JWT validated via _shared/auth.ts — requires admin, staff, or sales_rep role.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 import { authenticateRequest, AuthError } from "../_shared/auth.ts";
-import { format } from "https://esm.sh/date-fns@3";
+
+// Simple YYYY-MM-DD formatter (avoids date-fns dependency)
+const fmtDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
-  const json = (data: unknown, status = 200) =>
-    new Response(JSON.stringify(data), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  const cors = getCorsHeaders(req);
+  const json = (data: unknown, status = 200) => jsonResponse(data as object, status, cors);
 
   try {
     // Auth — accept admin, staff, sales_rep, or vendor
@@ -33,19 +32,23 @@ Deno.serve(async (req) => {
       // If user_roles lookup failed but profile has the right role, allow it
       // (auth.ts checks user_roles which may be empty for some users)
       if (err instanceof AuthError && err.status === 403) {
-        // Retry without role restriction — we'll check profile.role below
-        auth = await authenticateRequest(req, { requireRole: [] });
+        // Retry without role/org restriction — we'll check profile.role below
+        auth = await authenticateRequest(req, { requireRole: [], requireOrg: false });
 
-        // Check profile.role manually
+        // Check profile.role + org_id manually
         const { data: profile } = await auth.supabase
           .from("profiles")
-          .select("role")
+          .select("role, org_id")
           .eq("user_id", auth.user.id)
           .single();
 
         const profileRole = profile?.role || "";
         if (!["admin", "staff", "sales_rep", "vendor"].includes(profileRole)) {
           return json({ error: "Forbidden: insufficient role" }, 403);
+        }
+        // Backfill orgId from profile if auth didn't have it
+        if (!auth.orgId && profile?.org_id) {
+          auth.orgId = profile.org_id;
         }
       } else {
         throw err;
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
           org_id: order.org_id,
           type: "sale",
           contact_id: order.client_id,
-          movement_date: format(new Date(), "yyyy-MM-dd"),
+          movement_date: fmtDate(new Date()),
           notes: `[SO:${orderId}] Fulfilled Sales Order #${orderId.slice(0, 8)}`,
           created_by: order.rep_id || profileId,
           payment_status: order.payment_status || "unpaid",
