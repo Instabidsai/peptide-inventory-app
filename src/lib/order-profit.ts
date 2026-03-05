@@ -102,17 +102,15 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
         - merchantFee) * 100
     ) / 100;
 
-    // 5. Update the order
-    // Fields cogs_amount, merchant_fee, profit_amount exist in the DB but may not
-    // be in generated Supabase types yet — cast needed until types are regenerated.
-    const { error: updateErr } = await supabase
-        .from('sales_orders')
-        .update({
+    // 5. Update the order via SECURITY DEFINER RPC (bypasses RLS)
+    const { error: updateErr } = await supabase.rpc('update_sales_order', {
+        p_order_id: orderId,
+        p_updates: {
             cogs_amount: Math.round(cogsAmount * 100) / 100,
             merchant_fee: merchantFee,
             profit_amount: profitAmount,
-        } as Record<string, number>)
-        .eq('id', orderId);
+        },
+    });
 
     if (updateErr) {
         logger.error('[order-profit] Failed to update order:', updateErr.message);

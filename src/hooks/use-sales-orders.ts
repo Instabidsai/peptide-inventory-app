@@ -583,17 +583,15 @@ export function useUpdateSalesOrder() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<SalesOrder> & { id: string }) => {
-            // RLS handles org scoping — don't double-filter by org_id here.
-            // Super_admin/vendor users may have a different profile.org_id than the order's org.
-            const { data: updated, error } = await supabase
-                .from('sales_orders')
-                .update(updates)
-                .eq('id', id)
-                .select('id')
-                .maybeSingle();
+            // Use SECURITY DEFINER RPC to bypass RLS — permission checked inside the function.
+            // This eliminates PostgREST schema-cache timing issues with RLS policy changes.
+            const { data: result, error } = await supabase.rpc('update_sales_order', {
+                p_order_id: id,
+                p_updates: updates,
+            });
 
             if (error) throw error;
-            if (!updated) throw new Error('Order not found or you lack permission to update it');
+            if (!result?.updated) throw new Error('Order not found or you lack permission to update it');
 
             // Check if we should trigger commission processing
             // Skip for zero-commission orders (e.g. 2x / internal partner pricing)
