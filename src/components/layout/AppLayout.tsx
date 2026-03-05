@@ -9,8 +9,6 @@ import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { RouteProgress } from '@/components/ui/route-progress';
-// Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
-import { motion } from 'framer-motion';
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users, PackageCheck, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -86,14 +84,7 @@ export function AppLayout() {
           isPartnerRoute && "pb-24 lg:pb-8" // extra bottom padding for mobile nav
         )}>
           <ErrorBoundary>
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-            >
               <Outlet />
-            </motion.div>
           </ErrorBoundary>
         </main>
       </div>
