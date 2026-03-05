@@ -4,6 +4,7 @@ import OpenAI from "https://esm.sh/openai@4.86.1";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitizeString } from "../_shared/validate.ts";
 import { withErrorReporting } from "../_shared/error-reporter.ts";
+import { loadFullOrgContext } from "../_shared/ai-core.ts";
 
 const APP_ORIGINS = [
     'https://thepeptideai.com',
@@ -514,26 +515,24 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
             console.error('Health context error:', e);
         }
 
-        // 8b. Load tenant branding + peptide catalog (org-scoped)
+        // 8b. Load tenant branding + full org context (org-scoped)
         let brandName = DEFAULT_BRAND_NAME;
-        let catalogContext = '';
+        let orgContext = '';
         if (orgId) {
-            const [{ data: tenantCfg }, { data: orgPeptides }] = await Promise.all([
-                supabase.from('tenant_config').select('brand_name').eq('org_id', orgId).single(),
-                supabase.from('peptides').select('name, retail_price, active').eq('org_id', orgId).eq('active', true).order('name'),
-            ]);
+            const { data: tenantCfg } = await supabase.from('tenant_config').select('brand_name').eq('org_id', orgId).single();
             if (tenantCfg?.brand_name) brandName = tenantCfg.brand_name;
-            if (orgPeptides?.length) {
-                catalogContext = '\n## Available Products\n' + orgPeptides.map((p: any) =>
-                    `- ${p.name} ($${Number(p.retail_price || 0).toFixed(2)})`
-                ).join('\n');
-            }
+            // Load comprehensive org data scoped to customer role
+            orgContext = await loadFullOrgContext(supabase, orgId, {
+                role: 'customer',
+                userId: user.id,
+                contactId: userContact?.id,
+            });
         }
 
         // 9. Assemble system prompt
         const fullSystemPrompt = [
             buildSystemPrompt(brandName),
-            catalogContext,
+            orgContext,
             healthProfileText && `\n## What You Know About This User\n${healthProfileText}`,
             insightsText && `\n## Research & Insights You've Accumulated\n${insightsText}`,
             healthContext && `\n## Their Current Protocol & Data\n${healthContext}`,

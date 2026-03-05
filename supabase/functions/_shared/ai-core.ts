@@ -1027,6 +1027,290 @@ export async function loadSmartContext(supabase: any, orgId: string): Promise<st
   return "\n\n=== LIVE DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() + "\n\nPEPTIDE CATALOG (" + catalogLines.length + " products — use these IDs directly, no search needed):\n" + catalogLines.join("\n") + "\n\nCONTACTS (" + contactLines.length + " most recent):\n" + contactLines.join("\n") + "\n\nPARTNER NETWORK TREE (" + partnerLines.length + " partners + " + clientLines.length + " assigned clients — [PARTNER] entries use update_partner, [CLIENT] entries use reassign_client):\n" + partnerLines.join("\n") + (clientLines.length ? "\n" + clientLines.join("\n") : "") + "\n\nRECENT ORDERS:\n" + orderLines.join("\n") + onboardingSection;
 }
 
+/**
+ * loadFullOrgContext — comprehensive org data for ANY AI assistant.
+ * Loads ALL org-scoped tables so the AI can answer any question about the org.
+ * Role-based: 'admin' gets everything, 'sales_rep' gets their scope, 'customer' gets their data.
+ */
+export async function loadFullOrgContext(
+  supabase: any,
+  orgId: string,
+  opts: { role: string; userId?: string; profileId?: string; contactId?: string }
+): Promise<string> {
+  const { role, profileId, contactId } = opts;
+  const isAdmin = role === "admin" || role === "super_admin" || role === "staff" || role === "vendor";
+  const isPartner = role === "sales_rep";
+  const isCustomer = role === "customer";
+
+  // ── 1. Tenant config (brand, settings) ──
+  const { data: tenantCfg } = await supabase
+    .from("tenant_config")
+    .select("brand_name, admin_brand_name, referral_program_enabled, referral_base_url, referral_default_discount, subscription_tier, subscription_status, woo_store_url, shopify_store_url, venmo_handle, zelle_email, zelle_phone")
+    .eq("org_id", orgId)
+    .single();
+
+  // ── 2. Parallel data loads (all org-scoped) ──
+  const queries: Promise<any>[] = [
+    // [0] Peptides with pricing
+    supabase.from("peptides").select("id, name, sku, retail_price, active, description").eq("org_id", orgId).order("name"),
+    // [1] Lots
+    supabase.from("lots").select("id, peptide_id, quantity_received, cost_per_unit, lot_number, supplier, expiry_date, payment_status, created_at").eq("org_id", orgId).order("created_at", { ascending: false }).limit(50),
+    // [2] In-stock bottles
+    supabase.from("bottles").select("lot_id, status, lots!inner(peptide_id, org_id)").eq("org_id", orgId),
+    // [3] Contacts (skip for customers — they don't need to see other contacts)
+    isCustomer ? Promise.resolve({ data: [] }) : supabase.from("contacts").select("id, name, email, phone, type, source, assigned_rep_id, invite_link, tier, discount_percent, woo_customer_id, created_at").eq("org_id", orgId).order("created_at", { ascending: false }).limit(100),
+    // [4] Sales orders — customers see only their own orders
+    isCustomer && contactId
+      ? supabase.from("sales_orders").select("id, status, payment_status, total_amount, amount_paid, created_at, client_id, order_source, discount_codes, contacts(name), sales_order_items(quantity, unit_price, peptides(name))").eq("org_id", orgId).eq("client_id", contactId).order("created_at", { ascending: false }).limit(20)
+      : supabase.from("sales_orders").select("id, status, payment_status, total_amount, amount_paid, created_at, client_id, order_source, discount_codes, contacts(name), sales_order_items(quantity, unit_price, peptides(name))").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
+    // [5] Partners/profiles (skip for customers)
+    isCustomer ? Promise.resolve({ data: [] }) : supabase.from("profiles").select("id, user_id, full_name, email, role, partner_tier, commission_rate, parent_rep_id, invite_link, referral_code").eq("org_id", orgId).order("full_name"),
+    // [6] Commissions (skip for customers)
+    isCustomer ? Promise.resolve({ data: [] }) : supabase.from("commissions").select("id, partner_id, amount, commission_type, status, created_at, sales_order_id").eq("org_id", orgId).order("created_at", { ascending: false }).limit(50),
+    // [7] Protocols — customers see only their own
+    isCustomer && contactId
+      ? supabase.from("protocols").select("id, name, description, contact_id, created_at, contacts(name)").eq("org_id", orgId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(20)
+      : supabase.from("protocols").select("id, name, description, contact_id, created_at, contacts(name)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
+    // [8] Client requests — customers see only their own
+    isCustomer && contactId
+      ? supabase.from("client_requests").select("id, contact_id, type, subject, message, status, created_at, contacts(name)").eq("org_id", orgId).eq("contact_id", contactId).order("created_at", { ascending: false }).limit(20)
+      : supabase.from("client_requests").select("id, contact_id, type, subject, message, status, created_at, contacts(name)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
+    // [9] Movements (admin/staff only)
+    isAdmin ? supabase.from("movements").select("id, type, reason, quantity, created_at, contact_id, contacts(name)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
+    // [10] Purchase orders (admin only)
+    isAdmin ? supabase.from("orders").select("id, peptide_id, quantity_ordered, estimated_cost_per_unit, status, supplier, created_at, peptides(name)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
+    // [11] Expenses (admin only)
+    isAdmin ? supabase.from("expenses").select("id, date, category, amount, description, payment_method, status").eq("org_id", orgId).order("date", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
+    // [12] Partner discount codes (admin/partner only)
+    isCustomer ? Promise.resolve({ data: [] }) : supabase.from("partner_discount_codes").select("id, code, partner_id, discount_percent, active, platform_coupon_id").eq("org_id", orgId),
+  ];
+
+  const results = await Promise.all(queries);
+  const [
+    { data: allPeptides },
+    { data: allLots },
+    { data: allBottles },
+    { data: allContacts },
+    { data: allOrders },
+    { data: allProfiles },
+    { data: allCommissions },
+    { data: allProtocols },
+    { data: allRequests },
+    { data: allMovements },
+    { data: allPurchaseOrders },
+    { data: allExpenses },
+    { data: allDiscountCodes },
+  ] = results;
+
+  // ── 3. Build stock map (bottles per peptide) ──
+  const stockMap: Record<string, { in_stock: number; sold: number; total: number }> = {};
+  (allBottles || []).forEach((b: any) => {
+    const pid = b.lots?.peptide_id;
+    if (!pid) return;
+    if (!stockMap[pid]) stockMap[pid] = { in_stock: 0, sold: 0, total: 0 };
+    stockMap[pid].total++;
+    if (b.status === "in_stock") stockMap[pid].in_stock++;
+    if (b.status === "sold") stockMap[pid].sold++;
+  });
+
+  // ── 4. Build cost map ──
+  const costMap: Record<string, { totalCost: number; totalQty: number }> = {};
+  (allLots || []).forEach((l: any) => {
+    const cost = Number(l.cost_per_unit || 0);
+    const qty = Number(l.quantity_received || 0);
+    if (!costMap[l.peptide_id]) costMap[l.peptide_id] = { totalCost: 0, totalQty: 0 };
+    costMap[l.peptide_id].totalCost += cost * qty;
+    costMap[l.peptide_id].totalQty += qty;
+  });
+
+  // ── 5. Build profile name map ──
+  const profileMap: Record<string, string> = {};
+  (allProfiles || []).forEach((p: any) => { profileMap[p.id] = p.full_name || "Unnamed"; });
+
+  // ── 6. Contact source analytics ──
+  const sourceBreakdown: Record<string, number> = {};
+  const typeBreakdown: Record<string, number> = {};
+  (allContacts || []).forEach((c: any) => {
+    sourceBreakdown[c.source || "manual"] = (sourceBreakdown[c.source || "manual"] || 0) + 1;
+    typeBreakdown[c.type || "customer"] = (typeBreakdown[c.type || "customer"] || 0) + 1;
+  });
+
+  // ── 7. Commission analytics ──
+  const commByStatus: Record<string, number> = {};
+  let totalCommissions = 0;
+  (allCommissions || []).forEach((c: any) => {
+    const amt = Number(c.amount || 0);
+    commByStatus[c.status || "pending"] = (commByStatus[c.status || "pending"] || 0) + amt;
+    totalCommissions += amt;
+  });
+
+  // ── 8. Order analytics ──
+  const ordersByStatus: Record<string, number> = {};
+  let totalRevenue = 0;
+  let totalPaid = 0;
+  (allOrders || []).forEach((o: any) => {
+    ordersByStatus[o.status || "submitted"] = (ordersByStatus[o.status || "submitted"] || 0) + 1;
+    totalRevenue += Number(o.total_amount || 0);
+    totalPaid += Number(o.amount_paid || 0);
+  });
+
+  // ── 9. Referral tracking ──
+  const referralContacts = (allContacts || []).filter((c: any) => c.assigned_rep_id);
+  const directContacts = (allContacts || []).filter((c: any) => !c.assigned_rep_id);
+  const websiteContacts = (allContacts || []).filter((c: any) => c.source === "woocommerce" || c.source === "shopify");
+  const manualContacts = (allContacts || []).filter((c: any) => c.source === "manual");
+
+  // ── BUILD CONTEXT SECTIONS ──
+  const sections: string[] = [];
+  const now = new Date();
+  sections.push("=== FULL ORG DATA (refreshed every message) ===");
+  sections.push("Date: " + now.toLocaleDateString() + " " + now.toLocaleTimeString());
+
+  // Tenant/brand info
+  if (tenantCfg) {
+    sections.push("\n## Business Info");
+    sections.push("Brand: " + (tenantCfg.brand_name || "Not set"));
+    if (tenantCfg.subscription_tier) sections.push("Plan: " + tenantCfg.subscription_tier + " (" + (tenantCfg.subscription_status || "active") + ")");
+    if (tenantCfg.woo_store_url) sections.push("WooCommerce: " + tenantCfg.woo_store_url);
+    if (tenantCfg.shopify_store_url) sections.push("Shopify: " + tenantCfg.shopify_store_url);
+    if (tenantCfg.referral_program_enabled) sections.push("Referral program: ENABLED (base URL: " + (tenantCfg.referral_base_url || "N/A") + ", default discount: " + (tenantCfg.referral_default_discount || 0) + "%)");
+    if (isAdmin && tenantCfg.venmo_handle) sections.push("Venmo: " + tenantCfg.venmo_handle);
+    if (isAdmin && tenantCfg.zelle_email) sections.push("Zelle: " + tenantCfg.zelle_email);
+  }
+
+  // Peptide catalog with stock + pricing
+  sections.push("\n## Product Catalog (" + (allPeptides || []).length + " products)");
+  (allPeptides || []).forEach((p: any) => {
+    const stock = stockMap[p.id]?.in_stock || 0;
+    const sold = stockMap[p.id]?.sold || 0;
+    const retail = Number(p.retail_price || 0);
+    const avg = costMap[p.id] && costMap[p.id].totalQty > 0 ? costMap[p.id].totalCost / costMap[p.id].totalQty : 0;
+    let line = p.name + (p.sku ? " (SKU:" + p.sku + ")" : "") + " | Stock: " + stock + " | Sold: " + sold;
+    if (isAdmin) line += " | MSRP: $" + retail.toFixed(2) + " | Avg Cost: $" + avg.toFixed(2);
+    if (!p.active) line += " | INACTIVE";
+    line += " | ID:" + p.id;
+    sections.push(line);
+  });
+
+  // Contacts overview
+  sections.push("\n## Contacts (" + (allContacts || []).length + " total)");
+  sections.push("By type: " + Object.entries(typeBreakdown).map(([k, v]) => k + ":" + v).join(", "));
+  sections.push("By source: " + Object.entries(sourceBreakdown).map(([k, v]) => k + ":" + v).join(", "));
+  sections.push("From website/store: " + websiteContacts.length + " | Manual/referral: " + manualContacts.length + " | With assigned rep: " + referralContacts.length + " | Direct (no rep): " + directContacts.length);
+
+  // If partner, only show their contacts
+  const visibleContacts = isPartner && profileId
+    ? (allContacts || []).filter((c: any) => c.assigned_rep_id === profileId)
+    : (allContacts || []);
+  visibleContacts.slice(0, 50).forEach((c: any) => {
+    const repName = c.assigned_rep_id ? (profileMap[c.assigned_rep_id] || "Unknown rep") : "None";
+    let line = c.name + " (" + c.type + ") | " + (c.email || "—") + " | " + (c.phone || "—") + " | Source:" + (c.source || "manual") + " | Rep:" + repName;
+    if (c.invite_link) line += " | Invite:" + c.invite_link;
+    if (c.tier) line += " | Tier:" + c.tier;
+    if (c.discount_percent) line += " | Discount:" + c.discount_percent + "%";
+    line += " | ID:" + c.id;
+    sections.push(line);
+  });
+
+  // Partner network
+  const partners = (allProfiles || []).filter((p: any) => p.role === "sales_rep");
+  if (partners.length) {
+    sections.push("\n## Partner Network (" + partners.length + " partners)");
+    partners.forEach((p: any) => {
+      const parentName = p.parent_rep_id ? (profileMap[p.parent_rep_id] || "Unknown") : "None";
+      let line = p.full_name + " | " + (p.email || "—") + " | Rate:" + (Number(p.commission_rate || 0) * 100).toFixed(0) + "% | Tier:" + (p.partner_tier || "standard") + " | Parent:" + parentName;
+      if (p.referral_code) line += " | Referral code:" + p.referral_code;
+      if (p.invite_link) line += " | Invite link:" + p.invite_link;
+      line += " | ID:" + p.id;
+      sections.push(line);
+    });
+  }
+
+  // Discount codes
+  if (allDiscountCodes?.length) {
+    sections.push("\n## Discount Codes (" + allDiscountCodes.length + ")");
+    allDiscountCodes.forEach((dc: any) => {
+      const partnerName = dc.partner_id ? (profileMap[dc.partner_id] || "Unknown") : "Org-wide";
+      sections.push(dc.code + " | " + (dc.discount_percent || 0) + "% off | Partner:" + partnerName + " | Active:" + (dc.active ? "Yes" : "No"));
+    });
+  }
+
+  // Orders
+  sections.push("\n## Sales Orders (recent " + (allOrders || []).length + ")");
+  sections.push("By status: " + Object.entries(ordersByStatus).map(([k, v]) => k + ":" + v).join(", "));
+  sections.push("Total revenue: $" + totalRevenue.toFixed(2) + " | Collected: $" + totalPaid.toFixed(2) + " | Outstanding: $" + (totalRevenue - totalPaid).toFixed(2));
+  const visibleOrders = isPartner && profileId
+    ? (allOrders || []).filter((o: any) => {
+        const clientContact = (allContacts || []).find((c: any) => c.id === o.client_id);
+        return clientContact?.assigned_rep_id === profileId;
+      })
+    : (allOrders || []);
+  visibleOrders.slice(0, 20).forEach((o: any) => {
+    const items = o.sales_order_items?.map((i: any) => i.quantity + "x " + (i.peptides?.name || "?")).join(", ") || "no items";
+    let line = "#" + o.id.slice(0, 8) + " | " + (o.contacts?.name || "?") + " | " + o.status + "/" + o.payment_status + " | $" + Number(o.total_amount).toFixed(2) + " | " + items;
+    if (o.order_source) line += " | Source:" + o.order_source;
+    if (o.discount_codes) line += " | Coupons:" + o.discount_codes;
+    line += " | " + new Date(o.created_at).toLocaleDateString();
+    sections.push(line);
+  });
+
+  // Commissions
+  if (allCommissions?.length) {
+    sections.push("\n## Commissions");
+    sections.push("Total: $" + totalCommissions.toFixed(2) + " | " + Object.entries(commByStatus).map(([k, v]) => k + ": $" + v.toFixed(2)).join(", "));
+    const visibleComm = isPartner && profileId
+      ? allCommissions.filter((c: any) => c.partner_id === profileId)
+      : allCommissions;
+    visibleComm.slice(0, 15).forEach((c: any) => {
+      sections.push("$" + Number(c.amount).toFixed(2) + " | " + c.commission_type + " | " + c.status + " | Partner:" + (profileMap[c.partner_id] || "?") + " | " + new Date(c.created_at).toLocaleDateString());
+    });
+  }
+
+  // Protocols
+  if (allProtocols?.length) {
+    sections.push("\n## Protocols (" + allProtocols.length + ")");
+    allProtocols.forEach((p: any) => {
+      sections.push(p.name + " | Client:" + (p.contacts?.name || "N/A") + " | " + new Date(p.created_at).toLocaleDateString());
+    });
+  }
+
+  // Client requests
+  if (allRequests?.length) {
+    const pendingReqs = allRequests.filter((r: any) => r.status === "pending");
+    sections.push("\n## Client Requests (" + allRequests.length + " total, " + pendingReqs.length + " pending)");
+    allRequests.slice(0, 10).forEach((r: any) => {
+      sections.push("[" + r.status + "] " + (r.contacts?.name || "?") + " — " + r.subject + " (" + r.type + ")");
+    });
+  }
+
+  // Movements
+  if (allMovements?.length) {
+    sections.push("\n## Recent Movements (" + allMovements.length + ")");
+    allMovements.slice(0, 10).forEach((m: any) => {
+      sections.push(m.type + " | Qty:" + m.quantity + " | " + (m.contacts?.name || "N/A") + " | " + (m.reason || "") + " | " + new Date(m.created_at).toLocaleDateString());
+    });
+  }
+
+  // Purchase orders (admin)
+  if (isAdmin && allPurchaseOrders?.length) {
+    sections.push("\n## Purchase Orders (" + allPurchaseOrders.length + ")");
+    allPurchaseOrders.slice(0, 10).forEach((po: any) => {
+      sections.push((po.peptides?.name || "?") + " | Qty:" + po.quantity_ordered + " | $" + Number(po.estimated_cost_per_unit || 0).toFixed(2) + "/ea | " + po.status + " | " + (po.supplier || "N/A"));
+    });
+  }
+
+  // Expenses (admin only)
+  if (isAdmin && allExpenses?.length) {
+    const totalExpenses = allExpenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+    sections.push("\n## Expenses ($" + totalExpenses.toFixed(2) + " total, recent " + allExpenses.length + ")");
+    allExpenses.slice(0, 10).forEach((e: any) => {
+      sections.push(e.date + " | " + e.category + " | $" + Number(e.amount).toFixed(2) + " | " + (e.description || "") + " | " + e.status);
+    });
+  }
+
+  return "\n\n" + sections.join("\n");
+}
+
 // ── GPT-4o tool-calling loop ─────────────────────────────────
 import { loadComposioTools, executeComposioTool, isComposioTool, getComposioSystemPromptSection } from "./composio-tools.ts";
 

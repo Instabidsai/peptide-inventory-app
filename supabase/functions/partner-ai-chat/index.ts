@@ -4,6 +4,8 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { sanitizeString } from "../_shared/validate.ts";
 import { withErrorReporting } from "../_shared/error-reporter.ts";
 
+import { loadFullOrgContext } from "../_shared/ai-core.ts";
+
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
 const APP_ORIGINS = [
@@ -32,14 +34,18 @@ const BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide Partner';
 const SYSTEM_PROMPT = `You are the partner assistant for ${BRAND_NAME}. You help sales partners (reps) with product knowledge, their commissions, their clients, and stock availability.
 
 You can help with:
-- PRODUCT KNOWLEDGE: Peptide info, protocols, dosing, storage, handling
-- STOCK: Check what's available (quantities only — you don't see pricing or costs)
-- MY COMMISSIONS: View the partner's own commission history and stats
-- MY CLIENTS: View contacts assigned to this partner
+- PRODUCT KNOWLEDGE: Full catalog with stock levels, protocols, dosing, storage, handling
+- STOCK: Check what's available (quantities and availability)
+- MY COMMISSIONS: View the partner's own commission history, totals, and status breakdown
+- MY CLIENTS: View contacts assigned to this partner, their orders, and activity
 - MY ORDERS: View sales orders this partner has placed
+- REFERRAL LINKS: Show partner's referral code and invite link for recruiting
+- DISCOUNT CODES: View active discount/coupon codes
 - RESOURCES: Search educational materials (PDFs, videos, guides)
 - PROTOCOLS: Look up treatment protocols
 - SUGGESTIONS: Submit feature requests or report issues (goes to admin)
+
+You have comprehensive org data loaded with every message. Use it to answer questions about products, stock, your clients, commissions, and referral info directly from context — only use tools when you need to TAKE ACTION (create orders, submit suggestions, etc.).
 
 RULES:
 1. You are a helpful, knowledgeable partner assistant. Be friendly and supportive.
@@ -358,38 +364,11 @@ Deno.serve(withErrorReporting("partner-ai-chat", async (req) => {
     // Save user message
     await supabase.from("partner_chat_messages").insert({ org_id: profile.org_id, user_id: user.id, role: "user", content: message });
 
-    // === SMART CONTEXT: Load partner-specific data ===
-    const [
-      { data: history },
-      { data: allPeptides },
-      { data: stockBottles },
-      { data: myClients },
-      { data: commissionStats },
-    ] = await Promise.all([
+    // === SMART CONTEXT: Load full org data scoped to partner role ===
+    const [{ data: history }, dynamicContext] = await Promise.all([
       supabase.from("partner_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30),
-      supabase.from("peptides").select("id, name, active").eq("org_id", profile.org_id).eq("active", true).order("name"),
-      supabase.from("bottles").select("lot_id, lots!inner(peptide_id, org_id)").eq("status", "in_stock").eq("lots.org_id", profile.org_id),
-      supabase.from("contacts").select("id, name").eq("assigned_rep_id", profileId).limit(5),
-      supabase.from("commissions").select("amount, status").eq("partner_id", profileId),
+      loadFullOrgContext(supabase, profile.org_id, { role: "sales_rep", userId: user.id, profileId }),
     ]);
-
-    // Stock counts (no pricing!) — bottles → lots → peptides
-    const stockMap: Record<string, number> = {};
-    stockBottles?.forEach((b: any) => {
-      const pid = b.lots?.peptide_id;
-      if (pid) stockMap[pid] = (stockMap[pid] || 0) + 1;
-    });
-
-    const catalogLines = (allPeptides || []).map((p: any) =>
-      p.name + " | " + (stockMap[p.id] || 0) + " in stock"
-    );
-
-    const totalEarned = commissionStats?.reduce((s: number, c: any) => s + Number(c.amount), 0) || 0;
-    const pendingComm = commissionStats?.filter((c: any) => c.status === "pending").reduce((s: number, c: any) => s + Number(c.amount), 0) || 0;
-
-    const dynamicContext = "\n\n=== YOUR DATA (refreshed every message) ===\nDate: " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString() +
-      "\n\nAVAILABLE PRODUCTS (" + catalogLines.length + "):\n" + catalogLines.join("\n") +
-      "\n\nYOUR STATS: " + (myClients?.length || 0) + " clients | Total earned: $" + totalEarned.toFixed(2) + " | Pending: $" + pendingComm.toFixed(2);
 
     const messages: any[] = [
       { role: "system", content: SYSTEM_PROMPT + dynamicContext },

@@ -6,7 +6,7 @@ import {
   ADMIN_SYSTEM_PROMPT,
   STAFF_SYSTEM_PROMPT,
   SHARED_RULES,
-  loadSmartContext,
+  loadFullOrgContext,
   runAILoop,
 } from "../_shared/ai-core.ts";
 import { withErrorReporting } from "../_shared/error-reporter.ts";
@@ -72,10 +72,10 @@ Deno.serve(withErrorReporting("admin-ai-chat", async (req) => {
     if (!message) return json({ error: "message required (max 5000 chars)" }, 400);
     await supabase.from("admin_chat_messages").insert({ user_id: user.id, role: "user", content: message });
 
-    // Load chat history + smart context in parallel
+    // Load chat history + full org context in parallel
     const [{ data: history }, dynamicContext] = await Promise.all([
       supabase.from("admin_chat_messages").select("role, content").eq("user_id", user.id).order("created_at", { ascending: true }).limit(30),
-      loadSmartContext(supabase, profile.org_id),
+      loadFullOrgContext(supabase, profile.org_id, { role }),
     ]);
 
     // Run AI loop
