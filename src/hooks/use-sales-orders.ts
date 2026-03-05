@@ -580,18 +580,20 @@ export function useCreateValidatedOrder() {
 export function useUpdateSalesOrder() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { profile } = useAuth();
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<SalesOrder> & { id: string }) => {
-            if (!profile?.org_id) throw new Error('No organization found');
-            const { error } = await supabase
+            // RLS handles org scoping — don't double-filter by org_id here.
+            // Super_admin/vendor users may have a different profile.org_id than the order's org.
+            const { data: updated, error } = await supabase
                 .from('sales_orders')
                 .update(updates)
                 .eq('id', id)
-                .eq('org_id', profile.org_id);
+                .select('id')
+                .maybeSingle();
 
             if (error) throw error;
+            if (!updated) throw new Error('Order not found or you lack permission to update it');
 
             // Check if we should trigger commission processing
             // Skip for zero-commission orders (e.g. 2x / internal partner pricing)
