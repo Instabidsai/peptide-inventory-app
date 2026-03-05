@@ -11,13 +11,14 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { RouteProgress } from '@/components/ui/route-progress';
 // Enter-only transition (no exit animation to avoid backdrop-blur fuzzy screen on mobile)
 import { motion } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, ClipboardList, Users, X, Eye } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, ClipboardList, Users, PackageCheck, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const partnerNav = [
   { name: 'Dashboard', path: '/partner', icon: LayoutDashboard },
   { name: 'Store', path: '/partner/store', icon: ShoppingBag },
   { name: 'Orders', path: '/partner/orders', icon: ClipboardList },
+  { name: 'Fulfillment', path: '/fulfillment', icon: PackageCheck },
   { name: 'Customers', path: '/contacts', icon: Users },
 ];
 

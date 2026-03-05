@@ -28,7 +28,7 @@ const navigation = [
   { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
-  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'fulfillment'] },
+  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
