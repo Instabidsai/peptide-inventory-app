@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
 | `composio-connect` | Initiates Composio OAuth for integrations |
 | `composio-callback` | Composio OAuth callback (+ auto webhook registration for Shopify) |
 | `create-supplier-order` | Places order with peptide supplier |
+| `fulfill-order` | Fulfills a sales order: movement + FIFO bottles + client_inventory + commissions + COGS. Uses service role to bypass RLS |
 
 ### Automation / Health
 | Function | Purpose | Trigger |
