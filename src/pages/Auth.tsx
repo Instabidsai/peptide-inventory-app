@@ -280,6 +280,7 @@ export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [postLinkRedirect, setPostLinkRedirect] = useState<string | null>(null);
   const { signIn, signUp, user, profile, loading, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -351,6 +352,23 @@ export default function Auth() {
     }
   }, [mode, hasReferral]);
 
+  // Navigate ONLY after profile state has been confirmed with org_id.
+  // This prevents the race condition where onAuthStateChange's deferred
+  // fetchUserData overwrites refreshProfile's data with stale profile (no org_id),
+  // causing ProtectedRoute to bounce the user to /onboarding.
+  useEffect(() => {
+    if (postLinkRedirect && profile?.org_id) {
+      sessionStorage.removeItem('partner_ref');
+      sessionStorage.removeItem('partner_ref_role');
+      sessionStorage.removeItem('partner_ref_org');
+      sessionStorage.removeItem('partner_ref_tier');
+      localStorage.removeItem('pending_referral');
+      queryClient.invalidateQueries({ queryKey: ['client-profile'] });
+      navigate(postLinkRedirect, { replace: true });
+      setPostLinkRedirect(null);
+    }
+  }, [postLinkRedirect, profile, navigate, queryClient]);
+
   // Handle redirect + referral linking for already-authenticated users
   useEffect(() => {
     if (loading || !user) return; // Still initializing or no user
@@ -370,13 +388,11 @@ export default function Auth() {
       linkReferral(user.id, email, name, refParam, roleParam, orgParam, tierParam).then(async (result) => {
         linkingInProgress.current = false;
         if (result.success) {
-          sessionStorage.removeItem('partner_ref');
-          sessionStorage.removeItem('partner_ref_role');
-          localStorage.removeItem('pending_referral');
-          await refreshProfile();
-          queryClient.invalidateQueries({ queryKey: ['client-profile'] });
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
-          navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
+          // Don't navigate immediately — set target and let profile-watching
+          // useEffect navigate once profile.org_id is confirmed in React state.
+          setPostLinkRedirect(result.type === 'partner' ? '/partner' : '/store');
+          await refreshProfile();
         } else {
           // Keep referral in sessionStorage so Onboarding can retry
           if (refParam) storeSessionReferral(refParam, roleParam, orgParam, tierParam);
@@ -412,9 +428,9 @@ export default function Auth() {
     );
   }
 
-  // User is logged in with a pending referral — show processing state
+  // User is logged in with a pending referral or awaiting redirect — show processing state
   // (prevents flash of login form before useEffect handles the linking)
-  if (user && refParam) {
+  if (user && (refParam || postLinkRedirect)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -473,16 +489,12 @@ export default function Auth() {
       referralHandled.current = true;
       const result = await linkReferral(newUser.id, data.email, data.fullName, refParam, roleParam, orgParam, tierParam);
       if (result.success) {
-        sessionStorage.removeItem('partner_ref');
-        sessionStorage.removeItem('partner_ref_role');
-        sessionStorage.removeItem('partner_ref_org');
-        localStorage.removeItem('pending_referral');
-        localStorage.removeItem('partner_ref');
-        await refreshProfile();
-        queryClient.invalidateQueries({ queryKey: ['client-profile'] });
         setIsLoading(false);
         toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
-        navigate(result.type === 'partner' ? '/partner' : '/store', { replace: true });
+        // Don't navigate immediately — set target and let profile-watching
+        // useEffect navigate once profile.org_id is confirmed in React state.
+        setPostLinkRedirect(result.type === 'partner' ? '/partner' : '/store');
+        await refreshProfile();
         return;
       }
       // linkReferral failed — store ref for retry and show the actual error
