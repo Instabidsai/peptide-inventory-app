@@ -357,18 +357,11 @@ export default function Auth() {
 
     // User has a referral to process
     if (refParam && !referralHandled.current) {
-      if (profile?.org_id) {
-        // Already linked to an org — skip referral, go home
-        sessionStorage.removeItem('partner_ref');
-        sessionStorage.removeItem('partner_ref_role');
-        localStorage.removeItem('pending_referral');
-        navigate(from, { replace: true });
-        return;
-      }
-
       if (!profile) return; // Profile still loading — will re-run when it arrives
 
-      // Process referral
+      // Process referral — works for both new users (no org) and existing users
+      // (e.g. existing user clicking a partner referral link and signing in).
+      // The link_referral RPC handles updating org_id, role, and tier correctly.
       referralHandled.current = true;
       linkingInProgress.current = true;
       const email = user.email || '';
@@ -421,7 +414,7 @@ export default function Auth() {
 
   // User is logged in with a pending referral — show processing state
   // (prevents flash of login form before useEffect handles the linking)
-  if (user && refParam && !profile?.org_id) {
+  if (user && refParam) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
