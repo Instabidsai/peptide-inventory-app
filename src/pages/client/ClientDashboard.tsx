@@ -846,7 +846,7 @@ export function ClientDashboardInner({ contactId, isAdminPreview = true }: { con
 // ── Customer wrapper (uses useClientProfile with self-healing + polling) ──
 function ClientDashboardContent() {
     usePageTitle('My Dashboard');
-    const { contact, isLoading, error, isWelcome, completeWelcome } = useClientProfile();
+    const { data: contact, isLoading, error } = useClientProfile();
 
     if (isLoading) {
         return (
@@ -861,39 +861,6 @@ function ClientDashboardContent() {
 
     if (error || !contact) {
         return <QueryError error={error} title="Dashboard" message="Could not load your dashboard. Please try refreshing." />;
-    }
-
-    if (isWelcome) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
-                <GlassCard className="max-w-md w-full text-center">
-                    <CardContent className="py-12 space-y-6">
-                        <motion.div
-                            initial={{ scale: 0.5, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                        >
-                            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                <Sparkles className="h-8 w-8 text-primary" />
-                            </div>
-                            <h1 className="text-2xl font-bold tracking-tight">Welcome to Your Portal!</h1>
-                            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                                Your personalized peptide dashboard is ready. Track doses, monitor supply, and manage your protocols — all in one place.
-                            </p>
-                        </motion.div>
-                        <motion.button
-                            onClick={completeWelcome}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <Sparkles className="h-4 w-4" />
-                            Get Started
-                        </motion.button>
-                    </CardContent>
-                </GlassCard>
-            </div>
-        );
     }
 
     return <ClientDashboardShared contact={contact} />;
