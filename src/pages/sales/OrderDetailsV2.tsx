@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, useDeleteSalesOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, type SalesOrder, type ShippingRate } from '@/hooks/use-sales-orders';
+import { useSalesOrder, useUpdateSalesOrder, useFulfillOrder, useDeleteSalesOrder, usePayWithCredit, useCreateShippingLabel, useGetShippingRates, useBuyShippingLabel, useOrderPayments, useRecordPayment, type SalesOrder, type ShippingRate, type OrderPayment } from '@/hooks/use-sales-orders';
 import { useBatchUpdateOrderItems, useDeleteOrderItem, useUpdateSingleOrderItem } from '@/hooks/use-order-items';
 import { useOrderCommissions } from '@/hooks/use-commissions';
 import { useActivePeptides } from '@/hooks/use-peptides';
@@ -89,6 +89,7 @@ export default function OrderDetails() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { profile } = useAuth();
     const { data: order, isLoading } = useSalesOrder(id);
+    const { data: orderPayments = [] } = useOrderPayments(id);
 
     const updateOrder = useUpdateSalesOrder();
     const fulfillOrder = useFulfillOrder();
@@ -97,12 +98,12 @@ export default function OrderDetails() {
     const shipLabel = useCreateShippingLabel();
     const getRates = useGetShippingRates();
     const buyLabel = useBuyShippingLabel();
+    const recordPayment = useRecordPayment();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('processor');
     const [editing, setEditing] = useState(false);
     const [editItems, setEditItems] = useState<{ id: string; peptide_id?: string; name: string; quantity: number; unit_price: number; isNew?: boolean }[]>([]);
     const [editNotes, setEditNotes] = useState('');
@@ -123,8 +124,12 @@ export default function OrderDetails() {
     const [busyItemId, setBusyItemId] = useState<string | null>(null);
     const [showCommissionDetail, setShowCommissionDetail] = useState(false);
     const [editingCommId, setEditingCommId] = useState<string | null>(null);
+    const [savingComm, setSavingComm] = useState(false);
+    const [editCommAmount, setEditCommAmount] = useState(0);
+    const [editCommRate, setEditCommRate] = useState(0);
+    const [editCommStatus, setEditCommStatus] = useState('');
 
-    // Commission logic fully extracted to CommissionCard
+    const { data: commissionRecords } = useOrderCommissions(id);
 
     // Unified busy flag — disables all action buttons to prevent rage clicks
     const batchUpdateOrderItems = useBatchUpdateOrderItems();
@@ -133,7 +138,7 @@ export default function OrderDetails() {
 
     const isBusy = updateOrder.isPending || fulfillOrder.isPending || deleteOrder.isPending ||
         payWithCredit.isPending || shipLabel.isPending || getRates.isPending ||
-        buyLabel.isPending || saving || batchUpdateOrderItems.isPending ||
+        buyLabel.isPending || recordPayment.isPending || saving || batchUpdateOrderItems.isPending ||
         deleteOrderItem.isPending || updateSingleOrderItem.isPending;
 
     // Fetch peptides for the "Add Item" picker
@@ -176,17 +181,15 @@ export default function OrderDetails() {
         updateOrder.mutate({
             id: order.id,
             payment_status: status,
-            // If paid, set amount_paid to total if currently 0
-            amount_paid: status === 'paid' && order.amount_paid === 0 ? order.total_amount : order.amount_paid,
             ...(paymentMethod ? { payment_method: paymentMethod } : {}),
         });
     };
 
-    const handleMarkAsPaid = () => {
-        const method = selectedPaymentMethod === 'processor' ? null : selectedPaymentMethod;
-        handlePaymentStatusChange('paid', method || undefined);
-        setShowPaymentDialog(false);
-        setSelectedPaymentMethod('processor');
+    const handleRecordPayment = (amount: number, method: string) => {
+        recordPayment.mutate(
+            { orderId: order.id, amount, paymentMethod: method },
+            { onSuccess: () => setShowPaymentDialog(false) },
+        );
     };
 
     const handlePayWithCredit = () => {
@@ -800,6 +803,52 @@ export default function OrderDetails() {
                             ) : null}
                         </CardContent>
                     </Card>
+
+                    {/* Payment History */}
+                    {orderPayments.length > 0 && (
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                <CardTitle className="text-lg">Payment History</CardTitle>
+                                <Badge variant={order.payment_status === 'paid' ? 'default' : order.payment_status === 'partial' ? 'secondary' : 'outline'}>
+                                    ${order.amount_paid.toFixed(2)} / ${order.total_amount.toFixed(2)}
+                                </Badge>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {orderPayments.map((payment: OrderPayment) => (
+                                        <div key={payment.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <DollarSign className="h-3.5 w-3.5 text-green-500" />
+                                                    <span className="font-medium text-sm">${payment.amount.toFixed(2)}</span>
+                                                    <Badge variant="outline" className="text-xs capitalize">{payment.payment_method.replace('_', ' ')}</Badge>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground pl-5">
+                                                    {format(new Date(payment.payment_date), 'MMM d, yyyy h:mm a')}
+                                                    {payment.profiles?.full_name && ` by ${payment.profiles.full_name}`}
+                                                </div>
+                                                {payment.notes && (
+                                                    <div className="text-xs text-muted-foreground italic pl-5">{payment.notes}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {order.payment_status !== 'paid' && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full mt-3"
+                                        onClick={() => setShowPaymentDialog(true)}
+                                        disabled={isBusy}
+                                    >
+                                        <DollarSign className="h-3.5 w-3.5 mr-1" />
+                                        Record Another Payment (${(order.total_amount - order.amount_paid).toFixed(2)} remaining)
+                                    </Button>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Sidebar Actions */}
@@ -821,8 +870,12 @@ export default function OrderDetails() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('unpaid')}>Unpaid</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setShowPaymentDialog(true)}>Paid (Full)</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handlePaymentStatusChange('partial')}>Partial</DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setShowPaymentDialog(true)}
+                                            disabled={order.payment_status === 'paid'}
+                                        >
+                                            Record Payment
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handlePaymentStatusChange('refunded')}>Refunded</DropdownMenuItem>
                                         {(profile?.credit_balance || 0) > 0 && (
                                             <>
@@ -1235,7 +1288,12 @@ export default function OrderDetails() {
                                                                             max="100"
                                                                             className="h-8 text-sm"
                                                                             value={Math.round(editCommRate * 100)}
-                                                                            onChange={e => setEditCommRate((parseFloat(e.target.value) || 0) / 100)}
+                                                                            onChange={e => {
+                                                                                const pct = parseFloat(e.target.value) || 0;
+                                                                                const rate = pct / 100;
+                                                                                setEditCommRate(rate);
+                                                                                setEditCommAmount(Math.round(Number(order.total_amount || 0) * rate * 100) / 100);
+                                                                            }}
                                                                         />
                                                                     </div>
                                                                     <div>
@@ -1285,7 +1343,7 @@ export default function OrderDetails() {
                                                                                     if (error) { toast({ variant: 'destructive', title: 'Failed to update commission', description: error.message }); return; }
                                                                                     const updatedRecords = (commissionRecords || []).map(r =>
                                                                                         r.id === rec.id
-                                                                                            ? { ...r, amount: editCommAmount, status: editCommStatus }
+                                                                                            ? { ...r, amount: editCommAmount, commission_rate: editCommRate, status: editCommStatus }
                                                                                             : r
                                                                                     );
                                                                                     const commTotal = updatedRecords
@@ -1572,14 +1630,13 @@ export default function OrderDetails() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Payment Method Dialog */}
+            {/* Payment Dialog */}
             <PaymentDialog
                 open={showPaymentDialog}
                 onOpenChange={setShowPaymentDialog}
                 totalAmount={order.total_amount}
-                selectedPaymentMethod={selectedPaymentMethod}
-                setSelectedPaymentMethod={setSelectedPaymentMethod}
-                onConfirm={handleMarkAsPaid}
+                amountPaid={order.amount_paid}
+                onConfirm={handleRecordPayment}
             />
         </div>
     );

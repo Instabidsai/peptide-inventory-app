@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, CheckCircle2, Package, Copy, Check, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function PayOrder() {
     const { orderId } = useParams<{ orderId: string }>();
@@ -57,13 +57,35 @@ export default function PayOrder() {
             if (!order?.org_id) return null;
             const { data } = await supabase
                 .from('tenant_config')
-                .select('zelle_email, venmo_handle, cashapp_tag')
+                .select('zelle_email, venmo_handle, cashapp_handle, primary_color, brand_name, logo_url')
                 .eq('org_id', order.org_id)
                 .maybeSingle();
             return data;
         },
         enabled: !!order?.org_id,
     });
+
+    // Apply tenant brand color to this page
+    useEffect(() => {
+        const hex = tenantConfig?.primary_color;
+        if (!hex) return;
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+        const l = (max + min) / 2;
+        let h = 0, s = 0;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            const rn = r / 255, gn = g / 255, bn = b / 255;
+            h = max === rn / 1 ? 0 : 0; // fallback
+            if (rn === max) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60;
+            else if (gn === max) h = ((bn - rn) / d + 2) * 60;
+            else h = ((rn - gn) / d + 4) * 60;
+        }
+        const hsl = `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+        document.documentElement.style.setProperty('--primary', hsl);
+        return () => { document.documentElement.style.removeProperty('--primary'); };
+    }, [tenantConfig?.primary_color]);
 
     const [selectedManualMethod, setSelectedManualMethod] = useState<string | null>(null);
     const [confirmingManual, setConfirmingManual] = useState(false);
@@ -196,7 +218,7 @@ export default function PayOrder() {
             <div className="max-w-lg mx-auto space-y-6">
                 {/* Header */}
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold">{org?.name || 'Invoice'}</h1>
+                    <h1 className="text-2xl font-bold">{tenantConfig?.brand_name || org?.name || 'Invoice'}</h1>
                     <p className="text-muted-foreground text-sm">Payment requested</p>
                 </div>
 
@@ -260,7 +282,7 @@ export default function PayOrder() {
                                 </p>
                                 {([
                                     ...(tenantConfig?.zelle_email ? [{ method: 'Zelle' as const, destination: tenantConfig.zelle_email }] : []),
-                                    ...(tenantConfig?.cashapp_tag ? [{ method: 'Cash App' as const, destination: tenantConfig.cashapp_tag }] : []),
+                                    ...(tenantConfig?.cashapp_handle ? [{ method: 'Cash App' as const, destination: tenantConfig.cashapp_handle }] : []),
                                     ...(tenantConfig?.venmo_handle ? [{ method: 'Venmo' as const, destination: tenantConfig.venmo_handle }] : []),
                                     { method: 'Wire Transfer' as const, destination: null as string | null },
                                 ]).map(({ method, destination }) => (
@@ -268,15 +290,15 @@ export default function PayOrder() {
                                             key={method}
                                             onClick={() => handleManualPaymentSelected(method)}
                                             disabled={confirmingManual}
-                                            className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-1 disabled:opacity-50"
+                                            className="w-full p-3 rounded-lg border border-border/60 hover:border-primary/50 hover:bg-primary/10 transition-colors text-left space-y-1 disabled:opacity-50"
                                         >
-                                            <p className="font-medium">{method}</p>
+                                            <p className="font-semibold text-foreground">{method}</p>
                                             {destination ? (
-                                                <p className="text-muted-foreground text-xs">
-                                                    Send to: <span className="font-medium text-foreground">{destination}</span>
+                                                <p className="text-xs text-foreground/70">
+                                                    Send to: <span className="font-semibold text-primary">{destination}</span>
                                                 </p>
                                             ) : (
-                                                <p className="text-muted-foreground text-xs">
+                                                <p className="text-xs text-foreground/70">
                                                     {method === 'Wire Transfer'
                                                         ? 'Contact your sales rep for wire transfer details.'
                                                         : `I'll pay via ${method} — mark as pending verification.`}

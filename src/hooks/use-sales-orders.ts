@@ -12,6 +12,20 @@ import { logger } from '@/lib/logger';
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'pending_verification' | 'refunded' | 'commission_offset';
 
+export interface OrderPayment {
+    id: string;
+    org_id: string;
+    sales_order_id: string;
+    amount: number;
+    payment_method: string;
+    payment_date: string;
+    reference_id: string | null;
+    notes: string | null;
+    recorded_by: string | null;
+    created_at: string;
+    profiles?: { full_name: string | null } | null;
+}
+
 export interface ShippingRate {
     object_id: string;
     provider: string;
@@ -927,6 +941,83 @@ export function useGetShippingRates() {
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to get rates', description: error.message });
+        },
+    });
+}
+
+// ── Order Payments (partial payment tracking) ────────────────────────
+
+export function useOrderPayments(orderId?: string) {
+    return useQuery({
+        queryKey: ['order-payments', orderId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('order_payments')
+                .select('*, profiles:recorded_by(full_name)')
+                .eq('sales_order_id', orderId!)
+                .order('payment_date', { ascending: false });
+            if (error) throw error;
+            return data as OrderPayment[];
+        },
+        enabled: !!orderId,
+        staleTime: 15_000,
+    });
+}
+
+export function useRecordPayment() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { profile } = useAuth();
+
+    return useMutation({
+        mutationFn: async ({
+            orderId,
+            amount,
+            paymentMethod,
+            notes,
+        }: {
+            orderId: string;
+            amount: number;
+            paymentMethod: string;
+            notes?: string;
+        }) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+            if (amount <= 0) throw new Error('Amount must be greater than 0');
+
+            const { data, error } = await supabase
+                .from('order_payments')
+                .insert({
+                    org_id: profile.org_id,
+                    sales_order_id: orderId,
+                    amount,
+                    payment_method: paymentMethod,
+                    payment_date: new Date().toISOString(),
+                    recorded_by: profile.id,
+                    notes: notes || null,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Recalculate profit (merchant fee changes with payment method)
+            await recalculateOrderProfit(orderId);
+
+            return data;
+        },
+        onSuccess: (_, { orderId }) => {
+            queryClient.invalidateQueries({ queryKey: ['order-payments', orderId] });
+            queryClient.invalidateQueries({ queryKey: ['sales_order', orderId] });
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['order_commissions', orderId] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            toast({ title: 'Payment recorded', description: 'Order and commissions updated.' });
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Payment failed', description: error.message });
         },
     });
 }
