@@ -39,6 +39,7 @@ function lazyRetry(fn: () => Promise<{ default: React.ComponentType }>) {
 
 // Lazy loaded — only fetched when navigated to
 const Onboarding = lazyRetry(() => import("./pages/Onboarding"));
+const ReferralRedirect = lazyRetry(() => import("./pages/ReferralRedirect"));
 const UpdatePassword = lazyRetry(() => import("./pages/auth/UpdatePassword"));
 const Peptides = lazyRetry(() => import("./pages/Peptides"));
 const Lots = lazyRetry(() => import("./pages/Lots"));
@@ -183,6 +184,7 @@ const App = () => (
                                         <Route path="/pay/:orderId/success" element={<PaySuccess />} />
                                         <Route path="/auth" element={<Auth />} />
                                         <Route path="/join" element={<Join />} />
+                                        <Route path="/r/:slug" element={<ReferralRedirect />} />
                                         <Route path="/onboarding" element={<Onboarding />} />
                                         <Route path="/merchant-onboarding" element={<Navigate to="/onboarding" replace />} />
                                         <Route path="/update-password" element={<UpdatePassword />} />

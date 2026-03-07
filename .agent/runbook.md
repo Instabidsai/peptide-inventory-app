@@ -87,3 +87,14 @@ supabase functions deploy <function-name>
 bun run build
 bun run test
 ```
+
+---
+
+## Symptom → Cause → Fix
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Partner shows "page doesn't exist" when clicked from DownlineVisualizer | `DownlineVisualizer.tsx` navigated to `/admin/contacts/:id` which doesn't exist; correct route is `/contacts/:id` | Changed `navigate(\`/admin/contacts/${contactId}\`)` → `navigate(\`/contacts/${contactId}\`)` in DownlineVisualizer.tsx:75 |
+| Referral link `/r/:slug` or `/r/:slug?p` goes to 404 | No route existed in the HashRouter for `/r/:slug`. Short referral URLs were completely broken. | Created `ReferralRedirect.tsx` page + added `<Route path="/r/:slug">` in App.tsx. Resolves slug via `resolve_referral_slug` RPC, converts `?p` → `?role=partner&tier=standard`, redirects to `/join`. |
+| Partner created via referral link shows as customer, invisible in partner views | Without `/r/:slug` route, the `?p` flag was never parsed, so `link_referral` RPC received `role='customer'` instead of `role='partner'`. Result: `profiles.role='client'`, `contacts.type='customer'`. Partner hooks filter by `role='sales_rep'`. | Fix the route (above) + manually fix data: `profiles.role → sales_rep`, `user_roles.role → sales_rep`, `contacts.type → partner`. |
+| Partner invisible in hierarchy (neither top-level nor child) | `parent_rep_id` was self-referencing (pointed to own profile ID). Hierarchy logic: top-level = no parent or parent not in dataset. Self-ref means parent IS in dataset, but the node itself IS the parent — infinite loop, filtered out. | Added self-reference guard in `link_referral` RPC: `CASE WHEN v_referrer_id = v_new_profile_id THEN NULL ELSE v_referrer_id END`. Migration: `20260307120000_fix_link_referral_self_ref_guard.sql`. |

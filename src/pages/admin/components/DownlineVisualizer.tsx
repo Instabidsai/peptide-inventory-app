@@ -72,7 +72,7 @@ const TreeNode = ({ node, allNodes, level, isLast }: TreeNodeProps) => {
         if (isClient) {
             // Extract real contact ID from "client-{uuid}" format
             const contactId = node.id.replace('client-', '');
-            navigate(`/admin/contacts/${contactId}`);
+            navigate(`/contacts/${contactId}`);
         } else {
             navigate(`/admin/partners/${node.id}`);
         }

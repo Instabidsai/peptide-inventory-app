@@ -10,6 +10,7 @@ All routes use HashRouter (`#/path`). Pages load lazily via `lazyRetry()` except
 |---|---|---|---|---|
 | `/auth` | `Auth.tsx` | None | `useAuth` | Login / signup form |
 | `/join` | `Join.tsx` | None | — | Invite-link account creation |
+| `/r/:slug` | `ReferralRedirect.tsx` | None | — | Short referral URL resolver → redirects to /join with params |
 | `/onboarding` | `Onboarding.tsx` | None | — | New merchant onboarding wizard |
 | `/update-password` | `auth/UpdatePassword.tsx` | None | `useAuth` | Password reset after email link |
 | `/crm` | `CrmLanding.tsx` | None | — | Public marketing landing page |

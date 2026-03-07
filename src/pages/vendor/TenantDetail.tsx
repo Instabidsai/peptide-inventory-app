@@ -24,9 +24,10 @@ import {
     MessageCircle,
     Zap,
     Eye,
-    Video,
+    Calendar,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { PLATFORM } from '@/components/landing/constants';
 
 interface AuditEntry {
     id: string; action: string; table_name: string; created_at: string;
@@ -86,12 +87,9 @@ export default function TenantDetail() {
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => {
-                            const name = encodeURIComponent(tenant.config?.brand_name || tenant.org_name);
-                            window.open(`https://zoom.us/schedule?topic=ThePeptideAI+%E2%80%94+${name}+Check-in`, '_blank');
-                        }}
+                        onClick={() => window.open(PLATFORM.calUrl, '_blank')}
                     >
-                        <Video className="h-4 w-4 mr-2" />
+                        <Calendar className="h-4 w-4 mr-2" />
                         Schedule Meeting
                     </Button>
                     <Button
