@@ -49,6 +49,7 @@ profiles
 |---------|-------|-----|
 | "Row not found" on tenant_config | Tried INSERT instead of UPDATE | Use UPDATE — row created at provisioning |
 | Commission not created | Order has no contact with assigned rep | Ensure contact_id links to profile with sales_rep role |
+| Delete contact fails with FK error | `payment_email_queue.ai_suggested_contact_id` has NO ACTION FK | Fixed in `delete_contact_cascade` RPC — now nullifies before delete |
 | Cross-org data visible | Missing org_id filter in query | Add `.eq('org_id', orgId)` to every query |
 | Edge function 401 | verify_jwt = true in config.toml | Set to `false`, use `_shared/auth.ts` |
 | Edge function write blocked | Missing set_config in same SQL call | Prepend `SELECT set_config('app.agent_org_id', orgId, true)` |
