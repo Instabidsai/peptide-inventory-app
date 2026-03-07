@@ -249,6 +249,15 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     roles: ['admin'],
     sidebarItems: ['Financials'],
   },
+  {
+    key: 'payment_pool',
+    label: 'USDC Payment Pool',
+    description: 'Self-service crypto payment pool for instant credit card processing. Deploy your own smart contract, fund with USDC, and accept cards with a Stripe-like checkout.',
+    category: 'finance',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: ['Payment Pool'],
+  },
 
   // ── Customization ──
   {

@@ -72,6 +72,7 @@ const Integrations = lazyRetry(() => import("./pages/Integrations"));
 const SystemHealth = lazyRetry(() => import("./pages/admin/SystemHealth"));
 const BillingHistory = lazyRetry(() => import("./pages/admin/BillingHistory"));
 const PlatformSupport = lazyRetry(() => import("./pages/admin/PlatformSupport"));
+const PaymentPool = lazyRetry(() => import("./pages/admin/PaymentPool"));
 
 // Vendor (super-admin)
 const VendorLayout = lazyRetry(() => import("./pages/vendor/VendorLayout"));
@@ -243,6 +244,7 @@ const App = () => (
                                             <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
                                             <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
                                             <Route path="/admin/billing" element={<RoleBasedRedirect allowedRoles={['admin']}><BillingHistory /></RoleBasedRedirect>} />
+                                            <Route path="/admin/payment-pool" element={<RoleBasedRedirect allowedRoles={['admin']}><PaymentPool /></RoleBasedRedirect>} />
                                             <Route path="/platform-support" element={<RoleBasedRedirect allowedRoles={['admin']}><PlatformSupport /></RoleBasedRedirect>} />
 
                                             <Route path="/partner" element={<PartnerDashboard />} />

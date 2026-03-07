@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
+  { name: 'Payment Pool', href: '/admin/payment-pool', icon: CreditCard, roles: ['admin'] },
   { name: 'Commissions', href: '/admin/commissions', icon: DollarSign, roles: ['admin'] },
   { name: 'Automations', href: '/admin/automations', icon: Zap, roles: ['admin'] },
   { name: 'Lots', href: '/lots', icon: Package, roles: ['admin', 'staff'] },
@@ -76,7 +77,7 @@ const NAV_GROUPS = [
   { label: 'People', names: ['Customers', 'Partners', 'Commissions'] },
   { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Feedback Hub'] },
   { label: 'Partner', names: ['Partner Portal', 'Partner Store', 'My Orders'] },
-  { label: 'Admin', names: ['Financials', 'Billing', 'Automations', 'Customizations', 'Features', 'Integrations', 'Platform Support', 'Settings'] },
+  { label: 'Admin', names: ['Financials', 'Payment Pool', 'Billing', 'Automations', 'Customizations', 'Features', 'Integrations', 'Platform Support', 'Settings'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {

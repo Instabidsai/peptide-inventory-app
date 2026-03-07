@@ -1,0 +1,62 @@
+.peptideai-card-form {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    max-width: 400px;
+}
+.peptideai-card-form--ready {
+    opacity: 1;
+}
+.peptideai-field-row {
+    margin-bottom: 12px;
+}
+.peptideai-field-row label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #333;
+}
+.peptideai-field-row--half {
+    display: flex;
+    gap: 12px;
+}
+.peptideai-field-row--half > div {
+    flex: 1;
+}
+.peptideai-collect-field {
+    height: 44px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0 8px;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.peptideai-collect-field iframe {
+    height: 44px !important;
+}
+.peptideai-collect-field:focus-within,
+.peptideai-field-valid {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 1px #4CAF50;
+}
+.peptideai-field-error {
+    border-color: #e53935;
+    box-shadow: 0 0 0 1px #e53935;
+}
+.peptideai-errors {
+    color: #e53935;
+    font-size: 13px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #ffebee;
+    border-radius: 4px;
+}
+@media (max-width: 480px) {
+    .peptideai-field-row--half {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .peptideai-collect-field {
+        height: 48px;
+    }
+}

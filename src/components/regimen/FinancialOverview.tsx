@@ -93,7 +93,7 @@ const fmt = (n: number) =>
 /* ------------------------------------------------------------------ */
 
 export function FinancialOverview({ contactId }: FinancialOverviewProps) {
-    const { session } = useAuth();
+    const { session, profile } = useAuth();
     const queryClient = useQueryClient();
 
     const [loading, setLoading] = useState(true);
@@ -416,15 +416,17 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
         try {
             setLoading(true);
             if (payTarget.source === "sales_order") {
+                // Insert into order_payments — trigger auto-updates sales_orders.amount_paid & payment_status
                 const { error } = await supabase
-                    .from("sales_orders")
-                    .update({
-                        payment_status: "paid",
-                        amount_paid: payTarget.total,
+                    .from("order_payments")
+                    .insert({
+                        org_id: profile?.org_id,
+                        sales_order_id: payTarget.id,
+                        amount: payTarget.balance,
                         payment_method: payMethod,
                         payment_date: new Date().toISOString(),
-                    })
-                    .eq("id", payTarget.id);
+                        recorded_by: profile?.id || null,
+                    });
                 if (error) throw error;
 
                 // Also mark any linked movements as paid
@@ -454,6 +456,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             await fetchAll();
             queryClient.invalidateQueries({ queryKey: ["movements"] });
             queryClient.invalidateQueries({ queryKey: ["sales_orders"] });
+            queryClient.invalidateQueries({ queryKey: ["order-payments"] });
             toast({
                 title: "Payment Recorded",
                 description: `Marked as paid via ${payMethod}.`,
@@ -487,14 +490,15 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 for (const id of soIds) {
                     const t = unpaid.find((x) => x.id === id)!;
                     await supabase
-                        .from("sales_orders")
-                        .update({
-                            payment_status: "paid",
-                            amount_paid: t.total,
+                        .from("order_payments")
+                        .insert({
+                            org_id: profile?.org_id,
+                            sales_order_id: id,
+                            amount: t.balance,
                             payment_method: payMethod,
                             payment_date: new Date().toISOString(),
-                        })
-                        .eq("id", id);
+                            recorded_by: profile?.id || null,
+                        });
                 }
             }
             if (mvIds.length > 0) {
@@ -516,6 +520,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
             await fetchAll();
             queryClient.invalidateQueries({ queryKey: ["movements"] });
             queryClient.invalidateQueries({ queryKey: ["sales_orders"] });
+            queryClient.invalidateQueries({ queryKey: ["order-payments"] });
             toast({
                 title: "All Payments Recorded",
                 description: `Marked ${unpaid.length} order${unpaid.length !== 1 ? "s" : ""} as paid.`,

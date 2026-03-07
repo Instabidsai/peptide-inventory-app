@@ -1,0 +1,2 @@
+[functions.pool-test-processor]
+verify_jwt = false

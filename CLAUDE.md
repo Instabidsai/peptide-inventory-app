@@ -43,6 +43,7 @@ git push origin main:master && git push origin main:main  # Deploy to Vercel
 | Edge functions | `specs/edge-functions.md` | All 44 functions organized by category |
 | Self-healing | `specs/self-healing.md` | 16-phase sentinel-worker, zero-human-in-the-loop, 17 DB tables |
 | Integrations | `specs/integrations.md` | WooCommerce (6 fn), Shopify (3 fn + Composio), Stripe, Shippo |
+| **Payment Pool** | `specs/payment-pool.md` | **USDC pool for card processing. Smart contract + 4 edge functions + WooCommerce plugin + dashboard. Code complete, needs NMI sandbox E2E test.** |
 
 ## Schema & Debugging
 - `.agent/schema.sql` — 57 tables condensed reference (full DDL: `scripts/schema-master.sql`)
@@ -51,10 +52,10 @@ git push origin main:master && git push origin main:main  # Deploy to Vercel
 - `.agent/decisions-log.jsonl` — architectural WHY decisions
 - `.agent/scope.md` — what this project does NOT do
 
-## Current Status (2026-03-04)
-**Complete**: Multi-tenancy (57 tables), 44 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions
+## Current Status (2026-03-06)
+**Complete**: Multi-tenancy (57 tables), 48 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions, **USDC Payment Pool** (code complete, needs E2E testing)
 
-**Needs work**: Hardcoded Supabase keys in client.ts, git history secret scrub, Stripe plan seeding with real price IDs, tenant Venmo handle from tenant_config, full e2e merchant signup test
+**Needs work**: Hardcoded Supabase keys in client.ts, git history secret scrub, Stripe plan seeding with real price IDs, tenant Venmo handle from tenant_config, full e2e merchant signup test, **Payment Pool WooCommerce + NMI sandbox integration test**
 
 ## Agent API (`/agent-api/`)
 Python FastAPI for AI merchant onboarding chat. `agent-api/CLAUDE.md` is the AI system prompt — don't modify for coding tasks. Docker deployed separately.
