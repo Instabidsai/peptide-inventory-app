@@ -116,61 +116,11 @@ Deno.serve(withErrorReporting("notify-order", async (req) => {
         }
         customerName = customerName || "a customer";
 
-        // Look up order items (peptide names + quantities)
-        let itemsSummary = "";
-        if (body.order_id) {
-            const { data: items } = await supabase
-                .from("sales_order_items")
-                .select("quantity, peptides(name)")
-                .eq("sales_order_id", body.order_id);
-            if (items && items.length > 0) {
-                const itemLines = items.map((i: any) => {
-                    const name = i.peptides?.name || "Unknown";
-                    return `${name} x${i.quantity}`;
-                });
-                itemsSummary = itemLines.join(", ");
-            }
-        }
-
-        // Build the notification message
-        const total = body.total_amount ? `$${Number(body.total_amount).toFixed(2)}` : "";
-        const source = body.source || "manual";
+        // Build a SHORT notification message to conserve SMS API credits.
+        // Do NOT include order details (items, total, payment method, source).
+        // The dashboard has all the details — this is just an alert.
         const brandName = config.brand_name || "Your store";
-        const paymentMethod = body.payment_method || "";
-
-        // Format source for readability
-        const sourceLabel: Record<string, string> = {
-            woocommerce: "WooCommerce",
-            shopify: "Shopify",
-            app: "Peptide AI App",
-            manual: "Manual",
-            store: "Online Store",
-        };
-        const sourceDisplay = sourceLabel[source] || source;
-
-        let msg = `${brandName}: New order from ${customerName}`;
-        if (total) msg += ` — ${total}`;
-        if (itemsSummary) msg += `\nItems: ${itemsSummary}`;
-        msg += `\nSource: ${sourceDisplay}`;
-        if (paymentMethod) {
-            const pmLabel: Record<string, string> = {
-                zelle: "Zelle",
-                venmo: "Venmo",
-                cashapp: "CashApp",
-                stripe: "Stripe",
-                store_credit: "Store Credit",
-                cash: "Cash",
-                commission_offset: "Commission Offset",
-                psifi: "PsiFi",
-            };
-            let label = pmLabel[paymentMethod] || paymentMethod;
-            // crypto_USDC_SOL → "Crypto (USDC on SOL)"
-            if (paymentMethod.startsWith('crypto_')) {
-                const parts = paymentMethod.split('_');
-                label = parts.length >= 3 ? `Crypto (${parts[1]} on ${parts[2]})` : 'Crypto';
-            }
-            msg += ` | Payment: ${label}`;
-        }
+        const msg = `${brandName}: New activity from ${customerName} — check your dashboard`;
 
         let notified = 0;
         const errors: string[] = [];
