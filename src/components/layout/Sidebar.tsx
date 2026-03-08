@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import {
   LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, ChevronDown, BookOpen,
   ClipboardList, ShoppingBag, PackageCheck, Briefcase, DollarSign, PieChart, Network, Wand2, Leaf, Zap, Bot, ToggleRight, Activity, ShieldCheck,
-  Building2, BarChart3, CreditCard, LifeBuoy, Rocket, ScrollText, Shield, Plug, Search,
+  Building2, BarChart3, CreditCard, LifeBuoy, Rocket, ScrollText, Shield, Plug, Search, Bug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -27,8 +27,8 @@ const navigation = [
   { name: 'AI Assistant', href: '/ai', icon: Bot, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
-  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
+  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'fulfillment'] },
+  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'fulfillment'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Payment Pool', href: '/admin/payment-pool', icon: CreditCard, roles: ['admin'] },
@@ -47,6 +47,7 @@ const navigation = [
   { name: 'Features', href: '/admin/features', icon: ToggleRight, roles: ['admin'] },
   { name: 'Billing', href: '/admin/billing', icon: CreditCard, roles: ['admin'] },
   { name: 'Integrations', href: '/integrations', icon: Plug, roles: ['admin'] },
+  { name: 'Bug Reports', href: '/admin/bug-reports', icon: Bug, roles: ['admin'] },
   { name: 'Platform Support', href: '/platform-support', icon: LifeBuoy, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
@@ -77,7 +78,7 @@ const NAV_GROUPS = [
   { label: 'People', names: ['Customers', 'Partners', 'Commissions'] },
   { label: 'Content', names: ['Protocols', 'Protocol Builder', 'Resources', 'Feedback Hub'] },
   { label: 'Partner', names: ['Partner Portal', 'Partner Store', 'My Orders'] },
-  { label: 'Admin', names: ['Financials', 'Payment Pool', 'Billing', 'Automations', 'Customizations', 'Features', 'Integrations', 'Platform Support', 'Settings'] },
+  { label: 'Admin', names: ['Financials', 'Payment Pool', 'Billing', 'Automations', 'Customizations', 'Features', 'Bug Reports', 'Integrations', 'Platform Support', 'Settings'] },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
@@ -93,6 +94,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const rawPreviewRole = searchParams.get('preview_role') || sessionStorage.getItem('preview_role');
   const previewRole = ((userRole?.role === 'admin' || userRole?.role === 'super_admin') && rawPreviewRole) ? rawPreviewRole : null;
 
+  // JWT swap handles impersonation — userRole is already the target user's role
   const effectiveRole = previewRole || (
     (userRole?.role === 'sales_rep' || authProfile?.role === 'sales_rep') ? 'sales_rep'
       : userRole?.role || authProfile?.role
