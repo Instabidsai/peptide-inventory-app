@@ -34,11 +34,34 @@ const CRITICAL_RPCS = [
 ];
 
 const CRITICAL_EDGE_FUNCTIONS = [
-  "chat-with-ai",
+  // Tier 1: Order & Fulfillment (revenue-critical)
+  "fulfill-order",
+  "notify-order",
+  "notify-commission",
+  "create-supplier-order",
+  // Tier 2: Storefront & Payments
   "send-email",
-  "self-signup",
-  "provision-tenant",
+  "chat-with-ai",
   "check-payment-emails",
+  // Tier 3: Tenant provisioning
+  "provision-tenant",
+  "self-signup",
+  "invite-user",
+  "promote-contact",
+  // Tier 4: Integrations
+  "woo-webhook",
+  "shopify-webhook",
+  "woo-sync-products",
+  "woo-sync-customers",
+  "shopify-sync-products",
+  "shopify-sync-customers",
+  "sync-discount-codes",
+  // Tier 5: AI
+  "admin-ai-chat",
+  "partner-ai-chat",
+  // Tier 6: Automation & Monitoring
+  "run-automations",
+  "check-low-supply",
 ];
 
 interface CheckResult {
