@@ -308,7 +308,7 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .maybeSingle();
 
             if (contactRow?.email) {
-                const { data: profile } = await supabase
+                const { data: partnerProfile } = await supabase
                     .from("profiles")
                     .select("id, partner_tier, commission_rate, credit_balance")
                     .ilike("email", contactRow.email)
@@ -316,12 +316,12 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                     .limit(1)
                     .maybeSingle();
 
-                if (profile?.id) {
+                if (partnerProfile?.id) {
                     setPartnerInfo({
-                        profile_id: profile.id,
-                        partner_tier: profile.partner_tier || "standard",
-                        commission_rate: Number(profile.commission_rate) || 0,
-                        credit_balance: Number(profile.credit_balance) || 0,
+                        profile_id: partnerProfile.id,
+                        partner_tier: partnerProfile.partner_tier || "standard",
+                        commission_rate: Number(partnerProfile.commission_rate) || 0,
+                        credit_balance: Number(partnerProfile.credit_balance) || 0,
                     });
 
                     // Fetch their commissions

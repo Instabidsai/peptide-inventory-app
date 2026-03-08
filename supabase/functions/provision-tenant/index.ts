@@ -130,6 +130,7 @@ Deno.serve(withErrorReporting("provision-tenant", async (req) => {
                 ship_from_phone: body.ship_from_phone || '',
                 ship_from_email: body.ship_from_email || body.admin_email,
                 zelle_email: '',
+                crypto_wallets: [],
                 session_timeout_minutes: 60,
             });
 

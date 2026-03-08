@@ -47,7 +47,7 @@ interface CartItem {
 // Merchant fee mapping (see order-profit.ts for fee exemption logic):
 //   'card' -> charged 5% merchant fee (maps to 'processor' in order-profit)
 //   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
-type PaymentMethod = 'zelle' | 'cashapp' | 'venmo';
+type PaymentMethod = 'zelle' | 'cashapp' | 'venmo' | 'crypto';
 
 // Zelle + Venmo loaded from tenant config in component
 
@@ -55,7 +55,7 @@ export default function PartnerStore() {
     const { user, profile } = useAuth();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE, crypto_wallets: CRYPTO_WALLETS } = useTenantConfig();
     const storageKey = `partner_cart_${user?.id || 'anon'}`;
 
     const [cart, setCart] = useState<CartItem[]>(() => {
@@ -72,6 +72,8 @@ export default function PartnerStore() {
         try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s).paymentMethod || 'zelle' : 'zelle'; } catch { return 'zelle'; }
     });
     const [copiedZelle, setCopiedZelle] = useState(false);
+    const [copiedCrypto, setCopiedCrypto] = useState(false);
+    const [selectedCryptoWalletId, setSelectedCryptoWalletId] = useState('');
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderTotal, setOrderTotal] = useState(0); // Saved total for confirmation display
     const [placingOrder, setPlacingOrder] = useState(false);
@@ -264,6 +266,23 @@ export default function PartnerStore() {
         setTimeout(() => setCopiedZelle(false), 2000);
     };
 
+    const enabledWallets = (CRYPTO_WALLETS || []).filter(w => w.enabled && w.address);
+    const selectedWallet = enabledWallets.find(w => w.id === selectedCryptoWalletId) || enabledWallets[0];
+
+    const copyCryptoAddress = async () => {
+        if (!selectedWallet) return;
+        try { await navigator.clipboard.writeText(selectedWallet.address); } catch {
+            const input = document.createElement('input');
+            input.value = selectedWallet.address;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
+        setCopiedCrypto(true);
+        setTimeout(() => setCopiedCrypto(false), 2000);
+    };
+
     const clearCartStorage = () => localStorage.removeItem(storageKey);
 
     // Checkout — server-validated pricing, creates order as awaiting payment
@@ -271,7 +290,7 @@ export default function PartnerStore() {
         if (!partnerProfile || cart.length === 0) return;
         setPlacingOrder(true);
 
-        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
+        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selectedWallet ? `Crypto (${selectedWallet.type} on ${selectedWallet.chain})` : 'Crypto';
 
         try {
             const result = await createOrder.mutateAsync({
@@ -280,8 +299,8 @@ export default function PartnerStore() {
                     quantity: i.quantity,
                 })),
                 shipping_address: shippingAddress || undefined,
-                notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.\n${notes}`,
-                payment_method: paymentMethod,
+                notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.${paymentMethod === 'crypto' && selectedWallet ? ` Wallet: ${selectedWallet.address}` : ''}\n${notes}`,
+                payment_method: paymentMethod === 'crypto' && selectedWallet ? `crypto_${selectedWallet.type}_${selectedWallet.chain}` : paymentMethod,
             });
             setOrderTotal(result.total_amount);
             setOrderPlaced(true);
@@ -548,6 +567,7 @@ export default function PartnerStore() {
                                                     ...(ZELLE_EMAIL ? [{ id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote }] : []),
                                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                                     ...(VENMO_HANDLE ? [{ id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone }] : []),
+                                                    ...(enabledWallets.length > 0 ? [{ id: 'crypto' as PaymentMethod, label: 'Crypto', icon: Banknote }] : []),
                                                 ]).map(m => (
                                                     <Button
                                                         key={m.id}
@@ -607,6 +627,41 @@ export default function PartnerStore() {
                                                 </div>
                                             )}
 
+                                            {/* Crypto info */}
+                                            {paymentMethod === 'crypto' && selectedWallet && (
+                                                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                                                        Send {selectedWallet.type} on {selectedWallet.chain} to:
+                                                    </p>
+                                                    {enabledWallets.length > 1 && (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {enabledWallets.map(w => (
+                                                                <Button key={w.id} variant={selectedWallet.id === w.id ? 'default' : 'outline'} size="sm" className="text-xs h-7 px-2"
+                                                                    onClick={() => setSelectedCryptoWalletId(w.id)}>
+                                                                    {w.type} ({w.chain})
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <code className="flex-1 text-xs font-mono bg-white dark:bg-card/50 rounded-lg px-2 py-1 border border-border/60 truncate">
+                                                            {selectedWallet.address}
+                                                        </code>
+                                                        <Button variant="outline" size="sm" onClick={copyCryptoAddress} className="shrink-0" aria-label="Copy wallet address">
+                                                            {copiedCrypto ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                                        </Button>
+                                                    </div>
+                                                    <div className="bg-amber-100 dark:bg-amber-900/20 rounded-md px-2 py-1.5 border border-amber-200 dark:border-amber-800/30">
+                                                        <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                                                            {selectedWallet.type} on {selectedWallet.chain} network
+                                                        </p>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> worth of {selectedWallet.type} to the address above. We'll confirm when received.
+                                                    </p>
+                                                </div>
+                                            )}
+
                                             <Button
                                                 className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                                 size="lg"
@@ -631,7 +686,7 @@ export default function PartnerStore() {
                                                 <p className="font-semibold text-green-600">Order Placed!</p>
                                                 <p className="text-sm text-muted-foreground mt-1">
                                                     Send <strong>${orderTotal.toFixed(2)}</strong> via{' '}
-                                                    {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}
+                                                    {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selectedWallet ? `${selectedWallet.type} (${selectedWallet.chain})` : 'Crypto'}
                                                     {paymentMethod === 'zelle' && (
                                                         <> to <strong>{ZELLE_EMAIL}</strong></>
                                                     )}
@@ -639,6 +694,14 @@ export default function PartnerStore() {
                                                         <> to <strong>@{VENMO_HANDLE}</strong></>
                                                     )}
                                                 </p>
+                                                {paymentMethod === 'crypto' && selectedWallet && (
+                                                    <div className="mt-2 space-y-1">
+                                                        <p className="text-xs font-medium text-amber-500">{selectedWallet.type} on {selectedWallet.chain}</p>
+                                                        <code className="text-xs font-mono bg-card/50 rounded-lg px-2 py-1 border border-border/60 inline-block max-w-[200px] truncate">
+                                                            {selectedWallet.address}
+                                                        </code>
+                                                    </div>
+                                                )}
                                             </div>
                                             {paymentMethod === 'zelle' && (
                                                 <Button variant="outline" size="sm" onClick={copyZelleEmail}>
@@ -655,6 +718,12 @@ export default function PartnerStore() {
                                                         Open Venmo App to Pay
                                                     </Button>
                                                 </a>
+                                            )}
+                                            {paymentMethod === 'crypto' && selectedWallet && (
+                                                <Button variant="outline" size="sm" onClick={copyCryptoAddress}>
+                                                    {copiedCrypto ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                                                    Copy Wallet Address
+                                                </Button>
                                             )}
                                             <Button
                                                 variant="ghost"

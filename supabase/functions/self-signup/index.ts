@@ -97,6 +97,7 @@ Deno.serve(withErrorReporting("self-signup", async (req) => {
                 ship_from_phone: '',
                 ship_from_email: user.email || '',
                 zelle_email: '',
+                crypto_wallets: [],
                 session_timeout_minutes: 60,
             });
 

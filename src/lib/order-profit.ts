@@ -32,7 +32,7 @@ interface LotCostRow {
 export const MERCHANT_FEE_RATE = 0.05; // 5%
 
 // Payment methods that are exempt from merchant fee
-const FEE_EXEMPT_METHODS = ['credit', 'cash', 'wire', 'store_credit', 'commission_offset'];
+const FEE_EXEMPT_METHODS = ['credit', 'cash', 'wire', 'store_credit', 'commission_offset', 'crypto'];
 
 export async function recalculateOrderProfit(orderId: string): Promise<void> {
     // 1. Fetch the order (include org_id for scoped lot lookup)
@@ -88,7 +88,8 @@ export async function recalculateOrderProfit(orderId: string): Promise<void> {
 
     // 3. Determine merchant fee — always calculate for accurate profit estimates,
     // even before payment is received. Exempt payment methods still skip the fee.
-    const isExempt = FEE_EXEMPT_METHODS.includes(order.payment_method || '');
+    const pm = order.payment_method || '';
+    const isExempt = FEE_EXEMPT_METHODS.includes(pm) || pm.startsWith('crypto_');
     const merchantFee = !isExempt
         ? Math.round((order.total_amount || 0) * MERCHANT_FEE_RATE * 100) / 100
         : 0;

@@ -258,6 +258,15 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     roles: ['admin'],
     sidebarItems: ['Payment Pool'],
   },
+  {
+    key: 'crypto_payments',
+    label: 'Crypto Wallet Payments',
+    description: 'Accept direct crypto payments (USDC, USDT, etc.) at checkout. Customers send to org-configured wallet addresses.',
+    category: 'finance',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
 
   // ── Customization ──
   {

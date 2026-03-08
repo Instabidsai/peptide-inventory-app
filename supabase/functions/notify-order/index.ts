@@ -163,7 +163,13 @@ Deno.serve(withErrorReporting("notify-order", async (req) => {
                 commission_offset: "Commission Offset",
                 psifi: "PsiFi",
             };
-            msg += ` | Payment: ${pmLabel[paymentMethod] || paymentMethod}`;
+            let label = pmLabel[paymentMethod] || paymentMethod;
+            // crypto_USDC_SOL → "Crypto (USDC on SOL)"
+            if (paymentMethod.startsWith('crypto_')) {
+                const parts = paymentMethod.split('_');
+                label = parts.length >= 3 ? `Crypto (${parts[1]} on ${parts[2]})` : 'Crypto';
+            }
+            msg += ` | Payment: ${label}`;
         }
 
         let notified = 0;

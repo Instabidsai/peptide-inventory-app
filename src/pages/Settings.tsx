@@ -376,6 +376,18 @@ const CARD_PROCESSOR_SERVICES = [
   { service: 'paygate365_wallet_address', label: 'PayGate365 Wallet Address', placeholder: '0x...', group: 'paygate365' },
 ] as const;
 
+interface CryptoWalletEntry {
+  id: string;
+  type: string;
+  chain: string;
+  address: string;
+  label: string;
+  enabled: boolean;
+}
+
+const CRYPTO_TYPES = ['USDC', 'USDT', 'BTC', 'ETH', 'SOL', 'DAI'] as const;
+const CRYPTO_CHAINS = ['SOL', 'ETH', 'POLYGON', 'BTC', 'BASE', 'TRON', 'BSC'] as const;
+
 function PaymentMethodsTab({ orgId }: { orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -385,6 +397,11 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
     venmo_handle: '',
     cashapp_handle: '',
   });
+
+  // Crypto wallets
+  const [cryptoWallets, setCryptoWallets] = useState<CryptoWalletEntry[]>([]);
+  const [savingCrypto, setSavingCrypto] = useState(false);
+  const [newWallet, setNewWallet] = useState({ type: 'USDC', chain: 'SOL', address: '', label: '' });
 
   // Card processor API keys
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
@@ -396,7 +413,7 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tenant_config')
-        .select('zelle_email, venmo_handle, cashapp_handle')
+        .select('zelle_email, venmo_handle, cashapp_handle, crypto_wallets')
         .eq('org_id', orgId)
         .maybeSingle();
       if (error) throw error;
@@ -423,7 +440,10 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
   const savedMap = new Map(savedKeys?.map(k => [k.service, k]) || []);
 
   useEffect(() => {
-    if (config) setPayment(prev => ({ ...prev, ...config }));
+    if (config) {
+      setPayment(prev => ({ ...prev, zelle_email: config.zelle_email || '', venmo_handle: config.venmo_handle || '', cashapp_handle: config.cashapp_handle || '' }));
+      setCryptoWallets(Array.isArray(config.crypto_wallets) ? config.crypto_wallets : []);
+    }
   }, [config]);
 
   const handleSave = async () => {
@@ -514,6 +534,143 @@ function PaymentMethodsTab({ orgId }: { orgId: string }) {
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save Payment Methods
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Crypto Wallet Payments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="h-5 w-5" /> Crypto Wallet Payments
+          </CardTitle>
+          <CardDescription>
+            Add crypto wallets so customers can pay with USDC, USDT, BTC, etc. at checkout. Each wallet specifies the token type, blockchain, and wallet address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing wallets */}
+          {cryptoWallets.length > 0 && (
+            <div className="space-y-2">
+              {cryptoWallets.map((w) => (
+                <div key={w.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/60 bg-card/50">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{w.type} on {w.chain}</p>
+                    <p className="text-xs text-muted-foreground font-mono truncate">{w.address}</p>
+                    {w.label && <p className="text-xs text-muted-foreground">{w.label}</p>}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => {
+                      setCryptoWallets(prev => prev.map(x => x.id === w.id ? { ...x, enabled: !x.enabled } : x));
+                    }}
+                    aria-label={w.enabled ? 'Disable wallet' : 'Enable wallet'}
+                  >
+                    {w.enabled ? <Check className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-destructive"
+                    onClick={() => {
+                      setCryptoWallets(prev => prev.filter(x => x.id !== w.id));
+                    }}
+                    aria-label="Remove wallet"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new wallet form */}
+          <div className="space-y-3 border border-dashed border-border/60 rounded-lg p-3">
+            <p className="text-xs font-semibold text-muted-foreground">Add Crypto Wallet</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Token Type</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={newWallet.type}
+                  onChange={e => setNewWallet(prev => ({ ...prev, type: e.target.value }))}
+                >
+                  {CRYPTO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Blockchain</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={newWallet.chain}
+                  onChange={e => setNewWallet(prev => ({ ...prev, chain: e.target.value }))}
+                >
+                  {CRYPTO_CHAINS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Wallet Address</Label>
+              <Input
+                value={newWallet.address}
+                onChange={e => setNewWallet(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Paste your wallet address"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Label (optional)</Label>
+              <Input
+                value={newWallet.label}
+                onChange={e => setNewWallet(prev => ({ ...prev, label: e.target.value }))}
+                placeholder="e.g. Main Treasury"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!newWallet.address.trim()}
+              onClick={() => {
+                const entry: CryptoWalletEntry = {
+                  id: crypto.randomUUID(),
+                  type: newWallet.type,
+                  chain: newWallet.chain,
+                  address: newWallet.address.trim(),
+                  label: newWallet.label.trim(),
+                  enabled: true,
+                };
+                setCryptoWallets(prev => [...prev, entry]);
+                setNewWallet({ type: 'USDC', chain: 'SOL', address: '', label: '' });
+              }}
+            >
+              <Plus className="mr-1 h-3 w-3" /> Add Wallet
+            </Button>
+          </div>
+
+          <Button
+            onClick={async () => {
+              setSavingCrypto(true);
+              try {
+                const { error } = await supabase
+                  .from('tenant_config')
+                  .update({ crypto_wallets: cryptoWallets })
+                  .eq('org_id', orgId);
+                if (error) throw error;
+                queryClient.invalidateQueries({ queryKey: ['tenant-config-payment'] });
+                invalidateTenantConfigCache();
+                toast({ title: 'Crypto wallets saved' });
+              } catch (err) {
+                toast({ title: 'Failed to save', description: (err as any)?.message || 'Unknown error', variant: 'destructive' });
+              } finally {
+                setSavingCrypto(false);
+              }
+            }}
+            disabled={savingCrypto}
+          >
+            {savingCrypto ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Crypto Wallets
           </Button>
         </CardContent>
       </Card>

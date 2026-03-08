@@ -37,7 +37,7 @@ export default function ClientStore() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE, crypto_wallets: CRYPTO_WALLETS } = useTenantConfig();
     const [cart, setCart] = useState<CartItem[]>(() => {
         try {
             const saved = localStorage.getItem('peptide_cart');
@@ -51,6 +51,7 @@ export default function ClientStore() {
     const [selectedProtocol, setSelectedProtocol] = useState<SelectedProtocol | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('zelle');
     const [copiedZelle, setCopiedZelle] = useState(false);
+    const [selectedCryptoWalletId, setSelectedCryptoWalletId] = useState('');
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const cartRef = React.useRef<HTMLDivElement>(null);
@@ -328,7 +329,9 @@ export default function ClientStore() {
         }
         setPlacingOrder(true);
 
-        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo';
+        const enabledWallets = (CRYPTO_WALLETS || []).filter(w => w.enabled && w.address);
+        const selWallet = enabledWallets.find(w => w.id === selectedCryptoWalletId) || enabledWallets[0];
+        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selWallet ? `Crypto (${selWallet.type} on ${selWallet.chain})` : 'Crypto';
 
         try {
             const result = await createOrder.mutateAsync({
@@ -337,8 +340,8 @@ export default function ClientStore() {
                     quantity: i.quantity,
                 })),
                 shipping_address: shippingAddress || undefined,
-                notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}. Payment via ${methodLabel}.\n${notes}`,
-                payment_method: paymentMethod,
+                notes: `CLIENT ORDER — ${contact?.name || 'Unknown Client'}. Payment via ${methodLabel}.${paymentMethod === 'crypto' && selWallet ? ` Wallet: ${selWallet.address}` : ''}\n${notes}`,
+                payment_method: paymentMethod === 'crypto' && selWallet ? `crypto_${selWallet.type}_${selWallet.chain}` : paymentMethod,
                 contact_id: contact?.id,
             });
             setOrderPlaced(true);
@@ -480,6 +483,9 @@ export default function ClientStore() {
                 zelleEmail={ZELLE_EMAIL}
                 venmoHandle={VENMO_HANDLE}
                 cashappHandle={CASHAPP_HANDLE}
+                cryptoWallets={CRYPTO_WALLETS}
+                selectedCryptoWalletId={selectedCryptoWalletId}
+                onSelectCryptoWallet={setSelectedCryptoWalletId}
                 copiedZelle={copiedZelle}
                 onCopyZelle={copyZelleEmail}
                 onCheckout={handleCheckout}

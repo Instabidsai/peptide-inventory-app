@@ -15,9 +15,11 @@ import {
     Copy,
     Banknote,
     Smartphone,
+    Coins,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { CartItem, PaymentMethod } from './types';
+import type { CryptoWallet } from '@/hooks/use-tenant-config';
 
 interface CartSummaryProps {
     cart: CartItem[];
@@ -36,6 +38,9 @@ interface CartSummaryProps {
     zelleEmail: string;
     venmoHandle: string;
     cashappHandle: string;
+    cryptoWallets?: CryptoWallet[];
+    selectedCryptoWalletId?: string;
+    onSelectCryptoWallet?: (walletId: string) => void;
     copiedZelle: boolean;
     onCopyZelle: () => void;
     onCheckout: () => void;
@@ -61,6 +66,9 @@ export function CartSummary({
     zelleEmail,
     venmoHandle,
     cashappHandle,
+    cryptoWallets,
+    selectedCryptoWalletId,
+    onSelectCryptoWallet,
     copiedZelle,
     onCopyZelle,
     onCheckout,
@@ -70,6 +78,27 @@ export function CartSummary({
 }: CartSummaryProps) {
     const { toast } = useToast();
     const [venmoOpening, setVenmoOpening] = React.useState(false);
+    const [copiedCrypto, setCopiedCrypto] = React.useState(false);
+
+    const enabledWallets = (cryptoWallets || []).filter(w => w.enabled && w.address);
+    const selectedWallet = enabledWallets.find(w => w.id === selectedCryptoWalletId) || enabledWallets[0];
+
+    const copyCryptoAddress = async () => {
+        if (!selectedWallet) return;
+        try {
+            await navigator.clipboard.writeText(selectedWallet.address);
+        } catch {
+            const input = document.createElement('input');
+            input.value = selectedWallet.address;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+        }
+        setCopiedCrypto(true);
+        setTimeout(() => setCopiedCrypto(false), 2000);
+        toast({ title: 'Wallet address copied!' });
+    };
 
     const openVenmo = () => {
         if (venmoOpening) return;
@@ -96,6 +125,14 @@ export function CartSummary({
         const timer = setTimeout(() => onOrderPlacedReset(), 8000);
         return () => clearTimeout(timer);
     }, [orderPlaced, onOrderPlacedReset]);
+
+    const getMethodLabel = (method: PaymentMethod) => {
+        if (method === 'zelle') return 'Zelle';
+        if (method === 'cashapp') return 'Cash App';
+        if (method === 'venmo') return 'Venmo';
+        if (method === 'crypto' && selectedWallet) return `${selectedWallet.type} (${selectedWallet.chain})`;
+        return 'Crypto';
+    };
 
     return (
         <AnimatePresence>
@@ -193,6 +230,9 @@ export function CartSummary({
                                     { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                     { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
+                                    ...(enabledWallets.length > 0
+                                        ? [{ id: 'crypto' as PaymentMethod, label: 'Crypto', icon: Coins }]
+                                        : []),
                                 ]).map(m => (
                                     <Button
                                         key={m.id}
@@ -263,6 +303,52 @@ export function CartSummary({
                                 </div>
                             )}
 
+                            {/* Crypto info */}
+                            {paymentMethod === 'crypto' && selectedWallet && (
+                                <div className="bg-amber-950/30 border border-amber-800 rounded-lg p-3 space-y-2">
+                                    <p className="text-xs font-medium text-amber-300">
+                                        Send {selectedWallet.type} on {selectedWallet.chain} to:
+                                    </p>
+
+                                    {/* Wallet selector if multiple wallets */}
+                                    {enabledWallets.length > 1 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {enabledWallets.map(w => (
+                                                <Button
+                                                    key={w.id}
+                                                    variant={selectedWallet.id === w.id ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    className="text-xs h-7 px-2"
+                                                    onClick={() => onSelectCryptoWallet?.(w.id)}
+                                                >
+                                                    {w.type} ({w.chain})
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 text-xs font-mono bg-card/50 rounded-lg px-2 py-1 border border-border/60 truncate">
+                                            {selectedWallet.address}
+                                        </code>
+                                        <Button variant="outline" size="sm" onClick={copyCryptoAddress} className="shrink-0" aria-label="Copy wallet address">
+                                            {copiedCrypto ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                        </Button>
+                                    </div>
+
+                                    <div className="bg-amber-900/20 rounded-md px-2 py-1.5 border border-amber-800/30">
+                                        <p className="text-xs text-amber-200 font-medium">
+                                            <Coins className="h-3 w-3 inline mr-1" />
+                                            {selectedWallet.type} on {selectedWallet.chain} network
+                                        </p>
+                                    </div>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> worth of {selectedWallet.type} to the address above. We'll confirm when received.
+                                    </p>
+                                </div>
+                            )}
+
                             <Button
                                 className="w-full shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                                 size="lg"
@@ -287,7 +373,7 @@ export function CartSummary({
                                 <p className="font-semibold text-primary">Order Placed!</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
-                                    {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : 'Venmo'}
+                                    {getMethodLabel(paymentMethod)}
                                     {paymentMethod === 'zelle' && (
                                         <> to <strong>{zelleEmail}</strong></>
                                     )}
@@ -298,6 +384,22 @@ export function CartSummary({
                                         <> to <strong>{cashappHandle}</strong></>
                                     )}
                                 </p>
+                                {paymentMethod === 'crypto' && selectedWallet && (
+                                    <div className="mt-2 space-y-1.5">
+                                        <p className="text-xs font-medium text-amber-400">
+                                            <Coins className="h-3 w-3 inline mr-1" />
+                                            {selectedWallet.type} on {selectedWallet.chain}
+                                        </p>
+                                        <div className="flex items-center gap-2 justify-center">
+                                            <code className="text-xs font-mono bg-card/50 rounded-lg px-2 py-1 border border-border/60 max-w-[220px] truncate">
+                                                {selectedWallet.address}
+                                            </code>
+                                            <Button variant="outline" size="sm" onClick={copyCryptoAddress} className="shrink-0 h-7">
+                                                {copiedCrypto ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             {paymentMethod === 'zelle' && (
                                 <Button variant="outline" size="sm" onClick={onCopyZelle}>
@@ -327,6 +429,12 @@ export function CartSummary({
                                         Open Cash App to Pay
                                     </Button>
                                 </a>
+                            )}
+                            {paymentMethod === 'crypto' && selectedWallet && (
+                                <Button variant="outline" size="sm" onClick={copyCryptoAddress}>
+                                    {copiedCrypto ? <Check className="h-3 w-3 mr-1 text-green-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                                    Copy Wallet Address
+                                </Button>
                             )}
                             <Button
                                 variant="ghost"

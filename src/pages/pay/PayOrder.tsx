@@ -57,7 +57,7 @@ export default function PayOrder() {
             if (!order?.org_id) return null;
             const { data } = await supabase
                 .from('tenant_config')
-                .select('zelle_email, venmo_handle, cashapp_handle, primary_color, brand_name, logo_url')
+                .select('zelle_email, venmo_handle, cashapp_handle, crypto_wallets, primary_color, brand_name, logo_url')
                 .eq('org_id', order.org_id)
                 .maybeSingle();
             return data;
@@ -281,11 +281,18 @@ export default function PayOrder() {
                                     Select your payment method below, then send payment. Your order will be marked as pending until verified.
                                 </p>
                                 {([
-                                    ...(tenantConfig?.zelle_email ? [{ method: 'Zelle' as const, destination: tenantConfig.zelle_email }] : []),
-                                    ...(tenantConfig?.cashapp_handle ? [{ method: 'Cash App' as const, destination: tenantConfig.cashapp_handle }] : []),
-                                    ...(tenantConfig?.venmo_handle ? [{ method: 'Venmo' as const, destination: tenantConfig.venmo_handle }] : []),
-                                    { method: 'Wire Transfer' as const, destination: null as string | null },
-                                ]).map(({ method, destination }) => (
+                                    ...(tenantConfig?.zelle_email ? [{ method: 'Zelle' as const, destination: tenantConfig.zelle_email, cryptoMeta: null as null }] : []),
+                                    ...(tenantConfig?.cashapp_handle ? [{ method: 'Cash App' as const, destination: tenantConfig.cashapp_handle, cryptoMeta: null as null }] : []),
+                                    ...(tenantConfig?.venmo_handle ? [{ method: 'Venmo' as const, destination: tenantConfig.venmo_handle, cryptoMeta: null as null }] : []),
+                                    ...((Array.isArray(tenantConfig?.crypto_wallets) ? tenantConfig.crypto_wallets : [])
+                                        .filter((w: any) => w.enabled && w.address)
+                                        .map((w: any) => ({
+                                            method: `Crypto — ${w.type} (${w.chain})` as const,
+                                            destination: w.address,
+                                            cryptoMeta: { type: w.type, chain: w.chain } as { type: string; chain: string },
+                                        }))),
+                                    { method: 'Wire Transfer' as const, destination: null as string | null, cryptoMeta: null as null },
+                                ]).map(({ method, destination, cryptoMeta }) => (
                                         <button
                                             key={method}
                                             onClick={() => handleManualPaymentSelected(method)}
@@ -294,9 +301,16 @@ export default function PayOrder() {
                                         >
                                             <p className="font-semibold text-foreground">{method}</p>
                                             {destination ? (
-                                                <p className="text-xs text-foreground/70">
-                                                    Send to: <span className="font-semibold text-primary">{destination}</span>
-                                                </p>
+                                                <>
+                                                    {cryptoMeta && (
+                                                        <p className="text-xs font-medium text-amber-500">
+                                                            {cryptoMeta.type} on {cryptoMeta.chain} network
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-foreground/70">
+                                                        Send to: <span className={`font-semibold ${cryptoMeta ? 'font-mono text-xs' : ''} text-primary`}>{destination}</span>
+                                                    </p>
+                                                </>
                                             ) : (
                                                 <p className="text-xs text-foreground/70">
                                                     {method === 'Wire Transfer'
