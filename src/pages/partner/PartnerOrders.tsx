@@ -43,14 +43,14 @@ import { logger } from '@/lib/logger';
 import { StatusBadge, PaymentBadge } from '@/components/ui/status-badge';
 
 export default function PartnerOrders() {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const [selectedOrder, setSelectedOrder] = useState<OrderCardOrder | null>(null);
 
     // Single self-contained query: fetches profile, downline, then orders
     const { data: orderData, isLoading, isError, refetch } = useQuery({
-        queryKey: ['partner_network_orders', user?.id],
+        queryKey: ['partner_network_orders', user?.id, profile?.org_id],
         queryFn: async () => {
-            if (!user?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
+            if (!user?.id || !profile?.org_id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
 
             // 1. Get my profile
             const { data: profile } = await supabase
@@ -84,6 +84,7 @@ export default function PartnerOrders() {
                         peptides (id, name)
                     )
                 `)
+                .eq('org_id', profile!.org_id!)
                 .in('rep_id', networkRepIds)
                 .order('created_at', { ascending: false });
 
@@ -98,6 +99,7 @@ export default function PartnerOrders() {
                 const { data: repProfiles } = await supabase
                     .from('profiles')
                     .select('id, full_name')
+                    .eq('org_id', profile!.org_id!)
                     .in('id', repIds);
                 (repProfiles || []).forEach((p) => {
                     if (p.full_name && !repNames.has(p.id)) repNames.set(p.id, p.full_name);
@@ -111,7 +113,7 @@ export default function PartnerOrders() {
                 repNames,
             };
         },
-        enabled: !!user?.id,
+        enabled: !!user?.id && !!profile?.org_id,
     });
 
     const orders = orderData?.orders || [];

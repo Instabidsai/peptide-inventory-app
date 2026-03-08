@@ -226,15 +226,15 @@ const App = () => (
                                             <Route path="/" element={<Dashboard />} />
                                             <Route path="/peptides" element={<Peptides />} />
                                             <Route path="/lots" element={<RoleBasedRedirect><Lots /></RoleBasedRedirect>} />
-                                            <Route path="/orders" element={<Orders />} />
+                                            <Route path="/orders" element={<RoleBasedRedirect allowedRoles={['admin', 'staff', 'super_admin']}><Orders /></RoleBasedRedirect>} />
 
                                             <Route path="/feedback" element={<RoleBasedRedirect><FeedbackHub /></RoleBasedRedirect>} />
                                             <Route path="/requests" element={<Navigate to="/feedback" replace />} />
                                             <Route path="/admin-resources" element={<RoleBasedRedirect><AdminResources /></RoleBasedRedirect>} />
 
-                                            <Route path="/sales" element={<OrderList />} />
-                                            <Route path="/sales/new" element={<NewOrder />} />
-                                            <Route path="/sales/:id" element={<OrderDetails />} />
+                                            <Route path="/sales" element={<RoleBasedRedirect allowedRoles={['admin', 'staff', 'super_admin']}><OrderList /></RoleBasedRedirect>} />
+                                            <Route path="/sales/new" element={<RoleBasedRedirect allowedRoles={['admin', 'staff', 'super_admin']}><NewOrder /></RoleBasedRedirect>} />
+                                            <Route path="/sales/:id" element={<RoleBasedRedirect allowedRoles={['admin', 'staff', 'super_admin']}><OrderDetails /></RoleBasedRedirect>} />
 
                                             <Route path="/admin/reps" element={<RoleBasedRedirect allowedRoles={['admin']}><Reps /></RoleBasedRedirect>} />
                                             <Route path="/admin/partners/:id" element={<RoleBasedRedirect allowedRoles={['admin']}><PartnerDetail /></RoleBasedRedirect>} />

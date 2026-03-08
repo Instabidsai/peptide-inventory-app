@@ -138,8 +138,9 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
     const { profile } = useAuth();
     const page = pagination?.page ?? 0;
     const pageSize = pagination?.pageSize ?? DEFAULT_PAGE_SIZE;
+    const isSalesRep = profile?.role === 'sales_rep';
     return useQuery({
-        queryKey: ['sales_orders', status, profile?.org_id, page, pageSize],
+        queryKey: ['sales_orders', status, profile?.org_id, page, pageSize, isSalesRep ? profile?.id : null],
         queryFn: async () => {
             let query = supabase
                 .from('sales_orders')
@@ -160,6 +161,11 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
                 query = query.eq('status', status);
             }
 
+            // sales_rep users should only see their own orders (defense-in-depth)
+            if (isSalesRep && profile?.id) {
+                query = query.eq('rep_id', profile.id);
+            }
+
             const { data, error } = await query;
             if (error) throw error;
             return data as SalesOrder[];
@@ -171,10 +177,11 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
 
 // Fetch a SINGLE sales order by ID — used on the detail page
 export function useSalesOrder(orderId?: string) {
+    const { profile } = useAuth();
     return useQuery({
-        queryKey: ['sales_order', orderId],
+        queryKey: ['sales_order', orderId, profile?.org_id],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('sales_orders')
                 .select(`
           *,
@@ -185,13 +192,19 @@ export function useSalesOrder(orderId?: string) {
             peptides (id, name)
           )
         `)
-                .eq('id', orderId!)
-                .maybeSingle();
+                .eq('id', orderId!);
+
+            // org_id defense-in-depth (RLS also enforces this)
+            if (profile?.org_id) {
+                query = query.eq('org_id', profile.org_id);
+            }
+
+            const { data, error } = await query.maybeSingle();
 
             if (error) throw error;
             return data as SalesOrder | null;
         },
-        enabled: !!orderId,
+        enabled: !!orderId && !!profile?.org_id,
         staleTime: 30_000,
         retry: 1,
     });
