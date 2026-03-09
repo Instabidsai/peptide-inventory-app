@@ -10,6 +10,7 @@ const APP_ORIGINS = [
     'https://app.thepeptideai.com',
     'https://www.thepeptideai.com',
     'http://localhost:5173',       // local dev
+    'http://localhost:4550',       // local dev (Vite strictPort)
     'http://localhost:8080',       // local dev alt
 ];
 

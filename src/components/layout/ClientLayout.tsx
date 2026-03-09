@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Button } from '@/components/ui/button';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
@@ -20,6 +21,7 @@ export function ClientLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { userRole, user, profile, signOut } = useAuth();
+    const { isViewingAsUser, viewAsUser, stopViewAsUser, isSwapping } = useImpersonation();
     const { brand_name: brandName, logo_url } = useTenantConfig();
     useTenantTheme();
     const isAdmin = userRole?.role === 'admin' || userRole?.role === 'super_admin' || userRole?.role === 'staff'
@@ -124,7 +126,18 @@ export function ClientLayout() {
                         <LogOut className="h-5 w-5" />
                     </Button>
 
-                    {isAdmin && (
+                    {isViewingAsUser && viewAsUser ? (
+                        <Button variant="outline" size="sm" disabled={isSwapping} onClick={async () => {
+                            const backTo = viewAsUser.contactId ? `/contacts/${viewAsUser.contactId}` : '/';
+                            await stopViewAsUser();
+                            // Hard redirect — bypasses stale RoleBasedRedirect during session swap
+                            window.location.href = `${window.location.origin}${window.location.pathname}#${backTo}`;
+                            window.location.reload();
+                        }} className="border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            {isSwapping ? 'Restoring...' : 'Exit View'}
+                        </Button>
+                    ) : isAdmin ? (
                         <Button variant="outline" size="sm" onClick={() => {
                             sessionStorage.removeItem('preview_role');
                             navigate('/');
@@ -132,8 +145,7 @@ export function ClientLayout() {
                             <LayoutDashboard className="mr-2 h-4 w-4" />
                             Admin
                         </Button>
-                    )}
-                    {isSalesRep && !isAdmin && (
+                    ) : isSalesRep ? (
                         <Button variant="outline" size="sm" onClick={() => {
                             sessionStorage.removeItem('preview_role');
                             navigate('/partner');
@@ -141,7 +153,7 @@ export function ClientLayout() {
                             <Briefcase className="mr-2 h-4 w-4" />
                             Partner Portal
                         </Button>
-                    )}
+                    ) : null}
                 </div>
             </header>
 

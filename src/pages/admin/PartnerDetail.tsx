@@ -21,6 +21,7 @@ import {
     Trash2,
     Loader2,
     Network,
+    Eye,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -42,6 +43,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 
 // Referral Activity Card — shows total referrals, total spend, per-customer breakdown
 function ReferralActivityCard({ repId }: { repId: string }) {
@@ -1650,7 +1653,10 @@ export default function PartnerDetail() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { profile: currentProfile } = useAuth();
+    const { profile: currentProfile, userRole } = useAuth();
+    const { startViewAsUser, isSwapping } = useImpersonation();
+    const { isEnabled } = useOrgFeatures();
+    const canViewAs = (userRole?.role === 'admin' || userRole?.role === 'super_admin') && isEnabled('view_as_user');
 
     // 1. Fetch Partner Profile
     const { data: partner, isLoading, isError, refetch } = useQuery({
@@ -1709,7 +1715,7 @@ export default function PartnerDetail() {
                 <Button variant="ghost" size="icon" aria-label="Back to partners" onClick={() => navigate('/admin/reps')}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <div>
+                <div className="flex-1">
                     <h1 className="text-2xl font-bold tracking-tight">{partner.full_name}</h1>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Badge variant={partner.role === 'sales_rep' ? 'secondary' : 'default'}>
@@ -1720,6 +1726,28 @@ export default function PartnerDetail() {
                         </span>
                     </div>
                 </div>
+                {canViewAs && partner.user_id && (
+                    <Button
+                        variant="outline"
+                        disabled={isSwapping}
+                        onClick={async () => {
+                            try {
+                                await startViewAsUser({
+                                    userId: partner.user_id,
+                                    profileId: partner.id,
+                                    name: partner.full_name || 'Partner',
+                                    role: partner.role || 'sales_rep',
+                                });
+                                navigate('/partner');
+                            } catch (err: any) {
+                                toast({ variant: 'destructive', title: 'Impersonation failed', description: err.message || 'Could not switch to this user' });
+                            }
+                        }}
+                    >
+                        {isSwapping ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                        {isSwapping ? 'Switching...' : `View As ${partner.full_name?.split(' ')[0] || 'Partner'}`}
+                    </Button>
+                )}
             </div>
 
             {/* Quick Stats */}

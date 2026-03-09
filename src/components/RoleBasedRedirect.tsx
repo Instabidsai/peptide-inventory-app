@@ -57,7 +57,15 @@ export function RoleBasedRedirect({ children, allowedRoles }: RoleBasedRedirectP
 
         // Use userRole.role if available, otherwise fall back to profile.role
         let roleName = userRole?.role || profile?.role || '';
-        if (previewRole && ['admin', 'staff', 'sales_rep', 'super_admin'].includes(roleName)) {
+
+        // View-as-user impersonation overrides role (takes priority over preview_role)
+        const viewAsRaw = sessionStorage.getItem('view_as_user');
+        if (viewAsRaw) {
+            try {
+                const viewAs = JSON.parse(viewAsRaw);
+                if (viewAs?.role) roleName = viewAs.role;
+            } catch { /* ignore */ }
+        } else if (previewRole && ['admin', 'staff', 'sales_rep', 'super_admin'].includes(roleName)) {
             roleName = previewRole;
         }
 

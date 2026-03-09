@@ -19,31 +19,33 @@ export function useClientProfile() {
     const healAttempted = useRef(false);
     const healCount = useRef(0);
     const MAX_HEAL_ATTEMPTS = 3;
+    // JWT swap handles impersonation — user.id IS the target user when impersonating
+    const targetUserId = user?.id;
 
     // Allow external callers (e.g. retry button) to reset heal state
     const resetHeal = useCallback(() => {
         healAttempted.current = false;
         healCount.current = 0;
-        queryClient.invalidateQueries({ queryKey: ['client-profile', user?.id] });
-    }, [queryClient, user?.id]);
+        queryClient.invalidateQueries({ queryKey: ['client-profile', targetUserId] });
+    }, [queryClient, targetUserId]);
 
     // Setup Realtime subscription to detect auto-creation instantly
     useEffect(() => {
-        if (!user?.id) return;
+        if (!targetUserId) return;
 
         const channel = supabase
-            .channel(`client_profile_${user.id}`)
+            .channel(`client_profile_${targetUserId}`)
             .on(
                 'postgres_changes',
                 {
                     event: '*',
                     schema: 'public',
                     table: 'contacts',
-                    filter: `linked_user_id=eq.${user.id}`,
+                    filter: `linked_user_id=eq.${targetUserId}`,
                 },
                 (payload) => {
                     logger.info('[useClientProfile] Realtime contact event!', payload.eventType);
-                    queryClient.invalidateQueries({ queryKey: ['client-profile', user.id] });
+                    queryClient.invalidateQueries({ queryKey: ['client-profile', targetUserId] });
                 }
             )
             .subscribe();
@@ -51,17 +53,17 @@ export function useClientProfile() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user?.id, queryClient]);
+    }, [targetUserId, queryClient]);
 
     const query = useQuery({
-        queryKey: ['client-profile', user?.id],
+        queryKey: ['client-profile', targetUserId],
         queryFn: async () => {
-            if (!user) throw new Error('Not authenticated');
+            if (!targetUserId) throw new Error('Not authenticated');
 
             const { data, error } = await supabase
                 .from('contacts')
                 .select('*')
-                .eq('linked_user_id', user.id)
+                .eq('linked_user_id', targetUserId)
                 .maybeSingle();
 
             if (error) {
@@ -75,24 +77,25 @@ export function useClientProfile() {
             }
 
             // No contact found — fire self-healing RPC (awaited, with retries)
-            if (healCount.current < MAX_HEAL_ATTEMPTS && profile?.org_id) {
+            // Only self-heal for the real user, not when impersonating
+            const isImpersonating = targetUserId !== user?.id;
+            if (!isImpersonating && healCount.current < MAX_HEAL_ATTEMPTS && profile?.org_id) {
                 healCount.current++;
                 healAttempted.current = true;
                 logger.warn(`[useClientProfile] No contact found — heal attempt ${healCount.current}/${MAX_HEAL_ATTEMPTS}`);
 
                 try {
                     const { data: healResult, error: healError } = await supabase
-                        .rpc('ensure_customer_contact', { p_user_id: user.id });
+                        .rpc('ensure_customer_contact', { p_user_id: targetUserId });
 
                     if (healError) {
                         logger.error('[useClientProfile] ensure_customer_contact failed:', healError.message);
                     } else if (healResult?.created || healResult?.linked) {
                         logger.info('[useClientProfile] Self-healed contact:', healResult);
-                        // Contact was created/linked — refetch immediately to get the full record
                         const { data: freshContact } = await supabase
                             .from('contacts')
                             .select('*')
-                            .eq('linked_user_id', user.id)
+                            .eq('linked_user_id', targetUserId)
                             .maybeSingle();
                         if (freshContact) return freshContact;
                     }
@@ -103,7 +106,7 @@ export function useClientProfile() {
 
             return null;
         },
-        enabled: !!user,
+        enabled: !!targetUserId,
         staleTime: 30_000, // 30s stale time (was 5min — too long for missing contacts)
         // Poll every 3s while contact is null, stop once found
         refetchInterval: (q) => {

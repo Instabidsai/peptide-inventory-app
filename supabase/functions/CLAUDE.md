@@ -60,6 +60,11 @@ Deno.serve(async (req) => {
 | `analyze-food` | Food image → nutrition data | Yes | Client health tracking |
 | `process-health-document` | PDF/doc → health data extraction | Yes | Client health tracking |
 
+### Admin / Impersonation
+| Function | Purpose | Auth Required | Notes |
+|----------|---------|---------------|-------|
+| `admin-impersonate` | Mints a real JWT for a target user so admin can fully impersonate them | Yes (admin/super_admin role) | Uses service role to call `auth.admin.generateLink`. Returns `access_token` + `refresh_token`. Called by `ImpersonationContext.tsx` — do NOT call directly from other code. Admin session backup/restore handled client-side in localStorage. |
+
 ### Tenant / Merchant
 | Function | Purpose | Notes |
 |----------|---------|-------|

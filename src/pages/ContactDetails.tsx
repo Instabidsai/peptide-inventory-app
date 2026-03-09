@@ -6,7 +6,11 @@ import { usePeptides } from '@/hooks/use-peptides';
 import { useMovements } from '@/hooks/use-movements';
 import { supabase } from '@/integrations/sb_client/client';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calculator, FlaskConical, ShoppingCart } from 'lucide-react';
+import { Loader2, Calculator, FlaskConical, ShoppingCart, Eye } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useOrgFeatures } from '@/hooks/use-org-features';
+import { useToast } from '@/hooks/use-toast';
 
 const staggerContainer = {
     hidden: {},
@@ -58,6 +62,11 @@ import type { ConfirmDialogState } from '@/components/contacts/types';
 export default function ContactDetails() {
     const { id } = useParams<{ id: string }>();
     const { data: contact, isLoading: isLoadingContact } = useContact(id!);
+    const { userRole } = useAuth();
+    const { startViewAsUser, isSwapping } = useImpersonation();
+    const { isEnabled } = useOrgFeatures();
+    const { toast } = useToast();
+    const canViewAs = (userRole?.role === 'admin' || userRole?.role === 'super_admin') && isEnabled('view_as_user');
     const {
         protocols: assignedProtocols,
         isLoading: isLoadingProtocols,
@@ -71,6 +80,47 @@ export default function ContactDetails() {
     const { data: movements } = useMovements(id);
 
     const navigate = useNavigate();
+
+    // Look up the linked user's profile for "View As" feature
+    const { data: linkedProfile } = useQuery({
+        queryKey: ['linked_profile', contact?.linked_user_id],
+        queryFn: async () => {
+            if (!contact?.linked_user_id) return null;
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, user_id, full_name, role')
+                .eq('user_id', contact.linked_user_id)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!contact?.linked_user_id && canViewAs,
+    });
+
+    const handleViewAsUser = async () => {
+        if (!contact?.linked_user_id || !linkedProfile) return;
+        // Map contact type to the role the user sees
+        const targetRole = contact.type === 'partner' ? 'sales_rep'
+            : (linkedProfile.role || 'customer');
+        try {
+            await startViewAsUser({
+                userId: contact.linked_user_id,
+                profileId: linkedProfile.id,
+                name: contact.name || linkedProfile.full_name || 'User',
+                role: targetRole,
+                contactId: id,
+            });
+            // Navigate to where this role lands
+            if (targetRole === 'sales_rep') {
+                navigate('/partner');
+            } else if (targetRole === 'client' || targetRole === 'customer') {
+                navigate('/dashboard');
+            } else {
+                navigate('/');
+            }
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Impersonation failed', description: err.message || 'Could not switch to this user' });
+        }
+    };
 
     // Confirm dialog state (replaces browser confirm())
     const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(
@@ -196,6 +246,17 @@ export default function ContactDetails() {
                         <ShoppingCart className="mr-2 h-4 w-4" />
                         New Order
                     </Button>
+                    {canViewAs && (
+                        <Button
+                            variant="outline"
+                            onClick={handleViewAsUser}
+                            disabled={!contact.linked_user_id || !linkedProfile || isSwapping}
+                            title={!contact.linked_user_id ? 'This contact has no account yet' : 'View app as this user'}
+                        >
+                            {isSwapping ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+                            {isSwapping ? 'Switching...' : `View As ${contact.name?.split(' ')[0] || 'User'}`}
+                        </Button>
+                    )}
                 </ContactInfoCard>
 
                 <ResourcesCard contactId={id!} />

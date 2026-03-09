@@ -18,6 +18,7 @@
 -- tenant_config: branding/payments/shipping per org (ONE ROW PER ORG — always UPDATE, never INSERT)
 --   org_id (PK → organizations), brand_name, logo_url, support_email,
 --   stripe_account_id, venmo_handle, cashapp_tag,
+--   crypto_wallets JSONB DEFAULT '[]' — [{id, type, chain, address, label, enabled}]
 --   shipping_from_*, default_carrier
 
 -- org_features: feature flags per org (19 features seeded at signup)

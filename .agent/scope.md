@@ -25,6 +25,9 @@
 | AI inference | Sends prompts to OpenAI/Anthropic | Models run on their infrastructure |
 | Merchant onboarding AI | Routes to agent-api | Python FastAPI on separate Docker |
 
+## Capabilities Added
+- **View As User (JWT-Level Impersonation)**: Org admins can fully impersonate any customer or partner in their org. Uses `admin-impersonate` edge function to mint a real JWT for the target user — the entire Supabase session is swapped. RLS, edge functions, and all hooks see the target user's identity. Admin session is backed up to localStorage and restored on exit (hard reload). Feature-flagged via `view_as_user` (admin/super_admin only). Contacts must have `linked_user_id` to be impersonatable.
+
 ## Anti-Patterns to Avoid
 
 - **Never skip org_id scoping** — Even "admin-only" queries need org_id. Vendor queries are the exception (they see all orgs).

@@ -351,7 +351,7 @@ export default function OrderList() {
                                 <TableHead className="sticky left-0 z-20 bg-background">Order ID</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Customer</TableHead>
-                                {!isRep && <TableHead>Rep</TableHead>}
+                                <TableHead>Rep</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Payment</TableHead>
                                 <TableHead>Shipping</TableHead>
@@ -390,13 +390,11 @@ export default function OrderList() {
                                                 <span className="text-xs text-muted-foreground">{order.contacts?.email}</span>
                                             </div>
                                         </TableCell>
-                                        {!isRep && (
-                                            <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm">{order.profiles?.full_name || 'Unknown'}</span>
-                                                </div>
-                                            </TableCell>
-                                        )}
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm">{order.profiles?.full_name || 'Unknown'}</span>
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <Badge variant={getStatusColor(order.status)}>
                                                 {order.status}
@@ -485,7 +483,7 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={isRep ? 9 : 11}>
+                                    <TableCell colSpan={10}>
                                         <EmptyState
                                             icon={Truck}
                                             title="No orders found"
@@ -504,7 +502,7 @@ export default function OrderList() {
                             return (
                                 <TableFooter>
                                     <TableRow className="bg-muted/50 font-semibold">
-                                        <TableCell colSpan={isRep ? 5 : 6} className="text-xs text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-xs text-muted-foreground">
                                             {orders.length} order{orders.length !== 1 ? 's' : ''}
                                             {(filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all') && ' (filtered)'}
                                         </TableCell>

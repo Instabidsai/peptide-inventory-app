@@ -303,6 +303,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // If impersonating, restore admin session instead of signing out
+    const backup = localStorage.getItem('admin_session_backup');
+    if (backup) {
+      try {
+        const { access_token, refresh_token } = JSON.parse(backup);
+        localStorage.removeItem('admin_session_backup');
+        sessionStorage.removeItem('view_as_user');
+        window.dispatchEvent(new Event('impersonation-change'));
+        await supabase.auth.setSession({ access_token, refresh_token });
+        return; // onAuthStateChange will re-fetch admin profile
+      } catch {
+        localStorage.removeItem('admin_session_backup');
+      }
+    }
+
     // Use scope:'local' to skip the server call — avoids 403 when session is already expired
     await supabase.auth.signOut({ scope: 'local' });
     setProfile(null);
@@ -316,33 +331,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // useSyncExternalStore keeps this reactive when impersonation changes
   const impersonationSnapshot = useSyncExternalStore(
     (cb) => { window.addEventListener('impersonation-change', cb); return () => window.removeEventListener('impersonation-change', cb); },
-    () => sessionStorage.getItem('impersonation') || '',
+    () => (sessionStorage.getItem('impersonation') || '') + '|' + (sessionStorage.getItem('view_as_user') || ''),
   );
   const imp = useMemo(() => {
-    try { return impersonationSnapshot ? JSON.parse(impersonationSnapshot) as { orgId: string; orgName: string } : null; } catch { return null; }
+    try {
+      const parts = impersonationSnapshot.split('|');
+      const orgRaw = parts[0];
+      const viewAsRaw = parts[1];
+      return {
+        org: orgRaw ? JSON.parse(orgRaw) as { orgId: string; orgName: string } : null,
+        viewAs: viewAsRaw ? JSON.parse(viewAsRaw) as { userId: string; profileId: string; name: string; role: string; contactId?: string } : null,
+      };
+    } catch { return { org: null, viewAs: null }; }
   }, [impersonationSnapshot]);
   const isSuperAdmin = userRole?.role === 'super_admin';
 
   const effectiveOrg = useMemo(() => {
-    if (imp?.orgId && isSuperAdmin) {
-      return { id: imp.orgId, name: imp.orgName || 'Tenant' };
+    if (imp.org?.orgId && isSuperAdmin) {
+      return { id: imp.org.orgId, name: imp.org.orgName || 'Tenant' };
     }
     return organization;
-  }, [imp, isSuperAdmin, organization]);
+  }, [imp.org, isSuperAdmin, organization]);
 
   const effectiveRole = useMemo(() => {
-    if (imp?.orgId && isSuperAdmin && userRole) {
-      return { ...userRole, org_id: imp.orgId, role: 'admin' as AppRole };
+    // Org-level impersonation: force admin role (super_admin viewing tenant)
+    if (imp.org?.orgId && isSuperAdmin && userRole) {
+      return { ...userRole, org_id: imp.org.orgId, role: 'admin' as AppRole };
     }
+    // User-level impersonation: JWT is swapped — userRole is already the target's role
     return userRole;
-  }, [imp, isSuperAdmin, userRole]);
+  }, [imp.org, isSuperAdmin, userRole]);
 
   const effectiveProfile = useMemo(() => {
-    if (imp?.orgId && isSuperAdmin && profile) {
-      return { ...profile, org_id: imp.orgId, role: 'admin' as AppRole };
+    // Org-level impersonation: force admin role + swap org_id
+    if (imp.org?.orgId && isSuperAdmin && profile) {
+      return { ...profile, org_id: imp.org.orgId, role: 'admin' as AppRole };
     }
+    // User-level impersonation: JWT is swapped — profile is already the target's profile
     return profile;
-  }, [imp, isSuperAdmin, profile]);
+  }, [imp.org, isSuperAdmin, profile]);
 
   return (
     <AuthContext.Provider

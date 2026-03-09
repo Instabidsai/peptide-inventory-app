@@ -6,13 +6,21 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AdminAIChat } from '@/components/ai/AdminAIChat';
 import { PartnerAIChat } from '@/components/ai/PartnerAIChat';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTenantTheme } from '@/hooks/use-tenant-theme';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { RouteProgress } from '@/components/ui/route-progress';
 import { LayoutDashboard, ShoppingBag, ClipboardList, Users, PackageCheck, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const partnerNav = [
+const basePartnerNav = [
+  { name: 'Dashboard', path: '/partner', icon: LayoutDashboard },
+  { name: 'Store', path: '/partner/store', icon: ShoppingBag },
+  { name: 'Orders', path: '/partner/orders', icon: ClipboardList },
+  { name: 'Customers', path: '/contacts', icon: Users },
+];
+
+const seniorPartnerNav = [
   { name: 'Dashboard', path: '/partner', icon: LayoutDashboard },
   { name: 'Store', path: '/partner/store', icon: ShoppingBag },
   { name: 'Orders', path: '/partner/orders', icon: ClipboardList },
@@ -24,8 +32,11 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile: authProfile } = useAuth();
   const isPartnerRoute = location.pathname.startsWith('/partner');
-  const { isImpersonating, orgName, stopImpersonation } = useImpersonation();
+  const isSeniorPartner = authProfile?.partner_tier === 'senior';
+  const partnerNav = isSeniorPartner ? seniorPartnerNav : basePartnerNav;
+  const { isImpersonating, orgName, stopImpersonation, isViewingAsUser, viewAsUser, stopViewAsUser, isSwapping } = useImpersonation();
   // Inject tenant's primary color into CSS variables
   useTenantTheme();
 
@@ -40,8 +51,8 @@ export function AppLayout() {
         <CommandPalette />
       </ErrorBoundary>
 
-      {/* Impersonation banner */}
-      {isImpersonating && (
+      {/* Org-level impersonation banner (super_admin viewing a tenant) */}
+      {isImpersonating && !isViewingAsUser && (
         <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-black px-4 py-1.5 flex items-center justify-center gap-3 text-sm font-medium shadow-lg">
           <Eye className="h-4 w-4" />
           <span>Viewing as <strong>{orgName}</strong></span>
@@ -50,6 +61,30 @@ export function AppLayout() {
             className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/20 hover:bg-black/30 transition-colors text-xs font-bold"
           >
             <X className="h-3 w-3" /> Exit
+          </button>
+        </div>
+      )}
+      {/* User-level impersonation banner (admin viewing as customer/partner) */}
+      {isViewingAsUser && viewAsUser && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-blue-600 text-white px-4 py-1.5 flex items-center justify-center gap-3 text-sm font-medium shadow-lg">
+          <Eye className="h-4 w-4" />
+          <span>Viewing as <strong>{viewAsUser.name}</strong> ({viewAsUser.role})</span>
+          <button
+            disabled={isSwapping}
+            onClick={async () => {
+              const backTo = viewAsUser.contactId
+                ? `/contacts/${viewAsUser.contactId}`
+                : viewAsUser.profileId && viewAsUser.role === 'sales_rep'
+                  ? `/admin/partners/${viewAsUser.profileId}`
+                  : '/contacts';
+              await stopViewAsUser();
+              // Hard redirect — bypasses stale RoleBasedRedirect during session swap
+              window.location.href = `${window.location.origin}${window.location.pathname}#${backTo}`;
+              window.location.reload();
+            }}
+            className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors text-xs font-bold disabled:opacity-50"
+          >
+            <X className="h-3 w-3" /> {isSwapping ? 'Restoring...' : 'Exit'}
           </button>
         </div>
       )}

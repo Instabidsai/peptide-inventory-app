@@ -59,6 +59,13 @@ Check `useOrgFeatures()` hook before rendering feature-gated UI. If a feature is
 - **Vendor** = super-admin (PureUSPeptide) managing ALL tenant orgs
 - When writing vendor code, ALWAYS use `targetOrgId` for tenant mutations, NEVER `currentUser.orgId`
 
+## Crypto Wallet Payments
+- Wallets stored as JSONB array `crypto_wallets` on `tenant_config`: `[{id, type, chain, address, label, enabled}]`
+- Payment method stored in `sales_orders.payment_method` as `crypto_USDC_SOL` format (prefix + type + chain)
+- Fee exemption: `FEE_EXEMPT_METHODS` in `order-profit.ts` + `pm.startsWith('crypto_')` check
+- Crypto button only shows at checkout when org has `enabledWallets.length > 0`
+- `CryptoWallet` type exported from `use-tenant-config.ts`
+
 ## Adding New Features
 1. New DB table → migration in `supabase/migrations/` (always `CREATE TABLE IF NOT EXISTS`)
 2. Server logic → edge function in `supabase/functions/` (with config.toml)
@@ -71,6 +78,29 @@ Check `useOrgFeatures()` hook before rendering feature-gated UI. If a feature is
 git push origin main:master && git push origin main:main
 ```
 Vercel production branch = `main`. Must push to both remotes.
+
+## View As User (Impersonation) Pattern — JWT-Level Session Swap
+
+**Architecture**: True JWT impersonation via `admin-impersonate` edge function. The Supabase session is fully replaced — no React-context-only tricks.
+
+### How It Works
+1. Admin calls `admin-impersonate` edge function with `targetUserId`
+2. Edge function mints a real JWT for the target user (service role, admin-only endpoint)
+3. `ImpersonationContext.tsx` calls `supabase.auth.setSession({ access_token, refresh_token })` — the entire session is swapped
+4. Admin session is backed up to `localStorage` key `admin_session_backup` before swap
+5. All edge functions, RLS, and hooks now see the target user's JWT automatically
+6. On exit: admin session restored from localStorage, hard reload (`window.location.href = '/admin'`) to flush all in-memory state
+
+### Key Implementation Details
+- **localStorage vs sessionStorage**: Admin backup uses `localStorage` so it survives tab refresh while impersonating. Regular impersonation state also stored there.
+- **Hard reload on exit**: `window.location.href` (not `navigate()`) forces a full React re-mount, avoiding `RoleBasedRedirect` race conditions from stale context state
+- **Orphan detection**: On mount, `ImpersonationContext` checks for a `admin_session_backup` in localStorage with no active impersonation — auto-restores the admin session if found (handles crash/forced-exit recovery)
+- **SignOut guard**: `AuthContext.signOut` intercepts calls while impersonating and restores admin session instead of signing out. No double-signout risk.
+- **Hooks**: `use-client-profile.ts` and `use-partner.ts` use `user?.id` directly (no `effectiveUserId` — the JWT IS the target user)
+- **CORS**: `_shared/cors.ts` includes `localhost:4550` for dev testing
+- Feature-flagged via `view_as_user` in org_features (admin/super_admin only)
+- Contacts need `linked_user_id` to be impersonatable — button disabled otherwise
+- Self-healing RPCs (e.g., `ensure_customer_contact`) must NOT fire when impersonating — check `isViewingAsUser` from `useImpersonation()`
 
 ## Test User
 `ai_tester@instabids.ai` / `TestAI2026!` (email confirmed, admin role)

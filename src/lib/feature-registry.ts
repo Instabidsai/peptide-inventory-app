@@ -268,6 +268,17 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     sidebarItems: [],
   },
 
+  // ── Admin Tools ──
+  {
+    key: 'view_as_user',
+    label: 'View As User',
+    description: 'Allow admins to click on any customer or partner and see the app exactly as they see it — their tabs, data, and permissions.',
+    category: 'core',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
+
   // ── Customization ──
   {
     key: 'customizations',

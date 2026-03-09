@@ -54,7 +54,7 @@ All hooks here use `@tanstack/react-query` (`useQuery` / `useMutation`) over Sup
 
 | Hook File | Exports | Table(s) Queried | Query Key Pattern | Has Mutations? | Description |
 |-----------|---------|-----------------|-------------------|----------------|-------------|
-| `use-partner.ts` | `usePartnerDownline`, `usePartnerContact`, `useAllOrgReps`, `useFullNetwork`, `useCommissions`, `useMarkCommissionPaid`, `useCreatePartnerOrder` | `profiles`, `contacts`, `commissions`, `sales_orders`, RPC `get_partner_downline` | `['partner_downline', rootId]`, `['commissions', partnerId]` | Yes | Multi-level partner tree + commission management |
+| `use-partner.ts` | `usePartnerDownline`, `usePartnerContact`, `useAllOrgReps`, `useFullNetwork`, `useCommissions`, `useMarkCommissionPaid`, `useCreatePartnerOrder` | `profiles`, `contacts`, `commissions`, `sales_orders`, RPC `get_partner_downline` | `['partner_downline', rootId]`, `['commissions', partnerId]` | Yes | Multi-level partner tree + commission management. Uses `user?.id` directly — NOT `effectiveUserId`. JWT-level impersonation means the session IS the target user. |
 | `use-commissions.ts` | `useOrderCommissions` | `commissions` | `['order_commissions', orderId]` | No | Commission records for a specific sales order |
 | `use-automations.ts` | `useAutomations`, `useCreateAutomation`, `useUpdateAutomation`, `useDeleteAutomation` | `automations` | `['automations', org_id]` | Yes | Trigger-based automation rules (e.g., auto-assign reps) |
 
@@ -65,7 +65,7 @@ All hooks here use `@tanstack/react-query` (`useQuery` / `useMutation`) over Sup
 | `use-protocols.ts` | `useProtocols`, `useProtocol`, `useCreateProtocol`, `useUpdateProtocol`, `useDeleteProtocol` | `protocols`, `protocol_items` | `['protocols', org_id]` | Yes | Treatment protocols assigned to clients |
 | `use-protocol-builder.ts` | `useProtocolBuilder` | `protocols`, `protocol_items`, `peptides` | `['protocol-builder', protocolId]` | Yes | Stateful builder for constructing protocols |
 | `use-org-protocol-templates.ts` | `useOrgProtocolTemplates`, `useCreateTemplate` | `protocol_templates` | `['protocol-templates', org_id]` | Yes | Reusable org-level protocol templates |
-| `use-client-profile.ts` | `useClientProfile`, `useUpdateClientProfile` | `client_profiles` | `['client-profile', contactId]` | Yes | Health/wellness profile for a client contact |
+| `use-client-profile.ts` | `useClientProfile`, `useUpdateClientProfile` | `client_profiles` | `['client-profile', contactId]` | Yes | Health/wellness profile for a client contact. Uses `user?.id` directly — NOT `effectiveUserId`. JWT-level impersonation means the session IS the target user. |
 | `use-onboarding-pipeline.ts` | `useOnboardingPipeline`, `useAdvanceOnboarding` | `onboarding_pipeline` | `['onboarding-pipeline', org_id]` | Yes | Tracks client onboarding step progress |
 
 ## Vendor (Super-Admin / Multi-Tenant)
@@ -126,6 +126,8 @@ All hooks here use `@tanstack/react-query` (`useQuery` / `useMutation`) over Sup
 **Org scoping**: Every Supabase query MUST call `.eq('org_id', profile.org_id)`. The only exceptions are `use-subdomain-tenant.tsx` (unauthenticated hostname lookup) and `use-tenants.ts` / vendor hooks (super_admin cross-org queries).
 
 **`enabled` guard**: All queries that need auth use `enabled: !!user && !!profile?.org_id`. Single-record hooks additionally check `!!id`.
+
+**Impersonation — never use `effectiveUserId`**: The old client-side impersonation pattern used `effectiveUserId || user?.id` in hooks to simulate a different user without changing the JWT. This pattern is REMOVED. Impersonation now works via a true JWT session swap (`admin-impersonate` edge function). Hooks should always use `user?.id` — during impersonation, `user` IS the target user at the Supabase session level.
 
 **Mutation invalidation**: After any mutation, call `queryClient.invalidateQueries({ queryKey: ['entity'] })` with the root key to bust all variants. Cross-domain mutations (e.g., `useMarkOrderReceived`) invalidate multiple keys (`orders`, `lots`, `bottles`).
 

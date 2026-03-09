@@ -31,6 +31,9 @@ verify_jwt = false
 [functions.admin-ai-chat]
 verify_jwt = false
 
+[functions.admin-impersonate]
+verify_jwt = false
+
 [functions.ai-builder]
 verify_jwt = false
 

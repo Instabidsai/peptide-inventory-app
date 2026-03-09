@@ -38,7 +38,7 @@ export interface Commission {
 
 export function usePartnerDownline(rootId?: string) {
     const { user } = useAuth();
-    // Use the passed rootId or fall back to the authenticated user's ID
+    // JWT swap handles impersonation — user.id IS the target user when impersonating
     const effectiveRootId = rootId || user?.id;
 
     return useQuery({
@@ -58,17 +58,18 @@ export function usePartnerDownline(rootId?: string) {
 
 export function useCommissions() {
     const { user } = useAuth();
+    const targetUserId = user?.id;
 
     return useQuery({
-        queryKey: ['commissions', user?.id],
+        queryKey: ['commissions', targetUserId],
         queryFn: async () => {
-            if (!user?.id) return [];
+            if (!targetUserId) return [];
 
-            // Look up profile ID from auth user ID
+            // Look up profile ID from auth user ID (or impersonated user ID)
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('user_id', user.id)
+                .eq('user_id', targetUserId)
                 .maybeSingle();
 
             if (!profile?.id) return [];
@@ -88,7 +89,7 @@ export function useCommissions() {
             if (error) throw error;
             return data;
         },
-        enabled: !!user?.id
+        enabled: !!targetUserId
     });
 }
 

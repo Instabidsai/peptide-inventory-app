@@ -27,8 +27,8 @@ const navigation = [
   { name: 'AI Assistant', href: '/ai', icon: Bot, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Peptides', href: '/peptides', icon: FlaskConical, roles: ['admin', 'staff', 'sales_rep'] },
   { name: 'Orders', href: '/orders', icon: ClipboardList, roles: ['admin', 'staff', 'sales_rep'] },
-  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'fulfillment'] },
-  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'fulfillment'] },
+  { name: 'Sales Orders', href: '/sales', icon: ShoppingBag, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
+  { name: 'Fulfillment', href: '/fulfillment', icon: PackageCheck, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partners', href: '/admin/reps', icon: Briefcase, roles: ['admin'] },
   { name: 'Financials', href: '/admin/finance', icon: PieChart, roles: ['admin'] },
   { name: 'Payment Pool', href: '/admin/payment-pool', icon: CreditCard, roles: ['admin'] },
@@ -169,7 +169,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     if (effectiveRole === 'sales_rep') {
       const hiddenForRep = ['Lots', 'Bottles', 'Movements', 'Settings', 'Partners', 'Orders'];
       const tier = authProfile?.partner_tier || 'standard';
-      if (tier !== 'senior') hiddenForRep.push('Peptides');
+      if (tier !== 'senior') hiddenForRep.push('Peptides', 'Fulfillment');
       if (hiddenForRep.includes(item.name)) return false;
     }
 

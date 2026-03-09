@@ -211,31 +211,37 @@ export function useSalesOrder(orderId?: string) {
 }
 
 export function useMySalesOrders() {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     return useQuery({
-        queryKey: ['my_sales_orders', profile?.org_id],
+        queryKey: ['my_sales_orders', profile?.org_id, user?.id],
         queryFn: async () => {
-            if (!profile?.id) throw new Error('Profile not found');
+            if (!profile?.id || !user?.id) throw new Error('Profile not found');
+
+            // Get downline partner IDs so we include their orders too
+            const { data: downline } = await supabase.rpc('get_partner_downline', { root_id: user.id });
+            const downlineIds = (downline || []).map((d: { id: string }) => d.id);
+            const networkRepIds = [profile.id, ...downlineIds];
 
             const { data, error } = await supabase
                 .from('sales_orders')
                 .select(`
           *,
           contacts!client_id (id, name, email),
+          profiles!rep_id (id, full_name),
           sales_order_items (
             *,
             peptides (id, name)
           )
         `)
                 .eq('org_id', profile!.org_id!)
-                .eq('rep_id', profile.id)
+                .in('rep_id', networkRepIds)
                 .order('created_at', { ascending: false })
                 .limit(200);
 
             if (error) throw error;
             return data as SalesOrder[];
         },
-        enabled: !!profile?.org_id,
+        enabled: !!profile?.org_id && !!user?.id,
         staleTime: 30_000,
     });
 }
