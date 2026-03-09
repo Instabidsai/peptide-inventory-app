@@ -22,11 +22,12 @@ Deno.serve(async (req) => {
   const json = (data: unknown, status = 200) => jsonResponse(data as object, status, cors);
 
   try {
-    // Auth — accept admin, staff, sales_rep, or vendor
+    // Auth — accept admin, staff, sales_rep, vendor, or super_admin
+    const allowedRoles = ["admin", "staff", "sales_rep", "vendor", "super_admin"];
     let auth;
     try {
       auth = await authenticateRequest(req, {
-        requireRole: ["admin", "staff", "sales_rep", "vendor"],
+        requireRole: allowedRoles,
       });
     } catch (err) {
       // If user_roles lookup failed but profile has the right role, allow it
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
           .single();
 
         const profileRole = profile?.role || "";
-        if (!["admin", "staff", "sales_rep", "vendor"].includes(profileRole)) {
+        if (!allowedRoles.includes(profileRole)) {
           return json({ error: "Forbidden: insufficient role" }, 403);
         }
         // Backfill orgId from profile if auth didn't have it
@@ -75,8 +76,9 @@ Deno.serve(async (req) => {
     if (order.status === "fulfilled")
       return json({ error: "Order already fulfilled" }, 409);
 
-    // Verify org matches the authenticated user's org
-    if (auth.orgId && order.org_id !== auth.orgId) {
+    // Verify org matches — super_admin can fulfill orders in any org
+    const isSuperAdmin = auth.role === "super_admin";
+    if (!isSuperAdmin && auth.orgId && order.org_id !== auth.orgId) {
       return json({ error: "Order belongs to a different org" }, 403);
     }
 

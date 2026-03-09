@@ -8,6 +8,7 @@ import { autoGenerateProtocol } from '@/lib/auto-protocol';
 import { parseVialSize } from '@/lib/supply-calculations';
 import { DEFAULT_PAGE_SIZE, type PaginationState } from '@/hooks/use-pagination';
 import { logger } from '@/lib/logger';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 export type SalesOrderStatus = 'draft' | 'submitted' | 'fulfilled' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'pending_verification' | 'refunded' | 'commission_offset';
@@ -697,11 +698,10 @@ export function useFulfillOrder() {
     return useMutation({
         mutationFn: async (orderId: string) => {
             // Call edge function which uses service role key (bypasses RLS)
-            const { data, error } = await supabase.functions.invoke('fulfill-order', {
-                body: { orderId },
-            });
+            // Uses invokeEdgeFunction for automatic token refresh on expiry
+            const { data, error } = await invokeEdgeFunction('fulfill-order', { orderId });
             if (error) throw new Error(error.message || 'Fulfillment failed');
-            if (data?.error) throw new Error(data.error);
+            if (data && typeof data === 'object' && 'error' in data) throw new Error((data as any).error);
             return data;
         },
         onSuccess: () => {
