@@ -102,9 +102,9 @@ export function useDeleteTierConfig() {
 /** Helper: Build the TIER_INFO-style object that types.ts used to export. */
 export function tierToInfo(tier: TierConfig) {
     const discountLabel = tier.pricing_mode === 'cost_plus'
-        ? `Cost + $${tier.cost_plus_markup}`
+        ? `Partner Price`
         : tier.pricing_mode === 'cost_multiplier'
-            ? `${tier.price_multiplier}x cost`
+            ? `Partner Price`
             : `${Math.round((1 - tier.price_multiplier) * 100)}% off retail`;
 
     return {

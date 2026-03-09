@@ -309,7 +309,7 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-3">
                         <Badge variant="outline" className="text-sm px-3 py-1 border-violet-500/40 text-violet-400">
-                            Partner Pricing: 2x Avg Cost
+                            Partner Pricing Active
                         </Badge>
                         {discountPct && (
                             <Badge variant="outline" className="text-sm px-3 py-1">

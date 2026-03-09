@@ -129,9 +129,9 @@ export default function NewOrder() {
 
         const tiers: Array<{ label: string; price: number; commRate: number; variant: 'outline' | 'secondary' | 'default' }> = [];
 
-        // Partner Cost (2x avg cost) — only for partner orders
+        // Partner Price — only for partner orders
         if (isPartner) {
-            tiers.push({ label: 'Partner Cost', price: partnerCost, commRate: 0.00, variant: 'outline' });
+            tiers.push({ label: 'Partner Price', price: partnerCost, commRate: 0.00, variant: 'outline' });
         }
 
         // MSRP-based discount tiers
@@ -569,7 +569,7 @@ export default function NewOrder() {
                                 <Users className="h-4 w-4 text-violet-400 shrink-0" />
                                 <div>
                                     <p className="text-xs font-semibold text-violet-400">Partner Pricing Active</p>
-                                    <p className="text-[10px] text-violet-400/70">All items set to 2x cost (avg cost × 2)</p>
+                                    <p className="text-[10px] text-violet-400/70">All items set to partner pricing</p>
                                 </div>
                             </div>
                         )}

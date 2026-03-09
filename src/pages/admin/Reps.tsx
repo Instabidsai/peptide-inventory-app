@@ -1419,8 +1419,8 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                 }}>
                     <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="cost_multiplier">Cost Multiplier (e.g. 2x cost)</SelectItem>
-                        <SelectItem value="cost_plus">Cost Plus (cost + $X)</SelectItem>
+                        <SelectItem value="cost_multiplier">Cost Multiplier (partner sees "Partner Price")</SelectItem>
+                        <SelectItem value="cost_plus">Cost Plus (partner sees "Partner Price")</SelectItem>
                         <SelectItem value="percentage">Percentage of Retail</SelectItem>
                     </SelectContent>
                 </Select>
@@ -1475,7 +1475,7 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
                         />
                     </div>
                     <p className="text-xs text-muted-foreground text-right">
-                        Partner pays {mult}x average cost per item
+                        Partner price = {mult}x avg cost (shown as "Partner Price" to partner)
                     </p>
                 </>
             )}

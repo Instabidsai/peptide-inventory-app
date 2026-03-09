@@ -804,7 +804,7 @@ export default function AdminDashboard() {
             </motion.div>
             </SectionErrorBoundary>
 
-            {/* Partner Product Orders — commission_offset orders (2x cost) */}
+            {/* Partner Product Orders — commission_offset orders */}
             {(financials?.commissionsInProduct ?? 0) > 0 && (
             <SectionErrorBoundary section="Partner Product Orders">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18, ease: [0.23, 1, 0.32, 1] }}>
@@ -815,7 +815,7 @@ export default function AdminDashboard() {
                             <Users className="h-4 w-4 text-violet-500" />
                             Partner Product Orders
                         </CardTitle>
-                        <CardDescription>Partners buying at 2x cost — offset against commissions, not real sales revenue</CardDescription>
+                        <CardDescription>Partner product orders — offset against commissions, not real sales revenue</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {financialsLoading ? <Skeleton className="h-8 w-full" /> : (

@@ -280,9 +280,9 @@ export default function Protocols() {
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="1">At Cost (1x)</SelectItem>
-                                                    <SelectItem value="1.5">1.5x Cost</SelectItem>
-                                                    <SelectItem value="2">2x Cost</SelectItem>
-                                                    <SelectItem value="3">3x Cost</SelectItem>
+                                                    <SelectItem value="1.5">1.5x Markup</SelectItem>
+                                                    <SelectItem value="2">2x Markup</SelectItem>
+                                                    <SelectItem value="3">3x Markup</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

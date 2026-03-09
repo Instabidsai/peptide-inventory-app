@@ -102,5 +102,13 @@ Vercel production branch = `main`. Must push to both remotes.
 - Contacts need `linked_user_id` to be impersonatable — button disabled otherwise
 - Self-healing RPCs (e.g., `ensure_customer_contact`) must NOT fire when impersonating — check `isViewingAsUser` from `useImpersonation()`
 
+## Partner Pricing Labels
+- Partners see **"Partner Price"** — never expose cost formulas like "2x cost" or multiplier values
+- Single source of truth for labels: `tierToInfo()` in `src/hooks/use-tier-config.ts`
+- Fallback constants in `src/components/partner/types.ts` (TIER_INFO)
+- Admin UI shows pricing mode description (e.g., "Cost Multiplier") but clarifies what partner sees: `(partner sees "Partner Price")`
+- `peptides.avg_cost` is auto-synced from lots via `trg_update_peptide_avg_cost` trigger
+- `create_validated_order` RPC uses avg_cost with fallback to `AVG(lots.cost_per_unit)` for partner pricing
+
 ## Test User
 `ai_tester@instabids.ai` / `TestAI2026!` (email confirmed, admin role)

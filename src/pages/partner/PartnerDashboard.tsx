@@ -58,9 +58,9 @@ export default function PartnerDashboard() {
     const pricingMode = authProfile?.pricing_mode || 'cost_multiplier';
     const costPlusMarkup = Number(authProfile?.cost_plus_markup || 0);
     const discountLabel = pricingMode === 'cost_plus'
-        ? `Cost + $${costPlusMarkup}`
+        ? `Partner Price`
         : pricingMode === 'cost_multiplier'
-            ? `${priceMultiplier}x cost`
+            ? `Partner Price`
             : `${Math.round((1 - priceMultiplier) * 100)}% off retail`;
 
     // Separate downline into actual partners (sales_rep) vs clients

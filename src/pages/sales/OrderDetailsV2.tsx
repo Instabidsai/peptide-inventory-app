@@ -533,7 +533,7 @@ export default function OrderDetails() {
                                                             { label: 'Giveaway', price: 0 },
                                                             ...(peptide.avg_cost ? [
                                                                 { label: 'Cost', price: peptide.avg_cost },
-                                                                { label: '2x Cost', price: Math.round(peptide.avg_cost * 2 * 100) / 100 },
+                                                                { label: 'Partner Price', price: Math.round(peptide.avg_cost * 2 * 100) / 100 },
                                                             ] : []),
                                                             ...(peptide.retail_price ? [{ label: 'MSRP', price: peptide.retail_price }] : []),
                                                         ];

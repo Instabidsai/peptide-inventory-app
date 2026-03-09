@@ -152,9 +152,9 @@ export default function PartnerStore() {
     const dbTier = tierMap.get(partnerTier);
     const tierInfo = dbTier
         ? { label: `${dbTier.emoji} ${dbTier.label}`, discount: tierToInfo(dbTier).discount, color: TIER_COLORS[partnerTier] || 'text-primary' }
-        : { label: `🥈 ${partnerTier}`, discount: `${priceMultiplier}x cost`, color: 'text-blue-500' };
+        : { label: `🥈 ${partnerTier}`, discount: `Partner Price`, color: 'text-blue-500' };
 
-    // Fetch avg lot costs — always needed for Partner 2x cost pricing
+    // Fetch avg lot costs — always needed for Partner pricing
     const { data: lotCosts } = useQuery({
         queryKey: ['partner_lot_costs', profile?.org_id],
         queryFn: async () => {

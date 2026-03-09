@@ -201,8 +201,8 @@ export default function TierConfigTab({ orgId }: { orgId?: string | null }) {
                                 >
                                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="cost_multiplier">Cost Multiplier (e.g. 2x cost)</SelectItem>
-                                        <SelectItem value="cost_plus">Cost Plus (cost + $X)</SelectItem>
+                                        <SelectItem value="cost_multiplier">Cost Multiplier (partner sees "Partner Price")</SelectItem>
+                                        <SelectItem value="cost_plus">Cost Plus (partner sees "Partner Price")</SelectItem>
                                         <SelectItem value="percentage">Percentage of Retail</SelectItem>
                                     </SelectContent>
                                 </Select>
