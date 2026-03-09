@@ -657,20 +657,34 @@ export default function Peptides() {
                             {peptide.stock_count || 0} Vials
                           </Badge>
                           <span className="text-muted-foreground">
-                            ${(peptide.retail_price || 0).toFixed(2)}
+                            Cost: ${(peptide.base_cost || peptide.avg_cost || 0).toFixed(2)}
                           </span>
-                          {canEdit && (
+                          <span className="text-muted-foreground">
+                            MSRP: ${(peptide.retail_price || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        {canEdit && (
+                          <div className="flex gap-2 mt-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="ml-auto gap-1 text-xs"
+                              className="gap-1 text-xs flex-1"
+                              onClick={(e) => { e.stopPropagation(); openEditDialog(peptide); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs flex-1"
                               onClick={(e) => { e.stopPropagation(); setQuickStockPeptide(peptide); setQuickStockQty(''); setQuickStockCost(''); }}
                             >
                               <PackagePlus className="h-3.5 w-3.5" />
                               Add Stock
                             </Button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
