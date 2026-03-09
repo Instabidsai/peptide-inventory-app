@@ -185,6 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       setUserRole(null);
       setOrganization(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -204,8 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
-        // Defer Supabase calls with setTimeout
+        // Defer Supabase calls with setTimeout to avoid auth deadlocks.
+        // Set loading=true so downstream consumers (Auth.tsx) wait for profile.
         if (currentSession?.user) {
+          setLoading(true);
           setTimeout(() => {
             if (mounted) fetchUserData(currentSession.user.id);
           }, 0);
@@ -244,8 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(restored.session);
             setUser(restored.session.user);
             fetchUserData(restored.session.user.id)
-              .catch(e => logger.error("AuthProvider: OAuth User Data Fetch Failed", e))
-              .finally(() => { if (mounted) setLoading(false); });
+              .catch(e => logger.error("AuthProvider: OAuth User Data Fetch Failed", e));
             return;
           }
 
@@ -260,10 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (existingSession?.user) {
         fetchUserData(existingSession.user.id)
-          .catch(e => logger.error("AuthProvider: User Data Fetch Failed", e))
-          .finally(() => {
-            if (mounted) setLoading(false);
-          });
+          .catch(e => logger.error("AuthProvider: User Data Fetch Failed", e));
       } else {
         setLoading(false);
       }
