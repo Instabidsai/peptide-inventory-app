@@ -60,6 +60,7 @@ const peptideSchema = z.object({
   description: z.string().optional(),
   sku: z.string().optional(),
   retail_price: z.union([z.string(), z.number()]).transform(v => Number(v) || 0).optional(),
+  base_cost: z.union([z.string(), z.number()]).transform(v => Number(v) || 0).optional(),
 });
 
 type PeptideFormData = z.infer<typeof peptideSchema>;
@@ -132,7 +133,7 @@ export default function Peptides() {
 
   const form = useForm<PeptideFormData>({
     resolver: zodResolver(peptideSchema),
-    defaultValues: { name: '', description: '', sku: '', retail_price: 0 },
+    defaultValues: { name: '', description: '', sku: '', retail_price: 0, base_cost: 0 },
   });
 
   const isPartner = userRole?.role === 'sales_rep' || profile?.role === 'sales_rep';
@@ -163,7 +164,7 @@ export default function Peptides() {
     name: (p: Peptide) => p.name?.toLowerCase(),
     sku: (p: Peptide) => p.sku?.toLowerCase(),
     stock: (p: Peptide) => p.stock_count ?? 0,
-    cost: (p: Peptide) => p.avg_cost ?? 0,
+    cost: (p: Peptide) => p.base_cost ?? p.avg_cost ?? 0,
     msrp: (p: Peptide) => p.retail_price ?? 0,
     status: (p: Peptide) => (p.active ? 'active' : 'inactive'),
   } as const;
@@ -246,6 +247,7 @@ export default function Peptides() {
       description: peptide.description || '',
       sku: peptide.sku || '',
       retail_price: peptide.retail_price || 0,
+      base_cost: peptide.base_cost || 0,
     });
   };
 
@@ -343,6 +345,25 @@ export default function Peptides() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="base_cost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cost</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="description"
@@ -666,7 +687,7 @@ export default function Peptides() {
                     <TableHead>On Order</TableHead>
                     <TableHead>Next Delivery</TableHead>
                     <SortableTableHead columnKey="cost" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>
-                      {isPartner ? 'Cost' : 'Avg Cost'}
+                      Cost
                     </SortableTableHead>
                     <SortableTableHead columnKey="msrp" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>MSRP</SortableTableHead>
                     <SortableTableHead columnKey="status" activeColumn={peptideSortState.column} direction={peptideSortState.direction} onSort={requestPeptideSort}>Status</SortableTableHead>
@@ -745,15 +766,15 @@ export default function Peptides() {
                       {isPartner ? (
                         <TableCell>
                           {(() => {
-                            const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
-                            return `$${(baseCost + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}`;
+                            const cost = peptide.base_cost || peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                            return `$${(cost + (profile?.overhead_per_unit ?? 4.00)).toFixed(2)}`;
                           })()}
                         </TableCell>
                       ) : (
                         <TableCell>
                           {(() => {
-                            const baseCost = peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
-                            return `$${baseCost.toFixed(2)}`;
+                            const cost = peptide.base_cost || peptide.avg_cost || pendingByPeptide?.[peptide.id]?.avgPendingCost || 0;
+                            return `$${cost.toFixed(2)}`;
                           })()}
                         </TableCell>
                       )}
@@ -880,6 +901,25 @@ export default function Peptides() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="base_cost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cost</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="description"

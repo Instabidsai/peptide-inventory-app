@@ -33,6 +33,7 @@ export interface CreatePeptideInput {
   description?: string;
   sku?: string;
   retail_price?: number;
+  base_cost?: number;
 }
 
 export interface UpdatePeptideInput extends Partial<CreatePeptideInput> {
@@ -206,6 +207,7 @@ export function useUpdatePeptide() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['supplier-peptides-for-pricing'] });
       toast({ title: 'Peptide updated successfully' });
     },
     onError: (error: Error) => {

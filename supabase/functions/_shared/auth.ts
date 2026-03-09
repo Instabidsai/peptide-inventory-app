@@ -81,15 +81,28 @@ export async function authenticateRequest(
         throw new AuthError('Unauthorized: invalid token', 401);
     }
 
-    // Layer 3: Role + org check via user_roles
-    const { data: userRole } = await supabase
+    // Layer 3: Role + org check via user_roles (with profiles fallback)
+    const { data: userRole, error: roleError } = await supabase
         .from('user_roles')
         .select('role, org_id')
         .eq('user_id', user.id)
         .single();
 
-    const role = userRole?.role || '';
-    const orgId = userRole?.org_id || '';
+    let role = userRole?.role || '';
+    let orgId = userRole?.org_id || '';
+
+    // If user_roles lookup failed or returned nothing, fall back to profiles
+    if (roleError || (!role && !orgId)) {
+        const { data: profileFallback } = await supabase
+            .from('profiles')
+            .select('role, org_id')
+            .eq('user_id', user.id)
+            .single();
+        if (profileFallback) {
+            role = role || profileFallback.role || '';
+            orgId = orgId || profileFallback.org_id || '';
+        }
+    }
 
     if (requireOrg && !orgId) {
         throw new AuthError('Forbidden: no organization linked', 403);
