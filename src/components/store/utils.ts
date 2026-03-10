@@ -63,8 +63,9 @@ export function getRelatedStacks(peptideName: string, allPeptides: Peptide[], te
 }
 
 // Calculate client price based on pricing mode
+// Priority: base_cost (admin-editable) > avg_cost (lot-derived) > retail fallback
 export function calculateClientPrice(
-    peptide: { id: string; retail_price?: number | null },
+    peptide: { id: string; retail_price?: number | null; base_cost?: number | null; avg_cost?: number | null },
     isPartner: boolean,
     authProfile: { price_multiplier?: number | null } | null | undefined,
     pricingProfile: { pricing_mode?: string | null; price_multiplier?: number | null; cost_plus_markup?: number | null } | null | undefined,
@@ -81,22 +82,19 @@ export function calculateClientPrice(
     }
 
     // Partner pricing -- from their OWN profile
+    // Prefer base_cost (admin edits this) over lot-derived avg_cost
     const mode = pricingProfile?.pricing_mode || 'percentage';
     const multiplier = Number(pricingProfile?.price_multiplier) || 1.0;
     const markup = Number(pricingProfile?.cost_plus_markup) || 0;
+    const baseCost = Number(peptide.base_cost) || 0;
+    const effectiveCost = baseCost > 0 ? baseCost : (Number(peptide.avg_cost) || (lotCosts ? (lotCosts[peptide.id] || 0) : 0));
 
-    if (mode === 'cost_plus' && lotCosts) {
-        const avgCost = lotCosts[peptide.id] || 0;
-        if (avgCost > 0) {
-            return Math.round((avgCost + markup) * 100) / 100;
-        }
+    if (mode === 'cost_plus' && effectiveCost > 0) {
+        return Math.round((effectiveCost + markup) * 100) / 100;
     }
 
-    if (mode === 'cost_multiplier' && lotCosts) {
-        const avgCost = lotCosts[peptide.id] || 0;
-        if (avgCost > 0) {
-            return Math.round(avgCost * markup * 100) / 100;
-        }
+    if (mode === 'cost_multiplier' && effectiveCost > 0) {
+        return Math.round(effectiveCost * markup * 100) / 100;
     }
 
     // percentage mode (fallback)

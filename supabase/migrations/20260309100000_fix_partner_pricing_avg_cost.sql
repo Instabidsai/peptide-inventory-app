@@ -192,7 +192,7 @@ BEGIN
   -- Calculate prices
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
-    SELECT id, avg_cost, retail_price, active
+    SELECT id, base_cost, avg_cost, retail_price, active
     INTO v_peptide
     FROM peptides
     WHERE id = (v_item->>'peptide_id')::UUID;
@@ -202,8 +202,12 @@ BEGIN
         'Peptide not found or inactive: ' || (v_item->>'peptide_id'));
     END IF;
 
-    -- Resolve effective avg_cost: prefer peptides.avg_cost, fallback to lots
-    v_lot_avg_cost := v_peptide.avg_cost;
+    -- Resolve effective cost: prefer base_cost (admin-editable) > avg_cost (lot-derived) > lots query
+    v_lot_avg_cost := CASE
+      WHEN COALESCE(v_peptide.base_cost, 0) > 0 THEN v_peptide.base_cost
+      WHEN COALESCE(v_peptide.avg_cost, 0) > 0 THEN v_peptide.avg_cost
+      ELSE NULL
+    END;
     IF COALESCE(v_lot_avg_cost, 0) <= 0 THEN
       SELECT ROUND(AVG(cost_per_unit)::numeric, 2)
       INTO v_lot_avg_cost

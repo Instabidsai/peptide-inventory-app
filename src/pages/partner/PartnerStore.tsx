@@ -182,8 +182,10 @@ export default function PartnerStore() {
 
     // Partner price — uses profile's pricing_mode + price_multiplier/cost_plus_markup
     // Matches server-side create_validated_order RPC logic exactly.
-    const getPartnerPrice = (peptide: { id: string; retail_price?: number | null }): number => {
-        const avgCost = lotCosts?.[peptide.id] || 0;
+    // Priority: base_cost (admin-editable) > avg_cost (lot-derived) > retail fallback
+    const getPartnerPrice = (peptide: { id: string; retail_price?: number | null; base_cost?: number | null; avg_cost?: number | null }): number => {
+        const baseCost = Number(peptide.base_cost) || 0;
+        const avgCost = baseCost > 0 ? baseCost : (Number(peptide.avg_cost) || lotCosts?.[peptide.id] || 0);
         const retail = Number(peptide.retail_price || 0);
 
         if (pricingMode === 'cost_plus' && avgCost > 0) {
