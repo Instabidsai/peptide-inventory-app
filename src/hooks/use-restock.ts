@@ -113,7 +113,11 @@ export function useRestockInventory() {
         onSuccess: (msg) => {
             queryClient.invalidateQueries({ queryKey: ['client-inventory-admin'] });
             queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
             queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['peptides'] });
+            queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
             toast({ title: msg });
         },
         onError: (err) => {

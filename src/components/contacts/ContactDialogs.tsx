@@ -63,6 +63,9 @@ export function ContactDialogs({
                                 queryClient.invalidateQueries({ queryKey: ['contacts', contactId] });
                                 queryClient.invalidateQueries({ queryKey: ['movements'] });
                                 queryClient.invalidateQueries({ queryKey: ['bottles'] });
+                                queryClient.invalidateQueries({ queryKey: ['peptides'] });
+                                queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+                                queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
                                 setIsAssignInventoryOpen(false);
                                 setTempPeptideIdForAssign(undefined);
                                 setTempQuantityForAssign(undefined);

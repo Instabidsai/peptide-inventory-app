@@ -104,6 +104,9 @@ export function useCreateLot() {
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
       queryClient.invalidateQueries({ queryKey: ['peptides'] });
       queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({
         title: 'Lot received successfully',
         description: `${data.quantity_received} bottles created automatically`
@@ -136,6 +139,10 @@ export function useUpdateLot() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lots'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({ title: 'Lot updated successfully' });
     },
     onError: (error: Error) => {
@@ -191,6 +198,10 @@ export function useDeleteLot() {
       queryClient.invalidateQueries({ queryKey: ['lots'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
       queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({ title: 'Lot deleted successfully' });
     },
     onError: (error: Error) => {

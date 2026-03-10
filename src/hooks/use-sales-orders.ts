@@ -551,6 +551,10 @@ export function useCreateSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['commissions'] });
             queryClient.invalidateQueries({ queryKey: ['commission_stats'] });
             queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['peptides'] });
+            queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+            queryClient.invalidateQueries({ queryKey: ['restock'] });
             toast({ title: input.auto_fulfill ? 'Order created and inventory deducted' : 'Order created' });
         },
         onError: (error: Error) => {
@@ -713,6 +717,10 @@ export function useFulfillOrder() {
             queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
             queryClient.invalidateQueries({ queryKey: ['protocols'] });
             queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
+            queryClient.invalidateQueries({ queryKey: ['peptides'] });
+            queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+            queryClient.invalidateQueries({ queryKey: ['restock'] });
             toast({ title: 'Order fulfilled', description: 'Inventory has been deducted and movement recorded.' });
         },
         onError: (error: Error) => {
@@ -812,6 +820,10 @@ export function useDeleteSalesOrder() {
             queryClient.invalidateQueries({ queryKey: ['protocols'] });
             queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
             queryClient.invalidateQueries({ queryKey: ['contact_order_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['peptides'] });
+            queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+            queryClient.invalidateQueries({ queryKey: ['restock'] });
             toast({ title: 'Order deleted', description: 'All related records have been removed.' });
         },
         onError: (error: Error) => {

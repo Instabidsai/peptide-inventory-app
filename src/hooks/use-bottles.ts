@@ -132,6 +132,11 @@ export function useUpdateBottle() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({ title: 'Bottle updated successfully' });
     },
     onError: (error: Error) => {
@@ -160,6 +165,11 @@ export function useUpdateBottles() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({ title: `${data.length} bottles updated successfully` });
     },
     onError: (error: Error) => {
@@ -224,6 +234,11 @@ export function useDeleteBottle() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
       toast({ title: 'Bottle deleted successfully' });
     },
     onError: (error: Error) => {

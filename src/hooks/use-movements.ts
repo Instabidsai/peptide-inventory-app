@@ -511,12 +511,18 @@ export function useCreateMovement() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['commissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions'] });
       queryClient.invalidateQueries({ queryKey: ['protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
       toast({
         title: 'Movement recorded',
         description: `${variables.items.length} bottle(s) marked as ${movementTypeToBottleStatus[variables.type].replace('_', ' ')}`
@@ -691,11 +697,17 @@ export function useDeleteMovement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['bottles'] });
+      queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin_commissions'] });
       queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
       queryClient.invalidateQueries({ queryKey: ['commissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin_partner_commissions'] });
+      queryClient.invalidateQueries({ queryKey: ['peptides'] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+      queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['restock'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
       toast({ title: 'Sale fully reversed — bottles, inventory, commissions all undone' });
     },
     onError: (error: Error) => {
