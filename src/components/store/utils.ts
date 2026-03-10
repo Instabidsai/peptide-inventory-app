@@ -70,14 +70,17 @@ export function calculateClientPrice(
     authProfile: { price_multiplier?: number | null } | null | undefined,
     pricingProfile: { pricing_mode?: string | null; price_multiplier?: number | null; cost_plus_markup?: number | null } | null | undefined,
     lotCosts: Record<string, number> | null | undefined,
+    defaultCustomerDiscount?: number,
 ): number {
     const retail = Number(peptide.retail_price || 0);
 
     if (!isPartner) {
-        // Every customer gets minimum 20% off retail — hardcoded floor.
+        // Customer discount: org-level default (e.g., 20 = 20% off → multiplier 0.80).
         // If their profile has an even lower multiplier, use that instead.
-        const profileMult = Number(authProfile?.price_multiplier) || 0.80;
-        const customerMultiplier = Math.min(profileMult, 0.80);
+        const discountPct = defaultCustomerDiscount ?? 20;
+        const orgMultiplier = (100 - discountPct) / 100;
+        const profileMult = Number(authProfile?.price_multiplier) || orgMultiplier;
+        const customerMultiplier = Math.min(profileMult, orgMultiplier);
         return Math.round(retail * customerMultiplier * 100) / 100;
     }
 

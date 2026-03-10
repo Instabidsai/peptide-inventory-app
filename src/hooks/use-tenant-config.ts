@@ -36,6 +36,8 @@ export interface TenantConfig {
     order_sms_phones: Array<{ phone: string; label: string; enabled: boolean }>;
     // Crypto wallet payment methods
     crypto_wallets: CryptoWallet[];
+    // Store pricing
+    default_customer_discount: number;
 }
 
 export interface CryptoWallet {
@@ -83,6 +85,7 @@ const DEFAULTS: TenantConfig = {
     order_sms_enabled: false,
     order_sms_phones: [],
     crypto_wallets: [],
+    default_customer_discount: 20,
 };
 
 let cachedConfig: TenantConfig | null = null;
@@ -121,7 +124,7 @@ export function useTenantConfig(): TenantConfigResult {
 
         supabase
             .from('tenant_config')
-            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, secondary_color, font_family, favicon_url, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes, wholesale_tier_id, supplier_org_id, subdomain, onboarding_path, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email, order_sms_enabled, order_sms_phones, crypto_wallets')
+            .select('brand_name, admin_brand_name, support_email, app_url, logo_url, primary_color, secondary_color, font_family, favicon_url, zelle_email, venmo_handle, cashapp_handle, session_timeout_minutes, wholesale_tier_id, supplier_org_id, subdomain, onboarding_path, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, ship_from_country, ship_from_phone, ship_from_email, order_sms_enabled, order_sms_phones, crypto_wallets, default_customer_discount')
             .eq('org_id', orgId)
             .maybeSingle()
             .then(({ data, error }) => {

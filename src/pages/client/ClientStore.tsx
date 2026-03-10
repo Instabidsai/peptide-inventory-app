@@ -37,7 +37,7 @@ export default function ClientStore() {
     const { data: contact, isLoading: isLoadingContact } = useClientProfile();
     const createOrder = useCreateValidatedOrder();
     const { toast } = useToast();
-    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE, crypto_wallets: CRYPTO_WALLETS } = useTenantConfig();
+    const { zelle_email: ZELLE_EMAIL, venmo_handle: VENMO_HANDLE, cashapp_handle: CASHAPP_HANDLE, crypto_wallets: CRYPTO_WALLETS, default_customer_discount } = useTenantConfig();
     const [cart, setCart] = useState<CartItem[]>(() => {
         try {
             const saved = localStorage.getItem('peptide_cart');
@@ -152,7 +152,7 @@ export default function ClientStore() {
     });
 
     const getClientPrice = (peptide: { id: string; retail_price?: number | null }): number => {
-        return calculateClientPrice(peptide, isPartner, authProfile, pricingProfile, lotCosts);
+        return calculateClientPrice(peptide, isPartner, authProfile, pricingProfile, lotCosts, default_customer_discount);
     };
 
     const addToCart = (peptide: { id: string; name: string; retail_price?: number | null }) => {

@@ -36,6 +36,7 @@ import {
     Eye,
     EyeOff,
     Wallet,
+    ShoppingBag,
 } from 'lucide-react';
 import { invalidateTenantConfigCache } from '@/hooks/use-tenant-config';
 import { QueryError } from '@/components/ui/query-error';
@@ -952,6 +953,125 @@ function NotificationsTab({ orgId }: { orgId: string }) {
 }
 
 
+// ─── Store Settings Tab ───
+const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 50];
+
+function StoreSettingsTab({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [discount, setDiscount] = useState(20);
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ['tenant-config-store', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('default_customer_discount')
+        .eq('org_id', orgId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (config?.default_customer_discount != null) {
+      setDiscount(config.default_customer_discount);
+    }
+  }, [config]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({ default_customer_discount: discount })
+        .eq('org_id', orgId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['tenant-config-store'] });
+      invalidateTenantConfigCache();
+      toast({ title: 'Store discount updated', description: `Customers will now see ${discount}% off retail pricing.` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to save', description: (err as any)?.message || 'Unknown error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  const multiplier = ((100 - discount) / 100).toFixed(2);
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-card border-border/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5" />
+            Customer Store Pricing
+          </CardTitle>
+          <CardDescription>
+            Set the default discount off retail (MSRP) that customers see in your store. This applies to all customer orders for your organization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Default Customer Discount</Label>
+            <div className="flex flex-wrap gap-2">
+              {DISCOUNT_PRESETS.map(pct => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setDiscount(pct)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                    discount === pct
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-secondary/50 text-foreground border-border hover:bg-secondary'
+                  }`}
+                >
+                  {pct === 0 ? 'Full Price' : `${pct}% off`}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-3">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Or enter custom:</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={discount}
+                onChange={e => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val) && val >= 0 && val <= 100) setDiscount(val);
+                }}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">% off retail</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 p-4 space-y-1">
+            <p className="text-sm font-medium">Preview</p>
+            <p className="text-sm text-muted-foreground">
+              A product with <span className="font-medium text-foreground">$100 retail price</span> will show as{' '}
+              <span className="font-medium text-green-600">${(100 * (100 - discount) / 100).toFixed(2)}</span> for customers
+              {discount > 0 && <span className="text-xs ml-1">({discount}% off, multiplier: {multiplier}x)</span>}
+            </p>
+          </div>
+
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saving ? 'Saving...' : 'Save Store Pricing'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
 export default function Settings() {
   usePageTitle('Settings');
   const { profile, organization, userRole, refreshProfile } = useAuth();
@@ -1105,6 +1225,10 @@ export default function Settings() {
                     <Bell className="h-4 w-4" />
                     Notifications
                   </TabsTrigger>
+                  <TabsTrigger value="store" className="gap-2">
+                    <ShoppingBag className="h-4 w-4" />
+                    Store
+                  </TabsTrigger>
                 </>
               )}
               <TabsTrigger value="team" className="gap-2">
@@ -1215,6 +1339,12 @@ export default function Settings() {
         {isAdmin && organization?.id && (
           <TabsContent value="notifications">
             <NotificationsTab orgId={organization.id} />
+          </TabsContent>
+        )}
+
+        {isAdmin && organization?.id && (
+          <TabsContent value="store">
+            <StoreSettingsTab orgId={organization.id} />
           </TabsContent>
         )}
 
