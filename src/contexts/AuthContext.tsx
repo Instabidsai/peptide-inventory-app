@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useSyncExternalStore } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo, useSyncExternalStore } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react';
 import { supabase } from '@/integrations/sb_client/client';
@@ -61,8 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  // Generation counter prevents stale fetchUserData calls from overwriting fresh data.
+  // When signUp triggers onAuthStateChange (deferred via setTimeout) AND handleSignup
+  // calls refreshProfile, two fetchUserData calls race. Without this, the stale one
+  // (pre-linkReferral, no org_id) can overwrite the fresh one (post-linkReferral, has org_id).
+  const fetchGeneration = useRef(0);
 
   const fetchUserData = async (userId: string) => {
+    const thisGeneration = ++fetchGeneration.current;
     try {
       setAuthError(null);
 
@@ -138,6 +144,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Stale-call guard: if a newer fetchUserData was started while we were awaiting,
+      // discard this result to prevent overwriting fresher data (e.g. post-linkReferral
+      // profile with org_id being overwritten by pre-linkReferral stale profile without it).
+      if (thisGeneration !== fetchGeneration.current) {
+        logger.info(`AuthProvider: Discarding stale fetchUserData (gen ${thisGeneration}, current ${fetchGeneration.current})`);
+        return;
+      }
+
       setProfile(profileData);
 
       if (profileData?.org_id) {
@@ -145,6 +159,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           supabase.from('user_roles').select('*').eq('user_id', userId).eq('org_id', profileData.org_id).maybeSingle(),
           supabase.from('organizations').select('*').eq('id', profileData.org_id).maybeSingle(),
         ]);
+
+        // Re-check generation after second round of async fetches
+        if (thisGeneration !== fetchGeneration.current) {
+          logger.info(`AuthProvider: Discarding stale fetchUserData (gen ${thisGeneration}, current ${fetchGeneration.current})`);
+          return;
+        }
 
         if (roleResult.error) {
           const msg = `Failed to load user role: ${roleResult.error.message}`;
@@ -179,6 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         partner_tier: profileData?.partner_tier,
       });
     } catch (err) {
+      // Don't overwrite state if a newer call has started
+      if (thisGeneration !== fetchGeneration.current) return;
       const msg = (err as any)?.message || 'Unknown error loading user data';
       logger.error('AuthProvider: Unexpected error in fetchUserData:', msg);
       setAuthError(msg);
@@ -186,7 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserRole(null);
       setOrganization(null);
     } finally {
-      setLoading(false);
+      // Only set loading=false if this is still the latest call.
+      // A stale call setting loading=false prematurely would cause ProtectedRoute
+      // to render with no profile, bouncing the user to /onboarding.
+      if (thisGeneration === fetchGeneration.current) {
+        setLoading(false);
+      }
     }
   };
 

@@ -391,6 +391,7 @@ export default function Auth() {
           toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready.' : 'Your account has been connected.' });
           // Don't navigate immediately — set target and let profile-watching
           // useEffect navigate once profile.org_id is confirmed in React state.
+          // AuthContext's fetchUserData generation counter prevents stale overwrites.
           setPostLinkRedirect(result.type === 'partner' ? '/partner' : '/store');
           await refreshProfile();
         } else {
@@ -493,6 +494,7 @@ export default function Auth() {
         toast({ title: 'Welcome!', description: result.type === 'partner' ? 'Your partner account is ready!' : 'Your account has been created and connected.' });
         // Don't navigate immediately — set target and let profile-watching
         // useEffect navigate once profile.org_id is confirmed in React state.
+        // AuthContext's fetchUserData generation counter prevents stale overwrites.
         setPostLinkRedirect(result.type === 'partner' ? '/partner' : '/store');
         await refreshProfile();
         return;
