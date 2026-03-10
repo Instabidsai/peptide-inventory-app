@@ -135,28 +135,30 @@ export default function FulfillmentCenter() {
         enabled: dropshipOrgIds.length > 0,
     });
 
-    // Get stock counts per peptide for pick list — MUST be org-scoped (multi-tenancy)
+    // Get stock counts per peptide for pick list — uses server-side RPC to avoid 1000-row limit
     const { data: stockCounts } = useQuery({
         queryKey: ['fulfillment_stock', orgId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('bottles')
-                .select('id, lots!inner(peptide_id, peptides!inner(id, name))')
-                .eq('status', 'in_stock')
-                .eq('org_id', orgId!);
-            if (error) throw error;
+            // Use the same RPC as usePeptides — runs server-side SQL, no row limit
+            const { data: rpcData, error: rpcError } = await supabase
+                .rpc('get_peptide_stock_counts', { p_org_id: orgId! });
+            if (rpcError) throw rpcError;
 
-            type BottleWithLot = { id: string; lots: { peptide_id: string; peptides: { id: string; name: string } } };
-            const rows = (data || []) as unknown as BottleWithLot[];
+            // Also fetch peptide names for display
+            const { data: pepData } = await supabase
+                .from('peptides')
+                .select('id, name')
+                .eq('org_id', orgId!);
+            const nameMap: Record<string, string> = {};
+            (pepData || []).forEach((p: { id: string; name: string }) => { nameMap[p.id] = p.name; });
+
             const counts: Record<string, { name: string; count: number }> = {};
-            for (const b of rows) {
-                const pid = b.lots?.peptide_id;
-                const pname = b.lots?.peptides?.name;
-                if (pid) {
-                    if (!counts[pid]) counts[pid] = { name: pname || 'Unknown', count: 0 };
-                    counts[pid].count++;
-                }
-            }
+            (rpcData || []).forEach((item: { peptide_id: string; stock_count: number }) => {
+                counts[item.peptide_id] = {
+                    name: nameMap[item.peptide_id] || 'Unknown',
+                    count: Number(item.stock_count),
+                };
+            });
             return counts;
         },
         enabled: !!orgId,
