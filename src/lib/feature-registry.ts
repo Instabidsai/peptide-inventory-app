@@ -78,6 +78,15 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     sidebarItems: ['AI Assistant'],
   },
   {
+    key: 'client_health_ai',
+    label: 'Client Health AI',
+    description: 'Health-specific AI tools for clients: dose logging, body composition, meal tracking, bloodwork interpretation.',
+    category: 'ai',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
+  {
     key: 'automations',
     label: 'Automations',
     description: 'Automated workflows for low-stock alerts, reorder triggers, and scheduled tasks.',
@@ -185,6 +194,24 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
 
   // ── Client Experience ──
   {
+    key: 'health_tracking',
+    label: 'Health & Wellness Tracking',
+    description: 'Body composition logging, macro/nutrition tracking, water intake, weekly compliance and trends.',
+    category: 'clients',
+    defaultEnabled: false,
+    roles: ['admin', 'staff'],
+    sidebarItems: [],
+  },
+  {
+    key: 'dose_tracking',
+    label: 'Dose Scheduling',
+    description: 'Dose scheduling fields on client inventory, dose calculator, and reconstitution guides.',
+    category: 'clients',
+    defaultEnabled: false,
+    roles: ['admin', 'staff'],
+    sidebarItems: [],
+  },
+  {
     key: 'contacts',
     label: 'Customer Management',
     description: 'CRM customers with profiles, communication history, and household linking.',
@@ -268,6 +295,28 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     sidebarItems: [],
   },
 
+  // ── SaaS Mode ──
+  {
+    key: 'saas_mode',
+    label: 'SaaS-Safe Mode',
+    description: 'Master switch for B2B SaaS tenants. When ON, disables all medical/health features (dose tracking, health tracking, health AI, protocols) and enables the research-use disclaimer. Flip one switch instead of managing individual flags.',
+    category: 'core',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
+
+  // ── Compliance ──
+  {
+    key: 'ruo_disclaimer',
+    label: 'Research Use Disclaimer',
+    description: 'Auto-inject "For research use only — not for human consumption" on all product listings and checkout.',
+    category: 'core',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
+
   // ── Admin Tools ──
   {
     key: 'view_as_user',
@@ -298,3 +347,15 @@ for (const feature of FEATURE_REGISTRY) {
     SIDEBAR_FEATURE_MAP[item] = feature.key;
   }
 }
+
+/**
+ * When saas_mode is ON, these flags are force-overridden.
+ * true = forced ON, false = forced OFF.
+ */
+export const SAAS_MODE_OVERRIDES: Record<string, boolean> = {
+  health_tracking: false,
+  dose_tracking: false,
+  client_health_ai: false,
+  protocols: false,
+  ruo_disclaimer: true,
+};

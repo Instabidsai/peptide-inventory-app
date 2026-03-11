@@ -92,8 +92,28 @@ analytics ON → Finance page shows full data (otherwise limited)
 
 If a feature is disabled, its UI should hide gracefully — check `useOrgFeatures()` hook before rendering feature-gated components.
 
+### SaaS-Safe Mode (Master Switch)
+`saas_mode` is a master flag that controls 5 child flags at once for B2B SaaS tenants. Defined in `SAAS_MODE_OVERRIDES` (`src/lib/feature-registry.ts`).
+
+**When ON**: `health_tracking=OFF`, `dose_tracking=OFF`, `client_health_ai=OFF`, `protocols=OFF`, `ruo_disclaimer=ON`
+
+**UI behavior in FeatureManagement.tsx**:
+- `saas_mode` renders as a prominent card above the category sections
+- Child flags show amber "SaaS Mode" lock badge and their switches are disabled
+- Toggling `saas_mode` cascades to all child flags in one DB upsert (via `toggleFeature` in `use-org-features.ts`)
+- Vendor portal `TenantFeatureToggles.tsx` has the same cascade behavior
+
+**FeatureGate component** (`src/components/FeatureGate.tsx`): Route-level guard that redirects to `/dashboard` when a flag is OFF. Used on client portal routes (`/health`, `/macro-tracker`, `/body-composition`, `/my-regimen`).
+
+**Client portal gating**:
+- `ClientMenu.tsx`: Menu items filtered by `featureFlag` property
+- `ClientDashboard.tsx`: Dose widgets, compliance, stats gated by `dose_tracking`; regimen link gated by `protocols`
+- Store components (`ProductGrid`, `ProductDetailSheet`, `CartSummary`): Show RUO disclaimer when `ruo_disclaimer` is ON
+- `chat-with-ai` edge function: Swaps system prompt + removes health tools when `client_health_ai` is OFF
+
 ---
 
 ## Agent Notes
 _Add gotchas here as you work in the admin portal._
 <!-- agents: append findings below with date -->
+<!-- 2026-03-11: SaaS-Safe Mode added — master flag saas_mode controls 5 child flags. See SAAS_MODE_OVERRIDES in feature-registry.ts -->

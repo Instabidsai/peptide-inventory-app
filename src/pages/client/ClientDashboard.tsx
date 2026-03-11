@@ -35,6 +35,7 @@ import { SupplyOverview } from '@/components/regimen/SupplyOverview';
 import { ProtocolCalendar } from '@/components/regimen/ProtocolCalendar';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 import { isDoseDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { calculateDoseUnits } from '@/utils/dose-utils';
@@ -73,6 +74,9 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { isEnabled } = useOrgFeatures();
+    const doseTrackingEnabled = isEnabled('dose_tracking');
+    const protocolsEnabled = isEnabled('protocols');
 
     // In admin preview, use the customer's linked auth user ID for Quick Glance queries
     const effectiveUserId = isAdminPreview ? contact?.linked_user_id : user?.id;
@@ -601,6 +605,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
 
                 <TabsContent value="protocol" className="space-y-5">
                     {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
+                    {doseTrackingEnabled && (
                     <SectionErrorBoundary section="Today's Doses">
                     {hasDosesToday && (
                         <GlassCard className="border-border/40 overflow-hidden">
@@ -694,16 +699,18 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                         );
                     })()}
                     </SectionErrorBoundary>
+                    )}
 
                     {/* ─── Supply Overview (aggregate days-of-supply for all peptides) ─── */}
                     <SectionErrorBoundary section="Supply & Inventory">
                     <SupplyOverview inventory={inventory || []} contactId={contact?.id} />
 
                     {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
-                    <SimpleVials inventory={inventory || []} contactId={contact?.id} />
+                    {doseTrackingEnabled && <SimpleVials inventory={inventory || []} contactId={contact?.id} />}
                     </SectionErrorBoundary>
 
                     {/* ─── Protocol Calendar (month/week) ─── */}
+                    {doseTrackingEnabled && (
                     <SectionErrorBoundary section="Protocol Calendar">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
@@ -725,9 +732,10 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                     />
                     </div>
                     </SectionErrorBoundary>
+                    )}
 
                     {/* ─── Request Protocol Change (customer only) ─── */}
-                    {!isAdminPreview && (
+                    {doseTrackingEnabled && !isAdminPreview && (
                     <>
                     <div className="flex justify-center">
                         <button
@@ -748,6 +756,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                     )}
 
                     {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
+                    {doseTrackingEnabled && (
                     <SectionErrorBoundary section="My Progress">
                     <GlassCard className="border-border/40 overflow-hidden">
                         <button
@@ -794,9 +803,10 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                         </div>
                     </GlassCard>
                     </SectionErrorBoundary>
+                    )}
 
                     {/* ─── Full Regimen Link (customer only) ─── */}
-                    {!isAdminPreview && (
+                    {protocolsEnabled && !isAdminPreview && (
                     <motion.button
                         onClick={() => navigate('/my-regimen')}
                         className="w-full flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40 hover:bg-muted/40 hover:border-primary/10 transition-all duration-300 group"

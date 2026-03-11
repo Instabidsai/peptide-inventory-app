@@ -16,8 +16,10 @@ import {
     Banknote,
     Smartphone,
     Coins,
+    FlaskConical,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 import type { CartItem, PaymentMethod } from './types';
 import type { CryptoWallet } from '@/hooks/use-tenant-config';
 
@@ -77,6 +79,8 @@ export function CartSummary({
     highlight,
 }: CartSummaryProps) {
     const { toast } = useToast();
+    const { isEnabled } = useOrgFeatures();
+    const showRuoDisclaimer = isEnabled('ruo_disclaimer');
     const [venmoOpening, setVenmoOpening] = React.useState(false);
     const [copiedCrypto, setCopiedCrypto] = React.useState(false);
 
@@ -345,6 +349,15 @@ export function CartSummary({
 
                                     <p className="text-xs text-muted-foreground">
                                         Place your order, then send <strong>${cartTotal.toFixed(2)}</strong> worth of {selectedWallet.type} to the address above. We'll confirm when received.
+                                    </p>
+                                </div>
+                            )}
+
+                            {showRuoDisclaimer && (
+                                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/[0.12]">
+                                    <FlaskConical className="h-4 w-4 text-amber-400/60 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-amber-400/70 font-medium leading-relaxed">
+                                        All products are sold for research and laboratory use only. Not for human consumption. By placing this order you confirm these products will be used exclusively for research purposes.
                                     </p>
                                 </div>
                             )}

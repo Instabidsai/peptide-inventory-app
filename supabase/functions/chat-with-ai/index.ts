@@ -28,7 +28,31 @@ function getCorsHeaders(req: Request) {
 
 const DEFAULT_BRAND_NAME = Deno.env.get('BRAND_NAME') || 'Peptide AI';
 
-function buildSystemPrompt(brandName: string) {
+function buildSystemPrompt(brandName: string, healthAiEnabled: boolean) {
+  if (!healthAiEnabled) {
+    return `You are ${brandName} — a product and order inquiry assistant for research peptides.
+
+## Who You Are
+You help customers check their inventory, view orders, and submit product inquiries. You are knowledgeable about the research peptide products available in the store.
+
+## How You Operate
+- Answer questions about products, pricing, and availability
+- Help customers check their order status and inventory
+- Submit product requests or general inquiries on their behalf
+- Provide factual product specifications (purity, weight, storage)
+- All products are for research use only — not for human consumption
+
+## What You Can Do (Tools)
+- **Check inventory**: Show their current vials and remaining quantities
+- **View orders**: Look up their recent orders and shipping status
+- **Submit requests**: Help them request products, reorders, or submit inquiries to the vendor
+
+ALWAYS use the appropriate tool when the user's intent matches. If you need to confirm details, ask first, then execute.
+
+## Important
+Do NOT provide dosing advice, health recommendations, protocol guidance, or interpret any health data. If asked about dosing or health topics, politely explain that this assistant handles product and order inquiries only.`;
+  }
+
   return `You are ${brandName} — an expert peptide protocol consultant and personal health assistant.
 
 ## Who You Are
@@ -57,6 +81,9 @@ ALWAYS use the appropriate tool when the user's intent matches — don't just de
 ## Escalation
 Only flag genuinely concerning health markers — severely elevated blood pressure, signs of serious adverse reactions, symptoms suggesting emergency medical attention. For routine protocol questions, dosing adjustments, and general health optimization, you ARE the consultant. Help them directly.`;
 }
+
+// Health-specific tool names — filtered out when client_health_ai is disabled
+const HEALTH_TOOL_NAMES = new Set(['log_dose', 'log_body_composition', 'view_my_protocols', 'log_meal']);
 
 const CLIENT_TOOLS: any[] = [
     {
@@ -430,6 +457,27 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
 
         // 5. Search knowledge base (global content — org-specific embeddings use metadata.org_id filter)
         const orgId = userContact?.org_id || '';
+
+        // Query saas_mode + health AI flags early (needed for steps 6-8)
+        let healthAiEnabled = true; // default ON (PureUS / existing orgs)
+        if (orgId) {
+            const { data: flags } = await supabase
+                .from('org_features')
+                .select('feature_key, enabled')
+                .eq('org_id', orgId)
+                .in('feature_key', ['saas_mode', 'client_health_ai']);
+            if (flags) {
+                const saasMode = flags.find(f => f.feature_key === 'saas_mode');
+                const healthAi = flags.find(f => f.feature_key === 'client_health_ai');
+                // saas_mode ON forces health AI OFF regardless of individual flag
+                if (saasMode?.enabled) {
+                    healthAiEnabled = false;
+                } else if (healthAi) {
+                    healthAiEnabled = healthAi.enabled;
+                }
+            }
+        }
+
         // Search global knowledge + org-specific content in parallel
         const [{ data: globalDocs }, { data: orgDocs }] = await Promise.all([
             supabase.rpc('match_documents', {
@@ -461,14 +509,12 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
             return `${citation}\n${doc.content}`;
         }).join('\n\n') || '';
 
-        // 6. Load health profile (if exists)
-        const { data: profile } = await supabase
-            .from('ai_health_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
+        // 6. Load health profile (if exists — skip when health AI is off)
         let healthProfileText = '';
+        const profile = healthAiEnabled
+            ? (await supabase.from('ai_health_profiles').select('*').eq('user_id', user.id).single()).data
+            : null;
+
         if (profile) {
             const parts: string[] = [];
             if (profile.conditions?.length) parts.push(`Conditions: ${(profile.conditions as string[]).join(', ')}`);
@@ -505,14 +551,16 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
                 .join('\n\n');
         }
 
-        // 8. Build live health data context
+        // 8. Build live health data context (skip when health AI is off)
         let healthContext = '';
-        try {
-            healthContext = userContact
-                ? await buildHealthContext(supabase, userContact)
-                : '';
-        } catch (e) {
-            console.error('Health context error:', e);
+        if (healthAiEnabled) {
+            try {
+                healthContext = userContact
+                    ? await buildHealthContext(supabase, userContact)
+                    : '';
+            } catch (e) {
+                console.error('Health context error:', e);
+            }
         }
 
         // 8b. Load tenant branding + full org context (org-scoped)
@@ -530,8 +578,13 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
         }
 
         // 9. Assemble system prompt
+        // Filter tools based on health AI flag
+        const activeTools = healthAiEnabled
+            ? CLIENT_TOOLS
+            : CLIENT_TOOLS.filter(t => !HEALTH_TOOL_NAMES.has(t.function.name));
+
         const fullSystemPrompt = [
-            buildSystemPrompt(brandName),
+            buildSystemPrompt(brandName, healthAiEnabled),
             orgContext,
             healthProfileText && `\n## What You Know About This User\n${healthProfileText}`,
             insightsText && `\n## Research & Insights You've Accumulated\n${insightsText}`,
@@ -554,7 +607,7 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
             const chatResponse = await openai.chat.completions.create({
                 model: 'gpt-4o',
                 messages: chatMessages,
-                tools: userContact ? CLIENT_TOOLS : undefined,
+                tools: userContact ? activeTools : undefined,
                 tool_choice: userContact ? 'auto' as const : undefined,
                 temperature: 0.3,
             });
@@ -602,10 +655,12 @@ Deno.serve(withErrorReporting("chat-with-ai", async (req) => {
             content: reply,
         });
 
-        // 12. Background: Extract health profile + insights (fire and forget)
-        extractKnowledge(supabase, openai, user.id, message, reply).catch(e =>
-            console.error('Knowledge extraction error:', e)
-        );
+        // 12. Background: Extract health profile + insights (fire and forget — skip when health AI off)
+        if (healthAiEnabled) {
+            extractKnowledge(supabase, openai, user.id, message, reply).catch(e =>
+                console.error('Knowledge extraction error:', e)
+            );
+        }
 
         return new Response(JSON.stringify({
             reply,

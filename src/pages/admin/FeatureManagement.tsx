@@ -13,9 +13,10 @@ import {
   type FeatureCategory,
 } from '@/lib/feature-registry';
 import {
-  ToggleRight, Lock, Check, X, Eye,
+  ToggleRight, Lock, Check, X, Eye, ShieldCheck,
   Sparkles, Package, ShoppingCart, Users2, Brain, BarChart3, Puzzle, Shield,
 } from 'lucide-react';
+import { SAAS_MODE_OVERRIDES } from '@/lib/feature-registry';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<FeatureCategory, React.ElementType> = {
@@ -45,8 +46,13 @@ export default function FeatureManagement() {
   // super_admin sees everything admin sees
   const effectivePreviewRole = previewRole === 'super_admin' ? 'admin' : previewRole;
 
+  const saasMode = features.find((f) => f.key === 'saas_mode');
+  const saasModeOn = saasMode?.enabled ?? false;
+  const saasChildKeys = new Set(Object.keys(SAAS_MODE_OVERRIDES));
+
   const grouped = CATEGORY_ORDER.reduce<Record<string, ResolvedFeature[]>>((acc, cat) => {
-    const items = features.filter((f) => f.category === cat);
+    // Exclude saas_mode from category listing — it has its own card
+    const items = features.filter((f) => f.category === cat && f.key !== 'saas_mode');
     if (items.length > 0) acc[cat] = items;
     return acc;
   }, {});
@@ -113,6 +119,53 @@ export default function FeatureManagement() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left panel: Feature toggles */}
         <div className="lg:col-span-2 space-y-4">
+          {/* SaaS-Safe Mode master switch */}
+          {(() => {
+            const saasFeature = features.find((f) => f.key === 'saas_mode');
+            if (!saasFeature) return null;
+            const childKeys = Object.keys(SAAS_MODE_OVERRIDES);
+            const controlledLabels = features
+              .filter((f) => childKeys.includes(f.key))
+              .map((f) => f.label);
+            return (
+              <Card className={cn(
+                'border-2 transition-colors',
+                saasFeature.enabled
+                  ? 'border-amber-500/40 bg-amber-500/[0.03]'
+                  : 'border-primary/20 bg-primary/[0.02]',
+              )}>
+                <CardContent className="py-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3 flex-1 min-w-0 mr-4">
+                      <div className={cn(
+                        'p-2 rounded-lg shrink-0',
+                        saasFeature.enabled ? 'bg-amber-500/15' : 'bg-primary/10',
+                      )}>
+                        <ShieldCheck className={cn('h-5 w-5', saasFeature.enabled ? 'text-amber-400' : 'text-primary')} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{saasFeature.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {saasFeature.description}
+                        </p>
+                        {saasFeature.enabled && (
+                          <p className="text-[11px] text-amber-400/70 mt-2">
+                            Controlling: {controlledLabels.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch
+                      checked={saasFeature.enabled}
+                      onCheckedChange={(checked) => handleToggle('saas_mode', checked)}
+                      aria-label="Toggle SaaS-Safe Mode"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {CATEGORY_ORDER.map((cat) => {
             const items = grouped[cat];
             if (!items) return null;
@@ -134,12 +187,14 @@ export default function FeatureManagement() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-1">
-                  {items.map((feature) => (
+                  {items.map((feature) => {
+                    const lockedBySaas = saasModeOn && saasChildKeys.has(feature.key);
+                    return (
                     <div
                       key={feature.key}
                       className={cn(
                         'flex items-center justify-between py-3 px-3 rounded-lg transition-colors',
-                        feature.core
+                        feature.core || lockedBySaas
                           ? 'opacity-60'
                           : 'hover:bg-muted/50',
                       )}
@@ -147,6 +202,12 @@ export default function FeatureManagement() {
                       <div className="flex-1 min-w-0 mr-4">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">{feature.label}</span>
+                          {lockedBySaas && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
+                              <Lock className="h-2.5 w-2.5 mr-0.5" />
+                              SaaS Mode
+                            </Badge>
+                          )}
                           <div className="flex gap-1">
                             {feature.roles.slice(0, 3).map((r) => (
                               <Badge key={r} variant="outline" className="text-[10px] px-1.5 py-0">
@@ -166,12 +227,13 @@ export default function FeatureManagement() {
                       </div>
                       <Switch
                         checked={feature.enabled}
-                        disabled={feature.core}
+                        disabled={feature.core || lockedBySaas}
                         onCheckedChange={(checked) => handleToggle(feature.key, checked)}
                         aria-label={`Toggle ${feature.label}`}
                       />
                     </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
             );

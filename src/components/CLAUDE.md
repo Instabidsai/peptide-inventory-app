@@ -46,6 +46,7 @@ These live directly in `src/components/` (not in a subdirectory):
 | `RoleBasedRedirect.tsx` | Redirects by user role after login |
 | `CommandPalette.tsx` | Global keyboard command palette (Cmd+K) |
 | `BugReportButton.tsx` | Floating bug report trigger |
+| `FeatureGate.tsx` | Route-level feature flag guard — checks `useOrgFeatures().isEnabled(flag)`, renders children or redirects to `/dashboard`. Used on client portal routes (`/health`, `/macro-tracker`, `/body-composition`, `/my-regimen`). |
 
 ## Conventions
 

@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FeatureGate } from "@/components/FeatureGate";
 import { SubdomainTenantProvider } from "@/hooks/use-subdomain-tenant";
 import { BugReportButton } from "@/components/BugReportButton";
 import { toast as sonnerToast } from "sonner";
@@ -199,20 +200,20 @@ const App = () => (
                                             </ProtectedRoute>
                                         }>
                                             <Route path="/dashboard" element={<ClientDashboard />} />
-                                            <Route path="/my-regimen" element={<ClientRegimen />} />
+                                            <Route path="/my-regimen" element={<FeatureGate flag="protocols"><ClientRegimen /></FeatureGate>} />
                                             <Route path="/messages" element={<ClientMessages />} />
                                             <Route path="/notifications" element={<ClientNotifications />} />
                                             <Route path="/resources" element={<ClientResources />} />
                                             <Route path="/account" element={<ClientSettings />} />
-                                            <Route path="/macro-tracker" element={<MacroTracker />} />
-                                            <Route path="/body-composition" element={<BodyComposition />} />
+                                            <Route path="/macro-tracker" element={<FeatureGate flag="health_tracking"><MacroTracker /></FeatureGate>} />
+                                            <Route path="/body-composition" element={<FeatureGate flag="health_tracking"><BodyComposition /></FeatureGate>} />
                                             <Route path="/community" element={<CommunityForum />} />
                                             <Route path="/store" element={<ClientStore />} />
                                             <Route path="/my-orders" element={<ClientOrders />} />
                                             <Route path="/checkout/success" element={<CheckoutSuccess />} />
                                             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
                                             <Route path="/menu" element={<ClientMenu />} />
-                                            <Route path="/health" element={<HealthTracking />} />
+                                            <Route path="/health" element={<FeatureGate flag="health_tracking"><HealthTracking /></FeatureGate>} />
                                         </Route>
 
                                         <Route element={

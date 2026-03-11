@@ -44,6 +44,7 @@ git push origin main:master && git push origin main:main  # Deploy to Vercel
 | Self-healing | `specs/self-healing.md` | 16-phase sentinel-worker, zero-human-in-the-loop, 17 DB tables |
 | Integrations | `specs/integrations.md` | WooCommerce (6 fn), Shopify (3 fn + Composio), Stripe, Shippo |
 | **Payment Pool** | `specs/payment-pool.md` | **USDC pool for card processing. Smart contract + 4 edge functions + WooCommerce plugin + dashboard. Code complete, needs NMI sandbox E2E test.** |
+| **SaaS Mode** | See below | Feature flag system to strip medical features for B2B SaaS tenants. One master switch (`saas_mode`) controls 5 child flags. |
 
 ## Schema & Debugging
 - `.agent/schema.sql` — 57 tables condensed reference (full DDL: `scripts/schema-master.sql`)
@@ -52,8 +53,20 @@ git push origin main:master && git push origin main:main  # Deploy to Vercel
 - `.agent/decisions-log.jsonl` — architectural WHY decisions
 - `.agent/scope.md` — what this project does NOT do
 
-## Current Status (2026-03-06)
-**Complete**: Multi-tenancy (57 tables), 48 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions, **USDC Payment Pool** (code complete, needs E2E testing)
+## SaaS-Safe Mode (Feature Flag System)
+Master switch `saas_mode` in `org_features` controls B2B tenant safety. When ON:
+- `health_tracking` → OFF (body comp, macros, water, compliance)
+- `dose_tracking` → OFF (dose scheduling, vials, compliance heatmap)
+- `client_health_ai` → OFF (AI health tools: log_dose, log_body_comp, log_meal, view_protocols)
+- `protocols` → OFF (protocol builder, client regimen)
+- `ruo_disclaimer` → ON ("For research use only" on all products + checkout)
+
+**Files**: `src/lib/feature-registry.ts` (SAAS_MODE_OVERRIDES), `src/hooks/use-org-features.ts` (cascade logic), `src/components/FeatureGate.tsx` (route guard), `supabase/functions/chat-with-ai/index.ts` (AI tool filtering), `supabase/functions/provision-tenant/index.ts` (preset system)
+
+**Safety**: Toggling `saas_mode` writes all 6 flags to DB in one upsert. Edge functions query flags directly. PureUS has `saas_mode=false` — all features ON, no RUO disclaimer.
+
+## Current Status (2026-03-11)
+**Complete**: Multi-tenancy (57 tables), 48 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions, **USDC Payment Pool** (code complete, needs E2E testing), **SaaS-Safe Mode** (feature flag system for B2B tenants)
 
 **Needs work**: Hardcoded Supabase keys in client.ts, git history secret scrub, Stripe plan seeding with real price IDs, tenant Venmo handle from tenant_config, full e2e merchant signup test, **Payment Pool WooCommerce + NMI sandbox integration test**
 

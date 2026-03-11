@@ -13,12 +13,14 @@ import {
     ChevronRight,
     Clock,
     Repeat,
+    FlaskConical,
 } from 'lucide-react';
 import { lookupKnowledge, PROTOCOL_TEMPLATES } from '@/data/protocol-knowledge';
 import { useProtocolKnowledge, useDatabaseProtocolTemplates } from '@/hooks/use-protocol-knowledge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ICON_MAP, CATEGORY_STYLES } from './constants';
 import { getPeptideDescription, getRelatedStacks } from './utils';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 import type { CartItem, SelectedProtocol } from './types';
 import type { Peptide } from '@/hooks/use-peptides';
 
@@ -49,6 +51,8 @@ export function ProductDetailSheet({
 }: ProductDetailSheetProps) {
     const { data: knowledgeMap } = useProtocolKnowledge();
     const { data: dbTemplates } = useDatabaseProtocolTemplates();
+    const { isEnabled } = useOrgFeatures();
+    const showRuoDisclaimer = isEnabled('ruo_disclaimer');
     const currentTemplates = dbTemplates || PROTOCOL_TEMPLATES;
 
     return (
@@ -88,6 +92,14 @@ export function ProductDetailSheet({
                                     <p className="text-sm text-muted-foreground/70 leading-relaxed">
                                         {detailDesc}
                                     </p>
+                                )}
+
+                                {/* RUO Disclaimer */}
+                                {showRuoDisclaimer && (
+                                    <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/[0.12]">
+                                        <FlaskConical className="h-4 w-4 text-amber-400/60 shrink-0" />
+                                        <span className="text-xs text-amber-400/70 font-medium">For research use only — not for human consumption.</span>
+                                    </div>
                                 )}
 
                                 {/* Quick-reference pills */}

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useClientProfile } from '@/hooks/use-client-profile';
 import { useHouseholdMembers } from '@/hooks/use-household';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 
 interface MenuItem {
     label: string;
@@ -27,12 +28,13 @@ interface MenuItem {
     path: string;
     badgeKey?: 'messages' | 'notifications';
     staticBadge?: string;
+    featureFlag?: string;
 }
 
 const BASE_MENU_ITEMS: MenuItem[] = [
     { label: 'Account & Profile', description: 'Manage your settings', icon: User, path: '/account' },
-    { label: 'Full Regimen', description: 'Detailed protocol view', icon: ListChecks, path: '/my-regimen' },
-    { label: 'Health Tracking', description: 'Macros, body comp & hydration', icon: Activity, path: '/health' },
+    { label: 'Full Regimen', description: 'Detailed protocol view', icon: ListChecks, path: '/my-regimen', featureFlag: 'protocols' },
+    { label: 'Health Tracking', description: 'Macros, body comp & hydration', icon: Activity, path: '/health', featureFlag: 'health_tracking' },
     { label: 'Messages & Requests', description: 'Contact your care team', icon: MessageSquare, path: '/messages', badgeKey: 'messages' },
     { label: 'Notifications', description: 'Updates and alerts', icon: Bell, path: '/notifications', badgeKey: 'notifications' },
     { label: 'Community Forum', description: 'Connect with others', icon: Users, path: '/community' },
@@ -44,18 +46,24 @@ export default function ClientMenu() {
     const { data: contact } = useClientProfile();
     const { data: householdMembers } = useHouseholdMembers(contact?.household_id ? contact?.id : undefined);
     const memberCount = householdMembers?.length ?? 0;
+    const { isEnabled } = useOrgFeatures();
+
+    // Filter menu items by feature flags
+    const filteredBaseItems = BASE_MENU_ITEMS.filter(
+        item => !item.featureFlag || isEnabled(item.featureFlag)
+    );
 
     // Build menu items, inserting Family after Account if user has/can have household
     const menuItems: MenuItem[] = [
-        BASE_MENU_ITEMS[0], // Account & Profile
+        filteredBaseItems[0], // Account & Profile
         {
             label: 'My Family',
-            description: memberCount > 1 ? `${memberCount} members sharing your fridge` : 'Add family members to share doses',
+            description: memberCount > 1 ? `${memberCount} members sharing your fridge` : 'Add family members',
             icon: Heart,
             path: '/account?section=family',
             staticBadge: memberCount > 1 ? `${memberCount}` : undefined,
         },
-        ...BASE_MENU_ITEMS.slice(1),
+        ...filteredBaseItems.slice(1),
     ];
 
     const { data: unreadNotifications } = useQuery({

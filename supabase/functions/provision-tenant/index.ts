@@ -48,6 +48,7 @@ interface ProvisionRequest {
     ship_from_email?: string;
     // Options
     seed_sample_peptides?: boolean;
+    preset?: 'saas_clean' | 'full'; // Feature preset: saas_clean strips medical features, full enables everything
     // Business-in-a-Box (v2)
     plan_name?: string;           // 'starter' | 'professional' | 'enterprise'
     onboarding_path?: string;     // 'new' | 'existing'
@@ -262,20 +263,70 @@ Deno.serve(withErrorReporting("provision-tenant", async (req) => {
         }
 
         // ── Step 9: Seed Feature Flags ──
-        const featureKeys = [
-            'ai_assistant', 'peptide_catalog', 'lot_tracking', 'bottle_tracking',
-            'supplements', 'movements', 'purchase_orders', 'sales_orders',
-            'fulfillment', 'partner_network', 'financials', 'automations',
-            'contacts', 'protocols', 'resources', 'client_requests',
-            'feedback', 'client_portal', 'customizations', 'wholesale_catalog',
-        ];
+        const preset = body.preset || 'saas_clean';
+
+        // Base features — always enabled
+        const baseFeatures: Record<string, boolean> = {
+            ai_assistant: true,
+            peptide_catalog: true,
+            lot_tracking: true,
+            bottle_tracking: true,
+            supplements: true,
+            movements: true,
+            purchase_orders: true,
+            sales_orders: true,
+            fulfillment: true,
+            partner_network: true,
+            financials: true,
+            automations: true,
+            contacts: true,
+            resources: true,
+            client_requests: true,
+            feedback: true,
+            client_portal: true,
+            customizations: true,
+            wholesale_catalog: true,
+        };
+
+        // Preset-specific overrides
+        const presetOverrides: Record<string, Record<string, boolean>> = {
+            saas_clean: {
+                saas_mode: true,
+                protocols: false,
+                health_tracking: false,
+                dose_tracking: false,
+                client_health_ai: false,
+                ruo_disclaimer: true,
+                payment_pool: false,
+                crypto_payments: false,
+            },
+            full: {
+                saas_mode: false,
+                protocols: true,
+                health_tracking: true,
+                dose_tracking: true,
+                client_health_ai: true,
+                ruo_disclaimer: false,
+                payment_pool: true,
+                crypto_payments: true,
+            },
+        };
+
+        const featureMap = { ...baseFeatures, ...(presetOverrides[preset] || presetOverrides.saas_clean) };
+        const featureRows = Object.entries(featureMap).map(([key, enabled]) => ({
+            org_id: org.id,
+            feature_key: key,
+            enabled,
+        }));
+
         const { error: featureError } = await supabase
             .from('org_features')
-            .insert(featureKeys.map(key => ({ org_id: org.id, feature_key: key, enabled: true })));
+            .insert(featureRows);
 
         if (featureError) console.warn(`Feature flags warning: ${featureError.message}`);
         results.feature_flags_created = true;
-        console.log(`  Seeded ${featureKeys.length} feature flags`);
+        results.feature_preset = preset;
+        console.log(`  Seeded ${featureRows.length} feature flags (preset: ${preset})`);
 
         // ── Step 10: Create Subscription (if plan specified) ──
         if (body.plan_name) {

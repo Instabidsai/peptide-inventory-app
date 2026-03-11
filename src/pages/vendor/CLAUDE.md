@@ -83,6 +83,17 @@ The vendor layout (`VendorLayout.tsx`) must check `role === 'vendor'` — not ju
 
 ---
 
+## SaaS-Safe Mode in Vendor Portal
+`TenantFeatureToggles.tsx` supports the `saas_mode` master switch with the same cascade behavior as the admin `FeatureManagement.tsx`:
+- Prominent master card at the top with amber highlight when ON
+- Toggling `saas_mode` writes all 6 flags (saas_mode + 5 children from `SAAS_MODE_OVERRIDES`) in one DB upsert
+- Child flags show amber "SaaS" lock badge and disabled switches when `saas_mode` is ON
+- Uses `SAAS_MODE_OVERRIDES` from `feature-registry.ts` for consistent behavior
+- Optimistic update handles the multi-flag upsert array
+
+---
+
 ## Agent Notes
 _Add gotchas here as you work in this area._
 <!-- agents: append findings below with date -->
+<!-- 2026-03-11: TenantFeatureToggles rewritten with saas_mode cascade + locking UI -->

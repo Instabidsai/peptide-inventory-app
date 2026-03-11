@@ -4,9 +4,10 @@ import { CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Minus, Search, Dna, Package } from 'lucide-react';
+import { Plus, Minus, Search, Dna, Package, FlaskConical } from 'lucide-react';
 import { lookupKnowledge } from '@/data/protocol-knowledge';
 import { useProtocolKnowledge } from '@/hooks/use-protocol-knowledge';
+import { useOrgFeatures } from '@/hooks/use-org-features';
 import { getPeptideDescription } from './utils';
 import type { CartItem } from './types';
 import type { Peptide } from '@/hooks/use-peptides';
@@ -40,6 +41,8 @@ export function ProductGrid({
     onSelectPeptide,
 }: ProductGridProps) {
     const { data: knowledgeMap } = useProtocolKnowledge();
+    const { isEnabled } = useOrgFeatures();
+    const showRuoDisclaimer = isEnabled('ruo_disclaimer');
 
     return (
         <div>
@@ -149,6 +152,14 @@ export function ProductGrid({
                                             <p className="text-xs text-muted-foreground/55 leading-relaxed line-clamp-3">
                                                 {description}
                                             </p>
+                                        )}
+
+                                        {/* RUO Disclaimer */}
+                                        {showRuoDisclaimer && (
+                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/[0.06] border border-amber-500/[0.12]">
+                                                <FlaskConical className="h-3 w-3 text-amber-400/60 shrink-0" />
+                                                <span className="text-[9px] text-amber-400/70 font-medium leading-tight">For research use only — not for human consumption</span>
+                                            </div>
                                         )}
 
                                         {/* Dosing hint tags */}

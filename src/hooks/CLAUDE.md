@@ -89,7 +89,7 @@ All hooks here use `@tanstack/react-query` (`useQuery` / `useMutation`) over Sup
 
 | Hook File | Exports | Table(s) Queried | Query Key Pattern | Has Mutations? | Description |
 |-----------|---------|-----------------|-------------------|----------------|-------------|
-| `use-org-features.ts` | `useOrgFeatures` (returns `features`, `isEnabled`, `toggleFeature`, `isLoaded`) | `org_features` | `['org-features', org_id]` | Yes (optimistic upsert) | Feature flag resolution merged with `FEATURE_REGISTRY` defaults |
+| `use-org-features.ts` | `useOrgFeatures` (returns `features`, `isEnabled`, `toggleFeature`, `isLoaded`) | `org_features` | `['org-features', org_id]` | Yes (optimistic upsert) | Feature flag resolution merged with `FEATURE_REGISTRY` defaults. **SaaS Mode cascade**: when `saas_mode` is toggled, `toggleFeature` writes all child flags (`SAAS_MODE_OVERRIDES` from `feature-registry.ts`) in one upsert. `features` memo forces child flag values when `saas_mode` is ON. |
 | `use-tier-config.ts` | `useTierConfig` | `tier_config` | `['tier-config', org_id]` | No | Partner tier commission rate configuration |
 | `use-custom-fields.ts` | `useCustomFields`, `useCreateCustomField`, `useUpdateCustomField`, `useDeleteCustomField` | `custom_fields` | `['custom-fields', org_id, entity]` | Yes | Org-defined extra fields on entities |
 | `use-custom-entities.ts` | `useCustomEntities`, `useUpsertCustomEntity` | `custom_entity_values` | `['custom-entities', entityType, entityId]` | Yes | Values for custom fields on a record |

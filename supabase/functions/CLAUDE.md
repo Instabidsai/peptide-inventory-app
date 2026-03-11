@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 ### AI / Chat
 | Function | Purpose | Auth Required | Notes |
 |----------|---------|---------------|-------|
-| `chat-with-ai` | Client-facing peptide AI (RAG) | Yes | Main AI chat, queries knowledge base |
+| `chat-with-ai` | Client-facing peptide AI (RAG) | Yes | Main AI chat, queries knowledge base. **SaaS Mode**: queries `org_features` for `saas_mode` + `client_health_ai` flags. When health AI is OFF, swaps system prompt to product-inquiry-only and removes health tools (`log_dose`, `log_body_composition`, `view_my_protocols`, `log_meal`). |
 | `admin-ai-chat` | Admin AI assistant | Yes (admin role) | Full DB access for admin queries |
 | `partner-ai-chat` | Partner portal AI | Yes (sales_rep role) | Scoped to partner's org/downline |
 | `ai-builder` | English → feature code generation | Yes (admin role) | Writes code, calls code-patcher |
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 ### Tenant / Merchant
 | Function | Purpose | Notes |
 |----------|---------|-------|
-| `provision-tenant` | Creates new merchant org | Seeds: org, tenant_config, org_features (19), pricing_tiers, subscription link |
+| `provision-tenant` | Creates new merchant org | Seeds: org, tenant_config, org_features (27+), pricing_tiers, subscription link. **Presets**: accepts `preset: 'saas_clean' | 'full'` in body. `saas_clean` (default): `saas_mode=true`, health/dose/protocols OFF, `ruo_disclaimer` ON. `full`: everything ON. |
 | `self-signup` | Merchant self-serve signup flow | Public endpoint — no auth |
 | `scrape-brand` | Scrapes merchant website → branding + peptide catalog | Async, long-running |
 | `scrape-brand-status` | Polls scrape-brand job status | Returns progress + results |

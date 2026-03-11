@@ -11,6 +11,7 @@ import { FEATURE_REGISTRY, SIDEBAR_FEATURE_MAP, CATEGORY_ORDER, CATEGORY_LABELS 
 const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
   ai_assistant: ['edge_function', 'ai_error'],
   automations: ['edge_function', 'ai_error'],
+  client_health_ai: ['edge_function', 'ai_error'],
   peptide_catalog: ['database'],
   lot_tracking: ['database'],
   bottle_tracking: ['database'],
@@ -21,6 +22,8 @@ const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
   sales_orders: ['database', 'validation'],
   fulfillment: ['database', 'edge_function'],
   partner_network: ['database'],
+  health_tracking: ['database'],
+  dose_tracking: ['database'],
   contacts: ['database'],
   protocols: ['database'],
   resources: ['database'],
@@ -28,6 +31,11 @@ const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
   feedback: ['database'],
   client_portal: ['validation', 'edge_function'],
   financials: ['database'],
+  payment_pool: ['database', 'edge_function'],
+  crypto_payments: ['validation'],
+  saas_mode: ['validation'],
+  ruo_disclaimer: ['validation'],
+  view_as_user: ['validation'],
   customizations: ['database', 'edge_function'],
 };
 
@@ -98,14 +106,16 @@ describe('feature-registry', () => {
     // They MUST match the registry keys exactly.
     const seedKeys = [
       'dashboard', 'settings',
-      'ai_assistant', 'automations',
+      'ai_assistant', 'client_health_ai', 'automations',
       'peptide_catalog', 'lot_tracking', 'bottle_tracking',
       'supplements', 'movements', 'wholesale_catalog',
       'purchase_orders', 'sales_orders', 'fulfillment',
       'partner_network',
+      'health_tracking', 'dose_tracking',
       'contacts', 'protocols', 'resources',
       'client_requests', 'feedback', 'client_portal',
-      'financials',
+      'financials', 'payment_pool', 'crypto_payments',
+      'saas_mode', 'ruo_disclaimer', 'view_as_user',
       'customizations',
     ];
 
