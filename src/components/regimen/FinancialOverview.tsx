@@ -185,15 +185,28 @@ export function FinancialOverview({ contactId }: FinancialOverviewProps) {
                 .order("created_at", { ascending: false });
 
             if (movements?.length) {
-                // Skip movements already linked to a sales_order
-                const linkedIds = new Set<string>();
-                for (const m of movements) {
+                // Skip movements already linked to a sales_order via notes marker
+                // AND skip movements created on/after the first sales_order date
+                // (once a contact migrates to sales_orders, all new financial
+                //  data lives there — movements are only for inventory tracking)
+                const earliestSO = orders?.length
+                    ? orders.reduce((min, o) => {
+                        const d = new Date(o.created_at).getTime();
+                        return d < min ? d : min;
+                    }, Infinity)
+                    : Infinity;
+
+                const unlinked = movements.filter((m) => {
                     const n = m.notes || "";
-                    if (n.includes("[SO:") || n.match(/^Sales Order #/)) {
-                        linkedIds.add(m.id);
+                    if (n.includes("[SO:") || n.match(/^Sales Order #/)) return false;
+                    // If this contact has sales_orders, skip movements created
+                    // on or after the first sales_order (they're duplicate records)
+                    if (earliestSO !== Infinity) {
+                        const mTime = new Date(m.created_at).getTime();
+                        if (mTime >= earliestSO) return false;
                     }
-                }
-                const unlinked = movements.filter((m) => !linkedIds.has(m.id));
+                    return true;
+                });
 
                 if (unlinked.length > 0) {
                     const mvIds = unlinked.map((m) => m.id);

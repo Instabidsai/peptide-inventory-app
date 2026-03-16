@@ -56,6 +56,7 @@ profiles
 | Feature toggle breaks UI | Dependent feature still expects it | Check feature dependency chain (see specs/admin-portal.md) |
 | DownlineVisualizer slow | >100 nodes in recursive CTE | Add depth limit to CTE query |
 | Commission double-counted | Order status changed multiple times | Check trigger idempotency — should upsert, not insert |
+| FinancialOverview shows double orders/spend | Movements without `[SO:]` notes marker counted alongside sales_orders | Fixed: movements created on/after first sales_order date are now skipped (`FinancialOverview.tsx` line ~187). Only pre-sales_order legacy movements are shown. |
 | Build fails on Vercel | Import from wrong supabase path | Use `@/integrations/sb_client/client` |
 | Self-healing not processing | Sentinel-worker cron stopped | Check pg_cron: `SELECT * FROM cron.job WHERE jobname LIKE 'sentinel%'` |
 
