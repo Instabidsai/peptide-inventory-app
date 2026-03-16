@@ -48,7 +48,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; user: User | null }>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (overrideUserId?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -217,9 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const refreshProfile = async () => {
-    if (user) {
-      await fetchUserData(user.id);
+  const refreshProfile = async (overrideUserId?: string) => {
+    const uid = overrideUserId || user?.id;
+    if (uid) {
+      await fetchUserData(uid);
     }
   };
 

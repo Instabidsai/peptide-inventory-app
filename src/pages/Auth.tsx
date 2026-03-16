@@ -366,8 +366,16 @@ export default function Auth() {
       queryClient.invalidateQueries({ queryKey: ['client-profile'] });
       navigate(postLinkRedirect, { replace: true });
       setPostLinkRedirect(null);
+    } else if (postLinkRedirect && !profile?.org_id) {
+      // Safety net: if profile.org_id is still null (e.g., generation counter
+      // discarded our refreshProfile call, or React state was stale), retry
+      // after a short delay. This prevents the infinite spinner.
+      const timer = setTimeout(() => {
+        refreshProfile();
+      }, 1500);
+      return () => clearTimeout(timer);
     }
-  }, [postLinkRedirect, profile, navigate, queryClient]);
+  }, [postLinkRedirect, profile, navigate, queryClient, refreshProfile]);
 
   // Handle redirect + referral linking for already-authenticated users
   useEffect(() => {
@@ -496,7 +504,10 @@ export default function Auth() {
         // useEffect navigate once profile.org_id is confirmed in React state.
         // AuthContext's fetchUserData generation counter prevents stale overwrites.
         setPostLinkRedirect(result.type === 'partner' ? '/partner' : '/store');
-        await refreshProfile();
+        // Pass newUser.id directly — React state `user` hasn't updated yet
+        // (setUser from onAuthStateChange is batched), so refreshProfile()
+        // without an ID would be a no-op, leaving profile.org_id null forever.
+        await refreshProfile(newUser.id);
         return;
       }
       // linkReferral failed — store ref for retry and show the actual error
