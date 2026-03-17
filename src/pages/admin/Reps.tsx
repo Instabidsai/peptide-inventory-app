@@ -61,6 +61,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { useTierConfig, tierToInfo, type TierConfig } from '@/hooks/use-tier-config';
 import TierConfigTab from './components/TierConfigTab';
+import { useOrgFeatures } from '@/hooks/use-org-features';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { Switch } from '@/components/ui/switch';
+import { ExternalLink, Globe, Tag } from 'lucide-react';
 
 export default function Reps() {
     const navigate = useNavigate();
@@ -825,6 +829,40 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
     const tierRecruitMap = new Map<string, boolean>();
     tierConfigs?.forEach(t => tierRecruitMap.set(t.tier_key, t.can_recruit));
 
+    // External referral links
+    const { isEnabled, toggleFeature } = useOrgFeatures();
+    const { config: tenantConfig } = useTenantConfig();
+    const externalEnabled = isEnabled('external_referral_links');
+    const externalStoreUrl = tenantConfig?.external_store_url;
+    const storePlatform = tenantConfig?.external_store_platform || 'woocommerce';
+
+    // Fetch all partner discount codes for this org
+    const orgId = authProfile?.org_id;
+    const { data: allDiscountCodes } = useQuery({
+        queryKey: ['all-partner-discount-codes', orgId],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('partner_discount_codes')
+                .select('partner_id, code, discount_percent')
+                .eq('org_id', orgId!)
+                .eq('active', true);
+            return data || [];
+        },
+        enabled: !!orgId && externalEnabled,
+        staleTime: 120_000,
+    });
+    const codesByPartnerId = new Map(allDiscountCodes?.map(dc => [dc.partner_id, dc]) || []);
+
+    const buildExternalUrl = (code: string) => {
+        if (!externalStoreUrl) return '';
+        const baseUrl = externalStoreUrl.replace(/\/+$/, '');
+        if (storePlatform === 'shopify') {
+            return `${baseUrl}/discount/${encodeURIComponent(code)}`;
+        }
+        const sep = baseUrl.includes('?') ? '&' : '?';
+        return `${baseUrl}${sep}coupon=${encodeURIComponent(code)}`;
+    };
+
     // When impersonating, fetch the impersonated org's admin profile
     // so we show THEIR referral links, not the super_admin's
     const { data: orgAdmin } = useQuery({
@@ -885,6 +923,32 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
 
     return (
         <div className="space-y-4">
+            {/* External Referral Links Toggle */}
+            <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+                <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Globe className="h-5 w-5 text-amber-400" />
+                            <div>
+                                <p className="font-semibold text-sm">External Referral Links</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {externalEnabled
+                                        ? externalStoreUrl
+                                            ? <>Customers redirected to <span className="text-amber-400">{externalStoreUrl}</span> with coupon code</>
+                                            : 'Enabled — set your External Store URL in Integrations'
+                                        : 'Send customers to your real website instead of the PeptideAI store'}
+                                </p>
+                            </div>
+                        </div>
+                        <Switch
+                            checked={externalEnabled}
+                            onCheckedChange={(checked) => toggleFeature('external_referral_links', checked)}
+                            aria-label="Toggle External Referral Links"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Admin's Own Invite Links */}
             {adminProfileId && (
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -961,6 +1025,9 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                     : `${window.location.origin}/join?ref=${rep.id}&role=partner&tier=standard${adminOrgId ? `&org=${adminOrgId}` : ''}`;
                                 // Per-person override → tier default fallback
                                 const canRecruit = rep.can_recruit ?? tierRecruitMap.get(rep.partner_tier || 'standard') ?? false;
+                                // External referral link data
+                                const discountCode = externalEnabled ? codesByPartnerId.get(rep.user_id) : null;
+                                const externalUrl = discountCode ? buildExternalUrl(discountCode.code) : '';
                                 return (
                                     <div
                                         key={rep.id}
@@ -981,9 +1048,36 @@ function InviteLinksTab({ reps }: { reps: UserProfile[] }) {
                                             )}
                                             <span className="text-xs text-muted-foreground ml-auto">{rep.email}</span>
                                         </div>
+                                        {/* External store link (primary when enabled) */}
+                                        {externalEnabled && externalUrl && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-emerald-400 w-20 shrink-0 flex items-center gap-1">
+                                                    <ExternalLink className="h-3 w-3" /> Store:
+                                                </span>
+                                                <code className="flex-1 text-[11px] bg-emerald-500/10 rounded-lg px-3 py-1.5 text-emerald-300/70 truncate">{externalUrl}</code>
+                                                <CopyBtn url={externalUrl} copyKey={`${rep.id}-ext`} label="Store Link" />
+                                            </div>
+                                        )}
+                                        {externalEnabled && discountCode && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-amber-400 w-20 shrink-0 flex items-center gap-1">
+                                                    <Tag className="h-3 w-3" /> Coupon:
+                                                </span>
+                                                <code className="flex-1 text-[11px] bg-amber-500/10 rounded-lg px-3 py-1.5 text-amber-300 font-semibold truncate">{discountCode.code}</code>
+                                                <CopyBtn url={discountCode.code} copyKey={`${rep.id}-code`} label="Coupon" />
+                                            </div>
+                                        )}
+                                        {externalEnabled && !discountCode && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-amber-400/60 w-20 shrink-0 flex items-center gap-1">
+                                                    <Tag className="h-3 w-3" /> Coupon:
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground/50 italic">No coupon assigned</span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-muted-foreground w-20 shrink-0">Customer:</span>
-                                            <code className="flex-1 text-[11px] bg-black/10 rounded-lg px-3 py-1.5 text-muted-foreground/70 truncate">{customerUrl}</code>
+                                            <span className={`text-xs w-20 shrink-0 ${externalEnabled && externalUrl ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>Customer:</span>
+                                            <code className={`flex-1 text-[11px] bg-black/10 rounded-lg px-3 py-1.5 truncate ${externalEnabled && externalUrl ? 'text-muted-foreground/40' : 'text-muted-foreground/70'}`}>{customerUrl}</code>
                                             <CopyBtn url={customerUrl} copyKey={`${rep.id}-cust`} label="Customer" />
                                         </div>
                                         {canRecruit && (
