@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 | Function | Purpose |
 |----------|---------|
 | `woo-connect` | OAuth flow to connect WooCommerce store |
-| `woo-webhook` | Receives WooCommerce order/product events |
+| `woo-webhook` | Receives WooCommerce order/product events. Auto-triggers commissions on order import for external referral attribution (3-layer waterfall: coupon -> email -> cookie). |
 | `woo-sync-products` | Manual sync of WooCommerce product catalog |
 | `woo-callback` | WooCommerce OAuth callback |
 | `woo-manual-connect` | Manual WooCommerce connection (API key auth) |

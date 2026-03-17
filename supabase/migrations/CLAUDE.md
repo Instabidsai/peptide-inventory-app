@@ -59,4 +59,5 @@ YYYYMMDD[HHMMSS]_description.sql
 | `20260306000000_add_payment_pool.sql` | Payment Pool tables: `payment_pools`, `pool_transactions` |
 | `20260306100000_fix_payment_pool_rls.sql` | Replace set_config policies with JWT-based org isolation policies |
 | `20260310200000_add_saas_feature_flags.sql` | Seeds 5 new SaaS feature flags for ALL existing orgs: `saas_mode=false`, `health_tracking=true`, `dose_tracking=true`, `client_health_ai=true`, `ruo_disclaimer=false`. Preserves existing behavior — only new SaaS tenants get different defaults via provision-tenant presets. |
+| `20260316_external_referral_network.sql` | Adds `external_store_url` (TEXT) and `external_store_platform` (TEXT, 'woocommerce'/'shopify') columns to `tenant_config` for external referral link feature |
 | `match_documents.sql` | pgvector similarity search helper (no date prefix, manual apply) |

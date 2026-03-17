@@ -110,5 +110,13 @@ Vercel production branch = `main`. Must push to both remotes.
 - `peptides.avg_cost` is auto-synced from lots via `trg_update_peptide_avg_cost` trigger
 - `create_validated_order` RPC uses avg_cost with fallback to `AVG(lots.cost_per_unit)` for partner pricing
 
+## External Referral Links
+- Pattern: feature flag check (`external_referral_links`) -> `tenant_config.external_store_url` -> `partner_discount_codes` -> build URL with coupon
+- WooCommerce coupon auto-apply: `?coupon=CODE` URL parameter
+- Shopify coupon auto-apply: `/discount/CODE` URL path
+- Partner links (`?p`) ALWAYS go internal (PeptideAI store) regardless of feature flag — only `/r/:slug` referral links redirect externally
+- Hook: `usePartnerDiscountCode(partnerId, orgId)` — query key: `['partner-discount-code', partnerId, orgId]`
+- Attribution waterfall: Layer 1 = coupon code match, Layer 2 = email-based contact lookup, Layer 3 = cookie (future)
+
 ## Test User
 `ai_tester@instabids.ai` / `TestAI2026!` (email confirmed, admin role)

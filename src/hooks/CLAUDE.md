@@ -57,6 +57,7 @@ All hooks here use `@tanstack/react-query` (`useQuery` / `useMutation`) over Sup
 | `use-partner.ts` | `usePartnerDownline`, `usePartnerContact`, `useAllOrgReps`, `useFullNetwork`, `useCommissions`, `useMarkCommissionPaid`, `useCreatePartnerOrder` | `profiles`, `contacts`, `commissions`, `sales_orders`, RPC `get_partner_downline` | `['partner_downline', rootId]`, `['commissions', partnerId]` | Yes | Multi-level partner tree + commission management. Uses `user?.id` directly — NOT `effectiveUserId`. JWT-level impersonation means the session IS the target user. |
 | `use-commissions.ts` | `useOrderCommissions` | `commissions` | `['order_commissions', orderId]` | No | Commission records for a specific sales order |
 | `use-automations.ts` | `useAutomations`, `useCreateAutomation`, `useUpdateAutomation`, `useDeleteAutomation` | `automations` | `['automations', org_id]` | Yes | Trigger-based automation rules (e.g., auto-assign reps) |
+| `use-partner-discount-code.ts` | `usePartnerDiscountCode` | `partner_discount_codes` | `['partner-discount-code', partnerId, orgId]` | No | Fetches active discount code for a partner (used by ReferralLinkCard for external referral URL construction) |
 
 ## Client Portal
 
