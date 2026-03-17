@@ -58,12 +58,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .maybeSingle();
 
         if (tenantConfig?.external_store_url) {
+            // Resolve profile_id (profiles.id) to user_id (profiles.user_id)
+            // because partner_discount_codes.partner_id FK references profiles.user_id
+            const { data: profileRecord } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('id', profile_id)
+                .maybeSingle();
+
+            const partnerId = profileRecord?.user_id || profile_id;
+
             // Look up partner's active discount code
             const { data: discountCode } = await supabase
                 .from('partner_discount_codes')
                 .select('code')
                 .eq('org_id', org_id)
-                .eq('partner_id', profile_id)
+                .eq('partner_id', partnerId)
                 .eq('active', true)
                 .limit(1)
                 .maybeSingle();
