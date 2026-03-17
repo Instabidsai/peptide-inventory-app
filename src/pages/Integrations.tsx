@@ -229,6 +229,46 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
     }
   }, []);
 
+  // External store URL config
+  const [externalStoreUrl, setExternalStoreUrl] = useState('');
+  const [externalStorePlatform, setExternalStorePlatform] = useState<'woocommerce' | 'shopify'>('woocommerce');
+  const [savingExternal, setSavingExternal] = useState(false);
+  const [externalLoaded, setExternalLoaded] = useState(false);
+
+  // Load external store config from tenant_config
+  useEffect(() => {
+    if (!orgId || externalLoaded) return;
+    supabase
+      .from('tenant_config')
+      .select('external_store_url, external_store_platform')
+      .eq('org_id', orgId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.external_store_url) setExternalStoreUrl(data.external_store_url);
+        if (data?.external_store_platform) setExternalStorePlatform(data.external_store_platform);
+        setExternalLoaded(true);
+      });
+  }, [orgId, externalLoaded]);
+
+  const handleSaveExternalUrl = async () => {
+    setSavingExternal(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({
+          external_store_url: externalStoreUrl.trim() || null,
+          external_store_platform: externalStorePlatform,
+        })
+        .eq('org_id', orgId);
+      if (error) throw error;
+      toast({ title: 'Saved', description: 'External store URL updated.' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Save failed', description: (err as any)?.message || 'Unknown error' });
+    } finally {
+      setSavingExternal(false);
+    }
+  };
+
   const isConnected = wooConnection?.status === 'connected';
   const isPending = wooConnection?.status === 'pending';
   const connectedStoreUrl = wooConnection?.metadata?.store_url || '';
@@ -576,6 +616,46 @@ function WooCommerceSetupSection({ orgId }: { orgId: string }) {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* External Store URL */}
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" /> External Referral Links
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Set your public store URL so partner referral links redirect customers to your real website with a coupon code.
+                  Enable "External Referral Links" in Feature Flags to activate.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Store URL</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={externalStoreUrl}
+                    onChange={(e) => setExternalStoreUrl(e.target.value)}
+                    placeholder="https://pureuspeptides.com"
+                    className="flex-1 text-sm"
+                  />
+                  <select
+                    value={externalStorePlatform}
+                    onChange={(e) => setExternalStorePlatform(e.target.value as 'woocommerce' | 'shopify')}
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="woocommerce">WooCommerce</option>
+                    <option value="shopify">Shopify</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveExternalUrl}
+                    disabled={savingExternal}
+                  >
+                    {savingExternal ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
             </div>
           </>
         )}

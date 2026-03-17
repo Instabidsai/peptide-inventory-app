@@ -15,6 +15,9 @@ import { QueryError } from '@/components/ui/query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
+import { useOrgFeatures } from '@/hooks/use-org-features';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
+import { usePartnerDiscountCode } from '@/hooks/use-partner-discount-code';
 import { logger } from '@/lib/logger';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import {
@@ -47,6 +50,12 @@ export default function PartnerDashboard() {
     const [activeSheet, setActiveSheet] = useState<SheetView>(null);
     const [newPerson, setNewPerson] = useState(EMPTY_PERSON);
     const createContact = useCreateContact();
+
+    // External referral network
+    const { isEnabled } = useOrgFeatures();
+    const tenantConfig = useTenantConfig();
+    const { data: partnerCode } = usePartnerDiscountCode(authProfile?.user_id, authProfile?.org_id);
+    const externalEnabled = isEnabled('external_referral_links');
 
     const tier = authProfile?.partner_tier || 'standard';
     const tierInfo = TIER_INFO[tier] || TIER_INFO.standard;
@@ -297,7 +306,7 @@ export default function PartnerDashboard() {
             {/* Referral Links */}
             <div>
             <SectionErrorBoundary section="Referral Links">
-            <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} orgId={authProfile?.org_id} canRecruitOverride={authProfile?.can_recruit} referralSlug={authProfile?.referral_slug} />
+            <ReferralLinkCard profileId={myProfileId} partnerTier={tier} userRole={userRole?.role} orgId={authProfile?.org_id} canRecruitOverride={authProfile?.can_recruit} referralSlug={authProfile?.referral_slug} externalEnabled={externalEnabled} externalStoreUrl={tenantConfig.external_store_url} discountCode={partnerCode?.code ?? null} storePlatform={tenantConfig.external_store_platform} />
             <TeamReferralLinks downline={downline || []} orgId={authProfile?.org_id} />
             </SectionErrorBoundary>
             </div>

@@ -293,6 +293,37 @@ export async function importExternalOrder(
     }
   }
 
+  // ── 6b. Email → partner attribution (Layer 2) ───────────────
+  // If no coupon matched, try to attribute via customer email.
+  // If the customer already has a contact with assigned_rep_id, use that rep.
+  if (order.customer_email) {
+    const { data: currentOrder } = await supabase
+      .from("sales_orders")
+      .select("rep_id")
+      .eq("id", newOrder.id)
+      .maybeSingle();
+
+    if (!currentOrder?.rep_id) {
+      const { data: existingContact } = await supabase
+        .from("contacts")
+        .select("assigned_rep_id")
+        .eq("org_id", orgId)
+        .ilike("email", order.customer_email)
+        .not("assigned_rep_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingContact?.assigned_rep_id) {
+        await supabase
+          .from("sales_orders")
+          .update({ rep_id: existingContact.assigned_rep_id })
+          .eq("id", newOrder.id);
+
+        console.log(`[platform-order-sync] Attributed order ${newOrder.id} to rep ${existingContact.assigned_rep_id} via email match "${order.customer_email}"`);
+      }
+    }
+  }
+
   console.log(`[platform-order-sync] Imported ${platformLabel} order #${order.external_id} → ${newOrder.id} (${matchedItems.length} items, ${skippedItems} skipped)`);
 
   // ── 7. Auto-create customer account ─────────────────────────

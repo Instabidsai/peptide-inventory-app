@@ -286,6 +286,7 @@ Deno.serve(withErrorReporting("provision-tenant", async (req) => {
             client_portal: true,
             customizations: true,
             wholesale_catalog: true,
+            external_referral_links: false,
         };
 
         // Preset-specific overrides

@@ -192,6 +192,16 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
     sidebarItems: ['Partners', 'Commissions', 'Partner Portal', 'Partner Store', 'My Orders'],
   },
 
+  {
+    key: 'external_referral_links',
+    label: 'External Referral Links',
+    description: 'Partner referral links redirect customers to your external store (e.g., WooCommerce/Shopify) with a coupon code instead of the internal PeptideAI store. Requires a connected store and External Store URL configured in Integrations.',
+    category: 'partners',
+    defaultEnabled: false,
+    roles: ['admin'],
+    sidebarItems: [],
+  },
+
   // ── Client Experience ──
   {
     key: 'health_tracking',

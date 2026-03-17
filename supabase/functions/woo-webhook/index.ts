@@ -166,6 +166,26 @@ Deno.serve(async (req) => {
     if (result.success && !result.error) {
       console.log(`[woo-webhook] Imported WC order #${wooOrder.id} → ${result.orderId} (${result.matchedItems} items)`);
 
+      // ── Auto-trigger commissions for attributed orders ──────────
+      if (result.orderId) {
+        const { data: importedOrder } = await supabase
+          .from("sales_orders")
+          .select("rep_id, payment_status")
+          .eq("id", result.orderId)
+          .maybeSingle();
+
+        if (importedOrder?.rep_id && ["paid", "pending_verification"].includes(importedOrder.payment_status)) {
+          const { error: commError } = await supabase.rpc("process_sale_commission", {
+            p_sale_id: result.orderId,
+          });
+          if (commError) {
+            console.error(`[woo-webhook] Commission processing failed for order ${result.orderId}:`, commError.message);
+          } else {
+            console.log(`[woo-webhook] Commissions processed for order ${result.orderId} (rep: ${importedOrder.rep_id})`);
+          }
+        }
+      }
+
       // Log for visibility
       await supabase.from("admin_ai_logs").insert({
         user_id: adminProfile?.user_id || null,

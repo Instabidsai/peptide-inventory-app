@@ -36,15 +36,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { profile_id, org_id } = data[0];
 
-    // Build redirect URL
-    let redirectUrl = `/join?ref=${profile_id}&org=${org_id}`;
-
-    // If ?p is present (any value, even empty), treat as partner signup
+    // Partner recruitment links (?p) ALWAYS go to internal app
     if (req.query.p !== undefined) {
-        redirectUrl += '&role=partner&tier=standard';
+        return res.redirect(302, `/join?ref=${profile_id}&org=${org_id}&role=partner&tier=standard`);
     }
 
-    return res.redirect(302, redirectUrl);
+    // Check if external referral links are enabled for this org
+    const { data: featureFlag } = await supabase
+        .from('org_features')
+        .select('enabled')
+        .eq('org_id', org_id)
+        .eq('feature_key', 'external_referral_links')
+        .maybeSingle();
+
+    if (featureFlag?.enabled) {
+        // Look up external store URL and platform
+        const { data: tenantConfig } = await supabase
+            .from('tenant_config')
+            .select('external_store_url, external_store_platform')
+            .eq('org_id', org_id)
+            .maybeSingle();
+
+        if (tenantConfig?.external_store_url) {
+            // Look up partner's active discount code
+            const { data: discountCode } = await supabase
+                .from('partner_discount_codes')
+                .select('code')
+                .eq('org_id', org_id)
+                .eq('partner_id', profile_id)
+                .eq('active', true)
+                .limit(1)
+                .maybeSingle();
+
+            if (discountCode?.code) {
+                const baseUrl = tenantConfig.external_store_url.replace(/\/+$/, '');
+                const platform = tenantConfig.external_store_platform || 'woocommerce';
+
+                let externalUrl: string;
+                if (platform === 'shopify') {
+                    // Shopify native format: store.com/discount/CODE
+                    externalUrl = `${baseUrl}/discount/${encodeURIComponent(discountCode.code)}`;
+                } else {
+                    // WooCommerce native format: store.com/?coupon=CODE
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    externalUrl = `${baseUrl}${separator}coupon=${encodeURIComponent(discountCode.code)}`;
+                }
+
+                return res.redirect(302, externalUrl);
+            }
+        }
+    }
+
+    // Default: internal redirect (current behavior)
+    return res.redirect(302, `/join?ref=${profile_id}&org=${org_id}`);
 }
 
 function notFoundPage(): string {
