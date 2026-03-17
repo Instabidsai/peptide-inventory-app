@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import {
   LayoutDashboard, FlaskConical, Users, FileText, ArrowLeftRight, Settings, X, MessageSquare, Package, Pill, ChevronRight, ChevronDown, BookOpen,
   ClipboardList, ShoppingBag, PackageCheck, Briefcase, DollarSign, PieChart, Network, Wand2, Leaf, Zap, Bot, ToggleRight, Activity, ShieldCheck,
-  Building2, BarChart3, CreditCard, LifeBuoy, Rocket, ScrollText, Shield, Plug, Search, Bug,
+  Building2, BarChart3, CreditCard, LifeBuoy, Rocket, ScrollText, Shield, Plug, Search, Bug, Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -49,6 +49,7 @@ const navigation = [
   { name: 'Integrations', href: '/integrations', icon: Plug, roles: ['admin'] },
   { name: 'Bug Reports', href: '/admin/bug-reports', icon: Bug, roles: ['admin'] },
   { name: 'Platform Support', href: '/platform-support', icon: LifeBuoy, roles: ['admin'] },
+  { name: 'Notifications', href: '/admin/notifications', icon: Bell, roles: ['admin', 'staff'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'staff', 'sales_rep', 'fulfillment'] },
   { name: 'Partner Portal', href: '/partner', icon: Network, roles: ['sales_rep', 'admin'] },
   { name: 'Partner Store', href: '/partner/store', icon: ShoppingBag, roles: ['sales_rep', 'admin'] },

@@ -1,0 +1,2 @@
+[functions.cal-webhook]
+verify_jwt = false

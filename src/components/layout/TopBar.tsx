@@ -9,17 +9,35 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Menu, LogOut, Settings, Search } from 'lucide-react';
+import { Menu, LogOut, Settings, Search, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/sb_client/client';
 
 interface TopBarProps {
   onMenuClick: () => void;
 }
 
 export function TopBar({ onMenuClick }: TopBarProps) {
-  const { profile, userRole, signOut } = useAuth();
+  const { user, profile, userRole, signOut } = useAuth();
   const navigate = useNavigate();
+
+  const { data: unreadCount } = useQuery({
+    queryKey: ['unread-notifications', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30_000,
+  });
 
   const initials = profile?.full_name
     ?.split(' ')
@@ -58,6 +76,22 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       </button>
 
       <div className="flex-1" />
+
+      {/* Notification bell */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative h-10 w-10 hover:bg-white/5"
+        onClick={() => navigate('/admin/notifications')}
+        aria-label="Notifications"
+      >
+        <Bell className="h-5 w-5" />
+        {!!unreadCount && unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -93,6 +93,9 @@ const VendorSettings = lazyRetry(() => import("./pages/vendor/VendorSettings"));
 const VendorSupplyOrders = lazyRetry(() => import("./pages/vendor/VendorSupplyOrders"));
 const VendorIntegrations = lazyRetry(() => import("./pages/vendor/VendorIntegrations"));
 
+// Admin notifications
+const AdminNotifications = lazyRetry(() => import("./pages/admin/AdminNotifications"));
+
 // Custom engine
 const Customizations = lazyRetry(() => import("./pages/Customizations"));
 const CustomEntityPage = lazyRetry(() => import("./components/custom/CustomEntityPage"));
@@ -246,6 +249,7 @@ const App = () => (
                                             <Route path="/admin/automations" element={<RoleBasedRedirect allowedRoles={['admin']}><Automations /></RoleBasedRedirect>} />
                                             <Route path="/admin/supplements" element={<AdminSupplements />} />
                                             <Route path="/admin/features" element={<RoleBasedRedirect allowedRoles={['admin']}><FeatureManagement /></RoleBasedRedirect>} />
+                                            <Route path="/admin/notifications" element={<RoleBasedRedirect allowedRoles={['admin', 'staff']}><AdminNotifications /></RoleBasedRedirect>} />
                                             <Route path="/admin/health" element={<Navigate to="/vendor/system-health" replace />} />
                                             <Route path="/admin/billing" element={<RoleBasedRedirect allowedRoles={['admin']}><BillingHistory /></RoleBasedRedirect>} />
                                             <Route path="/admin/payment-pool" element={<RoleBasedRedirect allowedRoles={['admin']}><PaymentPool /></RoleBasedRedirect>} />
