@@ -30,25 +30,49 @@ jobs:
         run: |
           functions=(
             admin-ai-chat
+            admin-impersonate
             ai-builder
             analyze-food
+            boot-failure
             chat-with-ai
+            check-low-supply
             check-payment-emails
+            code-patcher
             composio-callback
             composio-connect
+            create-supplier-order
+            deploy-webhook
             exchange-token
+            fulfill-order
+            health-digest
+            health-probe
             invite-user
+            meta-sentinel
             notify-commission
             partner-ai-chat
             process-health-document
             promote-contact
             provision-tenant
             run-automations
+            scrape-brand
+            scrape-brand-status
             self-signup
             send-email
+            sentinel-worker
+            shopify-sync-customers
+            shopify-sync-products
+            shopify-webhook
             sms-webhook
+            sync-discount-codes
+            synthetic-monitor
             telegram-webhook
             textbelt-webhook
+            woo-callback
+            woo-connect
+            woo-manual-connect
+            woo-sync-customers
+            woo-sync-products
+            woo-webhook
           )
           for fn in "${functions[@]}"; do
             echo "Deploying $fn..."
