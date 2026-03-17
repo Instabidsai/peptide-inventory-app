@@ -1361,8 +1361,24 @@ function RepForm({ rep, allReps, onSubmit }: { rep: UserProfile, allReps: UserPr
         }
     };
 
-    // Filter out the current rep from potential parents (can't be your own parent)
-    const potentialParents = allReps.filter(r => r.id !== rep.id);
+    // Filter out the current rep AND all their descendants (prevents circular references)
+    const getDescendantIds = (rootId: string): Set<string> => {
+        const descendants = new Set<string>();
+        const queue = [rootId];
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            for (const r of allReps) {
+                if (r.parent_rep_id === current && !descendants.has(r.id)) {
+                    descendants.add(r.id);
+                    queue.push(r.id);
+                }
+            }
+        }
+        return descendants;
+    };
+    const blockedIds = getDescendantIds(rep.id);
+    blockedIds.add(rep.id);
+    const potentialParents = allReps.filter(r => !blockedIds.has(r.id));
 
     // Build tier description from DB config
     const currentDbTier = tierMap.get(tier);
