@@ -59,6 +59,9 @@ profiles
 | FinancialOverview shows double orders/spend | Movements without `[SO:]` notes marker counted alongside sales_orders | Fixed: movements created on/after first sales_order date are now skipped (`FinancialOverview.tsx` line ~187). Only pre-sales_order legacy movements are shown. |
 | Build fails on Vercel | Import from wrong supabase path | Use `@/integrations/sb_client/client` |
 | Self-healing not processing | Sentinel-worker cron stopped | Check pg_cron: `SELECT * FROM cron.job WHERE jobname LIKE 'sentinel%'` |
+| WooCommerce order import: rep_id FK violation (`Key (rep_id)=(...) is not present in table "profiles"`) | `partner_discount_codes.partner_id` stores `profiles.user_id` (auth UUID) but `sales_orders.rep_id` FK references `profiles.id` (profile UUID). Directly using `partner_id` as `rep_id` fails. | Resolve user_id → profiles.id before setting rep_id: `SELECT id FROM profiles WHERE user_id = :partner_id AND org_id = :org_id`. Fixed in `platform-order-sync.ts` and `woo-webhook/index.v22-zero-import.ts`. |
+| Edge function BOOT_ERROR on deploy via Composio | Composio `SUPABASE_UPDATE_A_FUNCTION` sends raw TypeScript body which gets ESZIP-compiled with `--no-remote`. Any imports from esm.sh, jsr:, or npm: fail. | Use zero-import pattern: pure `fetch()` against `${SUPABASE_URL}/rest/v1/` REST API with service role key headers. No imports needed. See `woo-webhook/index.v22-zero-import.ts` for reference. |
+| Commission RPC fails: `process_sale_commission(p_order_id)` not found | Wrong parameter name. The RPC expects `p_sale_id`, not `p_order_id`. | Use `sbRpc("process_sale_commission", { p_sale_id: order.id })` |
 
 ## Debugging Commands
 

@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 | Function | Purpose |
 |----------|---------|
 | `woo-connect` | OAuth flow to connect WooCommerce store |
-| `woo-webhook` | Receives WooCommerce order/product events. Auto-triggers commissions on order import for external referral attribution (3-layer waterfall: coupon -> email -> cookie). |
+| `woo-webhook` | Receives WooCommerce order/product events. **v22 deployed** via zero-import pattern (pure fetch, no esm.sh). 3-layer attribution: coupon → email → cookie. Resolves `partner_id` (user_id) → `profiles.id` before setting `rep_id`. Auto-triggers `process_sale_commission(p_sale_id)` RPC. |
 | `woo-sync-products` | Manual sync of WooCommerce product catalog |
 | `woo-callback` | WooCommerce OAuth callback |
 | `woo-manual-connect` | Manual WooCommerce connection (API key auth) |
@@ -155,3 +155,7 @@ _Add discoveries here as you work on edge functions._
 - **Composio response shapes**: `extractCustomers()` and `extractProducts()` helpers handle multiple possible response formats from Composio API (data.customers, response_data.customers, etc).
 - **Discount code platform sync**: Two-step process for Shopify — create priceRule first, then create discount code under it. Composite `platform_coupon_id` format: `woo:123,shopify:456`.
 - **New migration**: `partner_discount_codes` table with RLS. Unique constraint on `(org_id, code)`. Soft-delete via `active` boolean.
+<!-- added 2026-03-17 -->
+- **woo-webhook v22 (zero-import)**: Deployed via Composio using pure fetch() against REST API. No imports — bypasses ESZIP `--no-remote` restriction. Original `index.ts` kept as source of truth. v22 source: `index.v22-zero-import.ts`.
+- **rep_id FK fix**: `partner_discount_codes.partner_id` stores `profiles.user_id`, but `sales_orders.rep_id` FK references `profiles.id`. Must resolve via profiles table. Fixed in both `platform-order-sync.ts` and `woo-webhook/index.v22-zero-import.ts`.
+- **process_sale_commission RPC**: Parameter is `p_sale_id` (NOT `p_order_id`). Commissions table uses `sale_id` column (NOT `sales_order_id`).

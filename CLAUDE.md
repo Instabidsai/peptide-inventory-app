@@ -65,10 +65,10 @@ Master switch `saas_mode` in `org_features` controls B2B tenant safety. When ON:
 
 **Safety**: Toggling `saas_mode` writes all 6 flags to DB in one upsert. Edge functions query flags directly. PureUS has `saas_mode=false` — all features ON, no RUO disclaimer.
 
-## Current Status (2026-03-11)
-**Complete**: Multi-tenancy (57 tables), 48 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions, **USDC Payment Pool** (code complete, needs E2E testing), **SaaS-Safe Mode** (feature flag system for B2B tenants)
+## Current Status (2026-03-17)
+**Complete**: Multi-tenancy (57 tables), 48 edge functions, subscription billing (4 tiers), vendor dashboard, self-healing system (17-phase), AI chat (3 variants), Shippo shipping, WooCommerce + Shopify sync, partner commissions, **USDC Payment Pool** (code complete, needs E2E testing), **SaaS-Safe Mode** (feature flag system for B2B tenants), **External Referral Network** (E2E tested: referral link → external store → coupon → webhook → partner attribution → commission)
 
-**Needs work**: Hardcoded Supabase keys in client.ts, git history secret scrub, Stripe plan seeding with real price IDs, tenant Venmo handle from tenant_config, full e2e merchant signup test, **Payment Pool WooCommerce + NMI sandbox integration test**
+**Needs work**: Hardcoded Supabase keys in client.ts, git history secret scrub, Stripe plan seeding with real price IDs, tenant Venmo handle from tenant_config, full e2e merchant signup test, **Payment Pool WooCommerce + NMI sandbox integration test**, GitHub Actions CI/CD (expired SUPABASE_ACCESS_TOKEN)
 
 ## Agent API (`/agent-api/`)
 Python FastAPI for AI merchant onboarding chat. `agent-api/CLAUDE.md` is the AI system prompt — don't modify for coding tasks. Docker deployed separately.

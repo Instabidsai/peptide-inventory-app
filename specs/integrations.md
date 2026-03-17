@@ -80,6 +80,17 @@ Admin creates code for partner
 
 Customer uses code on external store → webhook → order created → code matched to partner → commission attributed.
 
+### WooCommerce Webhook Attribution Pipeline (woo-webhook v22)
+
+3-layer attribution waterfall:
+1. **Coupon match** (strongest): `coupon_lines[].code` → `partner_discount_codes` → resolve `partner_id` (user_id) → `profiles.id` → set `rep_id`
+2. **Email match** (fallback): `billing.email` → `contacts.email` → `contacts.assigned_rep_id` → set `rep_id`
+3. **Cookie-based** (future): not yet implemented
+
+After attribution, if `rep_id` is set and `payment_status` is `paid` or `pending_verification`, auto-triggers `process_sale_commission(p_sale_id)` RPC which creates commission records for the partner + upline chain.
+
+**Critical FK note**: `partner_discount_codes.partner_id` stores `profiles.user_id` (auth UUID), NOT `profiles.id`. Must resolve via profiles table before setting `sales_orders.rep_id`.
+
 ## Customer Sync Pattern
 
 Both `woo-sync-customers` and `shopify-sync-customers`:

@@ -71,6 +71,7 @@ When a customer uses a discount code on WooCommerce/Shopify:
 3. **DownlineVisualizer** — recursive CTE works fine to ~100 nodes, slows past that
 4. **Commission rate changes** — only affect NEW orders. Existing commissions keep their original rate.
 5. **pricing_tiers vs commission_rate** — these are completely separate systems. Tiers = customer discounts, commission_rate = partner payouts.
+6. **partner_discount_codes.partner_id vs profiles.id FK** — `partner_discount_codes.partner_id` stores `profiles.user_id` (auth UUID), but `sales_orders.rep_id` FK references `profiles.id` (profile UUID). These are DIFFERENT values. When attributing an order via coupon code, you MUST resolve `user_id → profiles.id` before setting `rep_id`. Fixed in `platform-order-sync.ts` and `woo-webhook/index.v22-zero-import.ts`.
 
 ## Partner AI Chat
 

@@ -193,19 +193,35 @@ Log to admin_ai_logs + create notification
 ### Plan File
 The full implementation plan is at: `C:\Users\Owner\.claude\plans\buzzing-puzzling-stonebraker.md`
 
-## Summary of What's Left
+## Status — ALL TASKS COMPLETE (2026-03-17)
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Fix woo_url in tenant_api_keys to pureuspeptides.com | NOT DONE |
-| 2 | Re-do WooCommerce OAuth with correct domain (if needed) | NOT DONE |
-| 3 | Create webhook on pureuspeptides.com via WooCommerce API/MCP | NOT DONE |
-| 4 | Verify webhook secret matches | NOT DONE |
-| 5 | Test webhook fires and order imports | NOT DONE |
-| 6 | Test full referral flow (link → redirect → order → commission) | NOT DONE |
-| 7 | Optional: Add coupon auto-apply PHP snippet | NOT DONE |
-| 8 | Verify order #297 (the test order Justin placed) comes through after webhook is set up | NOT DONE |
-| 9 | Run `npm run preflight` to verify no build issues | NOT DONE |
-| 10 | Update .agent/ docs with final state | NOT DONE |
+| 1 | Fix woo_url in tenant_api_keys to pureuspeptides.com | DONE |
+| 2 | Re-do WooCommerce OAuth with correct domain (if needed) | DONE (manual keys) |
+| 3 | Create webhook on pureuspeptides.com via WooCommerce API/MCP | DONE |
+| 4 | Verify webhook secret matches | DONE |
+| 5 | Test webhook fires and order imports | DONE — v22 zero-import deployed, WC #304 test order imported |
+| 6 | Test full referral flow (link → redirect → order → commission) | DONE — coupon TESTPARTNER20 → partner attributed → $12 commission created |
+| 7 | Optional: Add coupon auto-apply PHP snippet | DEFERRED (external store config, not blocking) |
+| 8 | Verify order #297 (the test order Justin placed) comes through after webhook is set up | DONE (dedup works) |
+| 9 | Run `npm run preflight` to verify no build issues | DONE |
+| 10 | Update .agent/ docs with final state | DONE |
 
-Use `/pep-add-feature` skill if you need the full deep audit framework. But most of the code is already built — this is primarily a **WooCommerce configuration + testing** task now.
+## E2E Test Results (2026-03-17)
+
+**Test order**: WC #304, Tirzepatide 10mg x2, $120, coupon TESTPARTNER20
+- Order created: `6e795d71-50ad-4f30-81c3-f6ce10bba7d3`
+- Partner attributed: `27764e46-6991-4692-880d-0d7937b600f5` (profiles.id, resolved from user_id)
+- Commission: `d7ee217a-73b8-4b31-9993-ef884958f73a` — $12.00 (10%), status: pending
+- Discount code uses_count incremented correctly
+
+## Critical Bug Fixed: rep_id FK Resolution
+
+`partner_discount_codes.partner_id` stores `profiles.user_id` (auth UUID), but `sales_orders.rep_id` FK references `profiles.id` (profile UUID). These are DIFFERENT values. Fixed in:
+- `supabase/functions/_shared/platform-order-sync.ts` — added profiles lookup before setting rep_id
+- `supabase/functions/woo-webhook/index.v22-zero-import.ts` — zero-import version with same fix
+
+## Deployment Notes
+
+woo-webhook is deployed as v22 via Composio's `SUPABASE_UPDATE_A_FUNCTION` (zero-import pattern — pure fetch() against REST API, no esm.sh/jsr: imports). This bypasses the `--no-remote` ESZIP restriction. The original `index.ts` with imports is kept as source of truth and also has the FK fix applied for when proper CLI deploy is restored.

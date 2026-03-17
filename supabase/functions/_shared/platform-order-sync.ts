@@ -263,7 +263,7 @@ export async function importExternalOrder(
     for (const code of order.discount_codes) {
       const { data: discountCode } = await supabase
         .from("partner_discount_codes")
-        .select("partner_id, id")
+        .select("partner_id, id, uses_count")
         .eq("org_id", orgId)
         .ilike("code", code)
         .eq("active", true)
@@ -271,10 +271,23 @@ export async function importExternalOrder(
         .maybeSingle();
 
       if (discountCode) {
+        // partner_discount_codes.partner_id stores auth user_id,
+        // but sales_orders.rep_id FK references profiles.id.
+        // Resolve user_id → profiles.id before setting rep_id.
+        const { data: partnerProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", discountCode.partner_id)
+          .eq("org_id", orgId)
+          .limit(1)
+          .maybeSingle();
+
+        const repId = partnerProfile?.id || discountCode.partner_id;
+
         // Attribute order to partner
         await supabase
           .from("sales_orders")
-          .update({ rep_id: discountCode.partner_id })
+          .update({ rep_id: repId })
           .eq("id", newOrder.id);
 
         // Increment uses count
@@ -287,7 +300,7 @@ export async function importExternalOrder(
             .catch(() => {});
         });
 
-        console.log(`[platform-order-sync] Attributed order ${newOrder.id} to partner ${discountCode.partner_id} via code "${code}"`);
+        console.log(`[platform-order-sync] Attributed order ${newOrder.id} to partner ${repId} (user_id: ${discountCode.partner_id}) via code "${code}"`);
         break; // Only attribute to first matching code
       }
     }
