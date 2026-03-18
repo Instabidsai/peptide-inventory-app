@@ -185,7 +185,7 @@ export function getSupplyStatusColor(status: SupplyCalculation['status']) {
  * Get status label
  */
 export function getSupplyStatusLabel(daysRemaining: number) {
-    if (daysRemaining === 0) return 'Depleted';
+    if (daysRemaining === 0) return 'Empty';
     if (daysRemaining === 1) return '1 day left';
     return `${daysRemaining} days left`;
 }
