@@ -87,8 +87,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.redirect(302, `${baseUrl}/discount/${encodeURIComponent(discountCode.code)}`);
                 }
 
-                // WooCommerce: direct redirect with coupon in URL
-                return res.redirect(302, `${baseUrl}/?coupon=${encodeURIComponent(discountCode.code)}`);
+                // WooCommerce: check if store has its own coupon capture (headless sites)
+                const { data: autoCapture } = await supabase
+                    .from('org_features')
+                    .select('enabled')
+                    .eq('org_id', org_id)
+                    .eq('feature_key', 'coupon_auto_capture')
+                    .maybeSingle();
+
+                const storeUrl = `${baseUrl}/?coupon=${encodeURIComponent(discountCode.code)}`;
+
+                if (autoCapture?.enabled) {
+                    // Headless store with CouponCapture component — direct redirect
+                    return res.redirect(302, storeUrl);
+                }
+
+                // Standard WooCommerce — show landing page that copies coupon + redirects
+                return res.status(200).send(couponLandingPage(discountCode.code, storeUrl));
             }
         }
     }
