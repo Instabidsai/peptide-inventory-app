@@ -45,6 +45,7 @@ import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useOrgFeatures } from '@/hooks/use-org-features';
+import { useTenantConfig } from '@/hooks/use-tenant-config';
 
 // Referral Activity Card — shows total referrals, total spend, per-customer breakdown
 function ReferralActivityCard({ repId }: { repId: string }) {
@@ -282,7 +283,7 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
     const pricingMode = partner.pricing_mode || 'percentage';
     const multiplier = partner.price_multiplier;
     const markup = partner.cost_plus_markup;
-    const discountPct = multiplier != null ? ((1 - multiplier) * 100).toFixed(0) : null;
+    const discountPct = pricingMode === 'percentage' && multiplier != null ? ((1 - multiplier) * 100).toFixed(0) : null;
 
     const statusColor = (s: string) => {
         if (s === 'fulfilled' || s === 'delivered') return 'bg-green-500/10 text-green-500 border-green-500/20';
@@ -314,6 +315,11 @@ function PlaceOrderTabContent({ partner }: { partner: any }) {
                         {discountPct && (
                             <Badge variant="outline" className="text-sm px-3 py-1">
                                 {discountPct}% off retail (x{multiplier})
+                            </Badge>
+                        )}
+                        {pricingMode === 'cost_multiplier' && multiplier != null && (
+                            <Badge variant="outline" className="text-sm px-3 py-1">
+                                {multiplier}x cost
                             </Badge>
                         )}
                         {pricingMode === 'cost_plus' && markup != null && (
@@ -1381,7 +1387,9 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
     const queryClient = useQueryClient();
     const [creating, setCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [newCode, setNewCode] = useState({ code: '', discount_percent: 20, platform: 'both' });
+    const { config: tenantConfig } = useTenantConfig();
+    const defaultDiscount = tenantConfig?.default_customer_discount ?? 20;
+    const [newCode, setNewCode] = useState({ code: '', discount_percent: defaultDiscount, platform: 'both' });
 
     const { data: codes, isLoading } = useQuery({
         queryKey: ['partner_discount_codes', repId],
@@ -1430,7 +1438,7 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
             if (!result.success) throw new Error(result.error || 'Failed to create discount code');
 
             toast({ title: 'Discount code created', description: `${newCode.code.toUpperCase()} is active.` });
-            setNewCode({ code: '', discount_percent: 20, platform: 'both' });
+            setNewCode({ code: '', discount_percent: defaultDiscount, platform: 'both' });
             queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', repId] });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Error', description: (err as any)?.message || 'Failed to create code.' });
@@ -1840,7 +1848,11 @@ export default function PartnerDetail() {
                                 <div>
                                     <span className="font-medium">Price Multiplier:</span>{' '}
                                     {partner.price_multiplier != null
-                                        ? `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
+                                        ? pricingMode === 'cost_multiplier'
+                                            ? `${partner.price_multiplier}x cost`
+                                            : pricingMode === 'cost_plus'
+                                                ? `Cost + $${markup} markup`
+                                                : `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
                                         : 'Standard pricing'}
                                 </div>
                             </div>
