@@ -167,6 +167,7 @@ describe('useCreateValidatedOrder', () => {
 
 describe('useUpdateSalesOrder', () => {
   it('updates order and toasts success', async () => {
+    setRpcResponse('update_sales_order', { updated: true });
     setMockResponse('sales_orders', []);
 
     const { result } = renderHook(() => useUpdateSalesOrder(), { wrapper: createWrapper() });
@@ -180,6 +181,7 @@ describe('useUpdateSalesOrder', () => {
   });
 
   it('triggers commission processing when status changes to fulfilled', async () => {
+    setRpcResponse('update_sales_order', { updated: true });
     setMockResponse('sales_orders', { commission_amount: 30 });
     setRpcResponse('process_sale_commission', null);
 

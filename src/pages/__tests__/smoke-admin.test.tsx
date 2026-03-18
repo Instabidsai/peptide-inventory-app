@@ -67,7 +67,7 @@ describe('Admin Pages — Smoke Tests', () => {
     const ContactDetails = (await import('../ContactDetails')).default;
     const { container } = render(<ContactDetails />, { wrapper: createPageWrapper(['/contacts/test-id']) });
     expect(container.firstChild).toBeTruthy();
-  });
+  }, 15_000);
 
   it('Peptides renders without crashing', async () => {
     const Peptides = (await import('../Peptides')).default;

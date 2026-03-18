@@ -37,6 +37,7 @@ const FEATURE_CIRCUIT_MAP: Record<string, string[]> = {
   ruo_disclaimer: ['validation'],
   view_as_user: ['validation'],
   customizations: ['database', 'edge_function'],
+  external_referral_links: ['database', 'edge_function'],
 };
 
 describe('feature-registry', () => {
@@ -117,6 +118,7 @@ describe('feature-registry', () => {
       'financials', 'payment_pool', 'crypto_payments',
       'saas_mode', 'ruo_disclaimer', 'view_as_user',
       'customizations',
+      'external_referral_links',
     ];
 
     const registryKeys = new Set(FEATURE_REGISTRY.map((f) => f.key));

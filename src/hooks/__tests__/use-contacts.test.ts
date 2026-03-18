@@ -30,7 +30,9 @@ describe('useContacts', () => {
     const { result } = renderHook(() => useContacts(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toEqual(mockContacts);
+    expect(result.current.data).toEqual(
+      mockContacts.map((c) => ({ ...c, order_count: 0, last_order_date: null }))
+    );
     expect(supabase.from).toHaveBeenCalledWith('contacts');
   });
 

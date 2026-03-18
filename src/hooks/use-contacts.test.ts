@@ -46,7 +46,7 @@ describe('use-contacts', () => {
       const { result } = renderHook(() => useContacts(), { wrapper: createWrapper() });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual([sampleContact]);
+      expect(result.current.data).toEqual([{ ...sampleContact, order_count: 0, last_order_date: null }]);
     });
 
     it('returns empty array when no contacts', async () => {
@@ -64,7 +64,7 @@ describe('use-contacts', () => {
       const { result } = renderHook(() => useContacts('customer'), { wrapper: createWrapper() });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual([sampleContact]);
+      expect(result.current.data).toEqual([{ ...sampleContact, order_count: 0, last_order_date: null }]);
     });
 
     it('handles database error', async () => {

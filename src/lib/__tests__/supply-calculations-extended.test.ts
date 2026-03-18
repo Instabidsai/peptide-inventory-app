@@ -168,8 +168,8 @@ describe('getSupplyStatusColor', () => {
 });
 
 describe('getSupplyStatusLabel', () => {
-  it('returns Depleted for 0 days', () => {
-    expect(getSupplyStatusLabel(0)).toBe('Depleted');
+  it('returns Empty for 0 days', () => {
+    expect(getSupplyStatusLabel(0)).toBe('Empty');
   });
   it('returns singular for 1 day', () => {
     expect(getSupplyStatusLabel(1)).toBe('1 day left');

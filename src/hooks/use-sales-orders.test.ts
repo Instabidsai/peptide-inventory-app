@@ -170,6 +170,7 @@ describe('use-sales-orders', () => {
 
   describe('useUpdateSalesOrder', () => {
     it('updates order status', async () => {
+      setRpcResponse('update_sales_order', { updated: true });
       setMockResponse('sales_orders', { ...sampleOrder, status: 'fulfilled' });
 
       const { result } = renderHook(() => useUpdateSalesOrder(), { wrapper: createWrapper() });
