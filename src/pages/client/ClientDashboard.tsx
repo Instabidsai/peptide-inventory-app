@@ -14,7 +14,6 @@ import {
     Sparkles,
     Users,
     Flame,
-    Target,
     Calendar,
     X,
     Heart,
@@ -33,9 +32,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SimpleVials } from '@/components/regimen/SimpleVials';
 import { SupplyOverview } from '@/components/regimen/SupplyOverview';
 import { ProtocolCalendar } from '@/components/regimen/ProtocolCalendar';
+import { HealthMetrics } from '@/components/regimen/HealthMetrics';
 import { useVialActions } from '@/hooks/use-vial-actions';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
-import { useOrgFeatures } from '@/hooks/use-org-features';
 import { isDoseDay } from '@/types/regimen';
 import { cn } from '@/lib/utils';
 import { calculateDoseUnits } from '@/utils/dose-utils';
@@ -49,10 +48,9 @@ import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import { QueryError } from "@/components/ui/query-error";
 import { ClientRequestModal } from "@/components/client/ClientRequestModal";
 
-import { PeptideRings, RING_COLORS, type RingDose } from '@/components/gamified/PeptideRings';
+import { RING_COLORS } from '@/components/gamified/PeptideRings';
 import { DueNowCards, type DueNowDose } from '@/components/gamified/DueNowCards';
 import { HouseholdDoseSection } from '@/components/gamified/HouseholdDoseSection';
-import { ComplianceHeatmap, type DayCompletion } from '@/components/gamified/ComplianceHeatmap';
 
 type TimeWindow = 'morning' | 'afternoon' | 'evening';
 
@@ -74,9 +72,6 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
     const { protocols, logProtocolUsage } = useProtocols(contact?.id);
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { isEnabled } = useOrgFeatures();
-    const doseTrackingEnabled = isEnabled('dose_tracking');
-    const protocolsEnabled = isEnabled('protocols');
 
     // In admin preview, use the customer's linked auth user ID for Quick Glance queries
     const effectiveUserId = isAdminPreview ? contact?.linked_user_id : user?.id;
@@ -89,7 +84,6 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
     const isHousehold = !!contact?.household_id && (householdMembers?.length ?? 0) > 1;
     const actions = useVialActions(inventoryOwnerId);
     const [changeRequestOpen, setChangeRequestOpen] = useState(false);
-    const [statsOpen, setStatsOpen] = useState(false);
     const [bannerDismissed, setBannerDismissed] = useState(() =>
         localStorage.getItem('household-banner-dismissed') === 'true'
     );
@@ -195,6 +189,39 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
         },
         enabled: !!contact?.id,
     });
+
+    // ── Today's daily log (for HealthMetrics check-in) ──
+    const { data: todayLog, refetch: refetchTodayLog } = useQuery({
+        queryKey: ['dashboard-today-log', contact?.id, todayStr],
+        queryFn: async () => {
+            if (!contact?.id) return undefined;
+            const { data } = await supabase
+                .from('client_daily_logs')
+                .select('*')
+                .eq('contact_id', contact.id)
+                .eq('log_date', todayStr)
+                .maybeSingle();
+            return data ?? undefined;
+        },
+        enabled: !!contact?.id,
+    });
+
+    const handleSaveHealthLog = async (logData: { weight_lbs?: number; notes?: string }) => {
+        if (!contact?.id) return;
+        const { error } = await supabase.from('client_daily_logs').upsert({
+            contact_id: contact.id,
+            log_date: todayStr,
+            weight_lbs: logData.weight_lbs,
+            notes: logData.notes,
+        }, { onConflict: 'contact_id,log_date' });
+
+        if (error) {
+            toast.error('Failed to save health log');
+        } else {
+            toast.success('Health log saved');
+            refetchTodayLog();
+        }
+    };
 
     const hasQuickGlance = (unreadNotifications ?? 0) > 0 || (unreadMessages ?? 0) > 0 || !!latestWeight || (outstandingBalance ?? 0) > 0;
 
@@ -330,15 +357,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
             return windowOrder[a.timeOfDay] - windowOrder[b.timeOfDay];
         });
 
-        // Ring doses
-        const ringDoses: RingDose[] = todayDoses.map(d => ({
-            id: d.id,
-            peptideName: d.peptideName,
-            isTaken: d.isTaken,
-            color: d.color,
-        }));
-
-        // Heatmap data (last 91 days)
+        // Heatmap data (last 91 days) — used for streak + adherence calculation
         const logsByDate = new Map<string, number>();
         for (const log of allLogs) {
             logsByDate.set(log.date, (logsByDate.get(log.date) || 0) + 1);
@@ -394,7 +413,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
         const totalCompleted = last30.reduce((acc, d) => acc + d.completed, 0);
         const adherenceRate = totalExpected > 0 ? Math.round((totalCompleted / totalExpected) * 100) : 0;
 
-        return { todayDoses, ringDoses, heatmapData, streak, adherenceRate, currentWindow };
+        return { todayDoses, streak, adherenceRate, currentWindow };
     }, [protocols, inventory, todayAbbr, todayStr, currentWindow, isHousehold, allMemberProtocols]);
 
     // ── Unified dose logging (protocol log + vial decrement) ────
@@ -491,7 +510,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold tracking-tight">Share your fridge with family</p>
-                        <p className="text-[11px] text-muted-foreground/50 leading-relaxed">Add family members so everyone tracks their own doses from your shared supply.</p>
+                        <p className="text-xs text-muted-foreground/50 leading-relaxed">Add family members so everyone tracks their own doses from your shared supply.</p>
                     </div>
                     <button
                         onClick={() => navigate('/account?section=family')}
@@ -528,13 +547,13 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                         >
                             <div className="p-1.5 rounded-lg bg-blue-500/10 shrink-0 relative">
                                 <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
-                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white leading-none px-0.5">
+                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white leading-none px-0.5">
                                     {(unreadMessages ?? 0) > 9 ? '9+' : unreadMessages}
                                 </span>
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{unreadMessages} New Message{unreadMessages !== 1 ? 's' : ''}</p>
-                                <p className="text-[10px] text-muted-foreground/60">From your care team</p>
+                                <p className="text-xs text-muted-foreground/60">From your care team</p>
                             </div>
                         </button>
                     )}
@@ -546,13 +565,13 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                         >
                             <div className="p-1.5 rounded-lg bg-amber-500/10 shrink-0 relative">
                                 <Bell className="h-3.5 w-3.5 text-amber-400" />
-                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white leading-none px-0.5">
+                                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white leading-none px-0.5">
                                     {(unreadNotifications ?? 0) > 9 ? '9+' : unreadNotifications}
                                 </span>
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{unreadNotifications} Alert{(unreadNotifications ?? 0) !== 1 ? 's' : ''}</p>
-                                <p className="text-[10px] text-muted-foreground/60">Updates & reminders</p>
+                                <p className="text-xs text-muted-foreground/60">Updates & reminders</p>
                             </div>
                         </button>
                     )}
@@ -567,14 +586,14 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">{latestWeight.weight} lbs</p>
-                                <p className="text-[10px] text-muted-foreground/60">Last weigh-in</p>
+                                <p className="text-xs text-muted-foreground/60">Last weigh-in</p>
                             </div>
                         </button>
                     )}
 
                     {(outstandingBalance ?? 0) > 0 && (
                         <button
-                            onClick={() => !isAdminPreview && navigate('/my-regimen')}
+                            onClick={() => !isAdminPreview && navigate('/messages')}
                             className={cn("flex items-center gap-2.5 p-3 rounded-xl bg-red-500/[0.06] border border-red-500/15 transition-colors text-left", !isAdminPreview && "hover:bg-red-500/[0.1] cursor-pointer", isAdminPreview && "cursor-default")}
                         >
                             <div className="p-1.5 rounded-lg bg-red-500/10 shrink-0">
@@ -582,7 +601,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold truncate">${(outstandingBalance ?? 0).toFixed(2)} due</p>
-                                <p className="text-[10px] text-muted-foreground/60">Outstanding balance</p>
+                                <p className="text-xs text-muted-foreground/60">Outstanding balance</p>
                             </div>
                         </button>
                     )}
@@ -594,7 +613,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                 {!isAdminPreview && (
                 <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-muted/40 p-1">
                     <TabsTrigger value="protocol" className="rounded-lg text-sm font-medium data-[state=active]:bg-muted/50 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
-                        My Protocol
+                        My Plan
                     </TabsTrigger>
                     <TabsTrigger value="ai-coach" className="rounded-lg text-sm font-medium gap-2 data-[state=active]:bg-muted/50 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
                         <Sparkles className="h-3.5 w-3.5" />
@@ -605,7 +624,6 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
 
                 <TabsContent value="protocol" className="space-y-5">
                     {/* ─── TODAY'S DOSES (HERO — first thing boomers see) ─── */}
-                    {doseTrackingEnabled && (
                     <SectionErrorBoundary section="Today's Doses">
                     {hasDosesToday && (
                         <GlassCard className="border-border/40 overflow-hidden">
@@ -690,7 +708,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                                     </span>
                                 </div>
                                 {isHousehold && (
-                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground/60 pl-[52px]">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground/60 pl-[52px]">
                                         <span>You: <span className="font-semibold text-primary/70">{personalDone}/{personalDoses.length}</span></span>
                                         <span>Family total: {doneDoses}/{totalDoses}</span>
                                     </div>
@@ -699,24 +717,22 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                         );
                     })()}
                     </SectionErrorBoundary>
-                    )}
 
                     {/* ─── Supply Overview (aggregate days-of-supply for all peptides) ─── */}
                     <SectionErrorBoundary section="Supply & Inventory">
                     <SupplyOverview inventory={inventory || []} contactId={contact?.id} />
 
                     {/* ─── Fridge (Vial Lifecycle Manager — moved up) ─── */}
-                    {doseTrackingEnabled && <SimpleVials inventory={inventory || []} contactId={contact?.id} />}
+                    <SimpleVials inventory={inventory || []} contactId={contact?.id} />
                     </SectionErrorBoundary>
 
                     {/* ─── Protocol Calendar (month/week) ─── */}
-                    {doseTrackingEnabled && (
                     <SectionErrorBoundary section="Protocol Calendar">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
                             <Calendar className="h-4 w-4 text-muted-foreground/50" />
                             <h3 className="text-sm font-semibold tracking-tight">{isHousehold ? 'Family Schedule' : 'Your Schedule'}</h3>
-                            <span className="text-[10px] text-muted-foreground/60">Tap any day to see details</span>
+                            <span className="text-xs text-muted-foreground/60">Tap any day to see details</span>
                         </div>
                     <ProtocolCalendar
                         inventory={inventory || []}
@@ -732,10 +748,16 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                     />
                     </div>
                     </SectionErrorBoundary>
+
+                    {/* ─── Daily Check-In (Weight & Notes) ─── */}
+                    {!isAdminPreview && (
+                    <SectionErrorBoundary section="Daily Check-In">
+                        <HealthMetrics todayLog={todayLog} onSaveLog={handleSaveHealthLog} />
+                    </SectionErrorBoundary>
                     )}
 
                     {/* ─── Request Protocol Change (customer only) ─── */}
-                    {doseTrackingEnabled && !isAdminPreview && (
+                    {!isAdminPreview && (
                     <>
                     <div className="flex justify-center">
                         <button
@@ -755,75 +777,7 @@ function ClientDashboardShared({ contact, isAdminPreview = false }: ClientDashbo
                     </>
                     )}
 
-                    {/* ─── My Stats (collapsible — gamification in supporting role) ─── */}
-                    {doseTrackingEnabled && (
-                    <SectionErrorBoundary section="My Progress">
-                    <GlassCard className="border-border/40 overflow-hidden">
-                        <button
-                            onClick={() => setStatsOpen(prev => !prev)}
-                            className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-muted/20"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-muted/40 text-muted-foreground/60">
-                                    <Target className="h-4 w-4" />
-                                </div>
-                                <span className="font-semibold text-sm tracking-tight">My Progress</span>
-                                <span className="text-xs text-muted-foreground/60">
-                                    {gamified.adherenceRate}% consistency
-                                </span>
-                            </div>
-                            <div className={cn("p-1 rounded-lg bg-muted/40 transition-transform duration-200", statsOpen && "rotate-180")}>
-                                <ChevronDown className="h-4 w-4 text-muted-foreground/60" />
-                            </div>
-                        </button>
-                        <div className={statsOpen ? '' : 'hidden'}>
-                            <CardContent className="pt-0 pb-4 space-y-4">
-                                {/* Stats Row */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col items-center gap-1.5">
-                                        <Flame className="h-4 w-4 text-primary" />
-                                        <div className="text-2xl font-bold tracking-tight text-primary">{gamified.streak}</div>
-                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">Day Streak</div>
-                                    </div>
-                                    <div className="rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col items-center gap-1.5">
-                                        <Target className="h-4 w-4 text-primary" />
-                                        <div className="text-2xl font-bold tracking-tight text-primary">{gamified.adherenceRate}%</div>
-                                        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">30-Day Consistency</div>
-                                    </div>
-                                </div>
-
-                                {/* Peptide Rings */}
-                                {hasDosesToday && <PeptideRings doses={gamified.ringDoses} />}
-
-                                {/* Heatmap */}
-                                {gamified.heatmapData.some(d => d.total > 0) && (
-                                    <ComplianceHeatmap data={gamified.heatmapData} />
-                                )}
-                            </CardContent>
-                        </div>
-                    </GlassCard>
-                    </SectionErrorBoundary>
-                    )}
-
-                    {/* ─── Full Regimen Link (customer only) ─── */}
-                    {protocolsEnabled && !isAdminPreview && (
-                    <motion.button
-                        onClick={() => navigate('/my-regimen')}
-                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40 hover:bg-muted/40 hover:border-primary/10 transition-all duration-300 group"
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/10 group-hover:ring-primary/20 transition-all">
-                                <Calendar className="h-4 w-4 text-primary/70 group-hover:text-primary transition-colors" />
-                            </div>
-                            <div className="text-left">
-                                <div className="font-semibold text-sm tracking-tight">My Wellness Hub</div>
-                                <div className="text-xs text-muted-foreground/60">Manage supplies, log health data, and view your full plan</div>
-                            </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
-                    </motion.button>
-                    )}
+                    {/* My Progress / Wellness Hub sections removed — streak shown in header */}
                 </TabsContent>
 
                 {!isAdminPreview && (
