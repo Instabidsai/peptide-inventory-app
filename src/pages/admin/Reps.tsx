@@ -41,6 +41,9 @@ import {
     Copy,
     Check,
     Settings2,
+    ExternalLink,
+    Globe,
+    Tag,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -64,7 +67,6 @@ import TierConfigTab from './components/TierConfigTab';
 import { useOrgFeatures } from '@/hooks/use-org-features';
 import { useTenantConfig } from '@/hooks/use-tenant-config';
 import { Switch } from '@/components/ui/switch';
-import { ExternalLink, Globe, Tag } from 'lucide-react';
 
 export default function Reps() {
     const navigate = useNavigate();

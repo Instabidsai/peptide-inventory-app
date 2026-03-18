@@ -53,24 +53,24 @@ export default function PartnerOrders() {
             if (!user?.id || !profile?.org_id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
 
             // 1. Get my profile
-            const { data: profile } = await supabase
+            const { data: myProfile } = await supabase
                 .from('profiles')
                 .select('id, full_name')
                 .eq('user_id', user.id)
                 .maybeSingle();
 
-            if (!profile?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
+            if (!myProfile?.id) return { orders: [], myProfileId: null, myName: null, repNames: new Map<string, string>() };
 
             // 2. Get downline via RPC
             const { data: downline } = await supabase.rpc('get_partner_downline', { root_id: user.id });
             const downlineIds = (downline || []).map((d: { id: string }) => d.id);
 
             // 3. Build network rep IDs
-            const networkRepIds = [profile.id, ...downlineIds];
+            const networkRepIds = [myProfile.id, ...downlineIds];
 
             // 4. Build name map
             const repNames = new Map<string, string>();
-            repNames.set(profile.id, 'You');
+            repNames.set(myProfile.id, 'You');
             (downline || []).forEach((d: { id: string; full_name?: string }) => { if (d.full_name) repNames.set(d.id, d.full_name); });
 
             // 5. Fetch all orders for the network
@@ -108,8 +108,8 @@ export default function PartnerOrders() {
 
             return {
                 orders: orders || [],
-                myProfileId: profile.id,
-                myName: profile.full_name,
+                myProfileId: myProfile.id,
+                myName: myProfile.full_name,
                 repNames,
             };
         },

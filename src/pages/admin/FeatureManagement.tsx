@@ -10,13 +10,13 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   FEATURE_REGISTRY,
+  SAAS_MODE_OVERRIDES,
   type FeatureCategory,
 } from '@/lib/feature-registry';
 import {
   ToggleRight, Lock, Check, X, Eye, ShieldCheck,
   Sparkles, Package, ShoppingCart, Users2, Brain, BarChart3, Puzzle, Shield,
 } from 'lucide-react';
-import { SAAS_MODE_OVERRIDES } from '@/lib/feature-registry';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<FeatureCategory, React.ElementType> = {
