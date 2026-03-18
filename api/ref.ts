@@ -87,9 +87,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.redirect(302, `${baseUrl}/discount/${encodeURIComponent(discountCode.code)}`);
                 }
 
-                // WooCommerce: serve landing page that copies coupon + redirects
-                const storeUrl = `${baseUrl}/?coupon=${encodeURIComponent(discountCode.code)}`;
-                return res.status(200).send(couponLandingPage(discountCode.code, storeUrl));
+                // WooCommerce: direct redirect with coupon in URL
+                return res.redirect(302, `${baseUrl}/?coupon=${encodeURIComponent(discountCode.code)}`);
             }
         }
     }
