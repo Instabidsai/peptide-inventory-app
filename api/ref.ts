@@ -69,14 +69,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const partnerId = profileRecord?.user_id || profile_id;
 
             // Look up partner's active discount code
-            const { data: discountCode } = await supabase
+            // Prefer codes already synced to the platform (platform_coupon_id not null)
+            // then fall back to any active code. Order by synced first, then oldest (most established).
+            const { data: discountCodes } = await supabase
                 .from('partner_discount_codes')
-                .select('code')
+                .select('code, platform_coupon_id')
                 .eq('org_id', org_id)
                 .eq('partner_id', partnerId)
                 .eq('active', true)
-                .limit(1)
-                .maybeSingle();
+                .order('created_at', { ascending: true })
+                .limit(10);
+
+            // Pick the first synced code, or fall back to any code
+            const discountCode = discountCodes?.find((c: any) => c.platform_coupon_id) || discountCodes?.[0] || null;
 
             if (discountCode?.code) {
                 const baseUrl = tenantConfig.external_store_url.replace(/\/+$/, '');
