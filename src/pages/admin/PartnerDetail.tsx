@@ -1382,7 +1382,7 @@ function AssignedClientsTabContent({ repId, partnerTier }: { repId: string; part
 }
 
 // ─── Discount Codes Tab ───
-function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: string }) {
+function DiscountCodesTabContent({ repId, orgId, userId }: { repId: string; orgId: string; userId?: string }) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [creating, setCreating] = useState(false);
@@ -1391,13 +1391,15 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
     const defaultDiscount = tenantConfig?.default_customer_discount ?? 20;
     const [newCode, setNewCode] = useState({ code: '', discount_percent: defaultDiscount, platform: 'both' });
 
+    // partner_discount_codes.partner_id stores profiles.user_id (auth UUID), not profiles.id
+    const partnerId = userId || repId;
     const { data: codes, isLoading } = useQuery({
-        queryKey: ['partner_discount_codes', repId],
+        queryKey: ['partner_discount_codes', partnerId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('partner_discount_codes')
                 .select('*')
-                .eq('partner_id', repId)
+                .eq('partner_id', partnerId)
                 .eq('org_id', orgId)
                 .order('created_at', { ascending: false });
             if (error) throw error;
@@ -1428,7 +1430,7 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
                         action: 'create',
                         code: newCode.code.trim().toUpperCase(),
                         discount_percent: newCode.discount_percent,
-                        partner_id: repId,
+                        partner_id: partnerId,
                         platform: newCode.platform,
                     }),
                 }
@@ -1439,7 +1441,7 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
 
             toast({ title: 'Discount code created', description: `${newCode.code.toUpperCase()} is active.` });
             setNewCode({ code: '', discount_percent: defaultDiscount, platform: 'both' });
-            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', repId] });
+            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', partnerId] });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Error', description: (err as any)?.message || 'Failed to create code.' });
         } finally {
@@ -1470,7 +1472,7 @@ function DiscountCodesTabContent({ repId, orgId }: { repId: string; orgId: strin
             if (!result.success) throw new Error(result.error || 'Failed to delete');
 
             toast({ title: 'Deactivated', description: `${codeName} has been deactivated.` });
-            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', repId] });
+            queryClient.invalidateQueries({ queryKey: ['partner_discount_codes', partnerId] });
         } catch (err) {
             toast({ variant: 'destructive', title: 'Error', description: (err as any)?.message || 'Failed to delete code.' });
         } finally {
@@ -1848,10 +1850,10 @@ export default function PartnerDetail() {
                                 <div>
                                     <span className="font-medium">Price Multiplier:</span>{' '}
                                     {partner.price_multiplier != null
-                                        ? pricingMode === 'cost_multiplier'
+                                        ? (partner.pricing_mode || 'percentage') === 'cost_multiplier'
                                             ? `${partner.price_multiplier}x cost`
-                                            : pricingMode === 'cost_plus'
-                                                ? `Cost + $${markup} markup`
+                                            : (partner.pricing_mode || 'percentage') === 'cost_plus'
+                                                ? `Cost + $${partner.cost_plus_markup} markup`
                                                 : `${((1 - partner.price_multiplier) * 100).toFixed(0)}% off retail`
                                         : 'Standard pricing'}
                                 </div>
@@ -1879,7 +1881,7 @@ export default function PartnerDetail() {
                 </TabsContent>
 
                 <TabsContent value="discount_codes" className="space-y-4">
-                    <DiscountCodesTabContent repId={id!} orgId={partner.org_id} />
+                    <DiscountCodesTabContent repId={id!} orgId={partner.org_id} userId={partner.user_id} />
                 </TabsContent>
             </Tabs>
         </div>
