@@ -28,8 +28,11 @@ jobs:
           fi
 
           # Crash check: does the page show the boot sentinel fallback?
+          # Note: We strip <script> tags first because the sentinel JS source
+          # contains "temporary issue" as a string literal. We only want to
+          # detect it when it's been rendered into the DOM (actual crash).
           CRASH_DETECTED="false"
-          if grep -q "temporary issue" /tmp/page.html 2>/dev/null; then
+          if sed '/<script/,/<\/script>/d' /tmp/page.html | grep -q "temporary issue" 2>/dev/null; then
             CRASH_DETECTED="true"
           fi
 
