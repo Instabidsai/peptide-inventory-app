@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/sb_client/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CheckCircle2, Package, Copy, Check, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, Package, Copy, Check, Clock, CreditCard, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function PayOrder() {
@@ -12,6 +12,12 @@ export default function PayOrder() {
     const queryClient = useQueryClient();
 
     const [copied, setCopied] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
+    const [customerEmail, setCustomerEmail] = useState('');
+    const [customerName, setCustomerName] = useState('');
+    const [sendingEmail, setSendingEmail] = useState(false);
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [showCreditCardForm, setShowCreditCardForm] = useState(false);
 
     const { data: order, isLoading, error } = useQuery({
         queryKey: ['public_pay_order', orderId],
@@ -57,7 +63,7 @@ export default function PayOrder() {
             if (!order?.org_id) return null;
             const { data } = await supabase
                 .from('tenant_config')
-                .select('zelle_email, venmo_handle, cashapp_handle, crypto_wallets, primary_color, brand_name, logo_url')
+                .select('zelle_email, venmo_handle, cashapp_handle, crypto_wallets, primary_color, brand_name, logo_url, stripe_payment_link')
                 .eq('org_id', order.org_id)
                 .maybeSingle();
             return data;
@@ -115,6 +121,56 @@ export default function PayOrder() {
         }
     };
 
+    const handleCreditCardSubmit = async () => {
+        if (!orderId || !customerEmail || !tenantConfig?.stripe_payment_link) return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+            setEmailError('Please enter a valid email address.');
+            return;
+        }
+        setEmailError(null);
+        setSendingEmail(true);
+        try {
+            // 1. Update order status
+            await supabase
+                .from('sales_orders')
+                .update({
+                    payment_status: 'pending_verification',
+                    payment_method: 'Credit Card (Stripe)',
+                })
+                .eq('id', orderId);
+
+            // 2. Call send-payment-email edge function
+            const { error: fnError } = await supabase.functions.invoke('send-payment-email', {
+                body: {
+                    order_id: orderId,
+                    customer_email: customerEmail,
+                    customer_name: customerName || undefined,
+                    total_amount: total,
+                    order_items: order?.sales_order_items?.map((item: any) => ({
+                        name: item.peptides?.name || 'Item',
+                        quantity: item.quantity,
+                        unit_price: item.unit_price,
+                    })) || [],
+                    stripe_link: tenantConfig.stripe_payment_link,
+                    brand_name: tenantConfig.brand_name || org?.name || 'Pure U.S. Peptides',
+                },
+            });
+
+            if (fnError) {
+                console.error('send-payment-email error:', fnError);
+                setEmailError('Failed to send payment email. Please try again.');
+                return;
+            }
+
+            setEmailSent(true);
+        } catch (err) {
+            console.error('Credit card flow error:', err);
+            setEmailError('Something went wrong. Please try again.');
+        } finally {
+            setSendingEmail(false);
+        }
+    };
+
     const copyOrderId = () => {
         if (orderId) {
             navigator.clipboard.writeText(orderId);
@@ -163,6 +219,42 @@ export default function PayOrder() {
                         <div className="text-sm text-muted-foreground">
                             Total: <span className="font-semibold text-foreground">${total.toFixed(2)}</span>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Credit card email sent — show "Check your email" screen
+    if (emailSent) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background px-4">
+                <Card className="max-w-md w-full overflow-hidden">
+                    <div className="h-2 bg-blue-500" />
+                    <CardContent className="pt-8 pb-6 text-center space-y-4">
+                        <div className="h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto">
+                            <Mail className="h-10 w-10 text-blue-500" />
+                        </div>
+                        <h1 className="text-2xl font-bold">Check Your Email to Complete Payment</h1>
+                        <p className="text-muted-foreground">
+                            We've sent a secure payment link to <span className="font-semibold text-foreground">{customerEmail}</span>.
+                            Open it and click the button to pay with your credit or debit card.
+                        </p>
+                        <div className="text-sm text-muted-foreground">
+                            Total: <span className="font-semibold text-foreground">${total.toFixed(2)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Order Reference: #{order?.id?.slice(0, 8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground pt-2">
+                            Didn't receive the email? Check your spam folder or{' '}
+                            <button
+                                onClick={() => setEmailSent(false)}
+                                className="text-primary underline hover:no-underline"
+                            >
+                                try again
+                            </button>.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -274,6 +366,77 @@ export default function PayOrder() {
                 <Card>
                         <CardContent className="pt-6 space-y-4">
                             <h2 className="font-semibold">Payment Methods</h2>
+
+                            {/* Credit Card (Stripe via email) */}
+                            {tenantConfig?.stripe_payment_link && (
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setShowCreditCardForm(!showCreditCardForm)}
+                                        disabled={sendingEmail}
+                                        className="w-full p-3 rounded-lg border-2 border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10 transition-colors text-left space-y-1 disabled:opacity-50"
+                                    >
+                                        <p className="font-semibold text-foreground flex items-center gap-2">
+                                            <CreditCard className="h-4 w-4 text-primary" />
+                                            Credit Card
+                                        </p>
+                                        <p className="text-xs text-foreground/70">
+                                            Pay securely with your credit or debit card via email link.
+                                        </p>
+                                    </button>
+
+                                    {showCreditCardForm && (
+                                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30 space-y-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                Enter your email and we'll send you a secure payment link.
+                                            </p>
+                                            <div className="space-y-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Your name (optional)"
+                                                    value={customerName}
+                                                    onChange={(e) => setCustomerName(e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                                />
+                                                <input
+                                                    type="email"
+                                                    placeholder="Your email address"
+                                                    value={customerEmail}
+                                                    onChange={(e) => { setCustomerEmail(e.target.value); setEmailError(null); }}
+                                                    className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                                    required
+                                                />
+                                                {emailError && (
+                                                    <p className="text-xs text-red-500">{emailError}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={handleCreditCardSubmit}
+                                                disabled={sendingEmail || !customerEmail}
+                                                className="w-full py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                {sendingEmail ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        Sending...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Mail className="h-4 w-4" />
+                                                        Send Payment Link
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="relative">
+                                        <Separator />
+                                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
+                                            or pay manually
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Manual Payment Methods */}
                             <div className="space-y-3 text-sm">
