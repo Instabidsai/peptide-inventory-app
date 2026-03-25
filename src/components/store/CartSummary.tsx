@@ -17,6 +17,7 @@ import {
     Smartphone,
     Coins,
     FlaskConical,
+    CreditCard,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useOrgFeatures } from '@/hooks/use-org-features';
@@ -49,6 +50,11 @@ interface CartSummaryProps {
     updateQuantity: (peptideId: string, delta: number) => void;
     cartRef: React.RefObject<HTMLDivElement>;
     highlight?: boolean;
+    /** Email for credit card payment — if customer has no email on file */
+    ccEmail?: string;
+    onCcEmailChange?: (email: string) => void;
+    /** Whether the customer already has an email on their contact profile */
+    hasContactEmail?: boolean;
 }
 
 export function CartSummary({
@@ -77,6 +83,9 @@ export function CartSummary({
     updateQuantity,
     cartRef,
     highlight,
+    ccEmail,
+    onCcEmailChange,
+    hasContactEmail,
 }: CartSummaryProps) {
     const { toast } = useToast();
     const { isEnabled } = useOrgFeatures();
@@ -131,6 +140,7 @@ export function CartSummary({
     }, [orderPlaced, onOrderPlacedReset]);
 
     const getMethodLabel = (method: PaymentMethod) => {
+        if (method === 'credit_card') return 'Credit Card';
         if (method === 'zelle') return 'Zelle';
         if (method === 'cashapp') return 'Cash App';
         if (method === 'venmo') return 'Venmo';
@@ -231,6 +241,7 @@ export function CartSummary({
                             <span className="text-sm font-semibold">Payment Method</span>
                             <div className="grid grid-cols-2 gap-2">
                                 {([
+                                    { id: 'credit_card' as PaymentMethod, label: 'Credit Card', icon: CreditCard },
                                     { id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote },
                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                     { id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone },
@@ -250,6 +261,28 @@ export function CartSummary({
                                     </Button>
                                 ))}
                             </div>
+
+                            {/* Credit Card info */}
+                            {paymentMethod === 'credit_card' && (
+                                <div className="bg-indigo-950/30 border border-indigo-800 rounded-lg p-3 space-y-2">
+                                    <p className="text-xs font-medium text-indigo-300">
+                                        <CreditCard className="h-3 w-3 inline mr-1" />
+                                        Pay securely with your credit or debit card
+                                    </p>
+                                    {!hasContactEmail && onCcEmailChange && (
+                                        <Input
+                                            type="email"
+                                            placeholder="Your email address"
+                                            value={ccEmail || ''}
+                                            onChange={(e) => onCcEmailChange(e.target.value)}
+                                            className="bg-card/50 border-indigo-700/50 text-sm"
+                                        />
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        After placing your order, you'll receive a secure payment link via email. Click it to pay with any major credit or debit card through Stripe.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Zelle info */}
                             {paymentMethod === 'zelle' && (
@@ -377,13 +410,19 @@ export function CartSummary({
                             </Button>
                         </div>
                     ) : (
-                        /* Order placed confirmation (non-card) */
+                        /* Order placed confirmation */
                         <div className="text-center space-y-3 py-4">
                             <div className="h-12 w-12 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
                                 <Check className="h-6 w-6 text-primary" />
                             </div>
                             <div>
                                 <p className="font-semibold text-primary">Order Placed!</p>
+                                {paymentMethod === 'credit_card' ? (
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        A payment link has been sent to your email. Click it to pay <strong>${cartTotal.toFixed(2)}</strong> with your credit card.
+                                    </p>
+                                ) : (
+                                <>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Send <strong>${cartTotal.toFixed(2)}</strong> via{' '}
                                     {getMethodLabel(paymentMethod)}
@@ -412,6 +451,8 @@ export function CartSummary({
                                             </Button>
                                         </div>
                                     </div>
+                                )}
+                                </>
                                 )}
                             </div>
                             {paymentMethod === 'zelle' && (

@@ -31,6 +31,7 @@ import { canSeePeptide, calculateClientPrice, matchPeptide } from '@/components/
 import type { ProtocolPackage } from '@/data/protocol-packages';
 import { MAX_ITEM_QTY } from '@/components/store/constants';
 import { trackStorePageView, trackAddToCart, trackCartUpdate, trackRemoveFromCart, trackBeginCheckout, trackProductView } from '@/lib/funnel-tracker';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 export default function ClientStore() {
     const { user, userRole, profile: authProfile } = useAuth();
@@ -54,6 +55,7 @@ export default function ClientStore() {
     const [selectedCryptoWalletId, setSelectedCryptoWalletId] = useState('');
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
+    const [ccEmail, setCcEmail] = useState('');
     const cartRef = React.useRef<HTMLDivElement>(null);
     const [cartInView, setCartInView] = useState(false);
     const [cartHighlight, setCartHighlight] = useState(false);
@@ -309,7 +311,7 @@ export default function ClientStore() {
         setTimeout(() => setCopiedZelle(false), 2000);
     };
 
-    // Checkout — server-validated pricing, creates order as awaiting manual payment
+    // Checkout — server-validated pricing, creates order as awaiting manual payment (or triggers Stripe checkout)
     const handleAlternativeCheckout = async () => {
         if (!user?.id) {
             toast({ variant: 'destructive', title: 'Not signed in', description: 'Please sign in to complete your order.' });
@@ -327,11 +329,19 @@ export default function ClientStore() {
             toast({ variant: 'destructive', title: 'Shipping address required', description: 'Please enter a shipping address before placing your order.' });
             return;
         }
+
+        // For credit card, ensure we have an email
+        const customerEmail = contact?.email || ccEmail;
+        if (paymentMethod === 'credit_card' && !customerEmail) {
+            toast({ variant: 'destructive', title: 'Email required', description: 'Please enter your email address for credit card payment.' });
+            return;
+        }
+
         setPlacingOrder(true);
 
         const enabledWallets = (CRYPTO_WALLETS || []).filter(w => w.enabled && w.address);
         const selWallet = enabledWallets.find(w => w.id === selectedCryptoWalletId) || enabledWallets[0];
-        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selWallet ? `Crypto (${selWallet.type} on ${selWallet.chain})` : 'Crypto';
+        const methodLabel = paymentMethod === 'credit_card' ? 'Credit Card' : paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selWallet ? `Crypto (${selWallet.type} on ${selWallet.chain})` : 'Crypto';
 
         try {
             const result = await createOrder.mutateAsync({
@@ -344,8 +354,37 @@ export default function ClientStore() {
                 payment_method: paymentMethod === 'crypto' && selWallet ? `crypto_${selWallet.type}_${selWallet.chain}` : paymentMethod,
                 contact_id: contact?.id,
             });
-            setOrderPlaced(true);
-            toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
+
+            // If credit card, call stripe-checkout to create a Stripe session + send email
+            if (paymentMethod === 'credit_card') {
+                const { data: stripeData, error: stripeError } = await invokeEdgeFunction<{ checkout_url: string; session_id: string }>(
+                    'stripe-checkout',
+                    {
+                        sales_order_id: result.id,
+                        customer_email: customerEmail,
+                        amount: result.total_amount,
+                        org_id: orgId,
+                    },
+                );
+
+                if (stripeError) {
+                    // Order was created but Stripe checkout failed — still show success with fallback
+                    toast({ variant: 'destructive', title: 'Payment link failed', description: stripeError.message || 'Could not create payment link. Please try another payment method.' });
+                    setPlacingOrder(false);
+                    return;
+                }
+
+                // Optionally redirect to Stripe checkout directly, or show email sent toast
+                if (stripeData?.checkout_url) {
+                    setOrderPlaced(true);
+                    toast({ title: 'Payment link sent!', description: 'Check your email for a secure payment link, or click the button to pay now.' });
+                    // Open Stripe checkout in new tab
+                    window.open(stripeData.checkout_url, '_blank');
+                }
+            } else {
+                setOrderPlaced(true);
+                toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
+            }
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: (err as any)?.message || 'Unknown error' });
         } finally {
@@ -492,6 +531,9 @@ export default function ClientStore() {
                 updateQuantity={updateQuantity}
                 cartRef={cartRef as React.RefObject<HTMLDivElement>}
                 highlight={cartHighlight}
+                ccEmail={ccEmail}
+                onCcEmailChange={setCcEmail}
+                hasContactEmail={!!contact?.email}
             />
 
             {/* Info card */}
@@ -500,7 +542,7 @@ export default function ClientStore() {
                     <Info className="h-3.5 w-3.5 text-muted-foreground/40" />
                 </div>
                 <p className="text-xs text-muted-foreground/40 leading-relaxed">
-                    Place your order and send payment via Zelle, Venmo, or Cash App.
+                    Place your order and pay via Credit Card, Zelle, Venmo, or Cash App.
                     Once payment is confirmed, your order will be processed and shipped.
                 </p>
             </div>

@@ -26,7 +26,9 @@ import {
     Banknote,
     Smartphone,
     ExternalLink,
+    CreditCard,
 } from 'lucide-react';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 // Color map for tier badges (tier_key -> tailwind class)
 const TIER_COLORS: Record<string, string> = {
@@ -45,9 +47,9 @@ interface CartItem {
 
 // Payment methods available in the partner store.
 // Merchant fee mapping (see order-profit.ts for fee exemption logic):
-//   'card' -> charged 5% merchant fee (maps to 'processor' in order-profit)
+//   'credit_card' -> charged 5% merchant fee (maps to 'processor' in order-profit)
 //   'zelle', 'cashapp', 'venmo' -> NO merchant fee (maps to 'cash'/'wire' exemptions)
-type PaymentMethod = 'zelle' | 'cashapp' | 'venmo' | 'crypto';
+type PaymentMethod = 'zelle' | 'cashapp' | 'venmo' | 'crypto' | 'credit_card';
 
 // Zelle + Venmo loaded from tenant config in component
 
@@ -77,6 +79,7 @@ export default function PartnerStore() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderTotal, setOrderTotal] = useState(0); // Saved total for confirmation display
     const [placingOrder, setPlacingOrder] = useState(false);
+    const [ccEmail, setCcEmail] = useState('');
 
     // Auto-reset cart 8 seconds after order is placed
     useEffect(() => {
@@ -287,12 +290,20 @@ export default function PartnerStore() {
 
     const clearCartStorage = () => localStorage.removeItem(storageKey);
 
-    // Checkout — server-validated pricing, creates order as awaiting payment
+    // Checkout — server-validated pricing, creates order as awaiting payment (or triggers Stripe)
     const handleAlternativeCheckout = async () => {
         if (!partnerProfile || cart.length === 0) return;
+
+        // For credit card, ensure we have an email
+        const customerEmail = user?.email || ccEmail;
+        if (paymentMethod === 'credit_card' && !customerEmail) {
+            toast({ variant: 'destructive', title: 'Email required', description: 'Please enter your email address for credit card payment.' });
+            return;
+        }
+
         setPlacingOrder(true);
 
-        const methodLabel = paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selectedWallet ? `Crypto (${selectedWallet.type} on ${selectedWallet.chain})` : 'Crypto';
+        const methodLabel = paymentMethod === 'credit_card' ? 'Credit Card' : paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selectedWallet ? `Crypto (${selectedWallet.type} on ${selectedWallet.chain})` : 'Crypto';
 
         try {
             const result = await createOrder.mutateAsync({
@@ -304,13 +315,43 @@ export default function PartnerStore() {
                 notes: `PARTNER SELF-ORDER (${partnerTier}) — ${partnerProfile!.full_name || 'Unknown'}. Payment via ${methodLabel}.${paymentMethod === 'crypto' && selectedWallet ? ` Wallet: ${selectedWallet.address}` : ''}\n${notes}`,
                 payment_method: paymentMethod === 'crypto' && selectedWallet ? `crypto_${selectedWallet.type}_${selectedWallet.chain}` : paymentMethod,
             });
-            setOrderTotal(result.total_amount);
-            setOrderPlaced(true);
-            setCart([]);
-            setNotes('');
-            setShippingAddress('');
-            clearCartStorage();
-            toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
+
+            if (paymentMethod === 'credit_card') {
+                const { data: stripeData, error: stripeError } = await invokeEdgeFunction<{ checkout_url: string; session_id: string }>(
+                    'stripe-checkout',
+                    {
+                        sales_order_id: result.id,
+                        customer_email: customerEmail,
+                        amount: result.total_amount,
+                        org_id: profile?.org_id,
+                    },
+                );
+
+                if (stripeError) {
+                    toast({ variant: 'destructive', title: 'Payment link failed', description: stripeError.message || 'Could not create payment link.' });
+                    setPlacingOrder(false);
+                    return;
+                }
+
+                setOrderTotal(result.total_amount);
+                setOrderPlaced(true);
+                setCart([]);
+                setNotes('');
+                setShippingAddress('');
+                clearCartStorage();
+                toast({ title: 'Payment link sent!', description: 'Check your email for a secure payment link.' });
+                if (stripeData?.checkout_url) {
+                    window.open(stripeData.checkout_url, '_blank');
+                }
+            } else {
+                setOrderTotal(result.total_amount);
+                setOrderPlaced(true);
+                setCart([]);
+                setNotes('');
+                setShippingAddress('');
+                clearCartStorage();
+                toast({ title: 'Order placed!', description: `Send $${result.total_amount.toFixed(2)} via ${methodLabel} to complete your order.` });
+            }
         } catch (err) {
             toast({ variant: 'destructive', title: 'Order failed', description: (err as any)?.message || 'Unknown error' });
         } finally {
@@ -566,6 +607,7 @@ export default function PartnerStore() {
                                             <span className="text-sm font-medium">Payment Method</span>
                                             <div className="flex flex-wrap gap-2">
                                                 {([
+                                                    { id: 'credit_card' as PaymentMethod, label: 'Credit Card', icon: CreditCard },
                                                     ...(ZELLE_EMAIL ? [{ id: 'zelle' as PaymentMethod, label: 'Zelle', icon: Banknote }] : []),
                                                     { id: 'cashapp' as PaymentMethod, label: 'Cash App', icon: Smartphone },
                                                     ...(VENMO_HANDLE ? [{ id: 'venmo' as PaymentMethod, label: 'Venmo', icon: Smartphone }] : []),
@@ -583,6 +625,28 @@ export default function PartnerStore() {
                                                     </Button>
                                                 ))}
                                             </div>
+
+                                            {/* Credit Card info */}
+                                            {paymentMethod === 'credit_card' && (
+                                                <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 space-y-2">
+                                                    <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                                                        <CreditCard className="h-3 w-3 inline mr-1" />
+                                                        Pay securely with your credit or debit card
+                                                    </p>
+                                                    {!user?.email && (
+                                                        <Input
+                                                            type="email"
+                                                            placeholder="Your email address"
+                                                            value={ccEmail}
+                                                            onChange={(e) => setCcEmail(e.target.value)}
+                                                            className="bg-white dark:bg-card/50 border-indigo-300 dark:border-indigo-700/50 text-sm"
+                                                        />
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        After placing your order, you'll receive a secure payment link via email. Click it to pay with any major credit or debit card through Stripe.
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             {/* Zelle info */}
                                             {paymentMethod === 'zelle' && (
@@ -686,6 +750,12 @@ export default function PartnerStore() {
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-green-600">Order Placed!</p>
+                                                {paymentMethod === 'credit_card' ? (
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        A payment link has been sent to your email. Click it to pay <strong>${orderTotal.toFixed(2)}</strong> with your credit card.
+                                                    </p>
+                                                ) : (
+                                                <>
                                                 <p className="text-sm text-muted-foreground mt-1">
                                                     Send <strong>${orderTotal.toFixed(2)}</strong> via{' '}
                                                     {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'cashapp' ? 'Cash App' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'crypto' && selectedWallet ? `${selectedWallet.type} (${selectedWallet.chain})` : 'Crypto'}
@@ -703,6 +773,8 @@ export default function PartnerStore() {
                                                             {selectedWallet.address}
                                                         </code>
                                                     </div>
+                                                )}
+                                                </>
                                                 )}
                                             </div>
                                             {paymentMethod === 'zelle' && (

@@ -1,7 +1,7 @@
 import type { ProtocolTemplate } from '@/data/protocol-knowledge';
 import type { Peptide } from '@/hooks/use-peptides';
 
-export type PaymentMethod = 'zelle' | 'cashapp' | 'venmo' | 'crypto';
+export type PaymentMethod = 'zelle' | 'cashapp' | 'venmo' | 'crypto' | 'credit_card';
 
 export interface CartItem {
     peptide_id: string;
