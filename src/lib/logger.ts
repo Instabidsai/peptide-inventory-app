@@ -18,6 +18,11 @@ export const logger = {
     if (isDev) console.log('[app]', ...args);
   },
 
+  /** Info-level — alias for log, stripped from production builds */
+  info: (...args: unknown[]) => {
+    if (isDev) console.info('[app]', ...args);
+  },
+
   /** Warnings — visible in production (Sentry captures) */
   warn: (...args: unknown[]) => {
     console.warn('[app]', ...args);
