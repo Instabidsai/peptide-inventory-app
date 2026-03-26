@@ -55,16 +55,21 @@ export function useClientProfile() {
         };
     }, [targetUserId, queryClient]);
 
+    const orgId = profile?.org_id;
+
     const query = useQuery({
-        queryKey: ['client-profile', targetUserId],
+        queryKey: ['client-profile', targetUserId, orgId],
         queryFn: async () => {
             if (!targetUserId) throw new Error('Not authenticated');
 
-            const { data, error } = await supabase
+            // Scope to user's org to avoid "multiple rows" error from cross-org RLS
+            let q = supabase
                 .from('contacts')
                 .select('*')
-                .eq('linked_user_id', targetUserId)
-                .maybeSingle();
+                .eq('linked_user_id', targetUserId);
+            if (orgId) q = q.eq('org_id', orgId);
+
+            const { data, error } = await q.maybeSingle();
 
             if (error) {
                 logger.warn('[useClientProfile] contacts query failed:', error.message);
@@ -79,7 +84,7 @@ export function useClientProfile() {
             // No contact found — fire self-healing RPC (awaited, with retries)
             // Only self-heal for the real user, not when impersonating
             const isImpersonating = targetUserId !== user?.id;
-            if (!isImpersonating && healCount.current < MAX_HEAL_ATTEMPTS && profile?.org_id) {
+            if (!isImpersonating && healCount.current < MAX_HEAL_ATTEMPTS && orgId) {
                 healCount.current++;
                 healAttempted.current = true;
                 logger.warn(`[useClientProfile] No contact found — heal attempt ${healCount.current}/${MAX_HEAL_ATTEMPTS}`);
@@ -92,11 +97,13 @@ export function useClientProfile() {
                         logger.error('[useClientProfile] ensure_customer_contact failed:', healError.message);
                     } else if (healResult?.created || healResult?.linked) {
                         logger.info('[useClientProfile] Self-healed contact:', healResult);
-                        const { data: freshContact } = await supabase
+                        let freshQ = supabase
                             .from('contacts')
                             .select('*')
-                            .eq('linked_user_id', targetUserId)
-                            .maybeSingle();
+                            .eq('linked_user_id', targetUserId);
+                        if (orgId) freshQ = freshQ.eq('org_id', orgId);
+
+                        const { data: freshContact } = await freshQ.maybeSingle();
                         if (freshContact) return freshContact;
                     }
                 } catch (e) {
