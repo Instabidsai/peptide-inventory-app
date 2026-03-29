@@ -1113,7 +1113,40 @@ export function useRecordPayment() {
 
             if (error) throw error;
 
-            // Recalculate profit (merchant fee changes with payment method)
+            // Sum all payments for this order to determine new payment_status
+            const { data: allPayments } = await supabase
+                .from('order_payments')
+                .select('amount')
+                .eq('sales_order_id', orderId);
+
+            const totalPaid = (allPayments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+
+            // Fetch order total to compare
+            const { data: orderData } = await supabase
+                .from('sales_orders')
+                .select('total_amount, payment_method')
+                .eq('id', orderId)
+                .maybeSingle();
+
+            const totalAmount = Number(orderData?.total_amount || 0);
+            const newStatus = totalPaid >= totalAmount ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid';
+
+            // Update payment_status, amount_paid, and payment_method on the order
+            const updateFields: Record<string, unknown> = {
+                payment_status: newStatus,
+                amount_paid: Math.round(totalPaid * 100) / 100,
+            };
+            // Set payment_method on order if not already set (uses the first recorded method)
+            if (!orderData?.payment_method) {
+                updateFields.payment_method = paymentMethod;
+            }
+
+            await supabase.rpc('update_sales_order', {
+                p_order_id: orderId,
+                p_updates: updateFields,
+            });
+
+            // Recalculate profit (merchant fee depends on payment method)
             await recalculateOrderProfit(orderId);
 
             return data;
