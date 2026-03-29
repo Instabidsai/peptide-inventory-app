@@ -127,11 +127,94 @@ export async function importExternalOrder(
     }
   }
 
-  // ── 3. Match line items to peptides ─────────────────────────
+  // ── 3. Expand bundle items into individual components ──────
+  // Bundle products from WooCommerce/Shopify use names like
+  // "MOTS-C 40mg + SS-31 50mg Bundle". Split these into separate
+  // items so each component gets its own sales_order_item.
+  const expandedItems: ExternalOrderItem[] = [];
+
+  for (const item of order.items) {
+    // Detect bundle: name contains " + " (with spaces around the plus)
+    if (item.name.includes(" + ")) {
+      // Strip trailing "Bundle" or "bundle" suffix before splitting
+      const cleanName = item.name.replace(/\s+bundle$/i, "").trim();
+      const componentNames = cleanName.split(/\s*\+\s*/).map(n => n.trim()).filter(n => n.length > 0);
+
+      if (componentNames.length > 1) {
+        // Look up retail prices for proportional price splitting
+        const componentPrices: (number | null)[] = [];
+        for (const compName of componentNames) {
+          // Try exact match first
+          let { data: match } = await supabase
+            .from("peptides")
+            .select("retail_price")
+            .eq("org_id", orgId)
+            .ilike("name", compName)
+            .limit(1)
+            .maybeSingle();
+
+          // Try fuzzy match on first word if exact fails
+          if (!match) {
+            const firstWord = compName.split(/[\s\-_]+/)[0];
+            if (firstWord && firstWord.length >= 3) {
+              ({ data: match } = await supabase
+                .from("peptides")
+                .select("retail_price")
+                .eq("org_id", orgId)
+                .ilike("name", `%${firstWord}%`)
+                .limit(1)
+                .maybeSingle());
+            }
+          }
+          componentPrices.push(match?.retail_price ? Number(match.retail_price) : null);
+        }
+
+        // Calculate price split: proportional by retail_price if available, else even split
+        const totalRetail = componentPrices.reduce((sum, p) => sum + (p || 0), 0);
+        const allPricesKnown = componentPrices.every(p => p !== null && p > 0) && totalRetail > 0;
+        const bundleTotal = item.unit_price * item.quantity;
+
+        for (let i = 0; i < componentNames.length; i++) {
+          let componentPrice: number;
+          if (allPricesKnown) {
+            // Proportional split based on retail prices
+            componentPrice = (componentPrices[i]! / totalRetail) * item.unit_price;
+          } else {
+            // Even split
+            componentPrice = item.unit_price / componentNames.length;
+          }
+          // Round to 2 decimal places
+          componentPrice = Math.round(componentPrice * 100) / 100;
+
+          expandedItems.push({
+            name: componentNames[i],
+            sku: item.sku ? `${item.sku}-${i + 1}` : undefined,
+            quantity: item.quantity,
+            unit_price: componentPrice,
+          });
+        }
+
+        // Adjust last component for rounding so total matches exactly
+        const splitTotal = expandedItems.slice(-componentNames.length).reduce((s, i) => s + i.unit_price * i.quantity, 0);
+        const rounding = Math.round((bundleTotal - splitTotal) * 100) / 100;
+        if (rounding !== 0) {
+          expandedItems[expandedItems.length - 1].unit_price =
+            Math.round((expandedItems[expandedItems.length - 1].unit_price + rounding / item.quantity) * 100) / 100;
+        }
+
+        console.log(`[platform-order-sync] Expanded bundle "${item.name}" → ${componentNames.length} components: ${componentNames.join(", ")}`);
+        continue;
+      }
+    }
+    // Non-bundle item — pass through as-is
+    expandedItems.push(item);
+  }
+
+  // ── 4. Match line items to peptides ─────────────────────────
   const matchedItems: { peptide_id: string; peptide_name: string; quantity: number; unit_price: number }[] = [];
   let skippedItems = 0;
 
-  for (const item of order.items) {
+  for (const item of expandedItems) {
     let peptideId: string | null = null;
     let peptideName: string = item.name;
 
@@ -206,10 +289,11 @@ export async function importExternalOrder(
     };
   }
 
-  // ── 4. Create sales_order ───────────────────────────────────
+  // ── 5. Create sales_order ───────────────────────────────────
   const orderData: Record<string, any> = {
     org_id: orgId,
     client_id: contactId,
+    contact_id: contactId,
     status: "submitted",
     total_amount: order.total_amount,
     payment_status: order.payment_status,
@@ -241,7 +325,7 @@ export async function importExternalOrder(
     };
   }
 
-  // ── 5. Create order items ───────────────────────────────────
+  // ── 6. Create order items ───────────────────────────────────
   const orderItems = matchedItems.map(item => ({
     sales_order_id: newOrder.id,
     peptide_id: item.peptide_id,
@@ -258,7 +342,7 @@ export async function importExternalOrder(
     // Order was created, items failed — still return the order ID
   }
 
-  // ── 6. Coupon code → partner attribution ──────────────────
+  // ── 7. Coupon code → partner attribution ──────────────────
   if (order.discount_codes && order.discount_codes.length > 0) {
     for (const code of order.discount_codes) {
       const { data: discountCode } = await supabase
@@ -300,13 +384,22 @@ export async function importExternalOrder(
             .catch(() => {});
         });
 
+        // Also assign the contact to this partner so they show in downline
+        if (contactId) {
+          await supabase
+            .from("contacts")
+            .update({ assigned_rep_id: repId, updated_at: new Date().toISOString() })
+            .eq("id", contactId)
+            .is("assigned_rep_id", null);
+        }
+
         console.log(`[platform-order-sync] Attributed order ${newOrder.id} to partner ${repId} (user_id: ${discountCode.partner_id}) via code "${code}"`);
         break; // Only attribute to first matching code
       }
     }
   }
 
-  // ── 6b. Email → partner attribution (Layer 2) ───────────────
+  // ── 7b. Email → partner attribution (Layer 2) ───────────────
   // If no coupon matched, try to attribute via customer email.
   // If the customer already has a contact with assigned_rep_id, use that rep.
   if (order.customer_email) {
@@ -332,6 +425,15 @@ export async function importExternalOrder(
           .update({ rep_id: existingContact.assigned_rep_id })
           .eq("id", newOrder.id);
 
+        // Also set contact_id on the order if missing
+        if (contactId) {
+          await supabase
+            .from("contacts")
+            .update({ assigned_rep_id: existingContact.assigned_rep_id, updated_at: new Date().toISOString() })
+            .eq("id", contactId)
+            .is("assigned_rep_id", null);
+        }
+
         console.log(`[platform-order-sync] Attributed order ${newOrder.id} to rep ${existingContact.assigned_rep_id} via email match "${order.customer_email}"`);
       }
     }
@@ -339,7 +441,7 @@ export async function importExternalOrder(
 
   console.log(`[platform-order-sync] Imported ${platformLabel} order #${order.external_id} → ${newOrder.id} (${matchedItems.length} items, ${skippedItems} skipped)`);
 
-  // ── 7. Auto-create customer account ─────────────────────────
+  // ── 8. Auto-create customer account ─────────────────────────
   // Non-blocking: creates auth user + profile + invite link
   if (contactId && order.customer_email) {
     try {
@@ -354,7 +456,7 @@ export async function importExternalOrder(
     }
   }
 
-  // ── 8. Auto-generate protocol + fridge entries ──────────────
+  // ── 9. Auto-generate protocol + fridge entries ──────────────
   // Non-blocking: creates protocol items + client_inventory (virtual vials)
   if (contactId && matchedItems.length > 0) {
     try {
