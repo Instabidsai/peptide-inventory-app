@@ -225,6 +225,10 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Detect ads site orders via WooCommerce meta_data
+    const sourceSite = (woo.meta_data || []).find((m: any) => m.key === '_source_site')?.value || null;
+    const isAds = sourceSite === 'ads';
+
     // Create sales_order
     const order = await sbPost("sales_orders", {
       org_id: orgId,
@@ -235,8 +239,8 @@ Deno.serve(async (req) => {
       payment_status: payStatus(woo.status || "pending"),
       delivery_method: "shipping",
       shipping_address: fmtAddr(ship.address_1 ? ship : bill),
-      notes: `WooCommerce Order #${woo.id}`,
-      order_source: "woocommerce",
+      notes: `WooCommerce Order #${woo.id}${isAds ? ' [ADS]' : ''}`,
+      order_source: isAds ? "ads" : "woocommerce",
       payment_method: woo.payment_method_title || woo.payment_method || null,
       woo_order_id: woo.id,
     });

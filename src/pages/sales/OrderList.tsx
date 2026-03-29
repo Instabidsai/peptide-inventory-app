@@ -68,8 +68,8 @@ export default function OrderList() {
     const [searchParams] = useSearchParams();
     const sourceParam = searchParams.get('source');
     const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | 'all'>('all');
-    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'wholesale'>(
-        sourceParam === 'woocommerce' || sourceParam === 'app' || sourceParam === 'wholesale' ? sourceParam : 'all'
+    const [filterSource, setFilterSource] = useState<'all' | 'app' | 'woocommerce' | 'ads' | 'wholesale'>(
+        sourceParam === 'woocommerce' || sourceParam === 'app' || sourceParam === 'wholesale' || sourceParam === 'ads' ? sourceParam : 'all'
     );
     const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid' | 'partial' | 'commission_offset'>('all');
     const [filterShipping, setFilterShipping] = useState<string>('all');
@@ -287,6 +287,7 @@ export default function OrderList() {
                             <SelectItem value="all">All Sources</SelectItem>
                             <SelectItem value="app">App Orders</SelectItem>
                             <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                            <SelectItem value="ads">Ads Site</SelectItem>
                             <SelectItem value="wholesale">Wholesale</SelectItem>
                         </SelectContent>
                     </Select>
@@ -339,6 +340,9 @@ export default function OrderList() {
                                         )}
                                         {order.order_source === 'woocommerce' && (
                                             <Badge variant="outline" className="text-xs bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
+                                        )}
+                                        {order.order_source === 'ads' && (
+                                            <Badge variant="outline" className="text-xs bg-pink-500/15 text-pink-400 border-pink-500/30">ADS</Badge>
                                         )}
                                         {!isRep && (
                                             <span className={`ml-auto text-sm font-medium ${(order.profit_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -436,6 +440,9 @@ export default function OrderList() {
                                             )}
                                             {order.order_source === 'woocommerce' && (
                                                 <Badge variant="outline" className="ml-1 text-xs py-0 bg-purple-500/15 text-purple-400 border-purple-500/30">WC</Badge>
+                                            )}
+                                            {order.order_source === 'ads' && (
+                                                <Badge variant="outline" className="ml-1 text-xs py-0 bg-pink-500/15 text-pink-400 border-pink-500/30">ADS</Badge>
                                             )}
                                             {order.delivery_method === 'local_pickup' && (
                                                 <Badge variant="outline" className="ml-1 text-xs py-0 bg-orange-500/15 text-orange-400 border-orange-500/30">
