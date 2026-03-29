@@ -104,6 +104,7 @@ export interface SalesOrder {
         id: string;
         name: string;
         email: string | null;
+        phone: string | null;
     };
     profiles?: {
         id: string;
@@ -147,7 +148,7 @@ export function useSalesOrders(status?: SalesOrderStatus, pagination?: Paginatio
                 .from('sales_orders')
                 .select(`
           *,
-          contacts!client_id (id, name, email),
+          contacts!client_id (id, name, email, phone),
           profiles (id, full_name),
           sales_order_items (
             *,
@@ -186,7 +187,7 @@ export function useSalesOrder(orderId?: string) {
                 .from('sales_orders')
                 .select(`
           *,
-          contacts!client_id (id, name, email),
+          contacts!client_id (id, name, email, phone),
           profiles (id, full_name),
           sales_order_items (
             *,
@@ -227,7 +228,7 @@ export function useMySalesOrders() {
                 .from('sales_orders')
                 .select(`
           *,
-          contacts!client_id (id, name, email),
+          contacts!client_id (id, name, email, phone),
           profiles!rep_id (id, full_name),
           sales_order_items (
             *,
@@ -828,6 +829,87 @@ export function useDeleteSalesOrder() {
         },
         onError: (error: Error) => {
             toast({ variant: 'destructive', title: 'Failed to delete order', description: error.message });
+        },
+    });
+}
+
+export function useBulkDeleteSalesOrders() {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const { profile } = useAuth();
+
+    return useMutation({
+        mutationFn: async (ids: string[]) => {
+            if (!profile?.org_id) throw new Error('No organization found');
+            let deleted = 0;
+            const errors: string[] = [];
+
+            for (const id of ids) {
+                try {
+                    // 1. Find fulfillment movements
+                    const { data: movements } = await supabase
+                        .from('movements')
+                        .select('id')
+                        .like('notes', `%[SO:${id}]%`);
+                    const movementIds = (movements || []).map(m => m.id);
+
+                    // 2. Reverse inventory
+                    if (movementIds.length > 0) {
+                        const { data: moveItems } = await supabase
+                            .from('movement_items')
+                            .select('bottle_id')
+                            .in('movement_id', movementIds);
+                        const bottleIds = (moveItems || []).map(mi => mi.bottle_id).filter(Boolean);
+                        if (bottleIds.length > 0) {
+                            await supabase.from('bottles').update({ status: 'in_stock' }).in('id', bottleIds);
+                        }
+                        for (const mid of movementIds) {
+                            await supabase.from('client_inventory').delete().eq('movement_id', mid);
+                            await supabase.from('movement_items').delete().eq('movement_id', mid);
+                        }
+                        await supabase.from('movements').delete().in('id', movementIds);
+                    }
+
+                    // 3. Delete commissions, order items, then order
+                    await supabase.from('commissions').delete().eq('sale_id', id);
+                    await supabase.from('sales_order_items').delete().eq('sales_order_id', id);
+                    const { error } = await supabase
+                        .from('sales_orders')
+                        .delete()
+                        .eq('id', id)
+                        .eq('org_id', profile.org_id);
+                    if (error) throw error;
+                    deleted++;
+                } catch (err) {
+                    errors.push(id.slice(0, 8));
+                }
+            }
+
+            return { deleted, errors };
+        },
+        onSuccess: ({ deleted, errors }) => {
+            queryClient.invalidateQueries({ queryKey: ['sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['my_sales_orders'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles'] });
+            queryClient.invalidateQueries({ queryKey: ['bottles', 'stats'] });
+            queryClient.invalidateQueries({ queryKey: ['movements'] });
+            queryClient.invalidateQueries({ queryKey: ['commissions'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['protocols'] });
+            queryClient.invalidateQueries({ queryKey: ['client-inventory'] });
+            queryClient.invalidateQueries({ queryKey: ['contact_order_stats'] });
+            queryClient.invalidateQueries({ queryKey: ['peptides'] });
+            queryClient.invalidateQueries({ queryKey: ['fulfillment_stock'] });
+            queryClient.invalidateQueries({ queryKey: ['partner_stock_counts'] });
+            queryClient.invalidateQueries({ queryKey: ['restock'] });
+            if (errors.length > 0) {
+                toast({ variant: 'destructive', title: `Deleted ${deleted}, failed ${errors.length}`, description: `Failed IDs: ${errors.join(', ')}` });
+            } else {
+                toast({ title: `${deleted} order${deleted !== 1 ? 's' : ''} deleted`, description: 'All related records have been removed.' });
+            }
+        },
+        onError: (error: Error) => {
+            toast({ variant: 'destructive', title: 'Bulk delete failed', description: error.message });
         },
     });
 }

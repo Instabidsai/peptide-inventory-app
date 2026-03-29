@@ -6,6 +6,7 @@ import {
     useMySalesOrders,
     type SalesOrderStatus,
     useDeleteSalesOrder,
+    useBulkDeleteSalesOrders,
 } from '@/hooks/use-sales-orders';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -80,7 +81,29 @@ export default function OrderList() {
     const { data: allOrders, isLoading: allLoading, isError: allError, refetch: allRefetch } = useSalesOrders(filterStatus === 'all' ? undefined : filterStatus);
     const { data: myOrders, isLoading: myLoading, isError: myError, refetch: myRefetch } = useMySalesOrders();
     const deleteOrder = useDeleteSalesOrder();
+    const bulkDelete = useBulkDeleteSalesOrders();
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+    const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+    const toggleSelect = (id: string, e: React.MouseEvent | React.ChangeEvent) => {
+        e.stopPropagation();
+        setSelectedOrders(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (!orders) return;
+        if (selectedOrders.size === orders.length) {
+            setSelectedOrders(new Set());
+        } else {
+            setSelectedOrders(new Set(orders.map(o => o.id)));
+        }
+    };
 
     const rawOrders = isRep ? myOrders : allOrders;
     const orders = rawOrders
@@ -339,6 +362,27 @@ export default function OrderList() {
                 </div>
             )}
 
+            {/* Bulk Action Bar */}
+            {selectedOrders.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                    <span className="text-sm font-medium">{selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''} selected</span>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setShowBulkDelete(true)}
+                    >
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete Selected
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedOrders(new Set())}
+                    >
+                        Clear
+                    </Button>
+                </div>
+            )}
+
             {/* Desktop Table View */}
             <Card className={isMobile ? 'hidden' : ''}>
                 <CardHeader className="p-0">
@@ -348,6 +392,15 @@ export default function OrderList() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-10 px-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={orders ? orders.length > 0 && selectedOrders.size === orders.length : false}
+                                        onChange={toggleSelectAll}
+                                        className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                                        aria-label="Select all orders"
+                                    />
+                                </TableHead>
                                 <TableHead className="sticky left-0 z-20 bg-background">Order ID</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Customer</TableHead>
@@ -365,6 +418,15 @@ export default function OrderList() {
                             {orders && orders.length > 0 ? (
                                 orders.map((order, index) => (
                                     <motion.tr key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.03, ease: [0.23, 1, 0.32, 1] }} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer" role="link" tabIndex={0} aria-label={`View order ${order.id.slice(0, 8)}`} onClick={() => navigate(`/sales/${order.id}`)} onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/sales/${order.id}`); } }}>
+                                        <TableCell className="w-10 px-2" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedOrders.has(order.id)}
+                                                onChange={(e) => toggleSelect(order.id, e)}
+                                                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                                                aria-label={`Select order ${order.id.slice(0, 8)}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-mono text-xs sticky left-0 z-10 bg-background">
                                             {order.id.slice(0, 8)}...
                                             {order.is_supplier_order && (
@@ -483,7 +545,7 @@ export default function OrderList() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={10}>
+                                    <TableCell colSpan={11}>
                                         <EmptyState
                                             icon={Truck}
                                             title="No orders found"
@@ -502,7 +564,7 @@ export default function OrderList() {
                             return (
                                 <TableFooter>
                                     <TableRow className="bg-muted/50 font-semibold">
-                                        <TableCell colSpan={6} className="text-xs text-muted-foreground">
+                                        <TableCell colSpan={7} className="text-xs text-muted-foreground">
                                             {orders.length} order{orders.length !== 1 ? 's' : ''}
                                             {(filterStatus !== 'all' || filterSource !== 'all' || filterPayment !== 'all' || filterShipping !== 'all') && ' (filtered)'}
                                         </TableCell>
@@ -552,6 +614,36 @@ export default function OrderList() {
                             }}
                         >
                             {deleteOrder.isPending ? 'Deleting...' : 'Delete Order'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''} and all related records (items, commissions, movements).
+                            <br /><br />
+                            <strong className="text-destructive">This cannot be undone.</strong>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={bulkDelete.isPending}
+                            onClick={() => {
+                                bulkDelete.mutate([...selectedOrders], {
+                                    onSuccess: () => {
+                                        setSelectedOrders(new Set());
+                                        setShowBulkDelete(false);
+                                    },
+                                });
+                            }}
+                        >
+                            {bulkDelete.isPending ? 'Deleting...' : `Delete ${selectedOrders.size} Order${selectedOrders.size !== 1 ? 's' : ''}`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
