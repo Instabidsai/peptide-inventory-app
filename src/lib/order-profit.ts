@@ -31,8 +31,8 @@ interface LotCostRow {
 
 export const MERCHANT_FEE_RATE = 0.05; // 5%
 
-// Payment methods that CHARGE a merchant fee (card processors)
-const FEE_CHARGED_METHODS = ['credit_card', 'stripe', 'paygate365', 'card', 'processor'];
+// Payment methods that CHARGE a merchant fee (Stripe only)
+const FEE_CHARGED_METHODS = ['credit_card', 'stripe', 'card'];
 
 export async function recalculateOrderProfit(orderId: string): Promise<void> {
     // 1. Fetch the order (include org_id for scoped lot lookup)
