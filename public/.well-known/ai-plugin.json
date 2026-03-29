@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "ThePeptideAI",
+  "name_for_model": "thepeptideai",
+  "description_for_human": "AI-powered command center for peptide businesses — inventory, fulfillment, client management, payments, and AI assistant.",
+  "description_for_model": "ThePeptideAI is a SaaS platform for peptide businesses. It provides AI-powered research (RAG search across peptide literature), inventory tracking (peptides, lots, bottles), order management and fulfillment, CRM with client portal, sales and commission tracking, protocol builder, multi-tenant vendor management, and Stripe payment processing. The AI assistant can answer peptide research questions and build new features on demand.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://thepeptideai.com/openapi.yaml"
+  },
+  "logo_url": "https://thepeptideai.com/logo.png",
+  "contact_email": "support@thepeptideai.com",
+  "legal_info_url": "https://thepeptideai.com/#/terms"
+}

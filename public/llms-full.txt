@@ -1,0 +1,87 @@
+# ThePeptideAI — Full Documentation
+> AI-powered command center for peptide businesses
+
+## Overview
+ThePeptideAI is a comprehensive SaaS platform purpose-built for peptide businesses. It combines AI-powered research tools with full business operations — inventory management, order fulfillment, client management, sales tracking, payment processing, and an AI assistant that builds new features on demand.
+
+## Core Features
+
+### AI Assistant
+- RAG-based search across peptide research literature
+- Intelligent recommendations for researchers
+- Natural language queries about peptides, protocols, and inventory
+- AI-powered feature generation — describe what you need and it builds it
+
+### Inventory Management
+- Full peptide inventory tracking (peptides, lots, bottles)
+- Movement tracking and stock level monitoring
+- Barcode/QR scanning for rapid inventory operations
+- Batch management and expiration tracking
+
+### Order & Fulfillment
+- End-to-end order management (create, process, fulfill, ship)
+- Fulfillment center with pick/pack/ship workflow
+- Payment processing with Stripe integration
+- Public payment links for client invoicing
+
+### CRM & Client Management
+- Contact management with detailed profiles
+- Client portal with dashboard, regimen tracking, and messaging
+- Health tracking (macros, body composition)
+- Community forum for client engagement
+
+### Sales & Commissions
+- Sales rep management and assignment
+- Commission tracking and reporting
+- Partner/affiliate program with dedicated stores
+- Referral system with trackable links
+
+### Protocols
+- Protocol builder for peptide regimens
+- Client-facing regimen views
+- Research-backed protocol templates
+
+### Multi-Tenant Platform
+- Vendor (super-admin) layer for managing multiple tenants
+- Per-tenant configuration, billing, and analytics
+- Subdomain-based tenant isolation
+- White-label capabilities
+
+### Integrations
+- Supabase backend with edge functions
+- Stripe payment processing
+- WooCommerce plugin for existing stores
+- Custom entity engine for user-defined data models
+- Custom report builder
+
+## Technical Stack
+- Frontend: React 18 + TypeScript + Vite
+- UI: Radix UI + Tailwind CSS + Framer Motion
+- State: TanStack React Query
+- Backend: Supabase (PostgreSQL + Edge Functions + Auth)
+- Payments: Stripe
+- Monitoring: Sentry
+- Hosting: Vercel
+
+## Public Pages
+- / — Main dashboard (authenticated)
+- /#/crm — CRM landing page (public)
+- /#/get-started — Onboarding flow (public)
+- /#/auth — Authentication (public)
+- /#/join — Sign up (public)
+- /#/status — System status (public)
+- /#/privacy — Privacy policy (public)
+- /#/terms — Terms of service (public)
+
+## API Endpoints
+The platform exposes Supabase edge functions for:
+- Peptide research queries (RAG search)
+- Inventory CRUD operations
+- Order management
+- Payment processing
+- Client portal data
+- Boot failure reporting and auto-healing
+
+## Contact
+- Support: support@thepeptideai.com
+- Website: https://thepeptideai.com

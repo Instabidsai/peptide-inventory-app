@@ -1,0 +1,17 @@
+# ThePeptideAI
+> AI-powered peptide research assistant — RAG search, inventory tracking
+
+## What this site does
+ThePeptideAI is an AI-powered peptide research assistant. It provides RAG-based search across peptide research literature, inventory tracking for research peptides, and intelligent recommendations for researchers.
+
+## Key pages
+- https://thepeptideai.com: Main platform
+- https://thepeptideai.com/#/crm: CRM landing — peptide business management
+- https://thepeptideai.com/#/get-started: Sign up and onboarding
+- https://thepeptideai.com/#/status: System status page
+
+## API
+REST API for peptide research queries and inventory management
+
+## Contact
+support@thepeptideai.com
