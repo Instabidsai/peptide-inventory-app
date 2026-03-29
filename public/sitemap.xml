@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NOTE: This is a Vite SPA with hash routing (/#/path).
+  Hash-based URLs are not crawlable by search engines or AI bots.
+  Only the root URL is truly indexable. Hash routes are listed as
+  non-hash equivalents for discovery purposes, but require SSR/SSG
+  or pre-rendering to be fully crawlable. This is an architectural
+  limitation that cannot be resolved via sitemap alone.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://thepeptideai.com/</loc>
@@ -7,43 +15,43 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/crm</loc>
+    <loc>https://thepeptideai.com/crm</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/get-started</loc>
+    <loc>https://thepeptideai.com/get-started</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/auth</loc>
+    <loc>https://thepeptideai.com/auth</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/join</loc>
+    <loc>https://thepeptideai.com/join</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/status</loc>
+    <loc>https://thepeptideai.com/status</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/privacy</loc>
+    <loc>https://thepeptideai.com/privacy</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://thepeptideai.com/#/terms</loc>
+    <loc>https://thepeptideai.com/terms</loc>
     <lastmod>2026-03-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

@@ -1,0 +1,13 @@
+{
+  "name": "ThePeptideAI",
+  "description": "AI-powered peptide research assistant — RAG search across research literature, inventory tracking, and intelligent recommendations for researchers",
+  "url": "https://thepeptideai.com",
+  "version": "1.0.0",
+  "provider": { "organization": "ThePeptideAI", "url": "https://thepeptideai.com" },
+  "capabilities": { "streaming": false, "pushNotifications": false },
+  "skills": [
+    { "id": "peptide-search", "name": "Peptide Research Search", "description": "RAG-based search across peptide research literature", "inputModes": ["text"], "outputModes": ["text"] },
+    { "id": "inventory-tracking", "name": "Inventory Tracking", "description": "Track research peptide inventory and reorder points", "inputModes": ["text"], "outputModes": ["text"] }
+  ],
+  "authentication": { "schemes": ["bearer"] }
+}
