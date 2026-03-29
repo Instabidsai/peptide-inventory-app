@@ -43,7 +43,10 @@ async function sbRpc(fn: string, params: any): Promise<any> {
     body: JSON.stringify(params),
   });
   if (!r.ok) { const e = await r.text(); console.error(`[sb] RPC ${fn}: ${e}`); return { error: e }; }
-  return r.json();
+  // Handle 204 No Content (void RPCs) — r.json() throws on empty body
+  const txt = await r.text();
+  if (!txt) return { ok: true };
+  try { return JSON.parse(txt); } catch { return { ok: true }; }
 }
 
 async function validateHmac(req: Request, body: string, secret: string): Promise<boolean> {
@@ -150,11 +153,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Expand bundle items (e.g. "MOTS-C 40mg + SS-31 50mg Bundle" → 2 items)
+    const expanded: typeof items = [];
+    for (const it of items) {
+      if (it.name.includes(" + ")) {
+        const clean = it.name.replace(/\s+bundle$/i, "").trim();
+        const parts = clean.split(/\s*\+\s*/).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+        if (parts.length > 1) {
+          // Look up retail prices for proportional split
+          const prices: (number | null)[] = [];
+          for (const p of parts) {
+            let m = await sbGet("peptides", `select=retail_price&org_id=eq.${orgId}&name=ilike.${encodeURIComponent(p)}&limit=1`);
+            if (m.length === 0) {
+              const w = p.split(/[\s\-_]+/)[0];
+              if (w && w.length >= 3) m = await sbGet("peptides", `select=retail_price&org_id=eq.${orgId}&name=ilike.${encodeURIComponent(`%${w}%`)}&limit=1`);
+            }
+            prices.push(m.length > 0 && m[0].retail_price ? Number(m[0].retail_price) : null);
+          }
+          const totalRetail = prices.reduce((s, p) => s + (p || 0), 0);
+          const allKnown = prices.every(p => p !== null && p > 0) && totalRetail > 0;
+          const bundleTotal = it.price * it.qty;
+          for (let i = 0; i < parts.length; i++) {
+            let cp = allKnown ? (prices[i]! / totalRetail) * it.price : it.price / parts.length;
+            cp = Math.round(cp * 100) / 100;
+            expanded.push({ name: parts[i], sku: it.sku ? `${it.sku}-${i+1}` : "", qty: it.qty, price: cp });
+          }
+          // Fix rounding on last component
+          const splitT = expanded.slice(-parts.length).reduce((s, x) => s + x.price * x.qty, 0);
+          const diff = Math.round((bundleTotal - splitT) * 100) / 100;
+          if (diff !== 0) expanded[expanded.length - 1].price = Math.round((expanded[expanded.length - 1].price + diff / it.qty) * 100) / 100;
+          console.log(`[woo-webhook] Bundle "${it.name}" → ${parts.length}: ${parts.join(", ")}`);
+          continue;
+        }
+      }
+      expanded.push(it);
+    }
+
     // Match items to peptides
     const matched: any[] = [];
     let skipped = 0;
 
-    for (const it of items) {
+    for (const it of expanded) {
       let pid: string | null = null;
       let pname = it.name;
 
@@ -190,6 +229,7 @@ Deno.serve(async (req) => {
     const order = await sbPost("sales_orders", {
       org_id: orgId,
       client_id: contactId,
+      contact_id: contactId,
       status: "submitted",
       total_amount: parseFloat(woo.total) || 0,
       payment_status: payStatus(woo.status || "pending"),
@@ -242,6 +282,13 @@ Deno.serve(async (req) => {
             console.error(`[woo-webhook] No profile for user_id=${dc.partner_id} in org ${orgId}`);
           }
 
+          // Assign the contact to this partner so they show in downline
+          if (contactId && repProfileId) {
+            await sbPatch("contacts", `id=eq.${contactId}&assigned_rep_id=is.null`, {
+              assigned_rep_id: repProfileId, updated_at: new Date().toISOString(),
+            });
+          }
+
           // Increment uses_count
           await sbPatch("partner_discount_codes", `id=eq.${dc.id}`, { uses_count: (dc.uses_count || 0) + 1 });
           break;
@@ -258,6 +305,12 @@ Deno.serve(async (req) => {
       if (reps.length > 0 && reps[0].assigned_rep_id) {
         repProfileId = reps[0].assigned_rep_id;
         await sbPatch("sales_orders", `id=eq.${order.id}`, { rep_id: repProfileId });
+        // Also assign contact to this rep if not already assigned
+        if (contactId) {
+          await sbPatch("contacts", `id=eq.${contactId}&assigned_rep_id=is.null`, {
+            assigned_rep_id: repProfileId, updated_at: new Date().toISOString(),
+          });
+        }
         console.log(`[woo-webhook] Email attribution: rep_id=${repProfileId}`);
       }
     }
